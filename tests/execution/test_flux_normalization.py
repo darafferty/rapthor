@@ -402,7 +402,7 @@ def test_main_skips_normalization_if_too_few_sources_before_cuts(
             weight_by_flux_err=False,
             ignore_frequency_dependence=False,
         )
-    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+    assert "Too few sources. Flux density scale normalization will be skipped." in caplog.text, (
         "Expected log message about too few sources."
     )
 
@@ -426,7 +426,7 @@ def test_main_skips_normalization_if_too_few_sources_after_cuts(
             weight_by_flux_err=False,
             ignore_frequency_dependence=False,
         )
-    assert "Too few sources. Flux normalization will be skipped." in caplog.text, (
+    assert "Too few sources. Flux density scale normalization will be skipped." in caplog.text, (
         "Expected log message about too few sources after cuts."
     )
 
@@ -518,8 +518,8 @@ def test_main_logs_warning_when_too_few_sources_with_valid_fits(
             ignore_frequency_dependence=False,
         )
     assert (
-        "Too few sources with successful SED fits. Flux normalization will be skipped."
-        in caplog.text
+        "Too few sources with successful SED fits. "
+        "Flux density scale normalization will be skipped." in caplog.text
     ), "Expected log message about too few sources with valid SED fits."
 
 
@@ -908,3 +908,18 @@ def test_get_source_data(source_catalog):
     assert rapthor_fluxes.shape[0] == n_chan
     assert rapthor_errors.shape[0] == n_chan
     assert rapthor_frequencies.shape[0] == n_chan
+
+
+def test_get_source_data_handles_source_without_valid_channel_fluxes(source_catalog):
+    """Sources with no finite per-channel fluxes are ignored without raising."""
+    source_catalog_data = source_catalog.copy()
+    for channel_index in range(1, 4):
+        source_catalog_data[f"Total_flux_ch{channel_index}"][0] = np.nan
+
+    rapthor_fluxes, rapthor_errors, rapthor_frequencies = _get_source_data(
+        source_catalog_data, n_chan=3, i=0
+    )
+
+    assert rapthor_fluxes.shape == (0,)
+    assert rapthor_errors.shape == (0,)
+    assert rapthor_frequencies.shape == (0,)

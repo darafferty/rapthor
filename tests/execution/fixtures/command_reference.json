@@ -919,6 +919,8 @@
             "-dd-psf-grid",
             "1",
             "1",
+            "-parallel-gridding",
+            "3",
             "-multiscale",
             "-save-source-list",
             "-skip-final-iteration",

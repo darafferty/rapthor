@@ -15,12 +15,14 @@ from rapthor.operations.image.diagnostics import report_sector_diagnostics
 from rapthor.operations.image.initial import ImageInitial
 from rapthor.operations.image.normalize import ImageNormalize
 from rapthor.operations.image.plan import (
+    adjust_parallel_gridding_tasks,
     build_image_applycal_steps,
     build_image_facet_solution_controls,
     build_image_mpi_resource_controls,
     build_image_prepare_data_steps,
     build_image_screen_interval,
     build_image_wsclean_control_inputs,
+    get_max_divisor_less_than_or_equal,
 )
 
 
@@ -312,22 +314,42 @@ class TestImage:
         image.run()
         assert image.is_done()
 
-    @pytest.mark.parametrize("shared_facet_rw", [True, False])
-    @pytest.mark.parametrize("use_facets", [True, False])
+    @pytest.mark.parametrize(
+        ("shared_facet_rw", "use_facets", "num_patches", "expected_shared_facet_rw"),
+        [
+            (True, True, 4, True),
+            (True, True, 1, False),
+            (True, True, 0, False),
+            (True, False, 4, False),
+            (False, True, 4, False),
+        ],
+    )
     @pytest.mark.parametrize("use_mpi", [True, False])
     def test_setting_shared_facet_rw(
-        self, field, h5parm_file, shared_facet_rw, use_facets, use_mpi
+        self,
+        field,
+        h5parm_file,
+        shared_facet_rw,
+        use_facets,
+        num_patches,
+        expected_shared_facet_rw,
+        use_mpi,
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
         field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
+        field.parset["cluster_specific"]["parallel_gridding_tasks"] = 6
+        field.parset["cluster_specific"]["max_cores"] = 12
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.num_patches = num_patches
         image = _initialize_operation(
             Image(field, index=1),
             do_predict=False,
             use_facets=use_facets,
         )
-        assert image.input_parms["shared_facet_rw"] is (shared_facet_rw and use_facets)
+        assert image.input_parms["shared_facet_rw"] is expected_shared_facet_rw
+        channels_out = int(image.input_parms["channels_out"][0])
+        channels_out_per_node = channels_out
         if use_mpi:
             expected_resources = build_image_mpi_resource_controls(
                 nsectors=len(field.imaging_sectors),
@@ -337,6 +359,18 @@ class TestImage:
             )
             assert image.input_parms["mpi_nnodes"] == expected_resources["mpi_nnodes"]
             assert image.input_parms["mpi_cpus_per_task"] == expected_resources["mpi_cpus_per_task"]
+            channels_out_per_node = max(1, channels_out // expected_resources["mpi_nnodes"][0])
+
+        expected_work_units = (
+            num_patches if use_facets and num_patches > 1 else channels_out_per_node
+        )
+        assert image.input_parms["parallel_gridding_tasks"] == [
+            adjust_parallel_gridding_tasks(
+                max_cores=12,
+                parallel_gridding_tasks=6,
+                max_work_units=expected_work_units,
+            )
+        ]
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_facet_h5parm(
@@ -1336,3 +1370,33 @@ def test_report_sector_diagnostics_returns_best_non_nvss_flux_ratio(mocker):
     assert ratio == 0.95
     assert std == 0.1
     log.warning.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("number", "limit", "expected"),
+    [
+        (12, 12, 12),
+        (12, 7, 6),
+        (12, 5, 4),
+        (11, 10, 1),
+        (0, 8, 1),
+    ],
+)
+def test_get_max_divisor_less_than_or_equal(number, limit, expected):
+    assert get_max_divisor_less_than_or_equal(number, limit) == expected
+
+
+@pytest.mark.parametrize(
+    ("max_cores", "requested_tasks", "max_work_units", "expected"),
+    [
+        (12, 8, 5, 4),
+        (12, 6, 6, 6),
+        (12, 99, 3, 3),
+        (11, 8, 4, 1),
+        (0, 0, 0, 1),
+    ],
+)
+def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_core_divisor(
+    max_cores, requested_tasks, max_work_units, expected
+):
+    assert adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units) == expected

@@ -766,9 +766,12 @@ The available options are described below under their respective sections.
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
         ``max_threads``, but not more than 14).
 
-    parallel_gridding_threads
-        Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5 of
-        ``max_threads``, but not more than 6).
+    parallel_gridding_tasks
+        Number of task groups WSClean can use for parallel gridding. If this is
+        set to 0 (default), Rapthor uses ``max_threads // 8`` with a minimum of
+        1. During imaging, Rapthor reduces the value when there are fewer facet
+        or channel work units available, and chooses a divisor of
+        :term:`max_cores` so gridding threads are distributed evenly.
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default = not

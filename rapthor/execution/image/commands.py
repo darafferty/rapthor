@@ -1,6 +1,6 @@
 """Command builders for the Image execution flow."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Optional
 
 from rapthor.execution.commands import (
@@ -76,6 +76,7 @@ class WscleanOptions:
     idg_mode: str
     num_threads: int
     num_deconvolution_threads: int
+    num_gridding_tasks: int
     dd_psf_grid: list[int]
     apply_time_frequency_smearing: bool
     temp_dir: str
@@ -92,7 +93,7 @@ class WscleanFacetOptions:
     h5parm: str
     soltabs: str
     region_file: str
-    num_gridding_threads: Optional[int]
+    num_gridding_tasks: Optional[int]
     shared_facet_reads: bool
     shared_facet_writes: bool
 
@@ -272,7 +273,13 @@ def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
         "briggs",
         str(options.robust),
     ]
-    append_option_values(command, _wsclean_common_options(options))
+    append_option_values(
+        command,
+        [
+            *_wsclean_common_options(options),
+            ("-parallel-gridding", options.num_gridding_tasks),
+        ],
+    )
     append_flag(command, "-multiscale", options.multiscale)
     append_flag(command, "-save-source-list", options.save_source_list)
     if options.link_polarizations:
@@ -315,7 +322,7 @@ def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
     ]
     option_values = [
         *_wsclean_common_options(common),
-        ("-parallel-gridding", options.num_gridding_threads),
+        ("-parallel-gridding", options.num_gridding_tasks),
         ("-facet-regions", options.region_file),
     ]
     append_option_values(command, option_values)
@@ -411,10 +418,7 @@ def build_wsclean_mpi_facets_command(
     options: WscleanFacetOptions,
 ) -> list[str]:
     """Build the MPI facet-corrected WSClean command for one imaging sector."""
-    return _mpi_wsclean_command(
-        build_wsclean_facets_command(replace(options, num_gridding_threads=None)),
-        mpi_nnodes,
-    )
+    return _mpi_wsclean_command(build_wsclean_facets_command(options), mpi_nnodes)
 
 
 def build_wsclean_mpi_screens_command(

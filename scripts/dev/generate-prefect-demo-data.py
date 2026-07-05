@@ -413,7 +413,7 @@ def write_parset(
     max_cores: int = 4,
     max_threads: int = 4,
     deconvolution_threads: int = 2,
-    parallel_gridding_threads: int = 1,
+    parallel_gridding_tasks: int = 1,
 ) -> None:
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
@@ -497,7 +497,7 @@ def write_parset(
             max_cores = {max_cores}
             max_threads = {max_threads}
             deconvolution_threads = {deconvolution_threads}
-            parallel_gridding_threads = {parallel_gridding_threads}
+            parallel_gridding_tasks = {parallel_gridding_tasks}
             local_scratch_dir =
             global_scratch_dir =
             use_container = False
@@ -533,7 +533,7 @@ def write_benchmark_parset(
         max_cores=0,
         max_threads=0,
         deconvolution_threads=0,
-        parallel_gridding_threads=0,
+        parallel_gridding_tasks=0,
     )
 
 

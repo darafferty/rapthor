@@ -52,7 +52,7 @@
                       'max_nodes': 8,
                       'max_threads': 64,
                       'mem_per_node_gb': 256,
-                      'parallel_gridding_threads': 16,
+                      'parallel_gridding_tasks': 16,
                       'prefect_api_mode': 'auto',
                       'prefect_api_url': None,
                       'prefect_command_profile': 'auto',

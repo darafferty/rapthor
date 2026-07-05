@@ -493,8 +493,8 @@ def validate_strategy(strategy_steps, parset):
     # Check do_normalize in all cycles except the first one.
     for i in range(1, len(strategy_steps)):
         if strategy_steps[i].get("do_normalize", False):
-            raise ValueError(
-                f"do_normalize is True in cycle {i + 1} but it may only be True in the first cycle."
+            log.warning(
+                f"do_normalize is True in cycle {i + 1} but it is usually True only in the first cycle."
             )
 
     # Check that the strategy is consistent with the parset setttings for

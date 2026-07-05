@@ -109,9 +109,13 @@ def normalize_flux_scale(
             if not reference_skymodels:
                 survey_data = _download_survey_data(survey, [phase_center_ra, phase_center_dec])
             else:
+                log.info(
+                    "Loading provided skymodels for flux density scale normalization: %s",
+                    reference_skymodels,
+                )
                 skymodel = lsmtool.load(survey)
                 survey_data = _get_data_from_skymodel(skymodel)
-            if survey_data is None:
+            if survey_data is None or len(survey_data) == 0:
                 continue
             survey_coords = _get_survey_coords(survey_data)
             survey_fluxes = _cross_match_sources(
@@ -126,6 +130,12 @@ def normalize_flux_scale(
                     "frequency": metadata["frequency"],
                 }
             )
+        if len(survey_catalogs) == 0:
+            log.warning(
+                "No valid cross-matches in flux normalization skymodels. "
+                "Flux density scale normalization will be skipped."
+            )
+            do_normalization = False
 
     # Fit the source SEDs to find the corrections. The frequencies for the
     # which the corrections are determined are constructed to match the channels
@@ -165,7 +175,8 @@ def normalize_flux_scale(
         n_valid = np.where(valid_fits)[0].size
         if n_valid < min_sources:
             log.warning(
-                "Too few sources with successful SED fits. Flux normalization will be skipped."
+                "Too few sources with successful SED fits. "
+                "Flux density scale normalization will be skipped."
             )
             avg_corrections = np.ones(len(output_frequencies))
         else:
@@ -565,19 +576,19 @@ def _get_source_data(source_catalog_data, n_chan, i):
         Array of the frequencies in Hz corresponding to the source flux densities for
         the input catalog
     """
-    return tuple(
-        np.transpose(
-            [
-                (
-                    total_flux_ch,  # Jy
-                    source_catalog_data[f"E_Total_flux_ch{ch_ind}"][i],  # Jy
-                    source_catalog_data[f"Freq_ch{ch_ind}"][i],  # Hz
-                )
-                for ch_ind in range(1, n_chan + 1)
-                if not np.isnan((total_flux_ch := source_catalog_data[f"Total_flux_ch{ch_ind}"][i]))
-            ]
+    source_data = [
+        (
+            total_flux_ch,  # Jy
+            source_catalog_data[f"E_Total_flux_ch{ch_ind}"][i],  # Jy
+            source_catalog_data[f"Freq_ch{ch_ind}"][i],  # Hz
         )
-    )
+        for ch_ind in range(1, n_chan + 1)
+        if not np.isnan((total_flux_ch := source_catalog_data[f"Total_flux_ch{ch_ind}"][i]))
+    ]
+    if len(source_data) == 0:
+        return np.array([]), np.array([]), np.array([])
+
+    return tuple(np.transpose(source_data))
 
 
 def _validate_source_catalog(source_catalog_data, min_sources):
@@ -602,7 +613,7 @@ def _validate_source_catalog(source_catalog_data, min_sources):
     n_sources = len(source_catalog_data)
     log.info(f"Number of sources in source catalog: {n_sources}")
     if n_sources < min_sources:
-        log.info("Too few sources. Flux normalization will be skipped.")
+        log.info("Too few sources. Flux density scale normalization will be skipped.")
         return False
     else:
         return True
@@ -638,13 +649,13 @@ def _download_survey_data(survey, phase_center):
     except (OSError, ConnectionError) as e:
         log.error(
             f"A problem occurred when downloading the {survey} catalog. "
-            f"Error was: {e}. Flux normalization will be skipped."
+            f"Error was: {e}. Flux density scale normalization will be skipped."
         )
         return
-    if not len(skymodel):
+    if len(skymodel) == 0:
         log.warning(
             f"No sources found in the {survey} catalog for this field. "
-            "Flux normalization will be skipped."
+            "Flux density scale normalization will be skipped."
         )
         return
     return _get_data_from_skymodel(skymodel)

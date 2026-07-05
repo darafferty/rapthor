@@ -83,8 +83,9 @@ Known caveats:
    `17448437b78583f1eaf38112a524b2dbe5f34bb8` (`Generate residual
    visibilities`, 2026-07-01). Port the missing behavior into the current
    Prefect/Dask owner packages, preserving payload/output-record contracts and
-   avoiding a return to CWL scripts. Next up in this track: audit and align the
-   remaining normalization and parallel-gridding semantic gaps.
+   avoiding a return to CWL scripts. The remaining identified runtime feature
+   slices have now been ported; complete the explicit skipped/already-covered
+   audit before moving to scalability work.
 
 3. **Lock down the branch-equivalence comparison contract.**
    Update the branch-equivalence runner/tests so expected legacy-vs-current
@@ -306,17 +307,18 @@ Port these in order:
    `rapthor/scripts/wsclean_predict.py` glue. Focused command-builder, payload,
    flow, operation, parset, and field tests pass.
 
-6. **Align normalization and parallel-gridding semantics with master.** Next.
-   The current branch already has substantial normalization and
-   `parallel_gridding_threads` support, but master adds/changes behavior in
-   `fc79ef7f`, `3e4eca19`, `38abdb92`, and `01a81e11`. Audit and port the
-   remaining semantic gaps: allow `do_normalize` outside the first cycle with
-   warning semantics rather than a hard error, verify the flux-normalization
-   workflow matches master, and ensure shared-facet read/write decisions depend
-   on the actual facet count/patch count rather than simply `use_facets=True`.
-   Add or update tests to prevent regressions.
+6. **Align normalization and parallel-gridding semantics with master.** Implemented on 2026-07-05.
+   The `fc79ef7f`, `3e4eca19`, `38abdb92`, and `01a81e11` behavior is now
+   represented in the Prefect/Dask implementation. `do_normalize` outside the
+   first cycle logs a warning instead of raising, flux-density normalization
+   handles empty/no-match products more robustly, WSClean parallel gridding is
+   modelled as task groups via `parallel_gridding_tasks`, no-DDE and MPI facet
+   WSClean commands keep `-parallel-gridding`, and shared facet read/write is
+   enabled only when the actual patch/facet count supports it. The LSMTool
+   dependency was advanced to `176ef008534bdd929e58c57b00c0a60e3445ad68`; Rapthor
+   call sites were updated for the current `read_skymodel(..., wcs=...)` API.
 
-7. **Record what is intentionally already covered or not relevant.**
+7. **Record what is intentionally already covered or not relevant.** Next.
    Ubuntu 24.04, libdeflate, NumPy-2-compatible CI images, and broad pytest
    cleanup appear already covered or superseded in this branch. Document that
    audit in this section or in `EQUIVALENCE_REPORT.md` once the feature ports

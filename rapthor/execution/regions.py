@@ -1,6 +1,7 @@
 """Shared region-file helpers for execution scripts."""
 
 from lsmtool.facet import make_ds9_region_file, read_skymodel
+from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
 
@@ -28,6 +29,6 @@ def make_ds9_region_from_skymodel(
         dec_mid,
         width_ra,
         width_dec,
-        wcs_pixel_scale=misc.WCS_PIXEL_SCALE,
+        wcs=make_wcs(ra_mid, dec_mid, misc.WCS_PIXEL_SCALE),
     )
     make_ds9_region_file(facets, region_file, enclose_names=enclose_names)

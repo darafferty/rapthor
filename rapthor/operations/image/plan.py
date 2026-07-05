@@ -84,6 +84,32 @@ def build_image_screen_interval(
     return [0, max(1, numsamples - numsamples_to_remove)]
 
 
+def get_max_divisor_less_than_or_equal(number: int, limit: int) -> int:
+    """Return the largest divisor of ``number`` that is no larger than ``limit``."""
+    number = max(1, int(number))
+    limit = max(1, int(limit))
+    for divisor in range(min(number, limit), 0, -1):
+        if number % divisor == 0:
+            return divisor
+    return 1
+
+
+def adjust_parallel_gridding_tasks(
+    max_cores: int,
+    parallel_gridding_tasks: int,
+    max_work_units: int,
+) -> int:
+    """
+    Match WSClean parallel-gridding tasks to available work units and cores.
+
+    WSClean parallel gridding splits either facets or output channels into task
+    groups. The task count should not exceed the available work units, and it
+    should divide the core count so worker threads are assigned evenly.
+    """
+    capped_tasks = min(max(1, int(parallel_gridding_tasks)), max(1, int(max_work_units)))
+    return get_max_divisor_less_than_or_equal(max_cores, capped_tasks)
+
+
 def build_image_mpi_resource_controls(
     *,
     nsectors: int,

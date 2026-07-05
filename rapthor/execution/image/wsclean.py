@@ -139,6 +139,7 @@ def _select_wsclean_command_for_sector(
         idg_mode=str(sector["idg_mode"]),
         num_threads=_wsclean_threads_for_sector(sector),
         num_deconvolution_threads=int(sector["deconvolution_threads"]),
+        num_gridding_tasks=int(sector["parallel_gridding_tasks"]),
         dd_psf_grid=list(sector["dd_psf_grid"]),
         apply_time_frequency_smearing=bool(sector["apply_time_frequency_smearing"]),
         temp_dir=temp_dir,
@@ -154,7 +155,7 @@ def _select_wsclean_command_for_sector(
             h5parm=str(sector["h5parm"]),
             soltabs=str(sector["soltabs"]),
             region_file=region_record["path"],
-            num_gridding_threads=int(sector["parallel_gridding_threads"]),
+            num_gridding_tasks=int(sector["parallel_gridding_tasks"]),
             shared_facet_reads=bool(sector["shared_facet_reads"]),
             shared_facet_writes=bool(sector["shared_facet_writes"]),
         )

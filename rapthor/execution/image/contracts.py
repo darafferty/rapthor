@@ -104,7 +104,7 @@ class ImageSectorPayload(TypedDict):
     dd_psf_grid: list[int]
     interval: Optional[list[int]]
     soltabs: Optional[str]
-    parallel_gridding_threads: Optional[int]
+    parallel_gridding_tasks: int
     scalar_visibilities: Optional[bool]
     diagonal_visibilities: Optional[bool]
     shared_facet_reads: Optional[bool]

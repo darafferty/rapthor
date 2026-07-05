@@ -577,7 +577,7 @@ def _operation_parset(tmp_path):
             "max_cores": 1,
             "max_threads": 4,
             "deconvolution_threads": 2,
-            "parallel_gridding_threads": 3,
+            "parallel_gridding_tasks": 3,
             "allow_internet_access": False,
             "prefect_task_runner": "sync",
         },
@@ -662,6 +662,7 @@ def _image_input_parms():
         "interval": [0, 10],
         "max_threads": 4,
         "deconvolution_threads": 2,
+        "parallel_gridding_tasks": [3],
         "save_filtered_model_image": False,
         "filtered_model_image_name": ["sector_1-MFS-filtered-model.fits.fz"],
         "allow_internet_access": False,
@@ -684,7 +685,6 @@ def _facet_image_input_parms():
             "width_dec": [2.5],
             "facet_region_file": ["sector_1_facets_ds9.reg"],
             "soltabs": "phase000",
-            "parallel_gridding_threads": 3,
             "scalar_visibilities": True,
             "diagonal_visibilities": False,
             "shared_facet_rw": True,
@@ -828,6 +828,7 @@ def _two_sector_image_input_parms():
         "threshpix",
         "do_multiscale",
         "dd_psf_grid",
+        "parallel_gridding_tasks",
         "filtered_model_image_name",
     ]
     for key in per_sector_keys:
@@ -1048,6 +1049,7 @@ def _wsclean_options(**overrides) -> WscleanOptions:
         "idg_mode": "cpu",
         "num_threads": 4,
         "num_deconvolution_threads": 2,
+        "num_gridding_tasks": 3,
         "dd_psf_grid": [1, 1],
         "apply_time_frequency_smearing": False,
         "temp_dir": "sector_1_wsclean_tmp",
@@ -1134,7 +1136,7 @@ def test_image_command_builders_match_reference_fixtures():
                     h5parm="facet-solutions.h5",
                     soltabs="phase000",
                     region_file="sector_1_facets_ds9.reg",
-                    num_gridding_threads=3,
+                    num_gridding_tasks=3,
                     shared_facet_reads=True,
                     shared_facet_writes=True,
                 )
@@ -1227,7 +1229,7 @@ def test_wsclean_mpi_command_builders_use_mpirun_launcher():
                 h5parm="facet-solutions.h5",
                 soltabs="phase000",
                 region_file="sector_1_facets_ds9.reg",
-                num_gridding_threads=7,
+                num_gridding_tasks=7,
                 shared_facet_reads=True,
                 shared_facet_writes=True,
             ),
@@ -1236,7 +1238,7 @@ def test_wsclean_mpi_command_builders_use_mpirun_launcher():
     assert facet_command[:10] == command[:10]
     assert "-apply-facet-solutions" in facet_command
     assert "-facet-regions" in facet_command
-    assert "-parallel-gridding" not in facet_command
+    assert facet_command[facet_command.index("-parallel-gridding") + 1] == "7"
     assert "-shared-facet-reads" in facet_command
     assert "-shared-facet-writes" in facet_command
 
@@ -1432,7 +1434,7 @@ def test_image_payload_from_inputs_builds_serializable_facet_payload(tmp_path):
     assert sector["width_ra"] == 2.0
     assert sector["width_dec"] == 2.5
     assert sector["soltabs"] == "phase000"
-    assert sector["parallel_gridding_threads"] == 3
+    assert sector["parallel_gridding_tasks"] == 3
     assert sector["scalar_visibilities"] is True
     assert sector["diagonal_visibilities"] is False
     assert sector["shared_facet_reads"] is True
@@ -2124,7 +2126,7 @@ def test_run_image_flow_supports_mpi_facets(tmp_path, fake_image_shell_operation
     assert "wsclean-mp" in mpi_command
     assert "-apply-facet-solutions" in mpi_command
     assert "-facet-regions" in mpi_command
-    assert "-parallel-gridding" not in mpi_command
+    assert mpi_command[mpi_command.index("-parallel-gridding") + 1] == "3"
     assert "-shared-facet-reads" in mpi_command
     assert "-shared-facet-writes" in mpi_command
 
@@ -2890,6 +2892,7 @@ def test_facet_image_operation_run_uses_prefect_flow(
     field.dd_h5parm_filename = "/data/facet-solutions.h5"
     field.calibration_strategy = {"dd": ["fast_phase"]}
     field.parset["imaging_specific"]["shared_facet_rw"] = True
+    field.num_patches = 2
     operation = Image(field, index=1)
 
     with prefect_test_harness(server_startup_timeout=None):

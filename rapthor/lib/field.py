@@ -2320,7 +2320,7 @@ class Field(object):
                 self.sector_bounds_mid_dec,
                 max(skymodel_bounds_width_ra, sector_bounds_width_ra),
                 max(skymodel_bounds_width_dec, sector_bounds_width_dec),
-                wcs_pixel_scale=misc.WCS_PIXEL_SCALE,
+                wcs=wcs,
             )
             for i, facet in enumerate(facets):
                 facet_patch = facet.get_matplotlib_patch(wcs=wcs)

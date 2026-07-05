@@ -76,7 +76,7 @@ def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path)
     assert parser["cluster"]["max_cores"] == "0"
     assert parser["cluster"]["max_threads"] == "0"
     assert parser["cluster"]["deconvolution_threads"] == "0"
-    assert parser["cluster"]["parallel_gridding_threads"] == "0"
+    assert parser["cluster"]["parallel_gridding_tasks"] == "0"
 
 
 def test_generated_benchmark_strategy_exercises_legacy_default_and_fulljones(tmp_path):

@@ -102,6 +102,7 @@ def image_payload_from_inputs(
         "threshpix",
         "do_multiscale",
         "dd_psf_grid",
+        "parallel_gridding_tasks",
     ]
     if make_residual_visibilities:
         per_sector_keys.append("residual_filename")
@@ -145,13 +146,7 @@ def image_payload_from_inputs(
     facet_skymodel = None
     if use_facets:
         facet_skymodel = file_record_path(input_parms.get("skymodel"))
-        for key in [
-            "soltabs",
-            "parallel_gridding_threads",
-            "scalar_visibilities",
-            "diagonal_visibilities",
-            "shared_facet_rw",
-        ]:
+        for key in ["soltabs", "scalar_visibilities", "diagonal_visibilities", "shared_facet_rw"]:
             if key not in input_parms:
                 raise ValueError(f"{key} is required when use_facets=True")
     fulljones_h5parm = optional_file_record_path(input_parms.get("fulljones_h5parm"))
@@ -392,8 +387,8 @@ def image_payload_from_inputs(
                 "dd_psf_grid": [int(value) for value in input_parms["dd_psf_grid"][sector_index]],
                 "interval": interval,
                 "soltabs": None if not use_facets else str(input_parms["soltabs"]),
-                "parallel_gridding_threads": (
-                    None if not use_facets else int(input_parms["parallel_gridding_threads"])
+                "parallel_gridding_tasks": int(
+                    input_parms["parallel_gridding_tasks"][sector_index]
                 ),
                 "scalar_visibilities": (
                     None if not use_facets else bool(input_parms["scalar_visibilities"])

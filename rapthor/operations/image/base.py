@@ -15,6 +15,7 @@ from rapthor.lib.records import DirectoryRecord, FileRecord
 from rapthor.operations.flow_execution import run_prefect_flow
 from rapthor.operations.image.diagnostics import report_sector_diagnostics
 from rapthor.operations.image.plan import (
+    adjust_parallel_gridding_tasks,
     build_image_applycal_steps,
     build_image_facet_solution_controls,
     build_image_mpi_resource_controls,
@@ -227,7 +228,28 @@ class Image(Operation):
         return False
 
     def _shared_facet_rw_enabled(self):
-        return bool(self.use_facets and self.parset["imaging_specific"]["shared_facet_rw"])
+        return bool(
+            self.use_facets
+            and self.parset["imaging_specific"]["shared_facet_rw"]
+            and self._facet_work_units() > 1
+        )
+
+    def _facet_work_units(self):
+        return max(0, int(getattr(self.field, "num_patches", 0) or 0))
+
+    def _parallel_gridding_tasks_for_sector(self, sector_index, channels_out):
+        requested_tasks = self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
+        max_cores = self.field.parset["cluster_specific"]["max_cores"]
+        channels_out_per_node = int(channels_out)
+        if self.field.use_mpi:
+            mpi_nnodes = int(self.input_parms["mpi_nnodes"][sector_index])
+            channels_out_per_node = max(1, channels_out_per_node // mpi_nnodes)
+
+        facet_work_units = self._facet_work_units()
+        max_work_units = (
+            facet_work_units if self.use_facets and facet_work_units > 1 else channels_out_per_node
+        )
+        return adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units)
 
     def _build_applycal_steps(self):
         """
@@ -534,6 +556,10 @@ class Image(Operation):
                 )
             )
         self.input_parms["shared_facet_rw"] = self._shared_facet_rw_enabled()
+        self.input_parms["parallel_gridding_tasks"] = [
+            self._parallel_gridding_tasks_for_sector(index, channels_out)
+            for index, channels_out in enumerate(self.input_parms["channels_out"])
+        ]
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({"skymodel": FileRecord(self._facet_skymodel_file()).to_json()})
@@ -558,13 +584,6 @@ class Image(Operation):
             self.input_parms.update({"width_ra": width_ra})
             self.input_parms.update({"width_dec": width_dec})
             self.input_parms.update({"facet_region_file": facet_region_file})
-            self.input_parms.update(
-                {
-                    "parallel_gridding_threads": self.field.parset["cluster_specific"][
-                        "parallel_gridding_threads"
-                    ]
-                }
-            )
             self.input_parms.update(
                 build_image_facet_solution_controls(
                     self.image_pol,
