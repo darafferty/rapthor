@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from astropy.io import fits
+from PIL import Image
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run_branch_equivalence.py"
 
@@ -358,6 +359,83 @@ def test_compare_branch_outputs_uses_strengthened_product_checks(tmp_path):
     assert result.metrics["fits_image_hdus"] == 1
 
 
+def test_compare_branch_outputs_records_image_diagnostics(tmp_path):
+    module = load_branch_equivalence_script()
+    base_work = tmp_path / "base-work"
+    current_work = tmp_path / "current-work"
+    _write_operation(base_work, "image_1")
+    _write_operation(current_work, "image_1")
+    for work, dynamic_range in [(base_work, 100.0), (current_work, 125.0)]:
+        diagnostics_dir = work / "plots" / "image_1"
+        diagnostics_dir.mkdir(parents=True)
+        (diagnostics_dir / "sector_1.image_diagnostics.json").write_text(
+            json.dumps(
+                {
+                    "nsources": 3,
+                    "theoretical_rms": 0.1,
+                    "min_rms_flat_noise": 0.2,
+                    "median_rms_flat_noise": 0.3,
+                    "dynamic_range_global_flat_noise": dynamic_range,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    result = module.compare_branch_outputs(
+        scenario_id="synthetic",
+        base_work_dir=base_work,
+        current_work_dir=current_work,
+        run_dir=tmp_path / "run",
+        atol=1e-6,
+        rtol=1e-3,
+    )
+
+    diagnostics = result.product_statistics["diagnostics"]
+    assert result.metrics["diagnostics"] == 1
+    assert {
+        "operation": "image_1",
+        "sector": "sector_1",
+        "field": "dynamic_range_global_flat_noise",
+        "reference": 100.0,
+        "current": 125.0,
+        "delta": 25.0,
+        "relative_delta": 0.25,
+    } in diagnostics
+
+
+def test_compare_branch_outputs_creates_visual_comparisons(tmp_path):
+    module = load_branch_equivalence_script()
+    base_work = tmp_path / "base-work"
+    current_work = tmp_path / "current-work"
+    _write_operation(base_work, "image_1")
+    _write_operation(current_work, "image_1")
+    for work, value in [(base_work, 1.0), (current_work, 1.1)]:
+        image_dir = work / "images" / "image_1"
+        image_dir.mkdir(parents=True)
+        _write_fits(image_dir / "field-MFS-image-pb.fits", np.full((4, 4), value))
+        plot_dir = work / "pipelines" / "calibrate_1"
+        plot_dir.mkdir(parents=True)
+        plot_name = (
+            "fast_phase_dir[Patch_0].png" if work == base_work else "scalarphase_dir[Patch_0].png"
+        )
+        Image.new("RGB", (8, 8), "white").save(plot_dir / plot_name)
+
+    result = module.compare_branch_outputs(
+        scenario_id="synthetic",
+        base_work_dir=base_work,
+        current_work_dir=current_work,
+        run_dir=tmp_path / "run",
+        atol=1e-6,
+        rtol=1e-3,
+    )
+
+    visuals = result.product_statistics["visual_comparisons"]
+    assert {item["kind"] for item in visuals} == {"image", "solution"}
+    assert result.metrics["visual_comparisons"] == 2
+    for item in visuals:
+        assert (tmp_path / "run" / item["path"]).is_file()
+
+
 def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
     module = load_branch_equivalence_script()
     report = {
@@ -400,6 +478,7 @@ def test_prepare_only_writes_reports_without_running_branches(tmp_path):
     current_parset = tmp_path / "current.parset"
     _write_parset(base_parset, tmp_path / "base-work")
     _write_parset(current_parset, tmp_path / "current-work")
+    (tmp_path / "strategy.py").write_text("strategy_steps = []\n", encoding="utf-8")
     run_root = tmp_path / "branch-run"
 
     args = module.parse_args(
@@ -418,8 +497,21 @@ def test_prepare_only_writes_reports_without_running_branches(tmp_path):
     assert (run_root / "branch-equivalence-report.json").is_file()
     assert (run_root / "branch-equivalence-report.md").is_file()
     assert (run_root / "scenario-manifest.json").is_file()
+    assert (run_root / "inputs" / "base" / "base.parset").is_file()
+    assert (run_root / "inputs" / "base" / "strategy.py").is_file()
+    assert (run_root / "inputs" / "current" / "current.parset").is_file()
+    assert (run_root / "inputs" / "current" / "strategy.py").is_file()
     assert not (run_root / "adaptation-manifest.json").exists()
     report = json.loads((run_root / "branch-equivalence-report.json").read_text())
+    manifest = json.loads((run_root / "scenario-manifest.json").read_text())
     assert "adaptations" not in report
     assert report["base"]["parset_path"] == str(base_parset)
     assert report["current"]["parset_path"] == str(current_parset)
+    assert report["base"]["input_snapshot"] == {
+        "parset": "inputs/base/base.parset",
+        "strategy": "inputs/base/strategy.py",
+    }
+    assert manifest["input_snapshots"]["current"] == {
+        "parset": "inputs/current/current.parset",
+        "strategy": "inputs/current/strategy.py",
+    }

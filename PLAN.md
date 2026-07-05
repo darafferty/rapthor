@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-04.
+Status snapshot: 2026-07-05.
 
 ## Goal
 
@@ -47,7 +47,11 @@ Done:
   `scripts/dev/run_branch_equivalence.py`: it accepts explicitly prepared
   base/current parsets, can create a base-ref worktree plus virtual environment
   for `master` or a chosen commit, runs each branch, records command logs and
-  manifests, and reuses the strengthened product comparison checks.
+  manifests, reuses the strengthened product comparison checks, records image
+  diagnostic deltas, and generates compact side-by-side image/solution visual
+  comparisons.
+- The full integration suite passed in the prepared dev container on
+  2026-07-05: `28 passed, 1 skipped, 1 xfailed`.
 - WSClean-based DD calibration prediction is ported into the Prefect/Dask
   calibration owner package: `use_wsclean_predict`, WSClean predict command
   construction, generated region/readpatches support, narrow-band model drawing,
@@ -70,13 +74,12 @@ Known caveats:
 
 1. **Resolve the multi-cycle branch-vs-master equivalence findings.**
    Treat this as the next gate before performance-sensitive execution work.
-   Two compact report bundles are now tracked under
-   `docs/source/development/equivalence_runs/`: the default-like run that
-   exposes the master slow-gain/amplitude issue, and the phase-only run that
-   completes both branches with small restored-image residuals. Use these
-   reports to decide the intended product contract for missing
-   `field-MFS-image-pb-ast` products, output-record differences, sparse model
-   image differences, and phase h5parm tolerances.
+   Compact report bundles are tracked under
+   `docs/source/development/equivalence_runs/`. Use the 2026-07-05 phase-only
+   rerun as the primary reference: product presence is now aligned and image
+   diagnostics are close, but strict comparison still fails because later-cycle
+   h5parm phase/source values, sky models, source catalogs, text products, and
+   FITS pixels diverge.
 
 2. **Port master-only feature work that changes runtime behavior or products.**
    Compare against fetched `origin/master` at
@@ -185,20 +188,30 @@ Current status:
   source-catalog/facet-region text differences, and output-record summaries.
   The compact report, manifest, and command logs are tracked under
   `docs/source/development/equivalence_runs/2026-07-04-phase-only-master-ref/`.
+- The 2026-07-05 phase-only rerun used the same `master` reference after the
+  current branch had caught up with the missing image-product behavior. Both
+  branches returned `0`; strict comparison still failed. The rerun includes 32
+  image diagnostic deltas and 20 side-by-side visual comparisons under
+  `docs/source/development/equivalence_runs/2026-07-05-phase-only-master-ref/`.
+  `field-MFS-image-pb-ast` products are now present on both branches. Top-level
+  diagnostics are close, with matching source counts and largest relative
+  deltas around `0.23%`, but h5 phase/source differences grow by cycle:
+  exact in cycle 1, about `2.18e-07` in cycle 2, about `1.60e-03` in cycle 3,
+  and about `6.12` plus source-coordinate differences in cycle 4.
 
 Immediate task:
 
-- Turn the two 2026-07-04 branch-equivalence reports into actionable contract
-  decisions:
+- Turn the 2026-07-05 phase-only report and the default-like slow-gain report
+  into actionable contract decisions:
 
   - compare calibrate/image output records and classify differences as
-    path-only, product-presence, or semantic
-  - decide whether missing `field-MFS-image-pb-ast` products are intentional in
-    the current branch or should be restored/configured
+    path-only metadata, product-presence, or semantic
+  - investigate the cycle 3/4 h5parm phase/source divergence and the associated
+    sky-model/source-selection changes
   - decide whether sparse `field-MFS-model-pb` differences should be compared
     with model-specific sparse-outlier tolerances or investigated as a real
     deconvolution/model-selection change
-  - add h5parm phase tolerances appropriate for the observed phase-only delta,
+  - add h5parm phase tolerances appropriate for accepted phase-only drift,
     while keeping shape, axes, soltab names, and finite values strict
   - handle source-catalog/facet-region text differences with deterministic
     ordering or semantic comparison where possible

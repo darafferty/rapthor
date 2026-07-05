@@ -4,7 +4,7 @@ Generated: 2026-06-11
 
 Archived for post-cutover cleanup: 2026-06-12
 
-Latest on-disk report scan: 2026-07-04
+Latest on-disk report scan: 2026-07-05
 
 ## Summary
 
@@ -168,6 +168,62 @@ any scalability changes are made. Either patch the master reference checkout so
 slow-gain amplitudes are combined/applied as intended, or mark the master
 behavior as a legacy bug and use an adapted phase-only current scenario when
 strict branch-vs-master parity is required.
+
+## Branch-Vs-Master Phase-Only Rerun
+
+A four-cycle phase-only branch comparison was rerun on 2026-07-05 after the
+master feature ports, with `master` commit
+`17448437b78583f1eaf38112a524b2dbe5f34bb8` as the reference.
+
+The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-phase-only-master-ref/
+```
+
+Both branch executions completed successfully. The strict product comparison
+still failed, but the report now includes image diagnostic deltas and compact
+side-by-side PNG comparisons for selected image products and solution plots.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `benchmark-phase-only` | `master` | 0 | 0 | fail | 12 | 12 | 28 | 24 | 4 | 8 | 37 | 4 | 20 | 4 | 124 |
+
+Key findings:
+
+- `field-MFS-image-pb-ast` products are now present on both branches, so the
+  earlier astrometry-corrected image product gap has been closed.
+- Top-level image diagnostics are very close despite strict pixel failures:
+  source counts match in all four image cycles, theoretical RMS is identical,
+  and the largest relative diagnostic deltas are about `0.23%` in final-cycle
+  dynamic range and minimum RMS noise.
+- H5 phase solutions start equivalent and then diverge through the cycles:
+  cycle 1 is exact, cycle 2 has maximum phase delta about `2.18e-07`, cycle 3
+  about `1.60e-03`, and cycle 4 about `6.12` with small source-coordinate
+  differences in `sol000/source`.
+- Restored/residual image residuals are small in early cycles but grow by cycle:
+  the cycle 3 restored-image RMS residual is about `1.96e-04`, while the final
+  uncompressed image residual is about `4.64e-04`; the final dirty image differs
+  more strongly with RMS residual about `2.04e-03`.
+- The remaining failures are dominated by later-cycle FITS pixel/statistic
+  differences, h5parm phase/source differences, sky-model summary differences,
+  source-catalog columns, and text/region products.
+- Current-branch output records are leaner path-only records, while master
+  records CWL metadata such as checksums and file sizes; this accounts for the
+  remaining output-record summary warnings.
+
+Interpretation:
+
+This is not yet a passing branch-vs-master scientific gate. It is, however, a
+more useful diagnostic run than the 2026-07-04 phase-only report: product
+presence is aligned, diagnostics suggest the high-level image quality is nearly
+unchanged, and the residuals point to accumulated later-cycle source
+selection/sky-model/h5parm drift rather than a basic execution failure.
+
+The next equivalence task should investigate the cycle 3/4 h5parm and
+sky-model/source-selection divergence, then decide which differences are
+intentional product-contract changes and which should be fixed or tolerated by
+product-specific comparison rules.
 
 ## Historical Passing Scenarios
 
