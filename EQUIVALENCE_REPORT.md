@@ -273,6 +273,95 @@ phase h5parms, sparse model images, and deterministic text/region products,
 while keeping operation ordering, product presence, shapes, and finite values
 strict.
 
+## Branch-Vs-Master DD Phase Plus DI Full-Jones Run
+
+The first essential branch-vs-master scenario was run on 2026-07-05. It uses a
+single cycle that runs DD fast+medium phase-only calibration first, then DI
+full-Jones calibration, matching the legacy master operation order. The tracked
+compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-master-ref/
+```
+
+Both branch executions completed successfully. The strict product comparison
+failed, but operation counts, product presence, source counts, and top-level
+image diagnostics are close.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `dd-phase-plus-di-fulljones` | `master` | 0 | 0 | fail | 5 | 5 | 7 | 6 | 1 | 3 | 10 | 1 | 5 | 2 | 47 |
+
+Key findings:
+
+- The mixed-mode execution shape is aligned: both branches run
+  `calibrate_1`, `predict_di_1`, `calibrate_di_1`, `image_1`, and `mosaic_1`.
+- Source counts match (`11` sources), theoretical RMS is identical, and the
+  largest image-diagnostic relative deltas are about `0.24%`.
+- Restored-image residuals are small but above the current strict tolerance:
+  `field-MFS-image-pb.fits` has max absolute delta about `1.025e-02`, p99
+  absolute delta about `1.066e-04`, and residual RMS about `1.673e-04`.
+- The DI full-Jones h5parm differs in `sol000/amplitude000/val` with maximum
+  absolute delta about `1.14e-03`.
+- Remaining failures include source-catalog flux/error columns, exact
+  `sector_1_facets_ds9.reg` text comparison, and output-record summary shape
+  differences for `calibrate_1` and `calibrate_di_1`.
+
+Interpretation:
+
+This scenario confirms that the current branch can represent and execute the
+legacy DD-then-DI full-Jones mixed calibration order. It is not a passing
+scientific equivalence gate yet. The next useful checks are the fixed-facet and
+changing-facet DD carry-over scenarios, because they isolate whether remaining
+DD seed compatibility behavior is correct before broadening comparison
+tolerances.
+
+## Branch-Vs-Master Fixed-Facet Carry-Over Run
+
+A two-cycle fixed-`facet_layout` DD phase-only branch comparison was run on
+2026-07-05. Cycle 1 calibrates and images using a fixed rich-demo facet layout;
+cycle 2 is calibration-only so that previous-cycle initial-solution carry-over
+is isolated. The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/
+```
+
+Both branch executions completed successfully and both ran `calibrate_2`.
+Strict comparison failed, but the run confirmed the intended current-branch
+flexible carry-over behavior.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `fixed-facet-carryover` | `master` | 0 | 0 | fail | 4 | 4 | 7 | 6 | 1 | 4 | 16 | 1 | 7 | 2 | 9 |
+
+Key findings:
+
+- Both branches read the same 5-patch fixed facet layout and run
+  `calibrate_1`, `image_1`, `mosaic_1`, then calibration-only `calibrate_2`.
+- In `calibrate_2`, master passes only
+  `fast_initialsolutions_h5parm` from cycle 1. The current branch passes both
+  `solve1_initialsolutions_h5parm` and `solve2_initialsolutions_h5parm`, using
+  the previous fast and medium phase products because fixed facets prove DD
+  direction compatibility.
+- Image diagnostics from cycle 1 are effectively identical: source counts and
+  theoretical RMS match, and displayed diagnostic deltas round to `0.000%`.
+- The remaining strict image failures are small except for sparse
+  `field-MFS-model-pb.fits.fz` component differences. Restored image residual
+  RMS is about `1.19e-06`, close to the current robust tolerance boundary.
+- The text failure is the known exact DS9 region formatting difference: master
+  writes patch labels on point rows, while the current branch writes labels on
+  polygon rows.
+
+Interpretation:
+
+This is expected to fail strict branch-vs-master comparison because the current
+branch intentionally carries a compatible medium-phase seed that master does
+not persist for phase-only DD cycles. Scientifically, this is the desired
+flexible-strategy behavior when the facet layout is fixed. The next DD
+carry-over scenario should use changing/regrouped facets and should verify that
+the current branch refuses unsafe previous-cycle DD seeds.
+
 ## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:

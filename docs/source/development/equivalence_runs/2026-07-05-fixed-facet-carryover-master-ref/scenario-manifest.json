@@ -1,0 +1,19 @@
+{
+  "scenario_id": "fixed-facet-carryover",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/inputs/base/master_fixed_facet_carryover.parset",
+  "current_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/inputs/current/current_fixed_facet_carryover.parset",
+  "base_work_dir": "/tmp/rbe-master-fixed-facet-carryover-v2-work",
+  "current_work_dir": "/tmp/rbe-current-fixed-facet-carryover-v2-work",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/master_fixed_facet_carryover.parset",
+      "strategy": "inputs/base/master_fixed_facet_carryover_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/current_fixed_facet_carryover.parset",
+      "strategy": "inputs/current/current_fixed_facet_carryover_strategy.py"
+    }
+  }
+}

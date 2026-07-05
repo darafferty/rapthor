@@ -236,6 +236,20 @@ Initial-solution alignment status:
   Re-run this scenario after the flexible carry-over contract is fully
   validated, because the current branch now intentionally allows matching
   phase-only medium seeds when directions are compatible.
+- The first essential branch-vs-master mixed-mode scenario is tracked under
+  `docs/source/development/equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-master-ref/`.
+  Both branches return `0` for a single DD fast+medium phase-only cycle followed
+  by DI full-Jones. Strict comparison still fails, but operation order, product
+  presence, source counts, and high-level diagnostics are close; the largest
+  image-diagnostic relative deltas are about `0.24%`, and the full-Jones
+  amplitude h5parm delta is about `1.14e-03`.
+- The fixed-`facet_layout` carry-over scenario is tracked under
+  `docs/source/development/equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/`.
+  Both branches return `0` and run `calibrate_2`. Master passes only the
+  previous fast-phase seed into cycle 2, while the current branch passes
+  compatible fast and medium phase seeds because the fixed facet layout proves
+  DD direction compatibility. Strict comparison still fails, as expected for
+  this intentional flexible-strategy difference.
 
 Possible bugs on the master branch to investigate:
 
@@ -257,13 +271,13 @@ Possible bugs on the master branch to investigate:
 
 Remaining equivalence tasks, in order:
 
-1. **Essential branch-vs-master scenarios.**
-   Run and document these scenarios before performance work:
-   phase-only DD followed by DI full-Jones; fixed-`facet_layout` DD carry-over;
-   regrouped/changing-facets DD carry-over; intended slow-gain/default-like
-   reference; DI multi-cycle carry-over; DI-then-DD and DD-then-DI
-   mode-boundary flows. For each scenario, save compact reports, inputs,
-   manifests, logs, diagnostics, and visual comparisons under
+1. **Continue the essential branch-vs-master scenario matrix.**
+   Completed: phase-only DD followed by DI full-Jones, and fixed-`facet_layout`
+   DD carry-over. Next, run regrouped/changing-facets DD carry-over to verify
+   unsafe previous-cycle DD seeds are rejected, then intended
+   slow-gain/default-like reference, DI multi-cycle carry-over, and
+   DI-then-DD/DD-then-DI mode-boundary flows. For each scenario, save compact
+   reports, inputs, manifests, logs, diagnostics, and visual comparisons under
    `docs/source/development/equivalence_runs/`.
 
 2. **Comparison-rule cleanup.**

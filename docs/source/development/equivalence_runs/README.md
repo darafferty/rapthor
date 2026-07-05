@@ -19,3 +19,11 @@ are tracked here.
   current-branch DD previous-cycle initial-solution handling with the master
   phase-only behavior; includes input snapshots, command logs, diagnostics, and
   compact image/solution visual comparisons.
+- `2026-07-05-dd-phase-plus-di-fulljones-master-ref/`: single-cycle DD
+  fast+medium phase-only calibration followed by DI full-Jones, using explicit
+  master/current strategies; both branches complete, with compact diagnostics
+  and visual comparisons for the remaining strict product differences.
+- `2026-07-05-fixed-facet-carryover-master-ref/`: two-cycle fixed-facet DD
+  phase-only carry-over scenario; cycle 2 is calibration-only so the report
+  isolates previous-cycle solution seeding. Master carries only the fast-phase
+  seed, while the current branch carries compatible fast and medium seeds.
