@@ -28,6 +28,7 @@ from rapthor.execution.calibrate.flow import (
     calibrate_chunk_task,
     calibrate_flow,
 )
+from rapthor.execution.calibrate.solves import build_calibrate_chunk_command
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.field import Field as RapthorField
@@ -1903,6 +1904,19 @@ def test_calibrate_payload_from_inputs_preserves_custom_dd_solve_order(tmp_path)
         (1, "medium_phase", "medium1_phase_0.h5parm", "scalarphase", None),
         (2, "fast_phase", "fast_phase_0.h5parm", "scalarphase", "[solve1.*]"),
     ]
+
+
+def test_calibrate_payload_from_inputs_preserves_solve_initial_solution_h5parm(tmp_path):
+    input_parms = _dd_fast_phase_input_parms()
+    previous_solution = tmp_path / "solutions" / "calibrate_1" / "field-solutions-fast-phase.h5"
+    input_parms["solve1_initialsolutions_h5parm"] = file_record(previous_solution)
+
+    payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path / "pipeline")
+    first_slot = payload["chunks"][0]["solve_slots"][0]
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    assert first_slot["initialsolutions_h5parm"] == str(previous_solution)
+    assert f"solve1.initialsolutions.h5parm={previous_solution}" in command
 
 
 def test_calibrate_payload_from_inputs_builds_dd_preapply_payload(tmp_path):

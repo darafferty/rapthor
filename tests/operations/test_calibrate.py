@@ -1261,7 +1261,7 @@ class TestCalibrate:
             "medium1_phase_di_1.h5parm",
         ]
 
-    def test_set_input_parameters_dd_uses_current_cycle_solve_initial_solutions_only(
+    def test_set_input_parameters_dd_allows_current_cycle_solve_initial_solutions(
         self, calibrate_field, tmp_path
     ):
         calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
@@ -1289,7 +1289,110 @@ class TestCalibrate:
         assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
         assert calibrate.input_parms["solve3_initialsolutions_h5parm"] is None
 
-    def test_set_input_parameters_di_uses_current_cycle_solve_initial_solutions_only(
+    def test_set_input_parameters_dd_allows_previous_cycle_solve_initial_solutions(
+        self, calibrate_field, tmp_path
+    ):
+        """Previous-cycle same-solve products seed DP3 but are not pre-applied."""
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        previous_solution_dir = tmp_path / "solutions" / "calibrate_1"
+        previous_solution_dir.mkdir(parents=True)
+        previous_fast = previous_solution_dir / "field-solutions-fast-phase.h5"
+        previous_medium = previous_solution_dir / "field-solutions-medium1-phase.h5"
+        previous_slow = previous_solution_dir / "field-solutions-slow-gain.h5"
+        for path in (previous_fast, previous_medium, previous_slow):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(previous_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(previous_medium)
+        calibrate_field.slow_gains_h5parm_filename = str(previous_slow)
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(previous_fast)
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"]["path"] == str(
+            previous_medium
+        )
+        assert calibrate.input_parms["solve3_initialsolutions_h5parm"]["path"] == str(previous_slow)
+        assert calibrate.input_parms["applycal_steps"] is None
+        assert calibrate.input_parms["applycal_h5parm"] is None
+
+    def test_set_input_parameters_dd_phase_only_reuses_only_previous_fast_initial_solution(
+        self, calibrate_field, tmp_path
+    ):
+        """Match master: phase-only DD cycles carry forward only the fast-phase seed."""
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        previous_solution_dir = tmp_path / "solutions" / "calibrate_1"
+        previous_solution_dir.mkdir(parents=True)
+        previous_fast = previous_solution_dir / "field-solutions-fast-phase.h5"
+        previous_medium = previous_solution_dir / "field-solutions-medium1-phase.h5"
+        for path in (previous_fast, previous_medium):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(previous_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(previous_medium)
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(previous_fast)
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["applycal_steps"] is None
+        assert calibrate.input_parms["applycal_h5parm"] is None
+
+    def test_set_input_parameters_dd_rejects_future_cycle_solve_initial_solutions(
+        self, calibrate_field, tmp_path, caplog
+    ):
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        future_solution_dir = tmp_path / "solutions" / "calibrate_3"
+        future_solution_dir.mkdir(parents=True)
+        future_fast = future_solution_dir / "field-solutions-fast-phase.h5"
+        future_medium = future_solution_dir / "field-solutions-medium1-phase.h5"
+        future_slow = future_solution_dir / "field-solutions-slow-gain.h5"
+        for path in (future_fast, future_medium, future_slow):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(future_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(future_medium)
+        calibrate_field.slow_gains_h5parm_filename = str(future_slow)
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve3_initialsolutions_h5parm"] is None
+        assert "future cycle 3" in caplog.text
+
+    def test_set_input_parameters_dd_does_not_use_di_solutions_as_dd_initial_solutions(
+        self, calibrate_field, tmp_path
+    ):
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        di_solution_dir = tmp_path / "solutions" / "calibrate_di_1"
+        di_solution_dir.mkdir(parents=True)
+        di_fast = di_solution_dir / "di-solutions-fast-phase.h5"
+        di_medium = di_solution_dir / "di-solutions-medium1-phase.h5"
+        for path in (di_fast, di_medium):
+            path.write_text("h5parm")
+
+        calibrate_field.di_fast_phases_h5parm_filename = str(di_fast)
+        calibrate_field.di_medium1_phases_h5parm_filename = str(di_medium)
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+
+    def test_set_input_parameters_di_allows_current_cycle_solve_initial_solutions(
         self, calibrate_field, tmp_path
     ):
         calibrate_field.calibration_strategy = {
@@ -1322,6 +1425,40 @@ class TestCalibrate:
         assert calibrate.input_parms["solve3_initialsolutions_h5parm"] is None
         assert calibrate.input_parms["solve4_initialsolutions_h5parm"]["path"] == str(
             current_fulljones
+        )
+
+    def test_set_input_parameters_di_allows_previous_cycle_solve_initial_solutions(
+        self, calibrate_field, tmp_path
+    ):
+        calibrate_field.calibration_strategy = {
+            "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"]
+        }
+        calibrate_field._calibration_strategy_defaulted = False
+
+        previous_solution_dir = tmp_path / "solutions" / "calibrate_di_1"
+        previous_solution_dir.mkdir(parents=True)
+        previous_fast = previous_solution_dir / "di-solutions-fast-phase.h5"
+        previous_medium = previous_solution_dir / "di-solutions-medium1-phase.h5"
+        previous_slow = previous_solution_dir / "di-solutions-slow-gain.h5"
+        previous_fulljones = previous_solution_dir / "fulljones-solutions.h5"
+        for path in (previous_fast, previous_medium, previous_slow, previous_fulljones):
+            path.write_text("h5parm")
+
+        calibrate_field.di_fast_phases_h5parm_filename = str(previous_fast)
+        calibrate_field.di_medium1_phases_h5parm_filename = str(previous_medium)
+        calibrate_field.di_slow_gains_h5parm_filename = str(previous_slow)
+        calibrate_field.fulljones_h5parm_filename = str(previous_fulljones)
+
+        calibrate = Calibrate("di", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(previous_fast)
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"]["path"] == str(
+            previous_medium
+        )
+        assert calibrate.input_parms["solve3_initialsolutions_h5parm"]["path"] == str(previous_slow)
+        assert calibrate.input_parms["solve4_initialsolutions_h5parm"]["path"] == str(
+            previous_fulljones
         )
 
     def test_set_input_parameters_dd_preapplies_di_solutions(self, calibrate_field, tmp_path):

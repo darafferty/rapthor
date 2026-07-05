@@ -1,0 +1,123 @@
+INFO - rapthor:parset - [32mReading parset file: /app/runs/master-benchmark-phase-only-manual/inputs/master_benchmark_phase_only.parset[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor:parset - [32mRapthor version 2.2.dev119+g17448437b[0m
+INFO - rapthor:parset - [32mCWLRunner is toil[0m
+INFO - rapthor:parset - [32mWorking directory is /tmp/rbempi[0m
+INFO - rapthor:parset - [32mWorking on 1 input MS file[0m
+WARNING - rapthor:parset - [33mComparison sky model for astrometry check not provided while `allow_internet_access` is False. The astrometry check will be skipped. If you want to run the astrometry check, please provide a path to the comparison sky model or allow internet access.[0m
+WARNING - rapthor:parset - [33mComparison sky model for photometry check not provided while `allow_internet_access` is False. The photometry check will be skipped. If you want to run the photometry check, please provide a path to the comparison sky model or allow internet access.[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor - [32mSetting log level to INFO[0m
+INFO - rapthor:field - [32mUsing 1 imaging sector[0m
+INFO - rapthor:strategy - [32mUsing '/app/runs/master-benchmark-phase-only-manual/inputs/master_benchmark_phase_only_strategy.py' processing strategy[0m
+INFO - rapthor - [32mStarting self calibration with a data fraction of 1.00[0m
+INFO - rapthor:field - [32mPlotting field overview with initial sky-model coverage...[0m
+INFO - rapthor:field - [32mUsing 5 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+INFO - rapthor:calibrate_1 - [32m<-- Operation calibrate_1 started[0m
+INFO - rapthor:calibrate_1 - [32mOperation calibrate_1 already done, skipping.[0m
+INFO - rapthor:calibrate_1 - [32m--> Operation calibrate_1 completed[0m
+INFO - rapthor:calibrate_1 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor:image_1 - [32m<-- Operation image_1 started[0m
+INFO - rapthor:image_1 - [32mOperation image_1 already done, skipping.[0m
+INFO - rapthor:image_1 - [32m--> Operation image_1 completed[0m
+INFO - rapthor:image_1 - [32mDiagnostics for sector_1:[0m
+INFO - rapthor:image_1 - [32m    Min RMS noise = 19869.2 uJy/beam (non-PB-corrected), 20377.8 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_1 - [32m    Median RMS noise = 39824.1 uJy/beam (non-PB-corrected), 40614.8 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Dynamic range = 229.59 (non-PB-corrected), 223.86 (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 10[0m
+INFO - rapthor:image_1 - [32m    Reference frequency = 134.4 MHz[0m
+INFO - rapthor:image_1 - [32m    Beam = 44.6" x 43.1", PA = 172.9 deg[0m
+INFO - rapthor:image_1 - [32m    Fraction of unflagged data = 1.00[0m
+INFO - rapthor:image_1 - [32m    LOFAR/TGSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR/NVSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
+INFO - rapthor:mosaic_1 - [32m<-- Operation mosaic_1 started[0m
+INFO - rapthor:mosaic_1 - [32mOperation mosaic_1 already done, skipping.[0m
+INFO - rapthor:mosaic_1 - [32m--> Operation mosaic_1 completed[0m
+INFO - rapthor:field - [32mUpdating sky model...[0m
+INFO - rapthor:field - [32mUsing 5 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+INFO - rapthor:calibrate_2 - [32m<-- Operation calibrate_2 started[0m
+INFO - rapthor:calibrate_2 - [32mOperation calibrate_2 already done, skipping.[0m
+INFO - rapthor:calibrate_2 - [32m--> Operation calibrate_2 completed[0m
+INFO - rapthor:calibrate_2 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor:image_2 - [32m<-- Operation image_2 started[0m
+INFO - rapthor:image_2 - [32mOperation image_2 already done, skipping.[0m
+INFO - rapthor:image_2 - [32m--> Operation image_2 completed[0m
+INFO - rapthor:image_2 - [32mDiagnostics for sector_1:[0m
+INFO - rapthor:image_2 - [32m    Min RMS noise = 30124.6 uJy/beam (non-PB-corrected), 30120.8 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_2 - [32m    Median RMS noise = 43648.7 uJy/beam (non-PB-corrected), 44525.0 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_2 - [32m    Dynamic range = 154.30 (non-PB-corrected), 154.32 (PB-corrected)[0m
+INFO - rapthor:image_2 - [32m    Number of sources found by PyBDSF = 11[0m
+INFO - rapthor:image_2 - [32m    Reference frequency = 134.4 MHz[0m
+INFO - rapthor:image_2 - [32m    Beam = 44.5" x 43.1", PA = 169.5 deg[0m
+INFO - rapthor:image_2 - [32m    Fraction of unflagged data = 1.00[0m
+INFO - rapthor:image_2 - [32m    LOFAR/TGSS flux ratio = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR/NVSS flux ratio = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
+INFO - rapthor:mosaic_2 - [32m<-- Operation mosaic_2 started[0m
+INFO - rapthor:mosaic_2 - [32mOperation mosaic_2 already done, skipping.[0m
+INFO - rapthor:mosaic_2 - [32m--> Operation mosaic_2 completed[0m
+INFO - rapthor:field - [32mUpdating sky model...[0m
+INFO - rapthor:field - [32mUsing 5 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+INFO - rapthor:calibrate_3 - [32m<-- Operation calibrate_3 started[0m
+INFO - rapthor:calibrate_3 - [32mOperation calibrate_3 already done, skipping.[0m
+INFO - rapthor:calibrate_3 - [32m--> Operation calibrate_3 completed[0m
+INFO - rapthor:calibrate_3 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor:image_3 - [32m<-- Operation image_3 started[0m
+INFO - rapthor:image_3 - [32mOperation image_3 already done, skipping.[0m
+INFO - rapthor:image_3 - [32m--> Operation image_3 completed[0m
+INFO - rapthor:image_3 - [32mDiagnostics for sector_1:[0m
+INFO - rapthor:image_3 - [32m    Min RMS noise = 30658.7 uJy/beam (non-PB-corrected), 30654.2 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_3 - [32m    Median RMS noise = 44137.9 uJy/beam (non-PB-corrected), 45030.8 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_3 - [32m    Dynamic range = 152.27 (non-PB-corrected), 152.29 (PB-corrected)[0m
+INFO - rapthor:image_3 - [32m    Number of sources found by PyBDSF = 11[0m
+INFO - rapthor:image_3 - [32m    Reference frequency = 134.4 MHz[0m
+INFO - rapthor:image_3 - [32m    Beam = 44.5" x 43.1", PA = 169.7 deg[0m
+INFO - rapthor:image_3 - [32m    Fraction of unflagged data = 1.00[0m
+INFO - rapthor:image_3 - [32m    LOFAR/TGSS flux ratio = N/A[0m
+INFO - rapthor:image_3 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
+INFO - rapthor:image_3 - [32m    LOFAR/NVSS flux ratio = N/A[0m
+INFO - rapthor:image_3 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
+INFO - rapthor:image_3 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
+INFO - rapthor:mosaic_3 - [32m<-- Operation mosaic_3 started[0m
+INFO - rapthor:mosaic_3 - [32mOperation mosaic_3 already done, skipping.[0m
+INFO - rapthor:mosaic_3 - [32m--> Operation mosaic_3 completed[0m
+INFO - rapthor - [32mStarting final cycle with a data fraction of 1.00[0m
+INFO - rapthor:field - [32mUpdating sky model...[0m
+INFO - rapthor:field - [32mUsing 10 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+INFO - rapthor:calibrate_4 - [32m<-- Operation calibrate_4 started[0m
+INFO - rapthor:calibrate_4 - [32mOperation calibrate_4 already done, skipping.[0m
+INFO - rapthor:calibrate_4 - [32m--> Operation calibrate_4 completed[0m
+INFO - rapthor:calibrate_4 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor:image_4 - [32m<-- Operation image_4 started[0m
+INFO - rapthor:image_4 - [32mOperation image_4 already done, skipping.[0m
+INFO - rapthor:image_4 - [32m--> Operation image_4 completed[0m
+INFO - rapthor:image_4 - [32mDiagnostics for sector_1:[0m
+INFO - rapthor:image_4 - [32m    Min RMS noise = 16095.2 uJy/beam (non-PB-corrected), 16096.4 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_4 - [32m    Median RMS noise = 27233.8 uJy/beam (non-PB-corrected), 27808.2 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_4 - [32m    Dynamic range = 295.13 (non-PB-corrected), 295.11 (PB-corrected)[0m
+INFO - rapthor:image_4 - [32m    Number of sources found by PyBDSF = 11[0m
+INFO - rapthor:image_4 - [32m    Reference frequency = 134.4 MHz[0m
+INFO - rapthor:image_4 - [32m    Beam = 44.5" x 43.1", PA = 160.5 deg[0m
+INFO - rapthor:image_4 - [32m    Fraction of unflagged data = 1.00[0m
+INFO - rapthor:image_4 - [32m    LOFAR/TGSS flux ratio = N/A[0m
+INFO - rapthor:image_4 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
+INFO - rapthor:image_4 - [32m    LOFAR/NVSS flux ratio = N/A[0m
+INFO - rapthor:image_4 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
+INFO - rapthor:image_4 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
+INFO - rapthor:mosaic_4 - [32m<-- Operation mosaic_4 started[0m
+INFO - rapthor:mosaic_4 - [32mOperation mosaic_4 already done, skipping.[0m
+INFO - rapthor:mosaic_4 - [32m--> Operation mosaic_4 completed[0m
+INFO - rapthor - [32mRapthor has finished :)[0m

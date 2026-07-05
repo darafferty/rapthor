@@ -225,6 +225,54 @@ sky-model/source-selection divergence, then decide which differences are
 intentional product-contract changes and which should be fixed or tolerated by
 product-specific comparison rules.
 
+## Branch-Vs-Master Phase-Only Initial-Solutions Rerun
+
+A follow-up four-cycle phase-only branch comparison was run on 2026-07-05 after
+aligning DD previous-cycle solve initialization with the master phase-only
+behavior. The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/
+```
+
+Both branch executions completed successfully. The strict product comparison
+still failed, but the initial-solution inputs are now aligned: cycles 2-4 pass
+only the previous cycle's fast-phase h5parm as the DD solve seed on both
+branches, while medium/slow solve seeds remain unset for this phase-only
+scenario.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `benchmark-phase-only-initial-solutions-fast-only` | `master` | 0 | 0 | fail | 12 | 12 | 28 | 24 | 4 | 8 | 37 | 4 | 20 | 4 | 31 |
+
+Key findings:
+
+- The previous stale-solution warnings are gone from the current command log,
+  and the obsolete `parallel_gridding_threads` parset warning remains fixed.
+- H5 phase divergence is now tiny: cycle 1 is exact, cycles 2 and 3 have maximum
+  phase deltas below `6e-07`, and cycle 4 has maximum phase delta
+  `1.470e-05` with RMS `3.592e-06`. This replaces the earlier cycle-4
+  multi-radian phase divergence.
+- Image diagnostics are very close: source counts and theoretical RMS match in
+  all four image cycles, and the largest relative diagnostic delta is about
+  `0.005%` in final-cycle true-sky noise/dynamic-range metrics.
+- The remaining strict failures are dominated by float-level FITS residuals,
+  sparse `field-MFS-model-pb` component differences, exact text/region
+  differences, and calibrate output-record summary differences.
+- Current and master still differ in output-record metadata shape: master
+  records CWL file metadata such as checksums and sizes, while the current path
+  records leaner path-oriented products.
+
+Interpretation:
+
+The initial-solution behavior is now aligned for the master-compatible
+phase-only scenario. The remaining failures look like comparison-contract and
+product-contract work rather than a calibration initialization bug. The next
+equivalence work should add product-specific tolerances/semantic comparison for
+phase h5parms, sparse model images, and deterministic text/region products,
+while keeping operation ordering, product presence, shapes, and finite values
+strict.
+
 ## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:

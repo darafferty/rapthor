@@ -499,7 +499,10 @@ class Calibrate(Operation):
             self.input_parms[type_key] = solve.solve_type
             self.input_parms[label_key] = solve.solution_label
             self.input_parms[medium_index_key] = solve.medium_index
-            self.input_parms[initial_key] = self._solve_initial_solution_record(solve)
+            self.input_parms[initial_key] = self._solve_initial_solution_record(
+                solve,
+                solve_plan=solve_plan,
+            )
             self.input_parms[timestep_key] = field.get_obs_parameters(solve.timestep_key)
             self.input_parms[freqstep_key] = field.get_obs_parameters(solve.freqstep_key)
             self._apply_solve_slot_inputs(
@@ -541,7 +544,7 @@ class Calibrate(Operation):
         self.input_parms.pop(f"solve{slot}_smoothnessreffrequency", None)
         self.input_parms.pop(f"solve{slot}_smoothnessrefdistance", None)
 
-    def _solve_initial_solution_record(self, solve):
+    def _solve_initial_solution_record(self, solve, *, solve_plan=None):
         field = self.field
         if solve.solve_type == "fast_phase":
             attr_name = (
@@ -575,8 +578,14 @@ class Calibrate(Operation):
             return None
 
         filepath = getattr(field, attr_name, None)
-        current_path = self._current_cycle_solution_path(filepath, cycle_attr, label)
-        return self._to_file_record_if_exists(current_path)
+        initial_path = self._solve_initial_solution_path(
+            filepath,
+            cycle_attr,
+            label,
+            solve=solve,
+            solve_plan=solve_plan,
+        )
+        return self._to_file_record_if_exists(initial_path)
 
     @staticmethod
     def _solve_uses_antenna_constraint(solve, *, seen_slow_gain):
@@ -694,20 +703,7 @@ class Calibrate(Operation):
         if filepath is None:
             return None
 
-        path_cycle_number = self.field.solution_cycle_number(
-            filepath,
-            "_missing_solution_cycle_number",
-            include_di_calibration=True,
-        )
-        cycle_number = (
-            path_cycle_number
-            if path_cycle_number is not None
-            else self.field.solution_cycle_number(
-                filepath,
-                cycle_attr,
-                include_di_calibration=True,
-            )
-        )
+        cycle_number = self._solution_cycle_number(filepath, cycle_attr)
         if cycle_number is None or cycle_number == self.index:
             return filepath
 
@@ -719,6 +715,70 @@ class Calibrate(Operation):
             cycle_number,
         )
         return None
+
+    def _solve_initial_solution_path(
+        self, filepath, cycle_attr, label, *, solve=None, solve_plan=None
+    ):
+        """
+        Return a same-solve h5parm that can seed the current solve.
+
+        DP3's initial-solution input is different from a pre-apply product: it
+        seeds the optimizer rather than correcting the visibilities before the
+        solve. Master carries reusable products from earlier cycles forward
+        here. DD phase-only cycles only persist fast-phase products on master,
+        while DD slow-gain cycles persist fast, medium, and slow products.
+        """
+        if filepath is None:
+            return None
+
+        cycle_number = self._solution_cycle_number(filepath, cycle_attr)
+        if cycle_number is None or cycle_number == self.index:
+            return filepath
+        if cycle_number < self.index:
+            if self._can_seed_from_previous_cycle(solve, solve_plan):
+                return filepath
+            self.log.debug(
+                "Ignoring previous-cycle %s initial-solution h5parm %r for calibration "
+                "cycle %i because master only carries this DD solve type forward when "
+                "slow-gain solving is active",
+                label,
+                filepath,
+                self.index,
+            )
+            return None
+
+        self.log.warning(
+            "Ignoring %s initial-solution h5parm %r for calibration cycle %i "
+            "because it was produced in future cycle %i",
+            label,
+            filepath,
+            self.index,
+            cycle_number,
+        )
+        return None
+
+    def _can_seed_from_previous_cycle(self, solve, solve_plan):
+        if self.mode != "dd" or solve is None:
+            return True
+        if solve.solve_type == "fast_phase":
+            return True
+
+        active_solve_plan = solve_plan or getattr(self, "solve_plan", ())
+        return any(plan_solve.solve_type == "slow_gains" for plan_solve in active_solve_plan)
+
+    def _solution_cycle_number(self, filepath, cycle_attr):
+        path_cycle_number = self.field.solution_cycle_number(
+            filepath,
+            "_missing_solution_cycle_number",
+            include_di_calibration=True,
+        )
+        if path_cycle_number is not None:
+            return path_cycle_number
+        return self.field.solution_cycle_number(
+            filepath,
+            cycle_attr,
+            include_di_calibration=True,
+        )
 
     def _get_core_stations(self, include_nearest_remote=True):
         """

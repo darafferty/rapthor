@@ -75,13 +75,16 @@ Known caveats:
 1. **Resolve the multi-cycle branch-vs-master equivalence findings.**
    Treat this as the next gate before performance-sensitive execution work.
    Compact report bundles are tracked under
-   `docs/source/development/equivalence_runs/`. Use the 2026-07-05 phase-only
-   rerun as the primary reference: product presence is now aligned and image
-   diagnostics are close, but strict comparison still fails because master
-   carries previous-cycle DD fast/medium phase h5parms into later calibration
-   cycles as solve initial solutions while the current branch rejects those
-   previous-cycle h5parms. Align this behavior first, then rerun the phase-only
-   branch-equivalence check.
+   `docs/source/development/equivalence_runs/`. The previous-cycle
+   initial-solution behavior is now aligned for the master-compatible
+   phase-only scenario; use
+   `2026-07-05-phase-only-initial-solutions-master-ref/` as the primary
+   reference. The strict comparison still fails because of float-level image
+   residuals, sparse model-image component differences, exact text/region
+   differences, and output-record metadata-shape differences. Add one targeted
+   branch-vs-master scenario where a phase-only DD cycle is followed by a DI
+   full-Jones cycle, then classify and tighten the comparison/product contracts
+   before performance-sensitive execution work.
 
 2. **Port master-only feature work that changes runtime behavior or products.**
    Compare against fetched `origin/master` at
@@ -213,51 +216,49 @@ Current status:
   is consistent with different solve initialization rather than a parallel
   gridding/resource issue.
 
-Immediate task:
+Initial-solution alignment status:
 
-- Turn the 2026-07-05 phase-only report and the default-like slow-gain report
-  into actionable contract decisions:
+- Completed on 2026-07-05: calibration solve initialization now has a separate
+  resolver from preapply products. Current-cycle same-solve products may seed
+  matching solves, previous-cycle DD fast-phase products may seed later
+  phase-only DD cycles, previous-cycle DD medium/slow products may seed later
+  DD cycles only when slow-gain solving is active, and future-cycle products
+  are rejected. The strict current-cycle guard remains for calibration
+  preapply products and imaging-time h5parm application.
+- Focused operation and execution tests cover current-cycle, previous-cycle,
+  future-cycle, phase-only DD, slow-gain DD, DI, wrong-mode, and payload/command
+  propagation cases.
+- The rerun tracked under
+  `docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/`
+  confirms both branches pass previous-cycle DD fast-phase initial solutions in
+  cycles 2-4 and leave phase-only medium/slow initial-solution slots unset.
 
-  - align current-branch calibration solve initialization with master where it
-    is scientifically intended: previous-cycle same-mode/same-solve h5parms may
-    seed the next calibration solve, but previous-cycle products must still not
-    be silently pre-applied to calibration or imaging unless an explicit
-    operation contract says so
-  - split the implementation paths in `rapthor/operations/calibrate/base.py`:
-    keep the strict current-cycle guard for preapply products, but add a
-    solve-initialization resolver that accepts current or earlier-cycle solve
-    products for the matching solve type while rejecting future-cycle products,
-    wrong-mode products, missing files, and unrelated DI/full-Jones products
-  - update focused operation tests so they document the distinction between
-    "allowed as an initial solution" and "forbidden as a preapply solution";
-    revise the current "uses current cycle only" tests into clearer cases for
-    current-cycle, previous-cycle, future-cycle, and wrong-solve products
-  - add or update execution/flow payload tests so `solve*_initialsolutions_h5parm`
-    is populated for previous-cycle DD phase solves in later cycles, without
-    changing `calibration_applycal_steps`, `applycal_h5parm`,
-    `prepare_data_h5parm`, or imaging-time `h5parm` semantics
-  - rerun the phase-only branch-equivalence scenario after the
-    `parallel_gridding_tasks` parset fix and initial-solution alignment; replace
-    or supersede the 2026-07-05 tracked report bundle with a new snapshot whose
-    command logs no longer contain the stale `parallel_gridding_threads` warning
-  - compare calibrate/image output records after the rerun and classify any
-    remaining differences as path-only metadata, product-presence, or semantic
-  - re-evaluate cycle 3/4 h5parm phase/source divergence and associated
-    sky-model/source-selection changes after the previous-cycle initial
-    solutions are aligned
-  - decide whether sparse `field-MFS-model-pb` differences should be compared
-    with model-specific sparse-outlier tolerances or investigated as a real
-    deconvolution/model-selection change
-  - add h5parm phase tolerances appropriate for accepted phase-only drift,
-    while keeping shape, axes, soltab names, and finite values strict
-  - handle source-catalog/facet-region text differences with deterministic
-    ordering or semantic comparison where possible
-  - decide whether the slow-gain default-like reference should remain a
-    documented master bug/legacy limitation, or whether the master checkout
-    should be patched only for an intended-amplitude reference run
-  - update `scripts/dev/run_branch_equivalence.py`,
-    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
-    the tracked report README with the agreed comparison contract
+Remaining equivalence tasks:
+
+- Add a targeted branch-vs-master parset/strategy where one cycle runs
+  phase-only DD and the following cycle enables DI full-Jones (`do_fulljones`
+  on the master-style input, equivalent `calibration_strategy` on the current
+  branch). This should check the handoff from DD phase-only products into a DI
+  full-Jones solve and record whether preapply, initial-solution, h5parm, and
+  image-product semantics remain aligned.
+- Classify calibrate output-record summary differences as expected metadata
+  shape differences or real product-record differences. Current records are
+  leaner path-oriented records, while master includes CWL checksum/size
+  metadata.
+- Add h5parm comparison statistics/tolerances for accepted phase-only drift,
+  while keeping solset/soltab names, axes, shapes, finite values, and source
+  tables strict.
+- Decide whether sparse `field-MFS-model-pb` differences should use
+  model-specific sparse-outlier tolerances or require more deconvolution/model
+  selection investigation.
+- Handle source-catalog and facet-region text differences with deterministic
+  ordering or semantic comparison where possible.
+- Decide whether the slow-gain default-like reference should remain a
+  documented master bug/legacy limitation, or whether the master checkout
+  should be patched only for an intended-amplitude reference run.
+- Update `scripts/dev/run_branch_equivalence.py`,
+  `tests/execution/test_branch_equivalence.py`, and tracked report docs as the
+  comparison contract is tightened.
 
 For a workstation smoke check or user-supplied data, use `--prepare-only` first
 to confirm the exact base/current parsets and work directories that will be

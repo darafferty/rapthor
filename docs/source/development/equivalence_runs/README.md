@@ -13,3 +13,7 @@ are tracked here.
 - `2026-07-05-phase-only-master-ref/`: rerun after the master feature ports,
   including image diagnostic deltas and compact side-by-side image/solution
   visual comparisons.
+- `2026-07-05-phase-only-initial-solutions-master-ref/`: rerun after aligning
+  current-branch DD previous-cycle initial-solution handling with the master
+  phase-only behavior; includes input snapshots, command logs, diagnostics, and
+  compact image/solution visual comparisons.
