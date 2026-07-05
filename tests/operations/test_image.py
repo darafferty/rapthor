@@ -1042,6 +1042,27 @@ class TestImage:
         assert image._selected_applycal_h5parm is None
         assert image._selected_imaging_h5parm is None
 
+    def test_build_applycal_steps_ignores_previous_cycle_fulljones_after_calibration(
+        self, field, h5parm_file
+    ):
+        """Do not silently apply an old full-Jones product after a new solve cycle."""
+        _prepare_field_for_image(field)
+        field.fulljones_h5parm_filename = str(h5parm_file)
+        field.fulljones_h5parm_cycle_number = 1
+        field.calibration_strategy = {"di": ["full_jones"]}
+        field.do_image = True
+        field.do_calibrate = True
+
+        image = Image(field=field, index=2)
+        image.use_facets = False
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+
+        steps, _, fulljones_h5parm, _ = image._build_applycal_steps()
+
+        assert steps is None
+        assert fulljones_h5parm is None
+
     def test_set_input_parameters_dd_slow_only_facets_get_h5parm(self, field, h5parm_file):
         """Single DD slow-gain phase solves still provide an h5parm to WSClean facets."""
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
@@ -1103,6 +1124,8 @@ class TestImage:
         field.calibration_skymodel_file_prev_cycle = previous_calibration_skymodel
         field.dd_h5parm_filename = str(h5parm_file)
         field.dd_h5parm_cycle_number = 1
+        field.fulljones_h5parm_filename = str(h5parm_file)
+        field.fulljones_h5parm_cycle_number = 1
         field.calibration_strategy = {"dd": ["fast_phase"]}
         field.do_image = True
         field.do_calibrate = False
@@ -1115,6 +1138,7 @@ class TestImage:
 
         assert image.input_parms["prepare_data_applycal_steps"] is None
         assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+        assert image.input_parms["fulljones_h5parm"] is None
         assert image.input_parms["skymodel"]["path"] == previous_calibration_skymodel
 
     def test_image_operation_sets_mask_file(

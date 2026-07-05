@@ -88,11 +88,11 @@ Known caveats:
    show whether current-vs-master deltas are larger than ordinary DP3/WSClean/
    PyBDSF run-to-run scatter.
 
-2. **Decide flexible-strategy carry-forward policy.**
-   Use the completed mode-boundary runs to decide whether latest products such
-   as DI full-Jones may be applied in later cycles that do not rerun that solve,
-   or whether imaging and preapply behavior should remain current-cycle scoped
-   unless a future strategy option explicitly requests carry-forward.
+2. **Keep flexible-strategy carry-forward explicit.**
+   The current policy is no silent carry-over after a new calibration step:
+   imaging and preapply use current-cycle products, while previous-cycle
+   products may only seed matching solves or be reused by an explicit image-only
+   cycle. Keep tests and docs aligned with this policy.
 
 3. **Add a risk-based option equivalence matrix.**
    After the core repeatability envelope is available, add a small set of
@@ -337,9 +337,8 @@ Possible bugs on the master branch to investigate:
   mode-boundary run shows master `image_2` applying the cycle-1
   `fulljones-solutions.h5`, while the current branch intentionally leaves
   `fulljones_h5parm` unset for `image_2` because the active cycle is DD-only.
-  Decide whether this is desirable master carry-forward behavior that the
-  flexible strategy should expose explicitly, or a legacy implicit-state
-  behavior that should remain documented but not copied.
+  Treat this as legacy implicit-state behavior that should remain documented
+  but should not be copied silently into the flexible strategy.
 
 Remaining equivalence tasks, in order:
 
@@ -384,13 +383,14 @@ Remaining equivalence tasks, in order:
      explanation, a bug fix, or an explicit report label as intentional
      flexible-strategy behavior.
 
-2. **Decide carry-forward policy for flexible strategy products.**
-   Before changing tolerances, document and test which latest products may be
-   applied across later cycles when that later cycle does not rerun the same
-   solve. The first concrete decision is DI full-Jones: whether a cycle-1
-   full-Jones product should be applied during a later DD-only image, matching
-   master, or whether the current cycle-guarded behavior is the intended
-   explicit strategy contract. Keep DD direction compatibility checks strict.
+2. **Document and enforce carry-forward policy for flexible strategy products.**
+   The policy decision is to avoid silent carry-over after a new calibration
+   step. A previous-cycle product may seed a matching solve when the product
+   role and, for DD, directions are compatible. It may be reused by an explicit
+   image-only cycle. It must not be applied during imaging after a new
+   calibration step unless that product was part of the current cycle's
+   calibration state. Current-cycle full-Jones imaging application is guarded by
+   focused image-operation tests; keep DD direction compatibility checks strict.
 
 3. **Add option-specific equivalence scenarios.**
    After the repeatability envelope exists, build a small risk-based option

@@ -527,9 +527,10 @@ Key findings:
 - In the DI-to-DD scenario, cycle 1 runs DD plus DI full-Jones and cycle 2
   returns to DD-only calibration and imaging. Master passes the cycle-1
   `fulljones-solutions.h5` into `image_2`, with
-  `prepare_data_applycal_steps = [fulljones]`. The current branch leaves
-  `fulljones_h5parm` unset for `image_2` and logs that the cycle-1 full-Jones
-  h5parm is ignored for cycle-2 calibration because it was produced in cycle 1.
+  `prepare_data_applycal_steps = [fulljones]`. The current branch intentionally
+  leaves `fulljones_h5parm` unset for `image_2` and logs that the cycle-1
+  full-Jones h5parm is ignored for cycle-2 calibration because it was produced
+  in cycle 1.
 - In the DD-to-DI scenario, cycle 1 is DD-only and cycle 2 adds DI full-Jones
   after DD. Both branches pass the cycle-2 `fulljones-solutions.h5` into
   `image_2`, with `prepare_data_applycal_steps = [fulljones]`.
@@ -545,12 +546,13 @@ Key findings:
 
 Interpretation:
 
-The mode-boundary matrix is now complete enough to decide policy rather than
-add more ad hoc branch-vs-master runs. The open scientific/API decision is
-whether the flexible strategy should carry the latest DI full-Jones product
-forward into later DD-only images, matching master, or whether imaging-time
-application should remain strictly current-cycle scoped unless a future
-strategy option asks for carry-forward explicitly. Do not tune product
+The mode-boundary matrix is now complete enough to treat this as a policy
+decision rather than add more ad hoc branch-vs-master runs. The adopted
+flexible-strategy contract is to avoid silent carry-over after a new
+calibration step: a previous full-Jones product may not be applied during later
+imaging unless it was part of that cycle's calibration state. Master's lower
+cycle-2 RMS in the DI-to-DD scenario is therefore interpreted as a useful but
+implicit stale correction, not as behavior to copy silently. Do not tune product
 tolerances from these two runs until the planned repeatability envelope shows
 same-branch scatter for DP3/WSClean/PyBDSF outputs.
 

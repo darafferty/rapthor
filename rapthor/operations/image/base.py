@@ -207,6 +207,15 @@ class Image(Operation):
                     di_h5parm = fallback_h5parm
         return dd_h5parm, di_h5parm
 
+    def _resolve_fulljones_h5parm(self):
+        fulljones_h5parm = getattr(self.field, "fulljones_h5parm_filename", None)
+        if not self._is_current_cycle_solution(
+            fulljones_h5parm,
+            cycle_attr="fulljones_h5parm_cycle_number",
+        ):
+            return None
+        return fulljones_h5parm
+
     def _is_current_cycle_solution(self, h5parm_filename, cycle_attr):
         if h5parm_filename is None:
             return False
@@ -269,13 +278,14 @@ class Image(Operation):
         fulljones_h5parm = None
         input_normalize_h5parm = None
         dd_h5parm, di_h5parm = self._resolve_non_fulljones_h5parms()
+        fulljones_h5parm_path = self._resolve_fulljones_h5parm()
         self._selected_imaging_h5parm = dd_h5parm if self.use_facets else None
         prepare_dd_h5parm = None if self.use_facets else dd_h5parm
         steps, self._selected_applycal_h5parm = build_image_applycal_steps(
             getattr(self.field, "calibration_strategy", None),
             dd_h5parm=prepare_dd_h5parm,
             di_h5parm=di_h5parm,
-            has_fulljones_h5parm=self.field.fulljones_h5parm_filename is not None,
+            has_fulljones_h5parm=fulljones_h5parm_path is not None,
             use_facets=self.use_facets,
             apply_amplitudes=self.apply_amplitudes,
             apply_normalizations=self.apply_normalizations,
@@ -290,7 +300,7 @@ class Image(Operation):
         )
 
         if "fulljones" in steps:
-            fulljones_h5parm = FileRecord(self.field.fulljones_h5parm_filename).to_json()
+            fulljones_h5parm = FileRecord(fulljones_h5parm_path).to_json()
         if "normalization" in steps:
             input_normalize_h5parm = FileRecord(self.field.normalize_h5parm).to_json()
         if len(steps) == 0:

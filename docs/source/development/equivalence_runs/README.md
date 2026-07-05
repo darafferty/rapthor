@@ -31,8 +31,9 @@ are tracked here.
 - `2026-07-05-di-then-dd-mode-boundary-master-ref/`: two-cycle fixed-facet
   mode-boundary scenario. Cycle 1 runs DD plus DI full-Jones; cycle 2 returns
   to DD-only calibration and imaging. Master carries the cycle-1 full-Jones
-  product into cycle-2 imaging, while the current branch keeps imaging-time
-  full-Jones application current-cycle guarded.
+  product into cycle-2 imaging, while the current branch intentionally keeps
+  imaging-time full-Jones application current-cycle guarded after a new
+  calibration step.
 - `2026-07-05-dd-then-di-mode-boundary-master-ref/`: paired two-cycle
   fixed-facet mode-boundary scenario. Cycle 1 is DD-only; cycle 2 adds DI
   full-Jones after DD. Both branches apply the cycle-2 full-Jones product in
