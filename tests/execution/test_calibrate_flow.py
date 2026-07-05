@@ -28,7 +28,10 @@ from rapthor.execution.calibrate.flow import (
     calibrate_chunk_task,
     calibrate_flow,
 )
-from rapthor.execution.calibrate.solves import build_calibrate_chunk_command
+from rapthor.execution.calibrate.solves import (
+    build_calibrate_chunk_command,
+    initialsolutions_soltab,
+)
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.field import Field as RapthorField
@@ -1035,7 +1038,7 @@ def _di_fulljones_solve_slots():
             "llssolver": "qr",
             "maxiter": 50,
             "propagatesolutions": True,
-            "initialsolutions_soltab": "[phase000]",
+            "initialsolutions_soltab": "[amplitude000,phase000]",
             "solveralgorithm": "directionsolve",
             "solverlbfgs_dof": 200.0,
             "solverlbfgs_iter": 4,
@@ -1293,6 +1296,7 @@ def test_calibrate_command_builders_match_reference_fixtures():
         normalize_command(build_plot_solutions_command("fulljones_solutions.h5", "phase"))
         == commands["calibrate"]["plot_fulljones_phase"]
     )
+
     assert (
         normalize_command(
             build_calibration_solve_command(
@@ -1404,6 +1408,20 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["idgcal_solve_phase_and_gain"]
     )
+
+
+@pytest.mark.parametrize(
+    ("solve_type", "expected_soltab"),
+    [
+        ("fast_phase", "[phase000]"),
+        ("medium_phase", "[phase000]"),
+        ("slow_gains", "[phase000,amplitude000]"),
+        ("full_jones", "[amplitude000,phase000]"),
+    ],
+)
+def test_initial_solution_soltab_matches_solve_product_shape(solve_type, expected_soltab):
+    """DP3 initial-solution soltabs must match the h5parm produced by each solve type."""
+    assert initialsolutions_soltab(solve_type) == expected_soltab
 
 
 def test_calibrate_command_builders_create_reference_tokens():

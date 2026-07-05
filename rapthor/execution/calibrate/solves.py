@@ -28,6 +28,15 @@ def _solve_type_label(solve_type: object) -> str:
     return SOLVE_TYPE_LABELS.get(str(solve_type), str(solve_type).replace("_", " "))
 
 
+def initialsolutions_soltab(solve_type: str) -> str:
+    """Return the DP3 soltab selector for a matching initial-solution product."""
+    if solve_type == "full_jones":
+        return "[amplitude000,phase000]"
+    if solve_type == "slow_gains":
+        return "[phase000,amplitude000]"
+    return "[phase000]"
+
+
 def _uses_external_prediction(payload: CalibratePayload) -> bool:
     """Return whether calibration model data is prepared before the solve command."""
     return bool(payload.get("image_based_predict") or payload.get("wsclean_predict"))
@@ -61,9 +70,7 @@ def _solve_slots_for_chunk(
             "llssolver": payload["llssolver"],
             "maxiter": payload["maxiter"],
             "propagatesolutions": payload["propagatesolutions"],
-            "initialsolutions_soltab": (
-                "[phase000,amplitude000]" if solve_type == "slow_gains" else "[phase000]"
-            ),
+            "initialsolutions_soltab": initialsolutions_soltab(solve_type),
             "solveralgorithm": payload["solveralgorithm"],
             "solverlbfgs_dof": payload["solverlbfgs_dof"],
             "solverlbfgs_iter": payload["solverlbfgs_iter"],

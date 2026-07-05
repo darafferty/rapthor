@@ -451,6 +451,59 @@ slow-gain/default-like active solution state. Future master-reference reporting
 should either label this difference explicitly or compare against a patched
 reference if a true intended-amplitude master run is required.
 
+## Branch-Vs-Master DI Multi-Cycle Carry-Over Run
+
+A two-selfcal-cycle branch comparison was run on 2026-07-05 to exercise
+previous-cycle DI full-Jones carry-over. Because the legacy master strategy
+cannot express pure DI-only cycles, both branches use a master-compatible
+sequence in each cycle: DD fast+medium phase-only calibration, DI full-Jones
+calibration, and imaging. A third strategy entry acts only as the final-cycle
+template. The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-di-multicycle-carryover-master-ref/
+```
+
+Both branch executions completed successfully after fixing the current branch's
+full-Jones initial-solution soltab mapping.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `di-multicycle-carryover` | `master` | 0 | 0 | fail | 10 | 10 | 14 | 12 | 2 | 6 | 19 | 2 | 10 | 4 | 123 |
+
+Key findings:
+
+- An initial `v3` run exposed a current-branch bug: cycle-2 `calibrate_di_2`
+  passed the previous `fulljones-solutions.h5` as
+  `solve1.initialsolutions.h5parm` with
+  `solve1.initialsolutions.soltab=[phase000]`, and DP3 failed.
+- The current branch now uses
+  `solve1.initialsolutions.soltab=[amplitude000,phase000]` for full-Jones
+  initial solutions. Focused command-builder and operation tests cover this.
+- The `v4` rerun completed on both branches and reached `calibrate_2`,
+  `predict_di_2`, `calibrate_di_2`, `image_2`, and `mosaic_2`.
+- Current `calibrate_di_2` seeds the full-Jones solve from cycle 1 with
+  `[amplitude000,phase000]`. Current `image_2` applies the cycle-2
+  `fulljones-solutions.h5` via `applycal.steps=[fulljones]`.
+- Cycle-1 diagnostics remain close: source counts and theoretical RMS match,
+  and RMS diagnostics differ by about `0.224%`.
+- Cycle-2 source counts still match, but RMS diagnostics differ by about
+  `9-10%`. The largest h5parm differences are in cycle-2 DD/full-Jones
+  products, including `field-solutions-fast-phase.h5` and
+  `fulljones-solutions.h5`.
+
+Interpretation:
+
+The current branch now handles DI full-Jones carry-over with the correct h5parm
+soltab contract and can apply the resulting cycle-2 full-Jones solutions during
+imaging. The remaining cycle-2 divergence is expected to be dominated by the
+same changing-facet DD seed behavior observed in the dedicated changing-facet
+scenario: master carries a previous DD fast-phase seed across changed
+directions, while the current branch skips unsafe DD seeds. This scenario should
+therefore be treated as a mixed result: the DI full-Jones carry-over bug is
+fixed, but branch-vs-master product tolerances cannot be tuned from this run
+without the planned repeatability envelope.
+
 ## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:

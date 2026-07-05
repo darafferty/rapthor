@@ -70,7 +70,7 @@
             "solve1.llssolver=qr",
             "solve1.maxiter=50",
             "solve1.propagatesolutions=True",
-            "solve1.initialsolutions.soltab=[phase000]",
+            "solve1.initialsolutions.soltab=[amplitude000,phase000]",
             "solve1.solveralgorithm=directionsolve",
             "solve1.solverlbfgs.dof=200.0",
             "solve1.solverlbfgs.iter=4",

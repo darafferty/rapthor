@@ -23,6 +23,11 @@ are tracked here.
   fast+medium phase-only calibration followed by DI full-Jones, using explicit
   master/current strategies; both branches complete, with compact diagnostics
   and visual comparisons for the remaining strict product differences.
+- `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
+  of master-compatible DD fast+medium phase-only calibration followed by DI
+  full-Jones. This exposed and fixed a current-branch full-Jones
+  initial-solution soltab bug; both branches now complete, and the report
+  captures second-cycle image deltas after DI full-Jones carry-over.
 - `2026-07-05-fixed-facet-carryover-master-ref/`: two-cycle fixed-facet DD
   phase-only carry-over scenario; cycle 2 is calibration-only so the report
   isolates previous-cycle solution seeding. Master carries only the fast-phase

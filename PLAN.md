@@ -254,6 +254,20 @@ Initial-solution alignment status:
   presence, source counts, and high-level diagnostics are close; the largest
   image-diagnostic relative deltas are about `0.24%`, and the full-Jones
   amplitude h5parm delta is about `1.14e-03`.
+- The DI multi-cycle carry-over scenario is tracked under
+  `docs/source/development/equivalence_runs/2026-07-05-di-multicycle-carryover-master-ref/`.
+  It uses two selfcal/image cycles of master-compatible DD fast+medium
+  phase-only calibration followed by DI full-Jones. This exposed a
+  current-branch bug where a previous full-Jones h5parm was passed as an
+  optimizer seed with `solve1.initialsolutions.soltab=[phase000]`; DP3 rejected
+  the cycle-2 DI solve. The current branch now uses
+  `[amplitude000,phase000]` for full-Jones initial solutions, with focused
+  command and operation tests. The rerun returns `0` on both branches, reaches
+  `calibrate_2`, `calibrate_di_2`, and `image_2`, and confirms image-cycle
+  application of the cycle-2 full-Jones h5parm. Strict comparison still fails:
+  cycle-1 diagnostics are close, while cycle-2 image RMS diagnostics differ by
+  about `9-10%`, consistent with compounded differences after master carries
+  unsafe DD seeds across regrouped directions and current skips them.
 - The fixed-`facet_layout` carry-over scenario is tracked under
   `docs/source/development/equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/`.
   Both branches return `0` and run `calibrate_2`. Master passes only the
@@ -307,8 +321,8 @@ Remaining equivalence tasks, in order:
 
 1. **Continue the essential branch-vs-master scenario matrix.**
    Completed: phase-only DD followed by DI full-Jones, and fixed-`facet_layout`
-   DD carry-over, regrouped/changing-facets DD carry-over, and the intended
-   slow-gain/default-like reference. Next, run DI multi-cycle carry-over and
+   DD carry-over, regrouped/changing-facets DD carry-over, DI multi-cycle
+   carry-over, and the intended slow-gain/default-like reference. Next, run
    DI-then-DD/DD-then-DI mode-boundary flows. For each scenario, save compact
    reports, inputs, manifests, logs, diagnostics, and visual comparisons under
    `docs/source/development/equivalence_runs/`.
