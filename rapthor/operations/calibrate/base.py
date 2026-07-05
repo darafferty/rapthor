@@ -8,6 +8,7 @@ import shutil
 
 import lsmtool
 import numpy as np
+from losoto.h5parm import h5parm
 
 from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.flow import calibrate_flow
@@ -499,10 +500,7 @@ class Calibrate(Operation):
             self.input_parms[type_key] = solve.solve_type
             self.input_parms[label_key] = solve.solution_label
             self.input_parms[medium_index_key] = solve.medium_index
-            self.input_parms[initial_key] = self._solve_initial_solution_record(
-                solve,
-                solve_plan=solve_plan,
-            )
+            self.input_parms[initial_key] = self._solve_initial_solution_record(solve)
             self.input_parms[timestep_key] = field.get_obs_parameters(solve.timestep_key)
             self.input_parms[freqstep_key] = field.get_obs_parameters(solve.freqstep_key)
             self._apply_solve_slot_inputs(
@@ -544,7 +542,7 @@ class Calibrate(Operation):
         self.input_parms.pop(f"solve{slot}_smoothnessreffrequency", None)
         self.input_parms.pop(f"solve{slot}_smoothnessrefdistance", None)
 
-    def _solve_initial_solution_record(self, solve, *, solve_plan=None):
+    def _solve_initial_solution_record(self, solve):
         field = self.field
         if solve.solve_type == "fast_phase":
             attr_name = (
@@ -583,7 +581,6 @@ class Calibrate(Operation):
             cycle_attr,
             label,
             solve=solve,
-            solve_plan=solve_plan,
         )
         return self._to_file_record_if_exists(initial_path)
 
@@ -716,17 +713,14 @@ class Calibrate(Operation):
         )
         return None
 
-    def _solve_initial_solution_path(
-        self, filepath, cycle_attr, label, *, solve=None, solve_plan=None
-    ):
+    def _solve_initial_solution_path(self, filepath, cycle_attr, label, *, solve=None):
         """
         Return a same-solve h5parm that can seed the current solve.
 
         DP3's initial-solution input is different from a pre-apply product: it
-        seeds the optimizer rather than correcting the visibilities before the
-        solve. Master carries reusable products from earlier cycles forward
-        here. DD phase-only cycles only persist fast-phase products on master,
-        while DD slow-gain cycles persist fast, medium, and slow products.
+        seeds the optimizer rather than correcting visibilities before the
+        solve. Previous-cycle products may seed matching solves only when the
+        product role, cycle, and DD direction compatibility are valid.
         """
         if filepath is None:
             return None
@@ -735,16 +729,8 @@ class Calibrate(Operation):
         if cycle_number is None or cycle_number == self.index:
             return filepath
         if cycle_number < self.index:
-            if self._can_seed_from_previous_cycle(solve, solve_plan):
+            if self._can_seed_from_previous_cycle(filepath, label, solve):
                 return filepath
-            self.log.debug(
-                "Ignoring previous-cycle %s initial-solution h5parm %r for calibration "
-                "cycle %i because master only carries this DD solve type forward when "
-                "slow-gain solving is active",
-                label,
-                filepath,
-                self.index,
-            )
             return None
 
         self.log.warning(
@@ -757,14 +743,86 @@ class Calibrate(Operation):
         )
         return None
 
-    def _can_seed_from_previous_cycle(self, solve, solve_plan):
+    def _can_seed_from_previous_cycle(self, filepath, label, solve):
         if self.mode != "dd" or solve is None:
             return True
-        if solve.solve_type == "fast_phase":
+
+        return self._dd_initial_solution_directions_are_compatible(filepath, label)
+
+    def _dd_initial_solution_directions_are_compatible(self, filepath, label):
+        if self._has_fixed_facet_layout():
             return True
 
-        active_solve_plan = solve_plan or getattr(self, "solve_plan", ())
-        return any(plan_solve.solve_type == "slow_gains" for plan_solve in active_solve_plan)
+        current_directions = self._current_calibration_directions()
+        if not current_directions:
+            return True
+
+        h5parm_directions = self._read_h5parm_directions(filepath)
+        if h5parm_directions is None:
+            self.log.warning(
+                "Skipping previous-cycle %s initial-solution h5parm %r for calibration "
+                "cycle %i because DD direction compatibility could not be verified",
+                label,
+                filepath,
+                self.index,
+            )
+            return False
+
+        missing_directions = sorted(current_directions - h5parm_directions)
+        extra_directions = sorted(h5parm_directions - current_directions)
+        if not missing_directions and not extra_directions:
+            return True
+
+        self.log.warning(
+            "Skipping previous-cycle %s initial-solution h5parm %r for calibration cycle "
+            "%i because h5parm directions do not match current calibration patches "
+            "(missing: %s; extra: %s)",
+            label,
+            filepath,
+            self.index,
+            ", ".join(missing_directions[:5]) or "none",
+            ", ".join(extra_directions[:5]) or "none",
+        )
+        return False
+
+    def _has_fixed_facet_layout(self):
+        facet_layout = (getattr(self.field, "parset", {}) or {}).get("facet_layout")
+        return facet_layout is not None and str(facet_layout).strip().lower() not in {
+            "",
+            "none",
+            "null",
+        }
+
+    def _current_calibration_directions(self):
+        return {
+            self._normalize_direction_name(direction)
+            for direction in getattr(self.field, "calibrator_patch_names", []) or []
+        }
+
+    def _read_h5parm_directions(self, h5parm_filename):
+        try:
+            with h5parm(h5parm_filename) as solutions:
+                if "sol000" not in solutions.getSolsetNames():
+                    return None
+                solset = solutions.getSolset("sol000")
+                for soltab in solset.getSoltabs():
+                    if hasattr(soltab, "dir"):
+                        return {
+                            self._normalize_direction_name(direction) for direction in soltab.dir
+                        }
+        except Exception as exc:
+            self.log.debug("Could not read DD directions from h5parm %r: %s", h5parm_filename, exc)
+            return None
+        return None
+
+    @staticmethod
+    def _normalize_direction_name(direction):
+        if isinstance(direction, bytes):
+            direction = direction.decode()
+        direction = str(direction).strip()
+        return (
+            direction if direction.startswith("[") and direction.endswith("]") else f"[{direction}]"
+        )
 
     def _solution_cycle_number(self, filepath, cycle_attr):
         path_cycle_number = self.field.solution_cycle_number(

@@ -1319,10 +1319,10 @@ class TestCalibrate:
         assert calibrate.input_parms["applycal_steps"] is None
         assert calibrate.input_parms["applycal_h5parm"] is None
 
-    def test_set_input_parameters_dd_phase_only_reuses_only_previous_fast_initial_solution(
+    def test_set_input_parameters_dd_phase_only_reuses_previous_same_solve_initial_solutions(
         self, calibrate_field, tmp_path
     ):
-        """Match master: phase-only DD cycles carry forward only the fast-phase seed."""
+        """Flexible phase-only DD cycles may seed every matching solve."""
         calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
         calibrate_field._calibration_strategy_defaulted = False
 
@@ -1340,9 +1340,101 @@ class TestCalibrate:
         calibrate.set_input_parameters()
 
         assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(previous_fast)
-        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"]["path"] == str(
+            previous_medium
+        )
         assert calibrate.input_parms["applycal_steps"] is None
         assert calibrate.input_parms["applycal_h5parm"] is None
+
+    def test_set_input_parameters_dd_reuses_previous_initial_solutions_when_directions_match(
+        self, calibrate_field, tmp_path, monkeypatch
+    ):
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
+        calibrate_field._calibration_strategy_defaulted = False
+        calibrate_field.calibrator_patch_names = ["Patch_0", "Patch_1"]
+
+        previous_solution_dir = tmp_path / "solutions" / "calibrate_1"
+        previous_solution_dir.mkdir(parents=True)
+        previous_fast = previous_solution_dir / "field-solutions-fast-phase.h5"
+        previous_medium = previous_solution_dir / "field-solutions-medium1-phase.h5"
+        for path in (previous_fast, previous_medium):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(previous_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(previous_medium)
+        monkeypatch.setattr(
+            Calibrate,
+            "_read_h5parm_directions",
+            lambda self, filename: {"[Patch_0]", "[Patch_1]"},
+        )
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(previous_fast)
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"]["path"] == str(
+            previous_medium
+        )
+
+    def test_set_input_parameters_dd_skips_previous_initial_solutions_when_directions_differ(
+        self, calibrate_field, tmp_path, monkeypatch, caplog
+    ):
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
+        calibrate_field._calibration_strategy_defaulted = False
+        calibrate_field.calibrator_patch_names = ["Patch_0", "Patch_1"]
+
+        previous_solution_dir = tmp_path / "solutions" / "calibrate_1"
+        previous_solution_dir.mkdir(parents=True)
+        previous_fast = previous_solution_dir / "field-solutions-fast-phase.h5"
+        previous_medium = previous_solution_dir / "field-solutions-medium1-phase.h5"
+        for path in (previous_fast, previous_medium):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(previous_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(previous_medium)
+        monkeypatch.setattr(
+            Calibrate,
+            "_read_h5parm_directions",
+            lambda self, filename: {"[Old_0]", "[Old_1]"},
+        )
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+        assert "h5parm directions do not match current calibration patches" in caplog.text
+
+    def test_set_input_parameters_dd_allows_previous_initial_solutions_with_fixed_facet_layout(
+        self, calibrate_field, tmp_path, monkeypatch
+    ):
+        calibrate_field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
+        calibrate_field._calibration_strategy_defaulted = False
+        calibrate_field.parset["facet_layout"] = "/data/fixed-facets.reg"
+        calibrate_field.calibrator_patch_names = ["Patch_0"]
+
+        previous_solution_dir = tmp_path / "solutions" / "calibrate_1"
+        previous_solution_dir.mkdir(parents=True)
+        previous_fast = previous_solution_dir / "field-solutions-fast-phase.h5"
+        previous_medium = previous_solution_dir / "field-solutions-medium1-phase.h5"
+        for path in (previous_fast, previous_medium):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(previous_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(previous_medium)
+
+        def fail_if_read(self, filename):
+            raise AssertionError("fixed facet_layout should prove direction compatibility")
+
+        monkeypatch.setattr(Calibrate, "_read_h5parm_directions", fail_if_read)
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"]["path"] == str(previous_fast)
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"]["path"] == str(
+            previous_medium
+        )
 
     def test_set_input_parameters_dd_rejects_future_cycle_solve_initial_solutions(
         self, calibrate_field, tmp_path, caplog

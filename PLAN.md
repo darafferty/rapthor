@@ -57,6 +57,11 @@ Done:
   construction, generated region/readpatches support, narrow-band model drawing,
   copied-MS model-column prediction, payload validation, defaults, docs, and
   focused tests are in place.
+- The flexible calibration initial-solution contract is implemented and
+  documented: matching previous-cycle same-mode/same-solve products may seed
+  later solves only as optimizer seeds, DD seeds require direction
+  compatibility, and preapply/imaging-time h5parm use remains current-cycle
+  guarded.
 
 Known caveats:
 
@@ -72,17 +77,7 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Finalize the carry-over solution contract.**
-   Define, document, implement, and test which calibration products may carry
-   across cycles under the flexible `calibration_strategy` interface. Preserve
-   branch-vs-master alignment when a current strategy is equivalent to master,
-   but do not encode master limitations as the general scientific rule. The key
-   contract is: previous-cycle products may seed matching solves only as
-   initial solutions when mode, solve type, cycle, and DD direction
-   compatibility are valid; previous-cycle products must not silently preapply
-   to calibration or imaging.
-
-2. **Run the essential branch-vs-master scientific scenario matrix.**
+1. **Run the essential branch-vs-master scientific scenario matrix.**
    Use explicit base/current parsets and keep compact reports under
    `docs/source/development/equivalence_runs/`. Run, in order: phase-only DD
    followed by DI full-Jones; fixed-`facet_layout` DD carry-over; regrouped or
@@ -91,7 +86,7 @@ Known caveats:
    Record which differences are expected master legacy behavior and which are
    current-branch product-contract issues.
 
-3. **Tighten the branch-equivalence comparison contract.**
+2. **Tighten the branch-equivalence comparison contract.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs so expected legacy-vs-current differences are explicit.
@@ -100,29 +95,29 @@ Known caveats:
    ordering, and restored-image residuals while keeping operation order,
    product presence, shapes, axes, finite values, and soltab names strict.
 
-4. **Re-run the full scientific gate.**
+3. **Re-run the full scientific gate.**
    Run focused tests, the strengthened saved-reference matrix, the essential
    branch-vs-master matrix, and the full integration suite in the prepared dev
    container. Update `EQUIVALENCE_REPORT.md` and compact report bundles with
    the final interpretation before taking performance-sensitive work.
 
-5. **Take one low-risk image-cycle scalability slice.**
+4. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-6. **Re-run scientific and performance gates after the slice.**
+5. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-7. **Refresh benchmark baseline documentation if the CI run is valid.**
+6. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-8. **Resume test-suite maintainability cleanup.**
+7. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -222,20 +217,25 @@ Current status:
 
 Initial-solution alignment status:
 
-- Completed on 2026-07-05: calibration solve initialization now has a separate
+- Updated on 2026-07-05: calibration solve initialization now has a separate
   resolver from preapply products. Current-cycle same-solve products may seed
-  matching solves, previous-cycle DD fast-phase products may seed later
-  phase-only DD cycles, previous-cycle DD medium/slow products may seed later
-  DD cycles only when slow-gain solving is active, and future-cycle products
-  are rejected. The strict current-cycle guard remains for calibration
-  preapply products and imaging-time h5parm application.
+  matching solves. Previous-cycle same-mode/same-solve products may seed
+  matching solves only as optimizer seeds when cycle and product role are
+  valid; DD products additionally require compatible directions via fixed
+  `facet_layout`, matching h5parm directions, or a future explicit remap/filter
+  step. Future-cycle products are rejected. The strict current-cycle guard
+  remains for calibration preapply products and imaging-time h5parm application.
 - Focused operation and execution tests cover current-cycle, previous-cycle,
-  future-cycle, phase-only DD, slow-gain DD, DI, wrong-mode, and payload/command
-  propagation cases.
+  future-cycle, phase-only DD, slow-gain DD, DI, wrong-mode, DD direction
+  matching, fixed-`facet_layout` carry-over, and payload/command propagation
+  cases.
 - The rerun tracked under
   `docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/`
   confirms both branches pass previous-cycle DD fast-phase initial solutions in
   cycles 2-4 and leave phase-only medium/slow initial-solution slots unset.
+  Re-run this scenario after the flexible carry-over contract is fully
+  validated, because the current branch now intentionally allows matching
+  phase-only medium seeds when directions are compatible.
 
 Possible bugs on the master branch to investigate:
 
@@ -257,23 +257,7 @@ Possible bugs on the master branch to investigate:
 
 Remaining equivalence tasks, in order:
 
-1. **Carry-over solution contract and implementation.**
-   Define the flexible-strategy carry-over contract in docs and tests, then
-   adjust implementation if needed. Same-mode/same-solve products may carry
-   over only as optimizer seeds when compatible; previous-cycle preapply and
-   imaging-time h5parm use remain forbidden unless explicitly documented. DD
-   direction-labelled products require a fixed `facet_layout`, matching h5parm
-   direction set, or an explicit remap/filter step. DI products seed only DI
-   solves; DD products seed only DD solves.
-
-2. **DD direction-compatibility guard.**
-   Add checks for previous-cycle DD initial solutions when facets or calibration
-   patches can change between cycles. Master currently carries h5parm filenames
-   forward without checking directions (`[Patch_rich_*]` -> `[Patch_0..4]` ->
-   ten sector-specific patches), so treat that as legacy behavior rather than
-   the general scientific contract.
-
-3. **Essential branch-vs-master scenarios.**
+1. **Essential branch-vs-master scenarios.**
    Run and document these scenarios before performance work:
    phase-only DD followed by DI full-Jones; fixed-`facet_layout` DD carry-over;
    regrouped/changing-facets DD carry-over; intended slow-gain/default-like
@@ -282,7 +266,7 @@ Remaining equivalence tasks, in order:
    manifests, logs, diagnostics, and visual comparisons under
    `docs/source/development/equivalence_runs/`.
 
-4. **Comparison-rule cleanup.**
+2. **Comparison-rule cleanup.**
    Classify output-record summary differences as metadata-shape differences or
    real product-record differences. Add h5parm numeric statistics/tolerances
    for accepted phase-only drift while keeping solset/soltab names, axes,
@@ -292,13 +276,13 @@ Remaining equivalence tasks, in order:
    source-catalog and facet-region text differences with deterministic ordering
    or semantic comparison where possible.
 
-5. **Master-reference decisions.**
+3. **Master-reference decisions.**
    Decide whether the slow-gain default-like reference should remain a
    documented master bug/legacy limitation, whether the master checkout should
    be patched for an intended-amplitude reference run, and how any intentional
    current-vs-master divergence should be labelled in reports.
 
-6. **Tooling and reviewer smoke check.**
+4. **Tooling and reviewer smoke check.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs as the comparison contract is tightened. Add a

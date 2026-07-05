@@ -42,15 +42,16 @@ names visible.
   or normalization. Names such as `dd_h5parm_cycle_number` and
   `fulljones_h5parm_cycle_number` are not decoration; they are safety rails.
 - Calibration solve initial solutions are optimizer seeds, not pre-applied
-  visibility corrections. To reproduce the legacy master solve-seeding
-  behavior, current-cycle same-mode/same-solve h5parms may seed any matching
-  solve, previous-cycle DD fast-phase h5parms may seed later phase-only DD
-  cycles, and previous-cycle DD medium/slow h5parms may seed later DD cycles
-  only when slow-gain solving is active. DI solve seeds may use previous-cycle
-  same-mode/same-solve h5parms. Future-cycle products must be rejected. Keep
-  the stricter current-cycle guard for `applycal_h5parm`, `fulljones_h5parm`,
-  image `prepare_data_h5parm`, and imaging-time `h5parm` unless an operation
-  explicitly documents carry-forward semantics.
+  visibility corrections. Current-cycle same-mode/same-solve h5parms may seed
+  matching solves. Previous-cycle same-mode/same-solve h5parms may seed
+  matching solves only when the product role and cycle are valid; DD products
+  additionally require direction compatibility through a fixed `facet_layout`,
+  a matching h5parm direction set, or an explicit remap/filter step. DI
+  products seed only DI solves, DD products seed only DD solves, and
+  future-cycle products must be rejected. Keep the stricter current-cycle guard
+  for `applycal_h5parm`, `fulljones_h5parm`, image `prepare_data_h5parm`, and
+  imaging-time `h5parm` unless an operation explicitly documents
+  carry-forward semantics.
 - A change to solution discovery, filtering, combination, or naming needs
   restart and finalizer tests.
 
