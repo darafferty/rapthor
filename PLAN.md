@@ -77,16 +77,7 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Run the essential branch-vs-master scientific scenario matrix.**
-   Use explicit base/current parsets and keep compact reports under
-   `docs/source/development/equivalence_runs/`. Run, in order: phase-only DD
-   followed by DI full-Jones; fixed-`facet_layout` DD carry-over; regrouped or
-   changing-facet DD carry-over; an intended slow-gain/default-like reference;
-   DI multi-cycle carry-over; and DI-then-DD/DD-then-DI mode-boundary checks.
-   Record which differences are expected master legacy behavior and which are
-   current-branch product-contract issues.
-
-2. **Build a repeatability envelope for scientific equivalence.**
+1. **Build a repeatability envelope for scientific equivalence.**
    Before declaring remaining branch-vs-master deltas acceptable or adjusting
    product tolerances, run representative scenarios repeatedly and compare
    within-branch variation against branch-vs-master variation. Use at least
@@ -97,7 +88,21 @@ Known caveats:
    show whether current-vs-master deltas are larger than ordinary DP3/WSClean/
    PyBDSF run-to-run scatter.
 
-3. **Tighten the branch-equivalence comparison contract.**
+2. **Decide flexible-strategy carry-forward policy.**
+   Use the completed mode-boundary runs to decide whether latest products such
+   as DI full-Jones may be applied in later cycles that do not rerun that solve,
+   or whether imaging and preapply behavior should remain current-cycle scoped
+   unless a future strategy option explicitly requests carry-forward.
+
+3. **Add a risk-based option equivalence matrix.**
+   After the core repeatability envelope is available, add a small set of
+   option-specific equivalence scenarios rather than a full combinatorial
+   sweep. Prioritize normalization, WSClean predict versus image-based predict,
+   BDA/averaging behavior, and screens where the target environment supports
+   them. Keep each scenario to one meaningful option family so failures remain
+   attributable.
+
+4. **Tighten the branch-equivalence comparison contract.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs so expected legacy-vs-current differences are explicit.
@@ -106,29 +111,29 @@ Known caveats:
    ordering, and restored-image residuals while keeping operation order,
    product presence, shapes, axes, finite values, and soltab names strict.
 
-4. **Re-run the full scientific gate.**
+5. **Re-run the full scientific gate.**
    Run focused tests, the strengthened saved-reference matrix, the essential
    branch-vs-master matrix, and the full integration suite in the prepared dev
    container. Update `EQUIVALENCE_REPORT.md` and compact report bundles with
    the final interpretation before taking performance-sensitive work.
 
-5. **Take one low-risk image-cycle scalability slice.**
+6. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-6. **Re-run scientific and performance gates after the slice.**
+7. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-7. **Refresh benchmark baseline documentation if the CI run is valid.**
+8. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-8. **Resume test-suite maintainability cleanup.**
+9. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -268,6 +273,17 @@ Initial-solution alignment status:
   cycle-1 diagnostics are close, while cycle-2 image RMS diagnostics differ by
   about `9-10%`, consistent with compounded differences after master carries
   unsafe DD seeds across regrouped directions and current skips them.
+- The mode-boundary scenarios are tracked under
+  `docs/source/development/equivalence_runs/2026-07-05-di-then-dd-mode-boundary-master-ref/`
+  and
+  `docs/source/development/equivalence_runs/2026-07-05-dd-then-di-mode-boundary-master-ref/`.
+  Both use fixed facets and both branches return `0`. The DI-to-DD scenario
+  confirms a policy difference: master carries the cycle-1 DI full-Jones
+  product into cycle-2 imaging even though cycle 2 has no DI solve, while the
+  current branch keeps imaging-time full-Jones application current-cycle
+  guarded. The paired DD-to-DI scenario confirms that both branches apply the
+  cycle-2 full-Jones product when cycle 2 runs DI; the remaining differences
+  are dominated by DD seed policy and full-Jones numeric drift.
 - The fixed-`facet_layout` carry-over scenario is tracked under
   `docs/source/development/equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/`.
   Both branches return `0` and run `calibrate_2`. Master passes only the
@@ -316,18 +332,22 @@ Possible bugs on the master branch to investigate:
   ignores/remaps unmatched directions or whether this is a master bug; the
   current branch now rejects this unsafe carry-over unless direction
   compatibility is proven.
+- Master carries a previous-cycle DI full-Jones product into later imaging when
+  the later cycle does not run a DI solve. The 2026-07-05 DI-to-DD
+  mode-boundary run shows master `image_2` applying the cycle-1
+  `fulljones-solutions.h5`, while the current branch intentionally leaves
+  `fulljones_h5parm` unset for `image_2` because the active cycle is DD-only.
+  Decide whether this is desirable master carry-forward behavior that the
+  flexible strategy should expose explicitly, or a legacy implicit-state
+  behavior that should remain documented but not copied.
 
 Remaining equivalence tasks, in order:
 
-1. **Continue the essential branch-vs-master scenario matrix.**
-   Completed: phase-only DD followed by DI full-Jones, and fixed-`facet_layout`
-   DD carry-over, regrouped/changing-facets DD carry-over, DI multi-cycle
-   carry-over, and the intended slow-gain/default-like reference. Next, run
-   DI-then-DD/DD-then-DI mode-boundary flows. For each scenario, save compact
-   reports, inputs, manifests, logs, diagnostics, and visual comparisons under
-   `docs/source/development/equivalence_runs/`.
-
-2. **Build branch repeatability controls before tuning tolerances.**
+1. **Build branch repeatability controls before tuning tolerances.**
+   The essential branch-vs-master scenario matrix now has compact tracked
+   reports for phase-only DD, DD plus DI full-Jones, fixed-facet DD carry-over,
+   changing-facet DD carry-over, slow-gain/default-like behavior, DI
+   multi-cycle carry-over, and both DI/DD mode-boundary directions.
    Set up a repeatability run directory that contains frozen input snapshots
    and unique clean work directories for each repetition, for example
    `runs/repeatability-<scenario>-<date>/{master,current}/rep-01..03`. Do not
@@ -364,7 +384,44 @@ Remaining equivalence tasks, in order:
      explanation, a bug fix, or an explicit report label as intentional
      flexible-strategy behavior.
 
-3. **Comparison-rule cleanup.**
+2. **Decide carry-forward policy for flexible strategy products.**
+   Before changing tolerances, document and test which latest products may be
+   applied across later cycles when that later cycle does not rerun the same
+   solve. The first concrete decision is DI full-Jones: whether a cycle-1
+   full-Jones product should be applied during a later DD-only image, matching
+   master, or whether the current cycle-guarded behavior is the intended
+   explicit strategy contract. Keep DD direction compatibility checks strict.
+
+3. **Add option-specific equivalence scenarios.**
+   After the repeatability envelope exists, build a small risk-based option
+   matrix. Do not combine many options in one run; each scenario should toggle
+   one meaningful behavior against a stable baseline, preferably with fixed
+   facets and short demo data.
+
+   Recommended priority:
+
+   - **Normalization:** high scientific impact and already covered by saved
+     references; add a branch-vs-master scenario if master can represent the
+     configuration cleanly.
+   - **Prediction path:** run separate scenarios for image-based predict and
+     WSClean predict, because WSClean predict was recently ported and failures
+     should clearly point to model-column/predict behavior.
+   - **BDA/averaging:** add one focused scenario for BDA or averaging-related
+     options because they change calibration/imaging inputs even when solve
+     logic is unchanged.
+   - **Screens/IDGCal/hybrid screens:** keep as target-environment checks unless
+     the prepared dev container can run them reliably; record skipped/blocked
+     status explicitly.
+   - **Other imaging options:** keep cubes, QUV/full-Stokes, astrometry,
+     photometry, and peeling primarily in saved-reference or integration
+     coverage unless a reviewer needs branch-vs-master parity for one of them.
+
+   Use the option matrix after the core tolerance/repeatability work, not as a
+   replacement for it. When an option scenario fails, decide whether the delta
+   is within the repeatability envelope, a master limitation, or a current
+   branch regression.
+
+4. **Comparison-rule cleanup.**
    Classify output-record summary differences as metadata-shape differences or
    real product-record differences. Add h5parm numeric statistics/tolerances
    for accepted phase-only drift while keeping solset/soltab names, axes,
@@ -374,13 +431,13 @@ Remaining equivalence tasks, in order:
    source-catalog and facet-region text differences with deterministic ordering
    or semantic comparison where possible.
 
-4. **Master-reference decisions.**
+5. **Master-reference decisions.**
    Decide whether the slow-gain default-like reference should remain a
    documented master bug/legacy limitation, whether the master checkout should
    be patched for an intended-amplitude reference run, and how any intentional
    current-vs-master divergence should be labelled in reports.
 
-5. **Tooling and reviewer smoke check.**
+6. **Tooling and reviewer smoke check.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs as the comparison contract is tightened. Add a

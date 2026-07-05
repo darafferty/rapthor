@@ -1,0 +1,19 @@
+{
+  "scenario_id": "dd-then-di-mode-boundary",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-dd-then-di-mode-boundary-master-ref/inputs/base/master_dd_then_di_mode_boundary.parset",
+  "current_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-dd-then-di-mode-boundary-master-ref/inputs/current/current_dd_then_di_mode_boundary.parset",
+  "base_work_dir": "/tmp/rbe-master-dd-then-di-mode-boundary-work",
+  "current_work_dir": "/tmp/rbe-current-dd-then-di-mode-boundary-work",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/master_dd_then_di_mode_boundary.parset",
+      "strategy": "inputs/base/master_dd_then_di_mode_boundary_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/current_dd_then_di_mode_boundary.parset",
+      "strategy": "inputs/current/current_dd_then_di_mode_boundary_strategy.py"
+    }
+  }
+}

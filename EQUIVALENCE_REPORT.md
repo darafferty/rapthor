@@ -504,6 +504,56 @@ therefore be treated as a mixed result: the DI full-Jones carry-over bug is
 fixed, but branch-vs-master product tolerances cannot be tuned from this run
 without the planned repeatability envelope.
 
+## Branch-Vs-Master DI/DD Mode-Boundary Runs
+
+Two fixed-facet two-cycle branch comparisons were run on 2026-07-05 to exercise
+the boundaries between DD phase-only calibration and DI full-Jones calibration.
+The tracked compact report bundles are:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-di-then-dd-mode-boundary-master-ref/
+docs/source/development/equivalence_runs/2026-07-05-dd-then-di-mode-boundary-master-ref/
+```
+
+Both branches completed both scenarios successfully.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `di-then-dd-mode-boundary` | `master` | 0 | 0 | fail | 8 | 8 | 14 | 12 | 2 | 5 | 19 | 2 | 10 | 3 | 117 |
+| `dd-then-di-mode-boundary` | `master` | 0 | 0 | fail | 8 | 8 | 14 | 12 | 2 | 5 | 19 | 2 | 10 | 3 | 64 |
+
+Key findings:
+
+- In the DI-to-DD scenario, cycle 1 runs DD plus DI full-Jones and cycle 2
+  returns to DD-only calibration and imaging. Master passes the cycle-1
+  `fulljones-solutions.h5` into `image_2`, with
+  `prepare_data_applycal_steps = [fulljones]`. The current branch leaves
+  `fulljones_h5parm` unset for `image_2` and logs that the cycle-1 full-Jones
+  h5parm is ignored for cycle-2 calibration because it was produced in cycle 1.
+- In the DD-to-DI scenario, cycle 1 is DD-only and cycle 2 adds DI full-Jones
+  after DD. Both branches pass the cycle-2 `fulljones-solutions.h5` into
+  `image_2`, with `prepare_data_applycal_steps = [fulljones]`.
+- In both fixed-facet scenarios, master passes only the previous fast-phase DD
+  seed into `calibrate_2`, while the current branch passes compatible fast and
+  medium phase seeds. That difference is intentional under the flexible
+  strategy contract but remains a systematic branch difference for strict
+  product comparisons.
+- The DI-to-DD cycle-2 diagnostics diverge in the expected boundary-sensitive
+  place: source counts match, but min-RMS diagnostics differ by about
+  `10-12%`. The DD-to-DI run shows cycle-1 diagnostics essentially identical,
+  then cycle-2 RMS diagnostics differing by about `11%`.
+
+Interpretation:
+
+The mode-boundary matrix is now complete enough to decide policy rather than
+add more ad hoc branch-vs-master runs. The open scientific/API decision is
+whether the flexible strategy should carry the latest DI full-Jones product
+forward into later DD-only images, matching master, or whether imaging-time
+application should remain strictly current-cycle scoped unless a future
+strategy option asks for carry-forward explicitly. Do not tune product
+tolerances from these two runs until the planned repeatability envelope shows
+same-branch scatter for DP3/WSClean/PyBDSF outputs.
+
 ## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:

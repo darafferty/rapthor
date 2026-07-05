@@ -28,6 +28,16 @@ are tracked here.
   full-Jones. This exposed and fixed a current-branch full-Jones
   initial-solution soltab bug; both branches now complete, and the report
   captures second-cycle image deltas after DI full-Jones carry-over.
+- `2026-07-05-di-then-dd-mode-boundary-master-ref/`: two-cycle fixed-facet
+  mode-boundary scenario. Cycle 1 runs DD plus DI full-Jones; cycle 2 returns
+  to DD-only calibration and imaging. Master carries the cycle-1 full-Jones
+  product into cycle-2 imaging, while the current branch keeps imaging-time
+  full-Jones application current-cycle guarded.
+- `2026-07-05-dd-then-di-mode-boundary-master-ref/`: paired two-cycle
+  fixed-facet mode-boundary scenario. Cycle 1 is DD-only; cycle 2 adds DI
+  full-Jones after DD. Both branches apply the cycle-2 full-Jones product in
+  cycle-2 imaging; the remaining split is mainly compatible DD initial-solution
+  seeding, where the current branch also carries the medium-phase seed.
 - `2026-07-05-fixed-facet-carryover-master-ref/`: two-cycle fixed-facet DD
   phase-only carry-over scenario; cycle 2 is calibration-only so the report
   isolates previous-cycle solution seeding. Master carries only the fast-phase

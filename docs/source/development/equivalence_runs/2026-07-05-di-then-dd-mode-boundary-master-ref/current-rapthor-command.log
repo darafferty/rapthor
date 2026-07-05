@@ -1,0 +1,142 @@
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-n8msn2uo/current_di_then_dd_mode_boundary.materialized.parset[0m
+WARNING - rapthor:parset - [33mOption 'cwl_runner' in section [cluster] is invalid[0m
+INFO - rapthor:runtime - [32mNo Prefect API configured; Prefect may start a temporary local API/server.[0m
+INFO - rapthor:runtime - [32mUsing local Dask with 1 worker(s) and 6 thread(s) per worker.[0m
+INFO - rapthor:runtime - [32mIgnoring any Prefect profile API URL for this run.[0m
+INFO - rapthor:runtime - [32mUsing isolated temporary Prefect home for this run.[0m
+INFO - rapthor:runtime - [32mStarted local Dask scheduler tcp://127.0.0.1:41751 with 1 worker(s).[0m
+INFO - rapthor:runtime - [32mDask dashboard: http://127.0.0.1:8787/status[0m
+19:01:54.621 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-n8msn2uo/current_di_then_dd_mode_boundary.materialized.parset[0m
+WARNING - rapthor:parset - [33mOption 'cwl_runner' in section [cluster] is invalid[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor:parset - [32mRapthor version 2.2.dev479+gfa2f6767e.d20260703[0m
+INFO - rapthor:parset - [32mExecution backend is Prefect/Dask[0m
+INFO - rapthor:parset - [32mWorking directory is /tmp/rbe-current-di-then-dd-mode-boundary-work[0m
+INFO - rapthor:parset - [32mWorking on 1 input MS file[0m
+WARNING - rapthor:parset - [33mComparison sky model for astrometry check not provided while `allow_internet_access` is False. The astrometry check will be skipped. If you want to run the astrometry check, please provide a path to the comparison sky model or allow internet access.[0m
+WARNING - rapthor:parset - [33mComparison sky model for photometry check not provided while `allow_internet_access` is False. The photometry check will be skipped. If you want to run the photometry check, please provide a path to the comparison sky model or allow internet access.[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor - [32mSetting log level to INFO[0m
+INFO - rapthor:field - [32mUsing 1 imaging sector[0m
+INFO - rapthor:strategy - [32mUsing '/app/docs/source/development/equivalence_runs/2026-07-05-di-then-dd-mode-boundary-master-ref/inputs/current/current_di_then_dd_mode_boundary_strategy.py' processing strategy[0m
+INFO - rapthor - [32mStarting self calibration with a data fraction of 1.00[0m
+INFO - rapthor:field - [32mPlotting field overview with initial sky-model coverage...[0m
+INFO - rapthor:field - [32mAnalyzing sky model...[0m
+INFO - rapthor:field - [32mIdentifying sources...[0m
+INFO - rapthor:field - [32mRead 5 patches from supplied facet layout file[0m
+INFO - rapthor:field - [32mUsing 5 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+INFO - rapthor:calibrate_1 - [32m<-- Operation calibrate_1 started[0m
+19:01:56.399 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+19:02:01.278 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+19:02:02.223 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/calibrate_1[0m
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/calibrate_1[0m
+/usr/local/lib/python3.10/dist-packages/tables/atom.py:373: FlavorWarning: support for unicode type is very limited, and only works for strings that can be cast as ascii
+  warnings.warn("support for unicode type is very limited, and "
+INFO - rapthor:calibrate_1 - [32m--> Operation calibrate_1 completed[0m
+INFO - rapthor:calibrate_1 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor - [32mPublished 12 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor:predict_di_1 - [32m<-- Operation predict_di_1 started[0m
+INFO - rapthor:predict:sector_model_addition - [32mFound 1 model data files[0m
+INFO - rapthor:predict:sector_model_addition - [32mUsing 1 chunk(s)[0m
+INFO - rapthor:predict_di_1 - [32m--> Operation predict_di_1 completed[0m
+INFO - rapthor - [32mPublished 12 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor:calibrate_di_1 - [32m<-- Operation calibrate_di_1 started[0m
+INFO - rapthor - [32mPublished 1 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/calibrate_di_1[0m
+INFO - rapthor:calibrate_di_1 - [32m--> Operation calibrate_di_1 completed[0m
+INFO - rapthor:calibrate_di_1 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor:image_1 - [32m<-- Operation image_1 started[0m
+INFO - rapthor:image:masking - [32mInput image not given. Making empty image...[0m
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
+  'HZ' -> 'Hz'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
+  'HZ' -> 'Hz'. [astropy.wcs.wcs]
+INFO - rapthor:calculate_image_diagnostics - [32mA comparison sky model is not available and a list of comparison surveys was not supplied. Skipping photometry check...[0m
+INFO - rapthor:calculate_image_diagnostics - [32mSkipping astrometry check since no comparison skymodel is provided, and internet access is not permitted[0m
+INFO - rapthor - [32mPublished 1 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/image_1[0m
+INFO - rapthor - [32mPublished 9 Rapthor FITS preview artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/image_1[0m
+INFO - rapthor:image_1 - [32m--> Operation image_1 completed[0m
+INFO - rapthor:image_1 - [32mDiagnostics for sector_1:[0m
+INFO - rapthor:image_1 - [32m    Min RMS noise = 16915.6 uJy/beam (non-PB-corrected), 17392.2 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_1 - [32m    Median RMS noise = 39393.2 uJy/beam (non-PB-corrected), 40267.6 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Dynamic range = 271.09 (non-PB-corrected), 263.66 (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 10[0m
+INFO - rapthor:image_1 - [32m    Reference frequency = 134.4 MHz[0m
+INFO - rapthor:image_1 - [32m    Beam = 44.6" x 43.1", PA = 172.9 deg[0m
+INFO - rapthor:image_1 - [32m    Fraction of unflagged data = 1.00[0m
+INFO - rapthor:image_1 - [32m    LOFAR/TGSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR/NVSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
+INFO - rapthor - [32mPublished 14 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor:mosaic_1 - [32m<-- Operation mosaic_1 started[0m
+INFO - rapthor:mosaic_1 - [32m--> Operation mosaic_1 completed[0m
+INFO - rapthor - [32mPublished 14 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor:field - [32mUpdating sky model...[0m
+INFO - rapthor:field - [32mAnalyzing sky model...[0m
+INFO - rapthor:field - [32mRead 5 patches from supplied facet layout file[0m
+INFO - rapthor:field - [32mUsing 5 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+WARNING - rapthor:calibrate_2 - [33mIgnoring DI full-Jones h5parm '/tmp/rbe-current-di-then-dd-mode-boundary-work/solutions/calibrate_di_1/fulljones-solutions.h5' for calibration cycle 2 because it was produced in cycle 1[0m
+INFO - rapthor:calibrate_2 - [32m<-- Operation calibrate_2 started[0m
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/calibrate_2[0m
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/calibrate_2[0m
+/usr/local/lib/python3.10/dist-packages/tables/atom.py:373: FlavorWarning: support for unicode type is very limited, and only works for strings that can be cast as ascii
+  warnings.warn("support for unicode type is very limited, and "
+INFO - rapthor:calibrate_2 - [32m--> Operation calibrate_2 completed[0m
+INFO - rapthor:calibrate_2 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor - [32mPublished 25 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor:image_2 - [32m<-- Operation image_2 started[0m
+INFO - rapthor:image:masking - [32mInput image not given. Making empty image...[0m
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
+  'HZ' -> 'Hz'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
+  'HZ' -> 'Hz'. [astropy.wcs.wcs]
+INFO - rapthor:calculate_image_diagnostics - [32mFewer than 5 sources found in the input image that meet the photometry cuts (major axis < 10" and located inside the FWHM of the primary beam). Skipping the photometry check...[0m
+INFO - rapthor:calculate_image_diagnostics - [32mSkipping astrometry check since no comparison skymodel is provided, and internet access is not permitted[0m
+INFO - rapthor - [32mPublished 1 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/image_2[0m
+INFO - rapthor - [32mPublished 9 Rapthor FITS preview artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/pipelines/image_2[0m
+INFO - rapthor:image_2 - [32m--> Operation image_2 completed[0m
+INFO - rapthor:image_2 - [32mDiagnostics for sector_1:[0m
+INFO - rapthor:image_2 - [32m    Min RMS noise = 30300.5 uJy/beam (non-PB-corrected), 30300.1 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_2 - [32m    Median RMS noise = 43881.0 uJy/beam (non-PB-corrected), 44765.8 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_2 - [32m    Dynamic range = 153.50 (non-PB-corrected), 153.50 (PB-corrected)[0m
+INFO - rapthor:image_2 - [32m    Number of sources found by PyBDSF = 11[0m
+INFO - rapthor:image_2 - [32m    Reference frequency = 134.4 MHz[0m
+INFO - rapthor:image_2 - [32m    Beam = 44.6" x 43.1", PA = 172.9 deg[0m
+INFO - rapthor:image_2 - [32m    Fraction of unflagged data = 1.00[0m
+INFO - rapthor:image_2 - [32m    LOFAR/TGSS flux ratio = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR/NVSS flux ratio = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
+INFO - rapthor:image_2 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
+INFO - rapthor - [32mPublished 26 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor:mosaic_2 - [32m<-- Operation mosaic_2 started[0m
+INFO - rapthor:mosaic_2 - [32m--> Operation mosaic_2 completed[0m
+INFO - rapthor - [32mPublished 26 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished 12 Rapthor FITS preview artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor - [32mPublished 26 Rapthor plot artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/plots[0m
+INFO - rapthor - [32mPublished 12 Rapthor FITS preview artifacts from /tmp/rbe-current-di-then-dd-mode-boundary-work/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-current-di-then-dd-mode-boundary-work/logs/commands.jsonl[0m
+INFO - rapthor - [32mRapthor has finished :)[0m
