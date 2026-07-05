@@ -86,7 +86,18 @@ Known caveats:
    Record which differences are expected master legacy behavior and which are
    current-branch product-contract issues.
 
-2. **Tighten the branch-equivalence comparison contract.**
+2. **Build a repeatability envelope for scientific equivalence.**
+   Before declaring remaining branch-vs-master deltas acceptable or adjusting
+   product tolerances, run representative scenarios repeatedly and compare
+   within-branch variation against branch-vs-master variation. Use at least
+   three clean repeats for `master` and three clean repeats for the current
+   branch for the phase-only DD, DD phase plus DI full-Jones, and
+   fixed-`facet_layout` carry-over scenarios. Compare all same-branch pairs
+   and all cross-branch pairs using the same product metrics so the report can
+   show whether current-vs-master deltas are larger than ordinary DP3/WSClean/
+   PyBDSF run-to-run scatter.
+
+3. **Tighten the branch-equivalence comparison contract.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs so expected legacy-vs-current differences are explicit.
@@ -95,29 +106,29 @@ Known caveats:
    ordering, and restored-image residuals while keeping operation order,
    product presence, shapes, axes, finite values, and soltab names strict.
 
-3. **Re-run the full scientific gate.**
+4. **Re-run the full scientific gate.**
    Run focused tests, the strengthened saved-reference matrix, the essential
    branch-vs-master matrix, and the full integration suite in the prepared dev
    container. Update `EQUIVALENCE_REPORT.md` and compact report bundles with
    the final interpretation before taking performance-sensitive work.
 
-4. **Take one low-risk image-cycle scalability slice.**
+5. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-5. **Re-run scientific and performance gates after the slice.**
+6. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-6. **Refresh benchmark baseline documentation if the CI run is valid.**
+7. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-7. **Resume test-suite maintainability cleanup.**
+8. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -280,7 +291,44 @@ Remaining equivalence tasks, in order:
    reports, inputs, manifests, logs, diagnostics, and visual comparisons under
    `docs/source/development/equivalence_runs/`.
 
-2. **Comparison-rule cleanup.**
+2. **Build branch repeatability controls before tuning tolerances.**
+   Set up a repeatability run directory that contains frozen input snapshots
+   and unique clean work directories for each repetition, for example
+   `runs/repeatability-<scenario>-<date>/{master,current}/rep-01..03`. Do not
+   reuse `.done` markers or previous pipeline products. Keep resource settings,
+   thread counts, parsets, strategy files, input data, external-tool versions,
+   base commit, and current commit fixed across repetitions. Use the production
+   thread/resource settings that reviewers will care about; optionally add a
+   separate single-thread smoke repeat only when isolating nondeterminism.
+
+   Recommended comparison layout:
+
+   - Run three `master` repeats and compare all three master-master pairs.
+   - Run three current-branch repeats and compare all three current-current
+     pairs.
+   - Compare all nine master-current pairs, not only matched repeat numbers.
+   - Store compact per-pair JSON/Markdown summaries and one aggregate summary
+     under `docs/source/development/equivalence_runs/`; keep raw FITS/MS/log
+     products outside git.
+   - Aggregate by product class: h5parm datasets, restored/dirty/model FITS
+     residual metrics, image diagnostics, source-catalog columns, sky-model
+     summaries, and text/region products.
+
+   Use the data to classify each difference:
+
+   - **Strict contract:** product presence, operation order, h5parm axes/shapes,
+     soltab names, finite masks, and source counts must not vary within branch
+     or across equivalent branches.
+   - **Repeatability-bounded:** image residuals, h5parm numeric values,
+     source-catalog flux/error/rms columns, and image diagnostics may use
+     product-specific tolerances derived from the maximum or high percentile of
+     same-branch scatter, with a small documented safety factor.
+   - **Systematic branch difference:** a branch-vs-master delta that is
+     consistently larger than same-branch scatter needs a scientific
+     explanation, a bug fix, or an explicit report label as intentional
+     flexible-strategy behavior.
+
+3. **Comparison-rule cleanup.**
    Classify output-record summary differences as metadata-shape differences or
    real product-record differences. Add h5parm numeric statistics/tolerances
    for accepted phase-only drift while keeping solset/soltab names, axes,
@@ -290,13 +338,13 @@ Remaining equivalence tasks, in order:
    source-catalog and facet-region text differences with deterministic ordering
    or semantic comparison where possible.
 
-3. **Master-reference decisions.**
+4. **Master-reference decisions.**
    Decide whether the slow-gain default-like reference should remain a
    documented master bug/legacy limitation, whether the master checkout should
    be patched for an intended-amplitude reference run, and how any intentional
    current-vs-master divergence should be labelled in reports.
 
-4. **Tooling and reviewer smoke check.**
+5. **Tooling and reviewer smoke check.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs as the comparison contract is tightened. Add a
