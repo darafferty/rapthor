@@ -1461,6 +1461,31 @@ class TestCalibrate:
             previous_fulljones
         )
 
+    def test_set_input_parameters_di_does_not_use_dd_solutions_as_di_initial_solutions(
+        self, calibrate_field, tmp_path
+    ):
+        calibrate_field.calibration_strategy = {"di": ["fast_phase", "medium_phase", "slow_gains"]}
+        calibrate_field._calibration_strategy_defaulted = False
+
+        dd_solution_dir = tmp_path / "solutions" / "calibrate_1"
+        dd_solution_dir.mkdir(parents=True)
+        dd_fast = dd_solution_dir / "field-solutions-fast-phase.h5"
+        dd_medium = dd_solution_dir / "field-solutions-medium1-phase.h5"
+        dd_slow = dd_solution_dir / "field-solutions-slow-gain.h5"
+        for path in (dd_fast, dd_medium, dd_slow):
+            path.write_text("h5parm")
+
+        calibrate_field.fast_phases_h5parm_filename = str(dd_fast)
+        calibrate_field.medium1_phases_h5parm_filename = str(dd_medium)
+        calibrate_field.slow_gains_h5parm_filename = str(dd_slow)
+
+        calibrate = Calibrate("di", field=calibrate_field, index=2)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["solve1_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve2_initialsolutions_h5parm"] is None
+        assert calibrate.input_parms["solve3_initialsolutions_h5parm"] is None
+
     def test_set_input_parameters_dd_preapplies_di_solutions(self, calibrate_field, tmp_path):
         di_h5parm = tmp_path / "di-solutions.h5"
         fulljones_h5parm = tmp_path / "fulljones-solutions.h5"
