@@ -15,12 +15,14 @@ from rapthor.execution.calibrate.commands import (
     CalibrationSolveOptions,
     DrawModelOptions,
     IdgcalScreenSolveOptions,
+    WscleanPredictOptions,
     build_calibration_solve_command,
     build_collect_h5parms_command,
     build_draw_model_command,
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
     build_plot_solutions_command,
+    build_wsclean_predict_command,
 )
 from rapthor.execution.calibrate.flow import (
     calibrate_chunk_task,
@@ -115,10 +117,13 @@ def fake_calibrate_shell_operation_cls():
             tokens = shlex.split(self.kwargs["commands"][0])
             cwd = Path(self.kwargs["working_dir"])
             if tokens[0] == "wsclean":
-                root = tokens[tokens.index("-name") + 1]
-                numterms = int(tokens[tokens.index("-draw-spectral-terms") + 1])
-                for index in range(numterms):
-                    (cwd / f"{root}-term-{index}.fits").write_text("model")
+                if "-draw-model" in tokens:
+                    root = tokens[tokens.index("-name") + 1]
+                    numterms = int(tokens[tokens.index("-draw-spectral-terms") + 1])
+                    for index in range(numterms):
+                        (cwd / f"{root}-term-{index}.fits").write_text("model")
+                elif "-predict" not in tokens:
+                    raise AssertionError(f"Unexpected WSClean command: {tokens}")
                 return "OK"
             if tokens[0] == "DP3":
                 for token in tokens:
@@ -154,6 +159,8 @@ def fake_direct_calibrate_helpers(monkeypatch):
         "collect_screen_h5parms": [],
         "combine_h5parms": [],
         "make_region_file": [],
+        "patch_names_from_region": [],
+        "frequency_chunks_for_ms": [],
         "process_gains": [],
     }
 
@@ -230,6 +237,24 @@ def fake_direct_calibrate_helpers(monkeypatch):
         calls["process_gains"].append({"h5parmfile": h5parmfile, **kwargs})
         Path(h5parmfile).write_text("processed")
 
+    def fake_patch_names_from_region(region_file):
+        calls["patch_names_from_region"].append(region_file)
+        return ["patch1", "patch2"]
+
+    def fake_frequency_chunks_for_ms(msin, fallback_frequency_bandwidth):
+        calls["frequency_chunks_for_ms"].append(
+            {
+                "msin": msin,
+                "fallback_frequency_bandwidth": list(fallback_frequency_bandwidth),
+            }
+        )
+        return [
+            {
+                "frequency_bandwidth": [150000000.0, 1000000.0],
+                "channel_range": (0, 3),
+            }
+        ]
+
     monkeypatch.setattr(
         calibrate_collection,
         "adjust_h5parm_source_coordinates",
@@ -250,6 +275,16 @@ def fake_direct_calibrate_helpers(monkeypatch):
         calibrate_collection,
         "process_gain_solutions",
         fake_process_gain_solutions,
+    )
+    monkeypatch.setattr(
+        calibrate_prediction,
+        "_patch_names_from_region",
+        fake_patch_names_from_region,
+    )
+    monkeypatch.setattr(
+        calibrate_prediction,
+        "_frequency_chunks_for_ms",
+        fake_frequency_chunks_for_ms,
     )
     return calls
 
@@ -345,6 +380,7 @@ class CalibrateFieldStub:
         self.apply_amplitudes = False
         self.generate_screens = False
         self.use_image_based_predict = False
+        self.use_wsclean_predict = False
         self.apply_normalizations = False
         self.normalize_h5parm = None
         self.fulljones_h5parm_filename = None
@@ -886,6 +922,28 @@ def _dd_image_predict_input_parms():
     return _add_explicit_solve_metadata(input_parms)
 
 
+def _dd_wsclean_predict_input_parms():
+    input_parms = _dd_image_predict_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[solve1,solve2]",
+            "use_wsclean_predict": True,
+            "predict_facet_region_file": "predict_field_facets_ds9.reg",
+        }
+    )
+    return _add_explicit_solve_metadata(input_parms)
+
+
+def _use_local_timechunk_dirs(input_parms, tmp_path):
+    local_paths = []
+    for index in range(len(input_parms["timechunk_filename"])):
+        path = tmp_path / f"input_chunk_{index}.ms"
+        path.mkdir()
+        local_paths.append(directory_record(path))
+    input_parms["timechunk_filename"] = local_paths
+    return input_parms
+
+
 def _dd_image_predict_preapply_input_parms(normalize_h5parm="/solutions/normalize_solutions.h5"):
     input_parms = _dd_image_predict_input_parms()
     input_parms.update(
@@ -1194,6 +1252,22 @@ def _draw_model_options(**overrides) -> DrawModelOptions:
     return DrawModelOptions(**values)
 
 
+def _wsclean_predict_options(**overrides) -> WscleanPredictOptions:
+    values = {
+        "msin": "dd_obs_0_wsclean_predict.ms",
+        "region_file": "predict_field_facets_ds9.reg",
+        "model_column": "patch1",
+        "facet": "patch1",
+        "model_root": "wsclean_predict_chunk_1_band_1",
+        "channel_range": (0, 3),
+        "model_storage_manager": "default",
+        "num_threads": 4,
+        "apply_time_frequency_smearing": True,
+    }
+    values.update(overrides)
+    return WscleanPredictOptions(**values)
+
+
 def test_calibrate_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
@@ -1351,6 +1425,27 @@ def test_calibrate_command_builders_create_reference_tokens():
         "fulljones_solutions.h5",
         "phase",
         "--first-dir",
+    ]
+    assert build_wsclean_predict_command(_wsclean_predict_options()) == [
+        "wsclean",
+        "-j",
+        "4",
+        "-predict",
+        "-facet-regions",
+        "predict_field_facets_ds9.reg",
+        "-apply-time-frequency-smearing",
+        "-model-column",
+        "patch1",
+        "-select-facets",
+        "patch1",
+        "-name",
+        "wsclean_predict_chunk_1_band_1",
+        "-channel-range",
+        "0",
+        "3",
+        "-model-storage-manager",
+        "default",
+        "dd_obs_0_wsclean_predict.ms",
     ]
     assert build_idgcal_solve_phase_command(
         _idgcal_screen_solve_options(model_images=["calibration_model-term-0.fits"])
@@ -1849,6 +1944,22 @@ def test_calibrate_payload_from_inputs_builds_dd_image_predict_payload(tmp_path)
     }
     assert payload["chunks"][0]["solve_slots"][0]["reusemodel"] == "[predict.*]"
     assert payload["chunks"][0]["solve_slots"][1]["reusemodel"] == "[predict.*]"
+
+
+def test_calibrate_payload_from_inputs_builds_dd_wsclean_predict_payload(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_wsclean_predict_input_parms(), tmp_path)
+
+    assert payload["calibration_kind"] == "dd_phase"
+    assert payload["image_based_predict"] is False
+    assert payload["wsclean_predict"] is True
+    assert payload["modeldatacolumn"] is None
+    assert payload["image_predict"]["facet_region_file"] == "predict_field_facets_ds9.reg"
+    assert payload["image_predict"]["facet_region_path"] == str(
+        tmp_path / "predict_field_facets_ds9.reg"
+    )
+    assert payload["chunks"][0]["solve_slots"][0]["reusemodel"] is None
+    assert payload["chunks"][0]["solve_slots"][1]["reusemodel"] is None
+    assert "modeldatacolumns" not in payload["chunks"][0]["solve_slots"][1]
 
 
 def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
@@ -2606,6 +2717,82 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
     assert "solve2.reusemodel=[predict.*]" in commands[1]
     assert not any(token.startswith("solve1.sourcedb=") for token in commands[1])
     assert not any(token.startswith("solve1.directions=") for token in commands[1])
+
+
+def test_run_calibrate_flow_supports_dd_wsclean_predict(
+    tmp_path,
+    fake_calibrate_shell_operation_cls,
+    fake_direct_calibrate_helpers,
+):
+    input_parms = _use_local_timechunk_dirs(_dd_wsclean_predict_input_parms(), tmp_path)
+    payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
+
+    outputs = run_flow_for_test(
+        calibrate_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+
+    assert outputs["combined_solutions"] == file_record(
+        tmp_path / "combined_fast_medium1_phases.h5parm"
+    )
+    assert (tmp_path / "predict_field_facets_ds9.reg").is_file()
+    assert (tmp_path / "wsclean_predict_chunk_1_band_1-term-0.fits").is_file()
+    assert (tmp_path / "wsclean_predict_chunk_1_band_1-model.fits").is_file()
+    assert (tmp_path / "input_chunk_0_wsclean_predict_1.ms").is_dir()
+    assert (tmp_path / "input_chunk_1_wsclean_predict_2.ms").is_dir()
+    assert fake_direct_calibrate_helpers["patch_names_from_region"] == [
+        str(tmp_path / "predict_field_facets_ds9.reg")
+    ]
+
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    assert _command_names(commands) == [
+        "wsclean",
+        "wsclean",
+        "wsclean",
+        "wsclean",
+        "wsclean",
+        "wsclean",
+        "DP3",
+        "DP3",
+        "H5parm_collector.py",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+        "H5parm_collector.py",
+        PLOT_SOLUTIONS_COMMAND_NAME,
+    ]
+    assert "-draw-model" in commands[0]
+    assert commands[1][1:] == [
+        "-j",
+        "4",
+        "-predict",
+        "-facet-regions",
+        str(tmp_path / "predict_field_facets_ds9.reg"),
+        "-apply-time-frequency-smearing",
+        "-model-column",
+        "patch1",
+        "-select-facets",
+        "patch1",
+        "-name",
+        str(tmp_path / "wsclean_predict_chunk_1_band_1"),
+        "-channel-range",
+        "0",
+        "3",
+        "-model-storage-manager",
+        "default",
+        str(tmp_path / "input_chunk_0_wsclean_predict_1.ms"),
+    ]
+
+    solve_command = commands[6]
+    assert f"msin={tmp_path / 'input_chunk_0_wsclean_predict_1.ms'}" in solve_command
+    assert "steps=[solve1,solve2]" in solve_command
+    assert "solve1.modeldatacolumns=[patch1,patch2]" in solve_command
+    assert "solve2.modeldatacolumns=[patch1,patch2]" in solve_command
+    assert f"predict.regions={tmp_path / 'predict_field_facets_ds9.reg'}" in solve_command
+    assert not any(token.startswith("predict.images=") for token in solve_command)
+    assert not any(token.startswith("solve1.sourcedb=") for token in solve_command)
+    assert not any(token.startswith("solve1.directions=") for token in solve_command)
+    assert "solve2.reusemodel=[solve1.*]" not in solve_command
 
 
 def test_run_calibrate_flow_supports_dd_screen_generation(

@@ -1,11 +1,18 @@
 """Image-based prediction preparation for calibration execution."""
 
+import math
+import os
+import shutil
+import stat
+from pathlib import Path
 from typing import Mapping
 
 from rapthor.execution.calibrate.collection import adjust_h5parm_sources
 from rapthor.execution.calibrate.commands import (
     DrawModelOptions,
+    WscleanPredictOptions,
     build_draw_model_command,
+    build_wsclean_predict_command,
 )
 from rapthor.execution.calibrate.contracts import CalibrateImagePredictPayload, CalibratePayload
 from rapthor.execution.config import ExecutionConfig
@@ -13,6 +20,9 @@ from rapthor.execution.outputs import require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel
 from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record
+
+WSCLEAN_PREDICT_MAX_BANDWIDTH_HZ = 2.0e6
+WSCLEAN_MODEL_STORAGE_MANAGER = "default"
 
 
 def _draw_model_options(
@@ -25,6 +35,25 @@ def _draw_model_options(
         name=str(image_predict["model_image_root"]),
         ra_dec=list(image_predict["model_image_ra_dec"]),
         frequency_bandwidth=list(image_predict["model_image_frequency_bandwidth"]),
+        cellsize_deg=image_predict["model_image_cellsize"],
+        imsize=list(image_predict["model_image_imsize"]),
+        num_threads=int(payload["max_threads"]),
+    )
+
+
+def _wsclean_draw_model_options(
+    payload: CalibratePayload,
+    image_predict: CalibrateImagePredictPayload,
+    *,
+    model_root: str,
+    frequency_bandwidth: list[object],
+) -> DrawModelOptions:
+    return DrawModelOptions(
+        skymodel=str(image_predict["skymodel"]),
+        num_terms=1,
+        name=model_root,
+        ra_dec=list(image_predict["model_image_ra_dec"]),
+        frequency_bandwidth=frequency_bandwidth,
         cellsize_deg=image_predict["model_image_cellsize"],
         imsize=list(image_predict["model_image_imsize"]),
         num_threads=int(payload["max_threads"]),
@@ -63,31 +92,233 @@ def _run_make_region_file(
     return require_file(str(image_predict["facet_region_path"]), "Calibration region file")
 
 
+def _patch_names_from_region(region_file: str) -> list[str]:
+    """Return facet names from a DS9 region file in WSClean column order."""
+    from lsmtool.facet import read_ds9_region_file
+
+    facet_regions = read_ds9_region_file(region_file, extra_boundary=0)
+    patch_names = [facet.name for facet in facet_regions if facet.name]
+    if not patch_names:
+        raise ValueError(f"No named facets were found in {region_file}")
+    return patch_names
+
+
+def _patch_list_token(patch_names: list[str]) -> str:
+    """Return patch names in the DP3 model-column list syntax."""
+    return "[" + ",".join(str(name) for name in patch_names) + "]"
+
+
+def _make_tree_writable(path: Path) -> None:
+    """Ensure a copied Measurement Set can accept new model-data columns."""
+    for item in [path, *path.rglob("*")]:
+        try:
+            item.chmod(item.stat().st_mode | stat.S_IWUSR)
+        except OSError:
+            pass
+
+
+def _copy_measurement_set_for_wsclean_predict(msin: str, pipeline_dir: str, index: int) -> str:
+    """Copy a source Measurement Set before WSClean adds model columns."""
+    source = Path(msin)
+    if not source.is_dir():
+        raise FileNotFoundError(f"WSClean predict input MS was not found: {source}")
+
+    destination = Path(pipeline_dir) / f"{source.stem}_wsclean_predict_{index + 1}.ms"
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(source, destination)
+    _make_tree_writable(destination)
+    return str(destination)
+
+
+def _measurement_set_channel_frequencies(msin: str) -> list[float]:
+    """Read channel centre frequencies from a Measurement Set."""
+    import casacore.tables as pt
+
+    with pt.table(f"{msin}::SPECTRAL_WINDOW", ack=False) as table:
+        frequencies = table.getcol("CHAN_FREQ")
+    if len(frequencies) == 0:
+        raise ValueError(f"SPECTRAL_WINDOW has no CHAN_FREQ rows: {msin}")
+    return [float(value) for value in frequencies[0]]
+
+
+def _frequency_chunks_for_ms(
+    msin: str,
+    fallback_frequency_bandwidth: list[object],
+    *,
+    max_bandwidth_hz: float = WSCLEAN_PREDICT_MAX_BANDWIDTH_HZ,
+) -> list[dict[str, object]]:
+    """Split MS channels into narrow WSClean model-image frequency chunks."""
+    frequencies = _measurement_set_channel_frequencies(msin)
+    if not frequencies:
+        raise ValueError(f"No channel frequencies were found in {msin}")
+
+    if len(frequencies) == 1:
+        return [
+            {
+                "frequency_bandwidth": [frequencies[0], float(fallback_frequency_bandwidth[1])],
+                "channel_range": (0, 0),
+            }
+        ]
+
+    channel_widths = [
+        abs(next_frequency - frequency)
+        for frequency, next_frequency in zip(frequencies, frequencies[1:])
+    ]
+    channel_width = max(min(channel_widths), 1.0)
+    total_bandwidth = abs(max(frequencies) - min(frequencies)) + channel_width
+    chunk_count = max(1, math.ceil(total_bandwidth / max_bandwidth_hz))
+    channels_per_chunk = math.ceil(len(frequencies) / chunk_count)
+
+    chunks = []
+    for start_channel in range(0, len(frequencies), channels_per_chunk):
+        end_channel = min(start_channel + channels_per_chunk, len(frequencies)) - 1
+        chunk_frequencies = frequencies[start_channel : end_channel + 1]
+        bandwidth = abs(max(chunk_frequencies) - min(chunk_frequencies)) + channel_width
+        chunks.append(
+            {
+                "frequency_bandwidth": [
+                    sum(chunk_frequencies) / len(chunk_frequencies),
+                    bandwidth,
+                ],
+                "channel_range": (start_channel, end_channel),
+            }
+        )
+    return chunks
+
+
+def _ensure_wsclean_model_fits(model_root: str) -> None:
+    """Expose WSClean's drawn term-0 model using the filename predict expects."""
+    root = Path(model_root)
+    term_model = root.with_name(f"{root.name}-term-0.fits")
+    predict_model = root.with_name(f"{root.name}-model.fits")
+    require_file(str(term_model), "WSClean predict model image")
+
+    if predict_model.exists() or predict_model.is_symlink():
+        predict_model.unlink()
+    try:
+        predict_model.symlink_to(term_model.name)
+    except OSError:
+        shutil.copyfile(term_model, predict_model)
+    require_file(str(predict_model), "WSClean predict model image link")
+
+
+def _run_wsclean_predict_for_chunk(
+    payload: CalibratePayload,
+    image_predict: CalibrateImagePredictPayload,
+    chunk: Mapping[str, object],
+    chunk_index: int,
+    patch_names: list[str],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> str:
+    """Draw narrow-band WSClean models and predict facets into a copied MS."""
+    pipeline_dir = str(payload["pipeline_working_dir"])
+    copied_msin = _copy_measurement_set_for_wsclean_predict(
+        str(chunk["msin"]),
+        pipeline_dir,
+        chunk_index,
+    )
+    frequency_chunks = _frequency_chunks_for_ms(
+        copied_msin,
+        list(image_predict["model_image_frequency_bandwidth"]),
+    )
+    time_frequency_smearing = bool(
+        payload.get("correctfreqsmearing") or payload.get("correcttimesmearing")
+    )
+
+    for frequency_index, frequency_chunk in enumerate(frequency_chunks):
+        model_root = os.path.join(
+            pipeline_dir,
+            f"wsclean_predict_chunk_{chunk_index + 1}_band_{frequency_index + 1}",
+        )
+        draw_command = build_draw_model_command(
+            _wsclean_draw_model_options(
+                payload,
+                image_predict,
+                model_root=model_root,
+                frequency_bandwidth=list(frequency_chunk["frequency_bandwidth"]),
+            )
+        )
+        run_external_command(
+            draw_command,
+            pipeline_dir,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        _ensure_wsclean_model_fits(model_root)
+
+        for patch_name in patch_names:
+            predict_command = build_wsclean_predict_command(
+                WscleanPredictOptions(
+                    msin=copied_msin,
+                    region_file=str(image_predict["facet_region_path"]),
+                    model_column=str(patch_name),
+                    facet=str(patch_name),
+                    model_root=model_root,
+                    channel_range=frequency_chunk["channel_range"],
+                    model_storage_manager=WSCLEAN_MODEL_STORAGE_MANAGER,
+                    num_threads=int(payload["max_threads"]),
+                    apply_time_frequency_smearing=time_frequency_smearing,
+                )
+            )
+            run_external_command(
+                predict_command,
+                pipeline_dir,
+                execution_config,
+                shell_operation_cls=shell_operation_cls,
+            )
+
+    return copied_msin
+
+
 def prepare_image_based_predict(
     payload: CalibratePayload,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> CalibratePayload:
     """Prepare model-image inputs when calibration uses image-based prediction."""
-    if not payload.get("image_based_predict"):
+    if not (payload.get("image_based_predict") or payload.get("wsclean_predict")):
         return payload
 
     image_predict = payload.get("image_predict")
     if not isinstance(image_predict, Mapping):
         raise ValueError("Image-based prediction payload is missing")
 
-    model_images = _run_draw_model(
-        payload,
-        image_predict,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
     region_file = _run_make_region_file(
         image_predict,
     )
     prepared_payload = dict(payload)
-    prepared_payload["predict_images"] = [record["path"] for record in model_images]
     prepared_payload["predict_regions"] = region_file["path"]
+
+    if payload.get("image_based_predict"):
+        model_images = _run_draw_model(
+            payload,
+            image_predict,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        prepared_payload["predict_images"] = [record["path"] for record in model_images]
+
+    if payload.get("wsclean_predict"):
+        patch_names = _patch_names_from_region(region_file["path"])
+        prepared_chunks = []
+        for chunk_index, chunk in enumerate(payload["chunks"]):
+            copied_msin = _run_wsclean_predict_for_chunk(
+                payload,
+                image_predict,
+                chunk,
+                chunk_index,
+                patch_names,
+                execution_config,
+                shell_operation_cls=shell_operation_cls,
+            )
+            prepared_chunk = dict(chunk)
+            prepared_chunk["msin"] = copied_msin
+            prepared_chunks.append(prepared_chunk)
+        prepared_payload["chunks"] = prepared_chunks
+        prepared_payload["modeldatacolumn"] = _patch_list_token(patch_names)
+
     if payload.get("normalize_h5parm"):
         normalize_record = adjust_h5parm_sources(
             file_record(str(payload["normalize_h5parm"])),

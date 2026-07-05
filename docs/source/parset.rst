@@ -209,6 +209,13 @@ The available options are described below under their respective sections.
             of view of interest, then the use of image-based prediction is not
             recommended.
 
+    use_wsclean_predict
+        Use WSClean to predict calibration model columns before DD calibration solves
+        (default = ``False``)? This is an alternative image-based prediction path for
+        large sky models. It is mutually exclusive with :term:`use_image_based_predict`;
+        if both are enabled, Rapthor keeps ``use_wsclean_predict`` and disables
+        ``use_image_based_predict``.
+
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
         default = ``qr``).
@@ -493,9 +500,9 @@ The available options are described below under their respective sections.
         .. note::
 
             It is not recommneded to turn off filtering of the sky model unless the
-            :term:`use_image_based_predict` parameter is set, as the sky model without
-            filtering can be very large (resulting in runtimes becoming very long unless
-            image-based predict is used).
+            :term:`use_image_based_predict` or :term:`use_wsclean_predict` parameter is
+            set, as the sky model without filtering can be very large (resulting in
+            runtimes becoming very long unless image-based predict is used).
 
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging

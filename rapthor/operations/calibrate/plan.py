@@ -226,6 +226,7 @@ def build_calibration_dp3_steps(
     *,
     all_channels_regular: bool,
     use_image_based_predict: bool,
+    use_wsclean_predict: bool = False,
     has_slow_gain_solve: bool = False,
     solve_steps: Optional[list[str]] = None,
     preapply_solutions: bool = False,
@@ -243,10 +244,11 @@ def build_calibration_dp3_steps(
         (bda_timebase > 0 or bda_frequencybase > 0)
         and all_channels_regular
         and not use_image_based_predict
+        and not use_wsclean_predict
     ):
         common_steps = ["avg", *common_steps, "null"]
 
-    if preapply_solutions and not use_image_based_predict:
+    if preapply_solutions and not use_image_based_predict and not use_wsclean_predict:
         common_steps = ["applycal", *common_steps]
 
     if use_image_based_predict:

@@ -109,6 +109,11 @@ use_included_skymodels = False
 # not used)
 use_image_based_predict = False
 
+# Use image-based prediction through WSClean instead of DP3 (default = False).
+# This can be faster for large sky models and creates temporary model-data columns
+# for calibration solves.
+use_wsclean_predict = False
+
 # Maximum factor by which the direction-dependent solution intervals can be
 # increased, so that fainter calibrators get longer intervals (default = 1).
 # The maximum factor by which the smoothnessconstraints are increased, such

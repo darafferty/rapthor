@@ -155,6 +155,10 @@ def _uses_image_based_predict(steps: list[str]) -> bool:
     return "predict" in steps or "applybeam" in steps
 
 
+def _uses_wsclean_predict(input_parms: Mapping[str, object]) -> bool:
+    return bool(input_parms.get("use_wsclean_predict", False))
+
+
 def _validate_applycal_inputs(
     mode: str,
     steps: list[str],
@@ -197,11 +201,13 @@ def _validate_image_predict_inputs(
     steps: list[str],
     input_parms: Mapping[str, object],
 ) -> None:
-    if not _uses_image_based_predict(steps):
+    uses_dp3_image_predict = _uses_image_based_predict(steps)
+    uses_wsclean_predict = _uses_wsclean_predict(input_parms)
+    if not (uses_dp3_image_predict or uses_wsclean_predict):
         return
     if mode != "dd":
         raise ValueError("Image-based prediction is only supported for DD calibration")
-    if "predict" not in steps or "applybeam" not in steps:
+    if uses_dp3_image_predict and ("predict" not in steps or "applybeam" not in steps):
         raise ValueError("DD image-based prediction requires predict and applybeam steps")
 
     required = [
@@ -411,7 +417,11 @@ def _image_predict_payload_from_inputs(
     pipeline_dir: str,
 ) -> Optional[CalibrateImagePredictPayload]:
     steps = parse_steps(input_parms.get("dp3_steps"))
-    if not input_parms.get("generate_screens") and not _uses_image_based_predict(steps):
+    if (
+        not input_parms.get("generate_screens")
+        and not _uses_image_based_predict(steps)
+        and not _uses_wsclean_predict(input_parms)
+    ):
         return None
 
     model_root = validate_basename(input_parms.get("model_image_root"), "model_image_root")
@@ -419,7 +429,13 @@ def _image_predict_payload_from_inputs(
     if numterms < 1:
         raise ValueError("num_spectral_terms must be at least 1")
 
-    region_filename = validate_basename(input_parms.get("facet_region_file"), "facet_region_file")
+    region_key = (
+        "predict_facet_region_file"
+        if _uses_wsclean_predict(input_parms)
+        and input_parms.get("predict_facet_region_file") is not None
+        else "facet_region_file"
+    )
+    region_filename = validate_basename(input_parms.get(region_key), region_key)
     return {
         "skymodel": optional_file_path(
             input_parms.get("calibration_skymodel_file"), "calibration_skymodel_file"
@@ -470,6 +486,7 @@ def calibrate_payload_from_inputs(
     image_based_predict = bool(input_parms.get("generate_screens")) or _uses_image_based_predict(
         dp3_steps
     )
+    wsclean_predict = _uses_wsclean_predict(input_parms)
 
     pipeline_dir = str(pipeline_working_dir)
     filenames = input_parms.get("timechunk_filename", [])
@@ -516,6 +533,7 @@ def calibrate_payload_from_inputs(
             "calibration_kind": calibration_kind,
             "pipeline_working_dir": pipeline_dir,
             "image_based_predict": True,
+            "wsclean_predict": False,
             "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
             "max_threads": int(input_parms["max_threads"]),
             "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
@@ -599,7 +617,9 @@ def calibrate_payload_from_inputs(
         raise ValueError("modeldatacolumn must be a non-empty string or None")
 
     chunks: list[CalibrateChunkPayload] = []
-    uses_modeldatacolumn = modeldatacolumn is not None and not image_based_predict
+    uses_modeldatacolumn = (
+        modeldatacolumn is not None and not image_based_predict and not wsclean_predict
+    )
     for index in range(chunk_count):
         chunk_solve_slots: list[CalibrateSolveSlotPayload] = []
         for slot in solve_slots:
@@ -614,6 +634,8 @@ def calibrate_payload_from_inputs(
             else:
                 if image_based_predict:
                     reusemodel = "[predict.*]"
+                elif wsclean_predict:
+                    slot_modeldatacolumns = modeldatacolumn
                 elif uses_modeldatacolumn and not (mode == "di" and slow_solve_count == 0):
                     slot_modeldatacolumns = modeldatacolumn
                 else:
@@ -663,6 +685,7 @@ def calibrate_payload_from_inputs(
         "modeldatacolumn": modeldatacolumn,
         "dp3_steps": str(input_parms["dp3_steps"]),
         "image_based_predict": image_based_predict,
+        "wsclean_predict": wsclean_predict,
         "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
         **_solver_payload_from_inputs(input_parms),
         "collected_h5parms": collected_h5parms,

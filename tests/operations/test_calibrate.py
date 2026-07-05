@@ -86,6 +86,7 @@ CALIBRATE_COMMON_INPUT_KEYS = {
 
 CALIBRATE_DD_INPUT_KEYS = {
     "generate_screens",
+    "use_wsclean_predict",
     "solint_fast_timestep",
     "solint_medium_timestep",
     "solint_slow_timestep",
@@ -103,6 +104,7 @@ CALIBRATE_DD_INPUT_KEYS = {
     "facet_region_width_ra",
     "facet_region_width_dec",
     "facet_region_file",
+    "predict_facet_region_file",
     "solve1_smoothnessrefdistance",
     "solve2_smoothnessrefdistance",
     "solve4_smoothnessrefdistance",
@@ -216,6 +218,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.generate_screens = False
             self.calibration_strategy = {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]}
             self._calibration_strategy_defaulted = False
+            self.use_wsclean_predict = False
             self.normalize_h5parm = None
             self.calibrate_bda_timebase = 0
             self.calibrate_bda_frequencybase = 0
@@ -323,6 +326,7 @@ class TestCalibrate:
                 is expected_use_image_based_predict
             )
             assert calibrate.parset_parms["generate_screens"] is generate_screens
+            assert calibrate.parset_parms["use_wsclean_predict"] is False
 
     @pytest.mark.parametrize(
         "antenna, stations, expected",
@@ -911,6 +915,18 @@ class TestCalibrate:
             )
             == expected_steps
         )
+
+    def test_build_calibration_dp3_steps_wsclean_predict_skips_preprocessing(self):
+        assert build_calibration_dp3_steps(
+            10,
+            10,
+            all_channels_regular=True,
+            use_image_based_predict=False,
+            use_wsclean_predict=True,
+            has_slow_gain_solve=False,
+            solve_steps=["solve1", "solve2"],
+            preapply_solutions=True,
+        ) == ["solve1", "solve2"]
 
     @pytest.mark.parametrize(
         "strategy, apply_amplitudes, expected_steps",

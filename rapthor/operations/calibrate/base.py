@@ -38,6 +38,8 @@ class Calibrate(Operation):
             raise ValueError(f"Only di and dd mode are supported, chosen: {mode}")
         super().__init__(field, index=index, name="calibrate" if mode == "dd" else "calibrate_di")
         self.mode = mode
+        self.use_image_based_predict = False
+        self.use_wsclean_predict = False
 
     def set_parset_parameters(self):
         """
@@ -53,10 +55,15 @@ class Calibrate(Operation):
             self.use_image_based_predict = (
                 self.field.generate_screens or self.field.use_image_based_predict
             )
+            self.use_wsclean_predict = bool(
+                getattr(self.field, "use_wsclean_predict", False)
+                and not self.field.generate_screens
+            )
 
             self.parset_parms.update(
                 {
                     "use_image_based_predict": self.use_image_based_predict,
+                    "use_wsclean_predict": self.use_wsclean_predict,
                     "generate_screens": self.field.generate_screens,
                 }
             )
@@ -75,6 +82,10 @@ class Calibrate(Operation):
         calibration_skymodel_file = field.calibration_skymodel_file
 
         if self.mode == "dd":
+            self.use_image_based_predict = field.generate_screens or field.use_image_based_predict
+            self.use_wsclean_predict = bool(
+                getattr(field, "use_wsclean_predict", False) and not field.generate_screens
+            )
             # --- output h5parm configuration ---
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
@@ -120,6 +131,7 @@ class Calibrate(Operation):
                 ).to_json(),
                 "data_colname": field.data_colname,
                 "modeldatacolumn": None,
+                "use_wsclean_predict": self.use_wsclean_predict,
                 "generate_screens": field.generate_screens,
                 "starttime": starttime,
                 "ntimes": ntimes,
@@ -171,6 +183,7 @@ class Calibrate(Operation):
                 ),
                 "facet_region_width_dec": facet_region_width,
                 "facet_region_file": "field_facets_ds9.reg",
+                "predict_facet_region_file": "predict_field_facets_ds9.reg",
                 # Smoothness / regularisation constraints
                 **dd_solve_slot_inputs,
                 # Applycal / DP3 control flow
@@ -624,7 +637,8 @@ class Calibrate(Operation):
             bda_timebase,
             bda_frequencybase,
             all_channels_regular=all_regular,
-            use_image_based_predict=self.field.use_image_based_predict,
+            use_image_based_predict=self.use_image_based_predict,
+            use_wsclean_predict=self.use_wsclean_predict,
             has_slow_gain_solve=has_slow_gain_solve,
             solve_steps=solve_steps,
             preapply_solutions=preapply_solutions,

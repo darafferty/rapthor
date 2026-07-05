@@ -124,6 +124,6 @@ def validate_calibrate_payload(payload: Mapping[str, object]) -> CalibratePayloa
         if not isinstance(chunk, Mapping):
             raise ValueError(f"chunks[{index}] must be a mapping")
         _validate_calibrate_chunk(chunk, index, screen=calibration_kind == "dd_screen")
-    if payload.get("image_based_predict"):
+    if payload.get("image_based_predict") or payload.get("wsclean_predict"):
         _validate_calibrate_image_predict(payload.get("image_predict"))
     return payload

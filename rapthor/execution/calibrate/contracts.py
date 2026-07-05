@@ -81,7 +81,10 @@ class CalibratePayload(TypedDict, total=False):
     modeldatacolumn: Optional[str]
     dp3_steps: str
     image_based_predict: bool
+    wsclean_predict: bool
     image_predict: Optional[CalibrateImagePredictPayload]
+    predict_regions: str
+    predict_images: list[str]
     has_slow_gain_solve: bool
     max_threads: int
     maxiter: int

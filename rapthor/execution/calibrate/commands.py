@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping, Optional
 
 from rapthor.execution.commands import (
+    append_flag,
     append_key_value,
     bracketed_list_token,
     comma_join,
@@ -178,6 +179,21 @@ class DrawModelOptions:
     num_threads: int
 
 
+@dataclass(frozen=True)
+class WscleanPredictOptions:
+    """WSClean predict options for one copied calibration MS and facet."""
+
+    msin: str
+    region_file: str
+    model_column: str
+    facet: str
+    model_root: str
+    channel_range: tuple[int, int]
+    model_storage_manager: str
+    num_threads: int
+    apply_time_frequency_smearing: bool = False
+
+
 def parse_steps(steps: object) -> list[str]:
     """Parse a DP3 steps token into individual step names."""
     return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
@@ -249,6 +265,40 @@ def build_draw_model_command(options: DrawModelOptions) -> list[str]:
         "-scale",
         str(options.cellsize_deg),
     ]
+
+
+def build_wsclean_predict_command(options: WscleanPredictOptions) -> list[str]:
+    """Build the WSClean predict command for one facet and frequency slice."""
+    command = [
+        "wsclean",
+        "-j",
+        str(options.num_threads),
+        "-predict",
+        "-facet-regions",
+        options.region_file,
+    ]
+    append_flag(
+        command,
+        "-apply-time-frequency-smearing",
+        options.apply_time_frequency_smearing,
+    )
+    command.extend(
+        [
+            "-model-column",
+            options.model_column,
+            "-select-facets",
+            options.facet,
+            "-name",
+            options.model_root,
+            "-channel-range",
+            str(options.channel_range[0]),
+            str(options.channel_range[1]),
+            "-model-storage-manager",
+            options.model_storage_manager,
+            options.msin,
+        ]
+    )
+    return command
 
 
 def _first_model_image(model_images: list[str]) -> str:

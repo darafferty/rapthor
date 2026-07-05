@@ -48,6 +48,11 @@ Done:
   base/current parsets, can create a base-ref worktree plus virtual environment
   for `master` or a chosen commit, runs each branch, records command logs and
   manifests, and reuses the strengthened product comparison checks.
+- WSClean-based DD calibration prediction is ported into the Prefect/Dask
+  calibration owner package: `use_wsclean_predict`, WSClean predict command
+  construction, generated region/readpatches support, narrow-band model drawing,
+  copied-MS model-column prediction, payload validation, defaults, docs, and
+  focused tests are in place.
 
 Known caveats:
 
@@ -78,7 +83,8 @@ Known caveats:
    `17448437b78583f1eaf38112a524b2dbe5f34bb8` (`Generate residual
    visibilities`, 2026-07-01). Port the missing behavior into the current
    Prefect/Dask owner packages, preserving payload/output-record contracts and
-   avoiding a return to CWL scripts.
+   avoiding a return to CWL scripts. Next up in this track: audit and align the
+   remaining normalization and parallel-gridding semantic gaps.
 
 3. **Lock down the branch-equivalence comparison contract.**
    Update the branch-equivalence runner/tests so expected legacy-vs-current
@@ -291,15 +297,16 @@ Port these in order:
    command-builder, payload, flow, finalizer, pipeline-flag, parset, and
    observation tests pass.
 
-5. **Port WSClean-based prediction.** Next.
-   Port `d90786e8` and `e8867abd`: add `use_wsclean_predict`, WSClean predict
-   command construction, generated region/readpatches support, narrow-band
-   model drawing for prediction, payload validation, docs/defaults/examples,
-   and tests. Keep the feature inside `rapthor/execution/calibrate/` and
-   `rapthor/execution/predict/` owner packages rather than restoring
-   `rapthor/scripts/wsclean_predict.py` as production glue.
+5. **Port WSClean-based prediction.** Implemented on 2026-07-04.
+   The `use_wsclean_predict` parset/default/docs path is ported. DD calibration
+   preparation now creates a prediction region, reads patch names from it, copies
+   each input MS before adding model columns, draws narrow-band WSClean model
+   images, runs WSClean `-predict` per patch/frequency slice, and wires the
+   resulting model columns into DP3 solve commands without restoring the legacy
+   `rapthor/scripts/wsclean_predict.py` glue. Focused command-builder, payload,
+   flow, operation, parset, and field tests pass.
 
-6. **Align normalization and parallel-gridding semantics with master.**
+6. **Align normalization and parallel-gridding semantics with master.** Next.
    The current branch already has substantial normalization and
    `parallel_gridding_threads` support, but master adds/changes behavior in
    `fc79ef7f`, `3e4eca19`, `38abdb92`, and `01a81e11`. Audit and port the

@@ -28,11 +28,19 @@ def _solve_type_label(solve_type: object) -> str:
     return SOLVE_TYPE_LABELS.get(str(solve_type), str(solve_type).replace("_", " "))
 
 
+def _uses_external_prediction(payload: CalibratePayload) -> bool:
+    """Return whether calibration model data is prepared before the solve command."""
+    return bool(payload.get("image_based_predict") or payload.get("wsclean_predict"))
+
+
 def _solve_slots_for_chunk(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
 ) -> list[Mapping[str, object]]:
     solve_slots = []
+    wsclean_model_columns = (
+        payload.get("modeldatacolumn") if payload.get("wsclean_predict") else None
+    )
     for slot in chunk["solve_slots"]:
         solve_type = str(slot["solve_type"])
         smoothnessconstraint = slot["smoothnessconstraint"]
@@ -42,41 +50,42 @@ def _solve_slots_for_chunk(
                 "smoothnessconstraint_fulljones"
             )
             antennaconstraint = antennaconstraint or "[]"
-        solve_slots.append(
-            {
-                "slot": slot["slot"],
-                "solve_type": solve_type,
-                "h5parm": slot["h5parm"],
-                "solint": slot["solint"],
-                "mode": slot["mode"],
-                "nchan": slot["nchan"],
-                "solutions_per_direction": slot["solutions_per_direction"],
-                "llssolver": payload["llssolver"],
-                "maxiter": payload["maxiter"],
-                "propagatesolutions": payload["propagatesolutions"],
-                "initialsolutions_soltab": (
-                    "[phase000,amplitude000]" if solve_type == "slow_gains" else "[phase000]"
-                ),
-                "solveralgorithm": payload["solveralgorithm"],
-                "solverlbfgs_dof": payload["solverlbfgs_dof"],
-                "solverlbfgs_iter": payload["solverlbfgs_iter"],
-                "solverlbfgs_minibatches": payload["solverlbfgs_minibatches"],
-                "initialsolutions_h5parm": slot.get("initialsolutions_h5parm"),
-                "stepsize": payload["stepsize"],
-                "stepsigma": payload["stepsigma"],
-                "tolerance": payload["tolerance"],
-                "uvlambdamin": payload["uvlambdamin"],
-                "datause": slot.get("datause"),
-                "smoothness_dd_factors": slot["smoothness_dd_factors"],
-                "smoothnessconstraint": smoothnessconstraint,
-                "smoothnessreffrequency": slot["smoothnessreffrequency"],
-                "smoothnessrefdistance": slot["smoothnessrefdistance"],
-                "antennaconstraint": antennaconstraint,
-                "keepmodel": slot["keepmodel"],
-                "reusemodel": slot["reusemodel"],
-                "modeldatacolumns": slot.get("modeldatacolumns"),
-            }
-        )
+        slot_options = {
+            "slot": slot["slot"],
+            "solve_type": solve_type,
+            "h5parm": slot["h5parm"],
+            "solint": slot["solint"],
+            "mode": slot["mode"],
+            "nchan": slot["nchan"],
+            "solutions_per_direction": slot["solutions_per_direction"],
+            "llssolver": payload["llssolver"],
+            "maxiter": payload["maxiter"],
+            "propagatesolutions": payload["propagatesolutions"],
+            "initialsolutions_soltab": (
+                "[phase000,amplitude000]" if solve_type == "slow_gains" else "[phase000]"
+            ),
+            "solveralgorithm": payload["solveralgorithm"],
+            "solverlbfgs_dof": payload["solverlbfgs_dof"],
+            "solverlbfgs_iter": payload["solverlbfgs_iter"],
+            "solverlbfgs_minibatches": payload["solverlbfgs_minibatches"],
+            "initialsolutions_h5parm": slot.get("initialsolutions_h5parm"),
+            "stepsize": payload["stepsize"],
+            "stepsigma": payload["stepsigma"],
+            "tolerance": payload["tolerance"],
+            "uvlambdamin": payload["uvlambdamin"],
+            "datause": slot.get("datause"),
+            "smoothness_dd_factors": slot["smoothness_dd_factors"],
+            "smoothnessconstraint": smoothnessconstraint,
+            "smoothnessreffrequency": slot["smoothnessreffrequency"],
+            "smoothnessrefdistance": slot["smoothnessrefdistance"],
+            "antennaconstraint": antennaconstraint,
+            "keepmodel": slot["keepmodel"],
+            "reusemodel": slot["reusemodel"],
+            "modeldatacolumns": slot.get("modeldatacolumns"),
+        }
+        if wsclean_model_columns and int(slot["slot"]) > 1:
+            slot_options["modeldatacolumns"] = str(wsclean_model_columns)
+        solve_slots.append(slot_options)
     solve_slots[0]["correctfreqsmearing"] = payload["correctfreqsmearing"]
     solve_slots[0]["correcttimesmearing"] = payload["correcttimesmearing"]
     return solve_slots
@@ -108,10 +117,12 @@ def _calibration_options_for_chunk(
         onebeamperpatch=payload.get("onebeamperpatch"),
         parallelbaselines=payload.get("parallelbaselines"),
         sagecalpredict=payload.get("sagecalpredict"),
-        sourcedb=None if payload.get("image_based_predict") else payload.get("sourcedb"),
-        directions=None if payload.get("image_based_predict") else payload.get("directions"),
+        sourcedb=None if _uses_external_prediction(payload) else payload.get("sourcedb"),
+        directions=None if _uses_external_prediction(payload) else payload.get("directions"),
         predict_regions=payload.get("predict_regions"),
-        predict_images=payload.get("predict_images"),
+        predict_images=payload.get("predict_images")
+        if payload.get("image_based_predict")
+        else None,
     )
 
 
