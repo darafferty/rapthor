@@ -84,8 +84,8 @@ Known caveats:
    visibilities`, 2026-07-01). Port the missing behavior into the current
    Prefect/Dask owner packages, preserving payload/output-record contracts and
    avoiding a return to CWL scripts. The remaining identified runtime feature
-   slices have now been ported; complete the explicit skipped/already-covered
-   audit before moving to scalability work.
+   slices have now been ported and the skipped/already-covered commit audit is
+   recorded below.
 
 3. **Lock down the branch-equivalence comparison contract.**
    Update the branch-equivalence runner/tests so expected legacy-vs-current
@@ -318,12 +318,23 @@ Port these in order:
    dependency was advanced to `176ef008534bdd929e58c57b00c0a60e3445ad68`; Rapthor
    call sites were updated for the current `read_skymodel(..., wcs=...)` API.
 
-7. **Record what is intentionally already covered or not relevant.** Next.
-   Ubuntu 24.04, libdeflate, NumPy-2-compatible CI images, and broad pytest
-   cleanup appear already covered or superseded in this branch. Document that
-   audit in this section or in `EQUIVALENCE_REPORT.md` once the feature ports
-   above are complete, so reviewers can see that master-only commits were
-   considered rather than accidentally skipped.
+7. **Record what is intentionally already covered or not relevant.** Done on 2026-07-05.
+   The remaining commits in `HEAD..origin/master` were audited against
+   `origin/master` at `17448437b78583f1eaf38112a524b2dbe5f34bb8`.
+
+   | Commit | Decision |
+   | --- | --- |
+   | `bf4608ef`, `e25b4a6a`, `eb1b6f2f`, `ebe35408`, `d90786e8`, `971a2b25`, `e8867abd`, `17448437` | Runtime/product behavior is ported in tasks 1-5 above. |
+   | `fc79ef7f`, `3e4eca19`, `38abdb92`, `01a81e11` | Normalization, parallel-gridding, and shared-facet semantics are ported in task 6. |
+   | `908f83c9` | Superseded by the migrated diagnostic module. Missing/`none` facet-region handling is covered by `compute_facet_rms_noise` tests, so the legacy script patch does not need a separate port. |
+   | `37f6fc06`, `0e163498` | Already covered by this branch's Ubuntu 24.04 CI images and libdeflate runtime/build dependencies. The dev container may remain independently tuned for local development. |
+   | `c853f707` | Covered or superseded. CI integration splitting/thread caps are represented by this branch's current CI/tox setup, `test_do_normalize` coverage exists here, and the old LSMTool pin is superseded by updating to LSMTool `176ef008534bdd929e58c57b00c0a60e3445ad68` plus current `read_skymodel(..., wcs=...)` call sites. |
+   | `f826c262`, `13e3bd8e` | Formatting-only churn. No behavioral port required; formatting is enforced by the repository ruff workflow. |
+   | `5f59fe87`, `6c58212b`, `0c422261`, `14377a61`, `4cc0b732` | Test-structure cleanup from master overlaps with this branch's ongoing test maintainability track. Do not copy it wholesale while larger Prefect/Dask-specific fixtures and helpers are still stabilizing; harvest useful patterns as part of the paused test-suite cleanup. |
+
+   No further master-only runtime feature slice is currently known. Re-run the
+   phase-only branch-equivalence scenario after these feature ports and update
+   `EQUIVALENCE_REPORT.md` with the remaining intentional differences.
 
 After each feature slice, run the focused unit tests for the touched owner
 package, then `ruff check --fix --select I`, `ruff format`, and the relevant
