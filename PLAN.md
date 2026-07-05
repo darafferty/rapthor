@@ -233,6 +233,24 @@ Initial-solution alignment status:
   confirms both branches pass previous-cycle DD fast-phase initial solutions in
   cycles 2-4 and leave phase-only medium/slow initial-solution slots unset.
 
+Possible bugs on the master branch to investigate:
+
+- Slow-gain h5parm combination can fail while the overall run still returns
+  success. In the 2026-07-04 default-like branch-vs-master reference run,
+  master logged a `combine_h5parms.py ... p1p2a2_diagonal` broadcasting error
+  during the slow-gain path, but the CWL step/run completed and the active
+  facet h5parm remained phase-only. Verify whether master should fail loudly,
+  whether `p1p2a2_diagonal` should handle the product shapes, or whether the
+  scenario needs an adapted reference contract.
+- Previous-cycle DD initial-solution h5parms are carried across calibration
+  patch/facet changes without direction compatibility checks. In the 2026-07-05
+  phase-only master reference run, cycle 1 used `[Patch_rich_*]`, cycle 2 used
+  `[Patch_0..4]`, and cycle 4 used ten sector-specific patch names, but master
+  still passed the previous fast-phase h5parm as `fast_initialsolutions_h5parm`.
+  Verify whether DP3 safely ignores/remaps unmatched directions, whether this
+  produces misleading seeds, or whether fixed `facet_layout` should be required
+  for carry-over in master-compatible scenarios.
+
 Remaining equivalence tasks:
 
 - Add a targeted branch-vs-master parset/strategy where one cycle runs
@@ -241,6 +259,27 @@ Remaining equivalence tasks:
   branch). This should check the handoff from DD phase-only products into a DI
   full-Jones solve and record whether preapply, initial-solution, h5parm, and
   image-product semantics remain aligned.
+- Define and document the carry-over solution contract for the flexible
+  `calibration_strategy` interface. The implementation should preserve
+  branch-vs-master alignment when the current strategy is equivalent to a
+  master strategy, but it should not encode master limitations as the general
+  scientific rule. Document exactly which products may carry over and why:
+  same-mode/same-solve initial solutions as optimizer seeds when compatible;
+  no silent previous-cycle preapply or imaging-time h5parm application; DD
+  direction-labelled products only when direction compatibility is proven or an
+  explicit remap/filter step is created; DI products only for DI solves and DD
+  products only for DD solves.
+- Add direction-compatibility checks for previous-cycle DD initial solutions
+  when facets or calibration patches can change between cycles. The master
+  phase-only reference run shows legacy behavior carries h5parm filenames
+  forward without checking directions: cycle 1 uses `[Patch_rich_*]`, cycle 2
+  uses `[Patch_0..4]`, and cycle 4 uses ten sector-specific patch names, yet
+  master still passes the previous fast-phase h5parm as
+  `fast_initialsolutions_h5parm`. The flexible current strategy should treat
+  this as legacy behavior, not a general scientific contract: allow carry-over
+  when a fixed `facet_layout` or matching h5parm direction set proves
+  compatibility; otherwise skip, filter, or explicitly remap the initial
+  solution.
 - Classify calibrate output-record summary differences as expected metadata
   shape differences or real product-record differences. Current records are
   leaner path-oriented records, while master includes CWL checksum/size
