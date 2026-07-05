@@ -280,6 +280,31 @@ Remaining equivalence tasks:
   when a fixed `facet_layout` or matching h5parm direction set proves
   compatibility; otherwise skip, filter, or explicitly remap the initial
   solution.
+- Add a fixed-`facet_layout` carry-over equivalence scenario. This should be the
+  safe DD carry-over case: patch/facet names and geometry are intentionally
+  stable, previous-cycle DD initial solutions remain meaningful, and
+  branch-vs-master behavior should align when the solve strategy is equivalent.
+- Add a regrouped/changing-facets carry-over scenario. Use it to document the
+  expected current-branch behavior when previous-cycle DD h5parm directions do
+  not match the current calibration patches. This may intentionally diverge
+  from master if the current branch skips, filters, or remaps incompatible
+  initial solutions.
+- Add an intended slow-gain/default-like equivalence reference. The current
+  master default-like run appears compromised by the `p1p2a2_diagonal`
+  combination failure, so either patch/adapt the master checkout for this
+  reference or explicitly mark the master behavior as a legacy bug and compare
+  against the intended amplitude-applying output contract.
+- Add a DI carry-over scenario with multiple DI cycles, including DI
+  fast/medium and full-Jones products seeding later DI solves. This should
+  validate the flexible strategy outside DD faceting.
+- Add explicit mode-boundary equivalence scenarios for DI-then-DD and DD-then-DI
+  flows. These should verify that initial solutions remain mode-specific while
+  preapply uses only the scientifically intended products.
+- Add a user-supplied parset smoke scenario for `run_branch_equivalence.py`:
+  first run `--prepare-only` to verify reported base/current parsets, strategy
+  files, and work directories, then run one documented real comparison. This
+  checks that the tooling is useful for reviewers with their own datasets, not
+  only for curated benchmark inputs.
 - Classify calibrate output-record summary differences as expected metadata
   shape differences or real product-record differences. Current records are
   leaner path-oriented records, while master includes CWL checksum/size

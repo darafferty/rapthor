@@ -53,14 +53,14 @@ region-file content, and generic product basenames.
 The current strengthened saved-reference run is:
 
 ```text
-runs/equivalence-strengthened-20260704-codex-green/equivalence-report.json
+docs/source/development/equivalence_runs/2026-07-04-saved-reference-strengthened/equivalence-report.json
 ```
 
 It was generated in the development container on 2026-07-04 14:55:09 BST and
 passed. The matching Markdown report is:
 
 ```text
-runs/equivalence-strengthened-20260704-codex-green/equivalence-report.md
+docs/source/development/equivalence_runs/2026-07-04-saved-reference-strengthened/equivalence-report.md
 ```
 
 References that encode older scientific contracts are skipped by default, but

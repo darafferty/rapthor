@@ -6,6 +6,8 @@ products remain under ignored run directories; only reports, manifests, Rapthor
 command logs, compact visual comparisons, and input parset/strategy snapshots
 are tracked here.
 
+- `2026-07-04-saved-reference-strengthened/`: compact strengthened
+  saved-reference report copied out of the raw run directory before cleanup.
 - `2026-07-04-default-like-master-ref/`: default-like four-cycle comparison
   that exposes the legacy master slow-gain/amplitude-solution behavior.
 - `2026-07-04-phase-only-master-ref/`: four-cycle phase-only comparison using
