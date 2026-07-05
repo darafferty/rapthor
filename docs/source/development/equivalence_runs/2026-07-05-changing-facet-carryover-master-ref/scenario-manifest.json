@@ -1,0 +1,19 @@
+{
+  "scenario_id": "changing-facet-carryover",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-changing-facet-carryover-master-ref/inputs/base/master_changing_facet_carryover.parset",
+  "current_parset": "/app/docs/source/development/equivalence_runs/2026-07-05-changing-facet-carryover-master-ref/inputs/current/current_changing_facet_carryover.parset",
+  "base_work_dir": "/tmp/rbe-m-cf-v3-w",
+  "current_work_dir": "/tmp/rbe-c-cf-v3-w",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/master_changing_facet_carryover.parset",
+      "strategy": "inputs/base/master_changing_facet_carryover_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/current_changing_facet_carryover.parset",
+      "strategy": "inputs/current/current_changing_facet_carryover_strategy.py"
+    }
+  }
+}

@@ -362,6 +362,48 @@ flexible-strategy behavior when the facet layout is fixed. The next DD
 carry-over scenario should use changing/regrouped facets and should verify that
 the current branch refuses unsafe previous-cycle DD seeds.
 
+## Branch-Vs-Master Changing-Facet Carry-Over Run
+
+A two-cycle DD phase-only branch comparison with no fixed `facet_layout` was
+run on 2026-07-05. Cycle 1 uses five DD calibration directions. Cycle 2 changes
+to three directions and is calibration-only, isolating whether previous-cycle
+DD initial solutions are reused safely. The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-changing-facet-carryover-master-ref/
+```
+
+Both branch executions completed successfully. Strict comparison failed, but
+the run confirmed the intended current-branch guard for regrouped/changing DD
+directions.
+
+| Scenario | Base ref | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Visuals | Warnings | Failures |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `changing-facet-carryover` | `master` | 0 | 0 | fail | 4 | 4 | 7 | 6 | 1 | 4 | 16 | 1 | 7 | 2 | 10 |
+
+Key findings:
+
+- Both branches run `calibrate_1`, `image_1`, `mosaic_1`, then
+  calibration-only `calibrate_2`.
+- Cycle 2 uses three directions: `Patch_2`, `Patch_3`, and `Patch_4`.
+- In `calibrate_2`, master still passes the cycle-1
+  `fast_initialsolutions_h5parm` even though the cycle-1 h5parm contains extra
+  directions `Patch_0` and `Patch_1`.
+- In `calibrate_2`, the current branch sets all DD initial-solution slots to
+  `None` and logs that the previous fast and medium h5parms were skipped
+  because their directions do not match the current calibration patches.
+- Cycle-1 image diagnostics are effectively identical: source counts and
+  theoretical RMS match, and displayed diagnostic deltas round to `0.000%`.
+
+Interpretation:
+
+This run supports the current branch's flexible calibration contract. Previous
+DD solutions can seed later DD solves only when direction compatibility is
+proven. Fixed layouts allow compatible carry-over; regrouped/changing
+directions correctly block previous-cycle DD seeds. Master-compatible
+equivalence reports should label this as an intentional current-branch safety
+improvement rather than a product regression.
+
 ## Historical Passing Scenarios
 
 The required local saved-reference gate passed for:

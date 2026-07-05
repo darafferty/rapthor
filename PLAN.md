@@ -261,6 +261,14 @@ Initial-solution alignment status:
   compatible fast and medium phase seeds because the fixed facet layout proves
   DD direction compatibility. Strict comparison still fails, as expected for
   this intentional flexible-strategy difference.
+- The changing-facet carry-over scenario is tracked under
+  `docs/source/development/equivalence_runs/2026-07-05-changing-facet-carryover-master-ref/`.
+  Both branches return `0` and run `calibrate_2` after cycle 2 changes from
+  five DD directions to three. Master still passes the previous fast-phase
+  seed, while the current branch skips all previous-cycle DD initial-solution
+  h5parms and logs the direction mismatch. Strict comparison still fails, but
+  the safety behavior is the intended current-branch flexible-strategy
+  contract.
 
 Possible bugs on the master branch to investigate:
 
@@ -276,17 +284,19 @@ Possible bugs on the master branch to investigate:
   phase-only master reference run, cycle 1 used `[Patch_rich_*]`, cycle 2 used
   `[Patch_0..4]`, and cycle 4 used ten sector-specific patch names, but master
   still passed the previous fast-phase h5parm as `fast_initialsolutions_h5parm`.
-  Verify whether DP3 safely ignores/remaps unmatched directions, whether this
-  produces misleading seeds, or whether fixed `facet_layout` should be required
-  for carry-over in master-compatible scenarios.
+  The 2026-07-05 changing-facet carry-over run reproduced the issue in a
+  tighter two-cycle case: cycle 2 used only `Patch_2..4`, but master still
+  passed the previous five-direction fast h5parm. Verify whether DP3 safely
+  ignores/remaps unmatched directions or whether this is a master bug; the
+  current branch now rejects this unsafe carry-over unless direction
+  compatibility is proven.
 
 Remaining equivalence tasks, in order:
 
 1. **Continue the essential branch-vs-master scenario matrix.**
    Completed: phase-only DD followed by DI full-Jones, and fixed-`facet_layout`
-   DD carry-over. Next, run regrouped/changing-facets DD carry-over to verify
-   unsafe previous-cycle DD seeds are rejected, then intended
-   slow-gain/default-like reference, DI multi-cycle carry-over, and
+   DD carry-over, and regrouped/changing-facets DD carry-over. Next, run the
+   intended slow-gain/default-like reference, DI multi-cycle carry-over, and
    DI-then-DD/DD-then-DI mode-boundary flows. For each scenario, save compact
    reports, inputs, manifests, logs, diagnostics, and visual comparisons under
    `docs/source/development/equivalence_runs/`.

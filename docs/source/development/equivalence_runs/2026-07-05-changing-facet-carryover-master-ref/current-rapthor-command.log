@@ -1,0 +1,90 @@
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-8w48p3j2/current_changing_facet_carryover.materialized.parset[0m
+INFO - rapthor:runtime - [32mNo Prefect API configured; Prefect may start a temporary local API/server.[0m
+INFO - rapthor:runtime - [32mUsing synchronous Prefect task execution.[0m
+INFO - rapthor:runtime - [32mIgnoring any Prefect profile API URL for this run.[0m
+INFO - rapthor:runtime - [32mUsing isolated temporary Prefect home for this run.[0m
+17:34:51.890 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-8w48p3j2/current_changing_facet_carryover.materialized.parset[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor:parset - [32mRapthor version 2.2.dev479+gfa2f6767e.d20260703[0m
+INFO - rapthor:parset - [32mExecution backend is Prefect/Dask[0m
+INFO - rapthor:parset - [32mWorking directory is /tmp/rbe-c-cf-v3-w[0m
+INFO - rapthor:parset - [32mWorking on 1 input MS file[0m
+INFO - rapthor:parset - [32m=========================================================[0m
+INFO - rapthor - [32mSetting log level to INFO[0m
+INFO - rapthor:field - [32mUsing 1 imaging sector[0m
+INFO - rapthor:strategy - [32mUsing '/app/docs/source/development/equivalence_runs/2026-07-05-changing-facet-carryover-master-ref/inputs/current/current_changing_facet_carryover_strategy.py' processing strategy[0m
+INFO - rapthor - [32mStarting self calibration with a data fraction of 1.00[0m
+INFO - rapthor:field - [32mPlotting field overview with initial sky-model coverage...[0m
+INFO - rapthor:field - [32mAnalyzing sky model...[0m
+INFO - rapthor:field - [32mIdentifying sources...[0m
+INFO - rapthor:field - [32mUsing a target flux density of 0.60 Jy for grouping[0m
+INFO - rapthor:field - [32mUsing 5 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+INFO - rapthor:calibrate_1 - [32m<-- Operation calibrate_1 started[0m
+17:34:55.978 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/pipelines/calibrate_1[0m
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/pipelines/calibrate_1[0m
+/usr/local/lib/python3.10/dist-packages/tables/atom.py:373: FlavorWarning: support for unicode type is very limited, and only works for strings that can be cast as ascii
+  warnings.warn("support for unicode type is very limited, and "
+INFO - rapthor:calibrate_1 - [32m--> Operation calibrate_1 completed[0m
+INFO - rapthor:calibrate_1 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor - [32mPublished 12 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-c-cf-v3-w/logs/commands.jsonl[0m
+INFO - rapthor:image_1 - [32m<-- Operation image_1 started[0m
+INFO - rapthor:image:masking - [32mInput image not given. Making empty image...[0m
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
+  'HZ' -> 'Hz'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
+  'HZ' -> 'Hz'. [astropy.wcs.wcs]
+INFO - rapthor:calculate_image_diagnostics - [32mFewer than 5 sources found in the input image that meet the photometry cuts (major axis < 10" and located inside the FWHM of the primary beam). Skipping the photometry check...[0m
+INFO - rapthor:calculate_image_diagnostics - [32mSkipping astrometry check since no comparison skymodel is provided, and internet access is not permitted[0m
+INFO - rapthor - [32mPublished 1 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/pipelines/image_1[0m
+INFO - rapthor - [32mPublished 9 Rapthor FITS preview artifacts from /tmp/rbe-c-cf-v3-w/pipelines/image_1[0m
+INFO - rapthor:image_1 - [32m--> Operation image_1 completed[0m
+INFO - rapthor:image_1 - [32mDiagnostics for sector_1:[0m
+INFO - rapthor:image_1 - [32m    Min RMS noise = 18398.0 uJy/beam (non-PB-corrected), 18854.2 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_1 - [32m    Median RMS noise = 39967.3 uJy/beam (non-PB-corrected), 40774.4 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Dynamic range = 247.82 (non-PB-corrected), 241.82 (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 10[0m
+INFO - rapthor:image_1 - [32m    Reference frequency = 134.4 MHz[0m
+INFO - rapthor:image_1 - [32m    Beam = 44.5" x 43.1", PA = 170.6 deg[0m
+INFO - rapthor:image_1 - [32m    Fraction of unflagged data = 1.00[0m
+INFO - rapthor:image_1 - [32m    LOFAR/TGSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR/NVSS flux ratio = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
+INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
+INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-c-cf-v3-w/logs/commands.jsonl[0m
+INFO - rapthor:mosaic_1 - [32m<-- Operation mosaic_1 started[0m
+INFO - rapthor:mosaic_1 - [32m--> Operation mosaic_1 completed[0m
+INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/rbe-c-cf-v3-w/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-c-cf-v3-w/logs/commands.jsonl[0m
+INFO - rapthor - [32mStarting final cycle with a data fraction of 1.00[0m
+INFO - rapthor:field - [32mUpdating sky model...[0m
+INFO - rapthor:field - [32mAnalyzing sky model...[0m
+INFO - rapthor:field - [32mUsing a target flux density of 2.85 Jy for grouping (raised from 0.60 Jy to ensure that the target number of 3 directions is not exceeded)[0m
+INFO - rapthor:field - [32mUsing 3 calibration patches[0m
+INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
+INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
+WARNING - rapthor:calibrate_2 - [33mSkipping previous-cycle DD fast-phase initial-solution h5parm '/tmp/rbe-c-cf-v3-w/solutions/calibrate_1/field-solutions-fast-phase.h5' for calibration cycle 2 because h5parm directions do not match current calibration patches (missing: none; extra: [Patch_0], [Patch_1])[0m
+WARNING - rapthor:calibrate_2 - [33mSkipping previous-cycle DD medium-phase initial-solution h5parm '/tmp/rbe-c-cf-v3-w/solutions/calibrate_1/field-solutions-medium1-phase.h5' for calibration cycle 2 because h5parm directions do not match current calibration patches (missing: none; extra: [Patch_0], [Patch_1])[0m
+INFO - rapthor:calibrate_2 - [32m<-- Operation calibrate_2 started[0m
+INFO - rapthor - [32mPublished 3 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/pipelines/calibrate_2[0m
+INFO - rapthor - [32mPublished 3 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/pipelines/calibrate_2[0m
+/usr/local/lib/python3.10/dist-packages/tables/atom.py:373: FlavorWarning: support for unicode type is very limited, and only works for strings that can be cast as ascii
+  warnings.warn("support for unicode type is very limited, and "
+INFO - rapthor:calibrate_2 - [32m--> Operation calibrate_2 completed[0m
+INFO - rapthor:calibrate_2 - [32mFraction of solutions that are flagged = 0.00[0m
+INFO - rapthor - [32mPublished 20 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/rbe-c-cf-v3-w/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-c-cf-v3-w/logs/commands.jsonl[0m
+INFO - rapthor - [32mPublished 20 Rapthor plot artifacts from /tmp/rbe-c-cf-v3-w/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/rbe-c-cf-v3-w/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/rbe-c-cf-v3-w/logs/commands.jsonl[0m
+INFO - rapthor - [32mRapthor has finished :)[0m

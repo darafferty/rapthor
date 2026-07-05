@@ -27,3 +27,8 @@ are tracked here.
   phase-only carry-over scenario; cycle 2 is calibration-only so the report
   isolates previous-cycle solution seeding. Master carries only the fast-phase
   seed, while the current branch carries compatible fast and medium seeds.
+- `2026-07-05-changing-facet-carryover-master-ref/`: two-cycle DD phase-only
+  carry-over scenario with no fixed facet layout and a five-to-three direction
+  change in cycle 2. Master carries the previous fast-phase seed despite the
+  changed directions, while the current branch skips previous DD seeds and logs
+  the direction mismatch.
