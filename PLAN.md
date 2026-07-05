@@ -347,6 +347,13 @@ Remaining equivalence tasks, in order:
    reports for phase-only DD, DD plus DI full-Jones, fixed-facet DD carry-over,
    changing-facet DD carry-over, slow-gain/default-like behavior, DI
    multi-cycle carry-over, and both DI/DD mode-boundary directions.
+   `scripts/dev/run_branch_equivalence.py` now supports
+   `--repeatability-repetitions N`, which creates generated per-repetition
+   parsets with unique clean work directories, writes pair reports, and writes
+   aggregate `repeatability-summary.json` and `repeatability-summary.md` files.
+   Next, run this mode with `--repeatability-repetitions 3` for the chosen
+   reviewer scenario and copy the compact summary plus any informative per-pair
+   reports under `docs/source/development/equivalence_runs/`.
    Set up a repeatability run directory that contains frozen input snapshots
    and unique clean work directories for each repetition, for example
    `runs/repeatability-<scenario>-<date>/{master,current}/rep-01..03`. Do not

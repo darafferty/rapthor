@@ -6,6 +6,13 @@ products remain under ignored run directories; only reports, manifests, Rapthor
 command logs, compact visual comparisons, and input parset/strategy snapshots
 are tracked here.
 
+Use `scripts/dev/run_branch_equivalence.py --repeatability-repetitions 3` when
+deciding whether branch differences are scientifically meaningful. This writes
+unique generated parsets and work directories for each base/current repetition,
+then compares all same-branch pairs and all base-current pairs. Track the
+compact `repeatability-summary.*` files and selected per-pair reports here; keep
+raw FITS, MS, h5parm, and full log products in ignored run directories.
+
 - `2026-07-04-saved-reference-strengthened/`: compact strengthened
   saved-reference report copied out of the raw run directory before cleanup.
 - `2026-07-04-default-like-master-ref/`: default-like four-cycle comparison

@@ -87,6 +87,68 @@ def test_prepare_branch_input_requires_dir_working(tmp_path):
         )
 
 
+def test_prepare_repeatability_branch_inputs_write_unique_working_parsets(tmp_path):
+    module = load_branch_equivalence_script()
+    repo_root = tmp_path / "checkout"
+    repo_root.mkdir()
+    strategy = tmp_path / "inputs" / "strategy.py"
+    strategy.parent.mkdir()
+    strategy.write_text("strategy_steps = []\n", encoding="utf-8")
+    parset = strategy.parent / "base.parset"
+    _write_parset(parset, "stale-work")
+
+    prepared = module._prepare_repeatability_branch_inputs(
+        side="base",
+        ref="master",
+        repo_root=repo_root,
+        parset_path=parset,
+        run_root=tmp_path / "repeatability",
+        work_root=tmp_path / "repeatability" / "work",
+        repetitions=3,
+    )
+
+    assert sorted(prepared) == [1, 2, 3]
+    for rep_index, run in prepared.items():
+        rep_label = f"rep-{rep_index:02d}"
+        assert run.parset_path == (
+            tmp_path / "repeatability" / "inputs" / "base" / rep_label / "base.parset"
+        )
+        assert run.work_dir == tmp_path / "repeatability" / "work" / "base" / rep_label
+        parser = module._read_parset(run.parset_path)
+        assert parser.get("global", "dir_working") == str(run.work_dir)
+        assert parser.get("global", "strategy") == str(strategy.resolve())
+
+
+def test_prepare_repeatability_branch_inputs_requires_global_section(tmp_path):
+    module = load_branch_equivalence_script()
+    parset = tmp_path / "broken.parset"
+    parset.write_text("[imaging]\nimage_size = 256\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="required \\[global\\]"):
+        module._prepare_repeatability_branch_inputs(
+            side="base",
+            ref="master",
+            repo_root=tmp_path,
+            parset_path=parset,
+            run_root=tmp_path / "repeatability",
+            work_root=tmp_path / "repeatability" / "work",
+            repetitions=2,
+        )
+
+
+def test_repeatability_pairs_cover_same_branch_and_all_cross_branch_pairs():
+    module = load_branch_equivalence_script()
+
+    pairs = module._repeatability_pairs(3)
+
+    assert len(pairs) == 15
+    assert [pair.group for pair in pairs].count("base-base") == 3
+    assert [pair.group for pair in pairs].count("current-current") == 3
+    assert [pair.group for pair in pairs].count("base-current") == 9
+    assert pairs[0].pair_id == "base-rep-01_vs_base-rep-02"
+    assert pairs[-1].pair_id == "base-rep-03_vs_current-rep-03"
+
+
 def test_rapthor_command_for_repo_uses_legacy_script_when_cli_module_is_absent(tmp_path):
     module = load_branch_equivalence_script()
     legacy_script = tmp_path / "bin" / "rapthor"
@@ -515,3 +577,38 @@ def test_prepare_only_writes_reports_without_running_branches(tmp_path):
         "parset": "inputs/current/current.parset",
         "strategy": "inputs/current/strategy.py",
     }
+
+
+def test_repeatability_prepare_only_writes_summary_and_generated_inputs(tmp_path):
+    module = load_branch_equivalence_script()
+    base_parset = tmp_path / "base.parset"
+    current_parset = tmp_path / "current.parset"
+    _write_parset(base_parset, tmp_path / "base-work")
+    _write_parset(current_parset, tmp_path / "current-work")
+    (tmp_path / "strategy.py").write_text("strategy_steps = []\n", encoding="utf-8")
+    run_root = tmp_path / "repeatability-run"
+
+    args = module.parse_args(
+        [
+            "--base-parset",
+            str(base_parset),
+            "--current-parset",
+            str(current_parset),
+            "--run-root",
+            str(run_root),
+            "--prepare-only",
+            "--repeatability-repetitions",
+            "2",
+        ]
+    )
+
+    assert module.run(args) == 0
+    summary = json.loads((run_root / "repeatability-summary.json").read_text())
+    assert (run_root / "repeatability-summary.md").is_file()
+    assert summary["repetitions"] == 2
+    assert len(summary["planned_pairs"]) == 6
+    assert summary["pair_summaries"] == []
+    assert summary["runs"]["base"]["rep-01"]["work_dir"] == str(
+        run_root / "work" / "base" / "rep-01"
+    )
+    assert (run_root / "inputs" / "current" / "rep-02" / "current.parset").is_file()

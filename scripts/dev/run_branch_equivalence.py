@@ -81,6 +81,32 @@ class PreparedRun:
     input_snapshot: dict[str, str] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class RepeatabilityPair:
+    """One comparison pair in a branch repeatability matrix."""
+
+    group: str
+    reference_side: str
+    reference_rep: int
+    current_side: str
+    current_rep: int
+
+    @property
+    def pair_id(self) -> str:
+        return (
+            f"{self.reference_side}-{_repeatability_rep_label(self.reference_rep)}"
+            f"_vs_{self.current_side}-{_repeatability_rep_label(self.current_rep)}"
+        )
+
+    @property
+    def reference_label(self) -> str:
+        return f"{self.reference_side}/{_repeatability_rep_label(self.reference_rep)}"
+
+    @property
+    def current_label(self) -> str:
+        return f"{self.current_side}/{_repeatability_rep_label(self.current_rep)}"
+
+
 def _repo_root() -> Path:
     candidates = [Path.cwd(), Path(__file__).resolve().parents[2]]
     for candidate in candidates:
@@ -111,6 +137,32 @@ def _read_parset(path: Path) -> configparser.ConfigParser:
     with path.open(encoding="utf-8") as handle:
         parser.read_file(handle)
     return parser
+
+
+def _write_parset_with_work_dir(
+    *,
+    source_parset: Path,
+    output_parset: Path,
+    work_dir: Path,
+    repo_root: Path,
+) -> Path:
+    """Write a repeatability parset copy with a unique clean work directory."""
+    parser = _read_parset(source_parset)
+    if not parser.has_section("global"):
+        raise ValueError(f"{source_parset} is missing required [global] section")
+    parser.set("global", "dir_working", str(work_dir))
+
+    # Strategy files are executed directly with runpy, so materialize a found
+    # relative strategy path when copying the parset away from its original
+    # location. Other data paths are left exactly as supplied by the scenario.
+    strategy_path = _strategy_path_from_parset(source_parset, repo_root=repo_root)
+    if strategy_path is not None:
+        parser.set("global", "strategy", str(strategy_path))
+
+    output_parset.parent.mkdir(parents=True, exist_ok=True)
+    with output_parset.open("w", encoding="utf-8") as handle:
+        parser.write(handle)
+    return output_parset
 
 
 def _work_dir_from_parset(
@@ -198,6 +250,85 @@ def prepare_branch_input(
             override=work_dir_override,
         ),
     )
+
+
+def _repeatability_rep_label(rep_index: int) -> str:
+    if rep_index < 1:
+        raise ValueError(f"Repetition index must be >= 1, got {rep_index}")
+    return f"rep-{rep_index:02d}"
+
+
+def _prepare_repeatability_branch_inputs(
+    *,
+    side: str,
+    ref: str,
+    repo_root: Path,
+    parset_path: Path,
+    run_root: Path,
+    work_root: Path,
+    repetitions: int,
+) -> dict[int, PreparedRun]:
+    """Create per-repetition parset copies with unique work directories."""
+    if repetitions < 2:
+        raise ValueError("Repeatability mode requires at least two repetitions")
+
+    source_parset = _resolve_existing_path(
+        parset_path,
+        base_dir=_repo_root(),
+        description=f"{side} parset",
+    )
+    prepared: dict[int, PreparedRun] = {}
+    for rep_index in range(1, repetitions + 1):
+        rep_label = _repeatability_rep_label(rep_index)
+        work_dir = (work_root / side / rep_label).resolve()
+        generated_parset = run_root / "inputs" / side / rep_label / source_parset.name
+        _write_parset_with_work_dir(
+            source_parset=source_parset,
+            output_parset=generated_parset,
+            work_dir=work_dir,
+            repo_root=repo_root,
+        )
+        prepared[rep_index] = prepare_branch_input(
+            side=side,
+            ref=ref,
+            repo_root=repo_root,
+            parset_path=generated_parset,
+            run_dir=run_root / side / rep_label,
+        )
+    return prepared
+
+
+def _repeatability_pairs(repetitions: int) -> list[RepeatabilityPair]:
+    """Return same-branch and all cross-branch comparison pairs."""
+    if repetitions < 2:
+        raise ValueError("Repeatability comparisons require at least two repetitions")
+
+    pairs: list[RepeatabilityPair] = []
+    for side in ("base", "current"):
+        for reference_rep in range(1, repetitions + 1):
+            for current_rep in range(reference_rep + 1, repetitions + 1):
+                pairs.append(
+                    RepeatabilityPair(
+                        group=f"{side}-{side}",
+                        reference_side=side,
+                        reference_rep=reference_rep,
+                        current_side=side,
+                        current_rep=current_rep,
+                    )
+                )
+
+    for reference_rep in range(1, repetitions + 1):
+        for current_rep in range(1, repetitions + 1):
+            pairs.append(
+                RepeatabilityPair(
+                    group="base-current",
+                    reference_side="base",
+                    reference_rep=reference_rep,
+                    current_side="current",
+                    current_rep=current_rep,
+                )
+            )
+    return pairs
 
 
 def _run_rapthor_from_repo(
@@ -755,16 +886,88 @@ def _run_as_dict(prepared: PreparedRun) -> dict[str, Any]:
     return data
 
 
+def _comparison_as_dict(comparison: saved_equivalence.ComparisonResult) -> dict[str, Any]:
+    return {
+        "passed": comparison.passed,
+        "metrics": comparison.metrics,
+        "product_statistics": comparison.product_statistics,
+        "failures": comparison.failures,
+        "warnings": comparison.warnings,
+    }
+
+
 def _format_percent(value: Any) -> str:
     if value is None:
         return "n/a"
     return f"{float(value) * 100:.3f}%"
 
 
+def _max_finite_metric(metrics: list[dict[str, Any]], key: str) -> float | None:
+    values = []
+    for metric in metrics:
+        value = metric.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        number = float(value)
+        if math.isfinite(number):
+            values.append(number)
+    return max(values) if values else None
+
+
+def _max_abs_finite_metric(metrics: list[dict[str, Any]], key: str) -> float | None:
+    values = []
+    for metric in metrics:
+        value = metric.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        number = float(value)
+        if math.isfinite(number):
+            values.append(abs(number))
+    return max(values) if values else None
+
+
+def _repeatability_pair_summary(
+    *,
+    pair: RepeatabilityPair,
+    comparison: saved_equivalence.ComparisonResult,
+    report_path: Path,
+    run_root: Path,
+) -> dict[str, Any]:
+    image_metrics = [
+        metric
+        for metric in comparison.product_statistics.get("fits", [])
+        if metric.get("kind") == "image"
+    ]
+    diagnostics = comparison.product_statistics.get("diagnostics", [])
+    return {
+        "pair_id": pair.pair_id,
+        "group": pair.group,
+        "reference": pair.reference_label,
+        "current": pair.current_label,
+        "passed": comparison.passed,
+        "failure_count": len(comparison.failures),
+        "warning_count": len(comparison.warnings),
+        "metrics": comparison.metrics,
+        "max_abs_delta": _max_finite_metric(image_metrics, "max_abs_delta"),
+        "p99_abs_delta": _max_finite_metric(image_metrics, "p99_abs_delta"),
+        "residual_rms": _max_finite_metric(image_metrics, "residual_rms"),
+        "residual_rms_over_reference_rms": _max_finite_metric(
+            image_metrics,
+            "residual_rms_over_reference_rms",
+        ),
+        "max_abs_diagnostic_relative_delta": _max_abs_finite_metric(
+            diagnostics,
+            "relative_delta",
+        ),
+        "report": report_path.relative_to(run_root).as_posix(),
+    }
+
+
 def _render_markdown_report(report: dict[str, Any]) -> str:
     comparison = report["comparison"]
     metrics = comparison["metrics"]
     status = "pass" if comparison["passed"] else "fail"
+    pair = report.get("repeatability_pair")
     lines = [
         "# Rapthor Branch Equivalence",
         "",
@@ -773,21 +976,46 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
         "",
         "## Branch Runs",
         "",
-        "| Side | Ref | Return Code | Parset | Work Dir | Log | Input Snapshot |",
-        "| --- | --- | ---: | --- | --- | --- | --- |",
     ]
+    if pair:
+        lines.extend(
+            [
+                f"Repeatability pair: `{pair['pair_id']}` "
+                f"({pair['reference']} -> {pair['current']})",
+                "",
+                "| Role | Repetition | Ref | Return Code | Parset | Work Dir | Log |",
+                "| --- | --- | --- | ---: | --- | --- | --- |",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "| Side | Ref | Return Code | Parset | Work Dir | Log | Input Snapshot |",
+                "| --- | --- | ---: | --- | --- | --- | --- |",
+            ]
+        )
     for side in ("base", "current"):
         run = report[side]
-        snapshot = run.get("input_snapshot") or {}
-        snapshot_text = ", ".join(f"{key}: `{value}`" for key, value in snapshot.items())
-        if not snapshot_text:
-            snapshot_text = "n/a"
-        lines.append(
-            "| "
-            f"{side} | `{run['ref']}` | {run.get('returncode')} | "
-            f"`{run['parset_path']}` | `{run['work_dir']}` | "
-            f"`{run.get('log_path')}` | {snapshot_text} |"
-        )
+        if pair:
+            role = "reference" if side == "base" else "candidate"
+            repetition = pair["reference"] if side == "base" else pair["current"]
+            lines.append(
+                "| "
+                f"{role} | `{repetition}` | `{run['ref']}` | {run.get('returncode')} | "
+                f"`{run['parset_path']}` | `{run['work_dir']}` | "
+                f"`{run.get('log_path')}` |"
+            )
+        else:
+            snapshot = run.get("input_snapshot") or {}
+            snapshot_text = ", ".join(f"{key}: `{value}`" for key, value in snapshot.items())
+            if not snapshot_text:
+                snapshot_text = "n/a"
+            lines.append(
+                "| "
+                f"{side} | `{run['ref']}` | {run.get('returncode')} | "
+                f"`{run['parset_path']}` | `{run['work_dir']}` | "
+                f"`{run.get('log_path')}` | {snapshot_text} |"
+            )
 
     lines.extend(
         [
@@ -902,13 +1130,7 @@ def _write_reports(
         "run_root": str(run_root),
         "base": _run_as_dict(base),
         "current": _run_as_dict(current),
-        "comparison": {
-            "passed": comparison.passed,
-            "metrics": comparison.metrics,
-            "product_statistics": comparison.product_statistics,
-            "failures": comparison.failures,
-            "warnings": comparison.warnings,
-        },
+        "comparison": _comparison_as_dict(comparison),
     }
     (run_root / "branch-equivalence-report.json").write_text(
         json.dumps(report, indent=2, default=saved_equivalence._json_default),
@@ -933,6 +1155,165 @@ def _write_reports(
     }
     (run_root / "scenario-manifest.json").write_text(
         json.dumps(scenario_manifest, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _write_pair_report(
+    *,
+    pair_dir: Path,
+    scenario_id: str,
+    pair: RepeatabilityPair,
+    reference: PreparedRun,
+    current: PreparedRun,
+    comparison: saved_equivalence.ComparisonResult,
+) -> Path:
+    pair_dir.mkdir(parents=True, exist_ok=True)
+    report = {
+        "scenario_id": scenario_id,
+        "run_root": str(pair_dir),
+        "repeatability_pair": {
+            **asdict(pair),
+            "pair_id": pair.pair_id,
+            "reference": pair.reference_label,
+            "current": pair.current_label,
+        },
+        "base": _run_as_dict(reference),
+        "current": _run_as_dict(current),
+        "comparison": _comparison_as_dict(comparison),
+    }
+    json_path = pair_dir / "branch-equivalence-report.json"
+    json_path.write_text(
+        json.dumps(report, indent=2, default=saved_equivalence._json_default),
+        encoding="utf-8",
+    )
+    (pair_dir / "branch-equivalence-report.md").write_text(
+        _render_markdown_report(report),
+        encoding="utf-8",
+    )
+    return json_path
+
+
+def _repeatability_runs_payload(
+    runs_by_side: dict[str, dict[int, PreparedRun]],
+) -> dict[str, dict[str, dict[str, Any]]]:
+    return {
+        side: {
+            _repeatability_rep_label(rep_index): _run_as_dict(prepared)
+            for rep_index, prepared in sorted(runs.items())
+        }
+        for side, runs in runs_by_side.items()
+    }
+
+
+def _render_repeatability_summary(report: dict[str, Any]) -> str:
+    lines = [
+        "# Rapthor Branch Repeatability",
+        "",
+        f"Scenario: `{report['scenario_id']}`",
+        f"Run root: `{report['run_root']}`",
+        f"Repetitions per side: {report['repetitions']}",
+        "",
+        "## Branch Runs",
+        "",
+        "| Side | Repetition | Ref | Return Code | Parset | Work Dir | Log |",
+        "| --- | --- | --- | ---: | --- | --- | --- |",
+    ]
+    for side, runs in report["runs"].items():
+        for rep_label, run in runs.items():
+            lines.append(
+                "| "
+                f"{side} | `{rep_label}` | `{run['ref']}` | {run.get('returncode')} | "
+                f"`{run['parset_path']}` | `{run['work_dir']}` | "
+                f"`{run.get('log_path')}` |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Pair Summary",
+            "",
+            "| Pair | Group | Result | Failures | Warnings | FITS | H5 | Text | "
+            "Diagnostics | Max Abs Delta | P99 Abs Delta | Residual RMS | "
+            "Diagnostic Rel Delta | Report |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | "
+            "---: | ---: | ---: | ---: | --- |",
+        ]
+    )
+    pair_summaries = report["pair_summaries"]
+    if not pair_summaries:
+        lines.append(
+            "| n/a | n/a | not run | 0 | 0 | 0 | 0 | 0 | 0 | n/a | n/a | n/a | n/a | n/a |"
+        )
+    for row in pair_summaries:
+        metrics = row.get("metrics", {})
+        status = "pass" if row["passed"] else "fail"
+        lines.append(
+            "| "
+            f"`{row['pair_id']}` | `{row['group']}` | {status} | "
+            f"{row['failure_count']} | {row['warning_count']} | "
+            f"{metrics.get('fits', 0)} | {metrics.get('h5', 0)} | "
+            f"{metrics.get('text', 0)} | {metrics.get('diagnostics', 0)} | "
+            f"{saved_equivalence._format_metric(row.get('max_abs_delta'))} | "
+            f"{saved_equivalence._format_metric(row.get('p99_abs_delta'))} | "
+            f"{saved_equivalence._format_metric(row.get('residual_rms'))} | "
+            f"{_format_percent(row.get('max_abs_diagnostic_relative_delta'))} | "
+            f"`{row['report']}` |"
+        )
+
+    planned_pairs = report.get("planned_pairs", [])
+    if planned_pairs and not pair_summaries:
+        lines.extend(["", "## Planned Pairs", ""])
+        for pair in planned_pairs:
+            lines.append(
+                f"- `{pair['pair_id']}`: {pair['reference']} -> {pair['current']} ({pair['group']})"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "Use same-branch pairs to estimate run-to-run scatter before accepting or "
+            "tightening product-specific tolerances. Cross-branch differences that are "
+            "consistently larger than same-branch scatter need a scientific explanation, "
+            "a bug fix, or an explicit intentional-difference label.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _write_repeatability_summary(
+    *,
+    run_root: Path,
+    scenario_id: str,
+    repetitions: int,
+    runs_by_side: dict[str, dict[int, PreparedRun]],
+    pair_summaries: list[dict[str, Any]],
+) -> None:
+    planned_pairs = [
+        {
+            **asdict(pair),
+            "pair_id": pair.pair_id,
+            "reference": pair.reference_label,
+            "current": pair.current_label,
+        }
+        for pair in _repeatability_pairs(repetitions)
+    ]
+    report = {
+        "scenario_id": scenario_id,
+        "run_root": str(run_root),
+        "repetitions": repetitions,
+        "runs": _repeatability_runs_payload(runs_by_side),
+        "planned_pairs": planned_pairs,
+        "pair_summaries": pair_summaries,
+    }
+    (run_root / "repeatability-summary.json").write_text(
+        json.dumps(report, indent=2, default=saved_equivalence._json_default),
+        encoding="utf-8",
+    )
+    (run_root / "repeatability-summary.md").write_text(
+        _render_repeatability_summary(report),
         encoding="utf-8",
     )
 
@@ -1040,6 +1421,21 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         type=Path,
         help="Directory for command logs, manifests, and comparison reports.",
     )
+    parser.add_argument(
+        "--repeatability-repetitions",
+        type=int,
+        default=1,
+        help=(
+            "Run each side this many times with generated clean work directories, "
+            "then compare same-branch pairs and all base-current pairs. The normal "
+            "single comparison is used when this is 1."
+        ),
+    )
+    parser.add_argument(
+        "--repeatability-work-root",
+        type=Path,
+        help=("Root for generated repeatability work directories. Defaults to <run-root>/work."),
+    )
     parser.add_argument("--atol", type=float, default=1e-6)
     parser.add_argument("--rtol", type=float, default=1e-3)
     parser.add_argument(
@@ -1052,13 +1448,136 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="Write reports but exit successfully when runs or comparison fail.",
     )
-    return parser.parse_args(argv)
+    parsed = parser.parse_args(argv)
+    if parsed.repeatability_repetitions < 1:
+        parser.error("--repeatability-repetitions must be >= 1")
+    if parsed.repeatability_repetitions > 1 and (
+        parsed.base_work_dir is not None or parsed.current_work_dir is not None
+    ):
+        parser.error(
+            "repeatability mode generates unique work directories; use "
+            "--repeatability-work-root instead of --base-work-dir/--current-work-dir"
+        )
+    return parsed
 
 
 def _default_scenario_id(base_parset: Path, current_parset: Path) -> str:
     if base_parset.stem == current_parset.stem:
         return base_parset.stem
     return f"{base_parset.stem}-vs-{current_parset.stem}"
+
+
+def _run_repeatability(
+    *,
+    args: argparse.Namespace,
+    scenario_id: str,
+    run_root: Path,
+    repo_root: Path,
+    base_repo: Path,
+    current_repo: Path,
+    base_parset: Path,
+    current_parset: Path,
+    base_runner_command: Sequence[str] | None,
+) -> int:
+    repetitions = args.repeatability_repetitions
+    work_root = (
+        _resolve_path(args.repeatability_work_root, base_dir=repo_root)
+        if args.repeatability_work_root
+        else run_root / "work"
+    )
+    base_runs = _prepare_repeatability_branch_inputs(
+        side="base",
+        ref=args.base_ref,
+        repo_root=base_repo,
+        parset_path=base_parset,
+        run_root=run_root,
+        work_root=work_root,
+        repetitions=repetitions,
+    )
+    current_runs = _prepare_repeatability_branch_inputs(
+        side="current",
+        ref="current",
+        repo_root=current_repo,
+        parset_path=current_parset,
+        run_root=run_root,
+        work_root=work_root,
+        repetitions=repetitions,
+    )
+    runs_by_side = {"base": base_runs, "current": current_runs}
+    if base_runner_command is not None:
+        for prepared in base_runs.values():
+            prepared.command = [*base_runner_command, str(prepared.parset_path)]
+
+    if args.prepare_only:
+        _write_repeatability_summary(
+            run_root=run_root,
+            scenario_id=scenario_id,
+            repetitions=repetitions,
+            runs_by_side=runs_by_side,
+            pair_summaries=[],
+        )
+        print(f"Prepared repeatability metadata under {run_root}", flush=True)
+        return 0
+
+    for rep_index, prepared in base_runs.items():
+        print(f"=== base: {args.base_ref} {_repeatability_rep_label(rep_index)} ===", flush=True)
+        _run_rapthor_from_repo(prepared, runner_command=base_runner_command)
+        print(
+            f"base {_repeatability_rep_label(rep_index)} return code: {prepared.returncode}",
+            flush=True,
+        )
+
+    for rep_index, prepared in current_runs.items():
+        print(f"=== current {_repeatability_rep_label(rep_index)} ===", flush=True)
+        _run_rapthor_from_repo(prepared)
+        print(
+            f"current {_repeatability_rep_label(rep_index)} return code: {prepared.returncode}",
+            flush=True,
+        )
+
+    pair_summaries = []
+    for pair in _repeatability_pairs(repetitions):
+        reference = runs_by_side[pair.reference_side][pair.reference_rep]
+        current = runs_by_side[pair.current_side][pair.current_rep]
+        pair_dir = run_root / "pairs" / pair.pair_id
+        comparison = _prepare_comparison_result(pair.pair_id, pair_dir, reference, current)
+        if not comparison.failures:
+            comparison = compare_branch_outputs(
+                scenario_id=pair.pair_id,
+                base_work_dir=reference.work_dir,
+                current_work_dir=current.work_dir,
+                run_dir=pair_dir,
+                atol=args.atol,
+                rtol=args.rtol,
+            )
+        report_path = _write_pair_report(
+            pair_dir=pair_dir,
+            scenario_id=f"{scenario_id}:{pair.pair_id}",
+            pair=pair,
+            reference=reference,
+            current=current,
+            comparison=comparison,
+        )
+        pair_summaries.append(
+            _repeatability_pair_summary(
+                pair=pair,
+                comparison=comparison,
+                report_path=report_path,
+                run_root=run_root,
+            )
+        )
+
+    _write_repeatability_summary(
+        run_root=run_root,
+        scenario_id=scenario_id,
+        repetitions=repetitions,
+        runs_by_side=runs_by_side,
+        pair_summaries=pair_summaries,
+    )
+    print(f"Repeatability summary: {run_root / 'repeatability-summary.json'}", flush=True)
+    print(f"Markdown summary: {run_root / 'repeatability-summary.md'}", flush=True)
+    passed = all(row["passed"] for row in pair_summaries)
+    return 0 if passed or args.allow_failures else 1
 
 
 def run(args: argparse.Namespace) -> int:
@@ -1119,6 +1638,19 @@ def run(args: argparse.Namespace) -> int:
         if args.current_checkout
         else repo_root
     )
+
+    if args.repeatability_repetitions > 1:
+        return _run_repeatability(
+            args=args,
+            scenario_id=scenario_id,
+            run_root=run_root,
+            repo_root=repo_root,
+            base_repo=base_repo,
+            current_repo=current_repo,
+            base_parset=base_parset,
+            current_parset=current_parset,
+            base_runner_command=base_runner_command,
+        )
 
     base = prepare_branch_input(
         side="base",
