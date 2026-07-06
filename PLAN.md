@@ -16,8 +16,9 @@ production architecture over unreleased compatibility shims.
 
 ## Current Position
 
-The architecture cleanup is complete enough to focus on scientific confidence,
-benchmark-guided scalability, and test maintainability.
+The architecture cleanup is complete enough to focus first on scientific
+confidence. Benchmark-guided scalability and broader test maintainability come
+after the branch-vs-master science gate is documented and accepted.
 
 Done:
 
@@ -91,43 +92,53 @@ Known caveats:
 
 ## Immediate Next Work, In Order
 
-Use this section as the current work queue. The longer equivalence notes below
-are evidence and follow-up context, not a competing priority list.
+Use this section as the current work queue. Do not start the first scalability
+slice until the science-equivalence gate below is complete or explicitly
+accepted with documented caveats.
 
-Completed preview-artifact work: whole-field FITS preview publication now
-defaults off, demo parsets opt in, benchmark and normal defaults stay off, and
-postage-stamp previews around the brightest catalog sources are a separate
-optional artifact path. Keep raw FITS/h5parm products, numeric diagnostics, and
-report JSON as the scientific contract.
+Preview artifacts remain diagnostic aids only: whole-field FITS previews and
+source postage stamps can be generated for demo/debugging, but raw FITS/h5parm
+products, numeric diagnostics, catalog products, and report JSON remain the
+scientific contract.
 
-1. **Keep flexible-strategy carry-forward explicit.**
+1. **Close the science-equivalence gate.**
+   Use the saved-reference final gate, branch-vs-master reports, option matrix,
+   and repeatability envelopes to decide whether the current branch is
+   scientifically equivalent for the intended contract. Update
+   `EQUIVALENCE_REPORT.md` with the final summary, accepted tolerances,
+   intentional current-vs-master differences, skipped target-environment
+   scenarios, and possible master bugs.
+
+2. **Keep flexible-strategy carry-forward explicit while closing the gate.**
    The current policy is no silent carry-over after a new calibration step:
    imaging and preapply use current-cycle products, while previous-cycle
    products may only seed matching solves or be reused by an explicit
-   image-only cycle. Keep tests and docs aligned with this policy; do not
-   re-open carry-forward semantics unless a new test or equivalence run shows a
-   regression.
+   image-only cycle. Keep this policy covered by tests, documentation, and the
+   branch-vs-master evidence. Label expected master divergences clearly instead
+   of copying unsafe implicit state.
 
-2. **Take one low-risk image-cycle scalability slice.**
+3. **Run only targeted science reruns for product-affecting changes.**
+   For documentation, preview-artifact, or report-only changes, keep the
+   previous equivalence evidence and run focused tests. For calibration,
+   prediction, imaging, h5parm, FITS, catalog, or sky-model changes, rerun the
+   relevant saved-reference and branch-vs-master scenarios before changing
+   scalability code.
+
+4. **Take one low-risk image-cycle scalability slice only after sign-off.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output
    records, restart behavior, run names, worker payload serializability, and
    scientific products.
 
-3. **Re-run scientific and performance gates after the slice.**
+5. **Re-run performance gates after the first scalability slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
-   second slice.
+   second slice. Commit only compact benchmark reports; keep bulky artifacts in
+   CI artifacts or external storage.
 
-4. **Refresh benchmark baseline documentation if the CI run is valid.**
-   Commit only compact curated reports under
-   `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
-   artifacts or external storage.
-
-5. **Resume test-suite maintainability cleanup.**
-   Continue after the first benchmark-led scalability slice is guarded and
-   measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
-   sync.
+6. **Resume test-suite maintainability cleanup after the first slice is
+   guarded.**
+   Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in sync.
 
 ## Current Benchmarks
 
@@ -348,74 +359,18 @@ Possible bugs on the master branch to investigate:
   Treat this as legacy implicit-state behavior that should remain documented
   but should not be copied silently into the flexible strategy.
 
-Equivalence follow-up backlog:
+Science-equivalence gate checklist:
 
-The core science gate is closed for the covered contract. Treat this list as
-follow-up evidence work or reviewer-driven cleanup, not as the immediate
-implementation queue unless a new equivalence result re-opens the gate.
+Complete this checklist before starting the first scalability slice. Keep the
+tracked reports compact and move bulky FITS/MS/log products out of git.
 
 1. **Use branch repeatability controls before tuning tolerances.**
-   The essential branch-vs-master scenario matrix now has compact tracked
-   reports for phase-only DD, DD plus DI full-Jones, fixed-facet DD carry-over,
-   changing-facet DD carry-over, slow-gain/default-like behavior, DI
-   multi-cycle carry-over, and both DI/DD mode-boundary directions.
-   `scripts/dev/run_branch_equivalence.py` now supports
-   `--repeatability-repetitions N`, which creates generated per-repetition
-   parsets with unique clean work directories, writes pair reports, and writes
-   aggregate `repeatability-summary.json` and `repeatability-summary.md` files.
-   Two successful envelopes are tracked so far:
-   `docs/source/development/equivalence_runs/2026-07-05-fixed-facet-repeatability-master-ref/`
-   and
-   `docs/source/development/equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-repeatability-master-ref/`.
-   The fixed-facet envelope shows aggregate image differences inside
-   same-branch scatter. The DD plus DI full-Jones envelope shows stable
-   same-branch master repeats but was generated before current-branch
-   full-Jones gain normalization was ported. The refreshed normalized envelope
-   is now tracked under
-   `docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-repeatability-master-ref/`
-   and passes all same-branch and cross-branch pairs, with only auxiliary
-   output-record artifact-name warnings in cross-branch comparisons. Use the
-   refreshed envelope, not the pre-fix envelope, for final tolerance evidence.
-   Use short `/tmp` paths for `--run-root`, `--repeatability-work-root`, and
-   any master checkout/venv paths when the master branch will run imaging. The
-   legacy master CWL/Toil image filter path runs PyBDSF multiprocessing from
-   scratch directories and can fail with `OSError: AF_UNIX path too long` when
-   the generated paths are too deep.
-   Set up a repeatability run directory that contains frozen input snapshots
-   and unique clean work directories for each repetition, for example
-   `/tmp/r<scenario>` for summaries and `/tmp/w<scenario>` for work products.
-   Do not reuse `.done` markers or previous pipeline products. Keep resource settings,
-   thread counts, parsets, strategy files, input data, external-tool versions,
-   base commit, and current commit fixed across repetitions. Use the production
-   thread/resource settings that reviewers will care about; optionally add a
-   separate single-thread smoke repeat only when isolating nondeterminism.
-
-   Recommended comparison layout:
-
-   - Run three `master` repeats and compare all three master-master pairs.
-   - Run three current-branch repeats and compare all three current-current
-     pairs.
-   - Compare all nine master-current pairs, not only matched repeat numbers.
-   - Store compact per-pair JSON/Markdown summaries and one aggregate summary
-     under `docs/source/development/equivalence_runs/`; keep raw FITS/MS/log
-     products outside git.
-   - Aggregate by product class: h5parm datasets, restored/dirty/model FITS
-     residual metrics, image diagnostics, source-catalog columns, sky-model
-     summaries, and text/region products.
-
-   Use the data to classify each difference:
-
-   - **Strict contract:** product presence, operation order, h5parm axes/shapes,
-     soltab names, finite masks, and source counts must not vary within branch
-     or across equivalent branches.
-   - **Repeatability-bounded:** image residuals, h5parm numeric values,
-     source-catalog flux/error/rms columns, and image diagnostics may use
-     product-specific tolerances derived from the maximum or high percentile of
-     same-branch scatter, with a small documented safety factor.
-   - **Systematic branch difference:** a branch-vs-master delta that is
-     consistently larger than same-branch scatter needs a scientific
-     explanation, a bug fix, or an explicit report label as intentional
-     flexible-strategy behavior.
+   Use the refreshed normalized DD-plus-DI full-Jones repeatability envelope as
+   the main tolerance evidence. When rerunning, use short `/tmp` paths for
+   master runs, freeze inputs and resources, run three repeats per branch, and
+   compare all same-branch and cross-branch pairs. Classify differences as
+   strict-contract failures, repeatability-bounded numeric drift, or documented
+   systematic branch differences.
 
 2. **Document and enforce carry-forward policy for flexible strategy products.**
    The policy decision is to avoid silent carry-over after a new calibration
@@ -426,7 +381,7 @@ implementation queue unless a new equivalence result re-opens the gate.
    calibration state. Current-cycle full-Jones imaging application is guarded by
    focused image-operation tests; keep DD direction compatibility checks strict.
 
-3. **Option-specific equivalence scenarios.**
+3. **Keep option-specific equivalence scoped and explain skipped rows.**
    The initial risk-based matrix is complete for the options most likely to
    regress during this migration: provided normalization sky models, DP3
    image-based predict, WSClean predict, and BDA/averaging all pass against
@@ -437,7 +392,7 @@ implementation queue unless a new equivalence result re-opens the gate.
    and peeling primarily in saved-reference or integration coverage unless a
    reviewer needs branch-vs-master parity for one of them.
 
-4. **Comparison-rule cleanup.**
+4. **Tighten comparison rules only where the evidence supports it.**
    Add h5parm numeric statistics/tolerances for accepted phase-only drift while
    keeping solset/soltab names, axes, shapes, finite values, and source tables
    strict. Decide whether sparse `field-MFS-model-pb` differences need
@@ -446,13 +401,13 @@ implementation queue unless a new equivalence result re-opens the gate.
    ordering, semantic comparison, or repeatability-bounded tolerances where
    possible.
 
-5. **Master-reference decisions.**
+5. **Make final master-reference decisions explicit.**
    Decide whether the slow-gain default-like reference should remain a
    documented master bug/legacy limitation, whether the master checkout should
    be patched for an intended-amplitude reference run, and how any intentional
    current-vs-master divergence should be labelled in reports.
 
-6. **Tooling and reviewer smoke check.**
+6. **Keep the reviewer smoke workflow usable.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs as the comparison contract is tightened. Add a
@@ -596,9 +551,8 @@ change the exact product set compared with master.
 
 ## First Scalability Slice
 
-Start only after the branch-vs-master multi-cycle equivalence runner exists,
-the benchmark/default-like scenario is understood, and the master feature
-catch-up track above has either been implemented or explicitly deferred.
+Start only after the science-equivalence gate checklist is complete and
+`EQUIVALENCE_REPORT.md` records the final accepted branch-vs-master position.
 
 Preferred first slice:
 
