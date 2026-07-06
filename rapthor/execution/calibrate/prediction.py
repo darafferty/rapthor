@@ -96,7 +96,7 @@ def _patch_names_from_region(region_file: str) -> list[str]:
     """Return facet names from a DS9 region file in WSClean column order."""
     from lsmtool.facet import read_ds9_region_file
 
-    facet_regions = read_ds9_region_file(region_file, extra_boundary=0)
+    facet_regions = read_ds9_region_file(region_file)
     patch_names = [facet.name for facet in facet_regions if facet.name]
     if not patch_names:
         raise ValueError(f"No named facets were found in {region_file}")

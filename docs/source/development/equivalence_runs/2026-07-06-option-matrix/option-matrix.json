@@ -9,13 +9,15 @@
     },
     {
       "id": "prediction-path-image-based",
-      "skip_reason": "input snapshots pending",
-      "notes": "Add after the normalization option scenario has a compact report."
+      "base_parset": "inputs/base/prediction_path_image_based.parset",
+      "current_parset": "inputs/current/prediction_path_image_based.parset",
+      "notes": "DD fast+medium phase calibration with DP3 image-based predict enabled on the generated rich demo data."
     },
     {
       "id": "prediction-path-wsclean",
-      "skip_reason": "input snapshots pending",
-      "notes": "Pair with the image-based predict scenario so prediction-path differences remain attributable."
+      "base_parset": "inputs/base/prediction_path_wsclean.parset",
+      "current_parset": "inputs/current/prediction_path_wsclean.parset",
+      "notes": "DD fast+medium phase calibration with WSClean predict enabled on the generated rich demo data."
     },
     {
       "id": "bda-averaging",

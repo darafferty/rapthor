@@ -33,8 +33,9 @@ warnings in the strongest repeatability envelope are auxiliary output-record
 artifact names only; FITS, h5parm, text/region, catalog, and image-diagnostic
 differences are within the same-branch repeatability envelope. The next
 scientific checks should continue as risk-based option scenarios rather than
-broader default-like reruns. The first option-matrix scenario, provided
-sky-model flux-scale normalization on the rich demo data, now passes.
+broader default-like reruns. The first option-matrix scenarios now pass for
+provided sky-model flux-scale normalization, DP3 image-based predict, and
+WSClean predict on the rich demo data.
 
 ## Evidence
 
@@ -146,25 +147,37 @@ The first focused option matrix run is tracked under:
 docs/source/development/equivalence_runs/2026-07-06-option-matrix/
 ```
 
-`normalization-rich-demo` compares `master` with the current branch using the
-generated rich demo data, `do_normalize = True`, and explicit two-frequency
-reference sky-model snapshots at 120 MHz and 160 MHz. It passed with one
-non-blocking auxiliary output-record warning for calibration plot artifact
-names. FITS image residuals, h5parm products, text products, source-catalog
-tables, and image diagnostics pass the strengthened branch-equivalence checks.
+The first active rows compare `master` with the current branch on the generated
+rich demo data:
 
-The run also caught and fixed a current-branch payload migration bug: provided
-`normalization_skymodels` and `normalization_reference_frequencies` were present
-in the operation input records but were not passed through to
-`normalize_flux_scale`. Focused tests now cover that payload path.
+- `normalization-rich-demo` enables flux-scale normalization with explicit
+  two-frequency reference sky-model snapshots at 120 MHz and 160 MHz.
+- `prediction-path-image-based` enables DD fast+medium phase calibration with
+  DP3 image-based predict.
+- `prediction-path-wsclean` enables DD fast+medium phase calibration with
+  WSClean predict.
+
+All three rows passed with one non-blocking auxiliary output-record warning
+for calibration plot artifact names. FITS image residuals, h5parm products,
+text products, source-catalog tables, and image diagnostics pass the
+strengthened branch-equivalence checks.
+
+The run also caught and fixed three current-branch payload/compatibility bugs:
+provided `normalization_skymodels` and
+`normalization_reference_frequencies` were not passed through to
+`normalize_flux_scale`; model-image coordinates from LSMTool were not converted
+to payload lists; and WSClean predict called the installed LSMTool
+`read_ds9_region_file` with an unsupported `extra_boundary` keyword. Focused
+tests now cover these paths.
 
 | Scenario | Result | Pairs | Passed Pairs | Failures | Warnings | FITS | H5 | Text | Diagnostics |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `normalization-rich-demo` | pass | 1 | 1 | 0 | 1 | 8 | 3 | 12 | 1 |
+| `prediction-path-image-based` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `prediction-path-wsclean` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
 
 The remaining matrix rows are intentionally skipped until focused input
-snapshots are prepared: image-based predict, WSClean predict, BDA/averaging,
-and screens.
+snapshots or tool support are ready: BDA/averaging and screens.
 
 ## Branch-Vs-Master Default-Like Run
 

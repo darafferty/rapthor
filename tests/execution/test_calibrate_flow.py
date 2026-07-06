@@ -496,7 +496,12 @@ def _patch_dd_model_metadata(monkeypatch):
     monkeypatch.setattr(
         Calibrate,
         "_get_model_image_parameters",
-        lambda self: ([150000000.0, 1000000.0], ["12:00:00.0", "+45.00.00.0"], [1024, 1024], 0.001),
+        lambda self: (
+            (150000000.0, 1000000.0),
+            ("12:00:00.0", "+45.00.00.0"),
+            (1024, 1024),
+            0.001,
+        ),
     )
 
 
@@ -1492,6 +1497,25 @@ def test_calibrate_command_builders_create_reference_tokens():
         ]
         == "DP3"
     )
+
+
+def test_patch_names_from_region_uses_lsmtool_reader_signature(monkeypatch):
+    def fake_read_ds9_region_file(region_file):
+        assert region_file == "facets.reg"
+        return [
+            type("Facet", (), {"name": "patch1"})(),
+            type("Facet", (), {"name": "patch2"})(),
+        ]
+
+    monkeypatch.setattr(
+        "lsmtool.facet.read_ds9_region_file",
+        fake_read_ds9_region_file,
+    )
+
+    assert calibrate_prediction._patch_names_from_region("facets.reg") == [
+        "patch1",
+        "patch2",
+    ]
 
 
 def test_calibrate_payload_from_inputs_builds_di_fulljones_payload(tmp_path):

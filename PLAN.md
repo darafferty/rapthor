@@ -93,11 +93,10 @@ Known caveats:
    prepared dev container; and the full integration suite is green after
    clearing raw `/tmp` run roots and rerunning the two disk-full false
    negatives. `EQUIVALENCE_REPORT.md` records the final gate interpretation.
-   The first focused option scenario, `normalization-rich-demo`, now passes with
-   explicit two-frequency reference sky-model snapshots and is tracked under
-   `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`. Next,
-   prepare and run the prediction-path pair: image-based predict first, then
-   WSClean predict.
+   The first focused option scenarios now pass and are tracked under
+   `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`:
+   `normalization-rich-demo`, `prediction-path-image-based`, and
+   `prediction-path-wsclean`. Next, prepare and run the BDA/averaging scenario.
 
 2. **Curate option-matrix inputs and reports.**
    Keep each scenario to one meaningful option family so failures remain

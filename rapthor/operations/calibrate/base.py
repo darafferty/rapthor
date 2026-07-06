@@ -105,6 +105,9 @@ class Calibrate(Operation):
                 model_image_imsize,
                 model_image_cellsize,
             ) = self._get_model_image_parameters()
+            model_image_frequency_bandwidth = list(model_image_frequency_bandwidth)
+            model_image_ra_dec = [str(value) for value in model_image_ra_dec]
+            model_image_imsize = [int(value) for value in model_image_imsize]
 
             core_stations = self._get_core_stations()
             core_antenna_constraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
@@ -926,7 +929,7 @@ class Calibrate(Operation):
             ]  # pixels
 
         # Convert RA and Dec to strings (required by WSClean)
-        center_coords = lsmtool.utils.format_coordinates(*center_coords)
+        center_coords = list(lsmtool.utils.format_coordinates(*center_coords))
 
         return frequency_bandwidth, center_coords, size, cellsize
 

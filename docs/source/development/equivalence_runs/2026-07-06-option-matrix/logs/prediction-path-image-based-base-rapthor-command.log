@@ -1,15 +1,16 @@
-INFO - rapthor:parset - [32mReading parset file: /app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/base/normalization_rich_demo.parset[0m
+INFO - rapthor:parset - [32mReading parset file: /app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/base/prediction_path_image_based.parset[0m
+WARNING - rapthor:parset - [33mSwitching off BDA during solving, since image-based predict is activated.[0m
 INFO - rapthor:parset - [32m=========================================================[0m
 INFO - rapthor:parset - [32mRapthor version 2.2.dev119+g17448437b[0m
 INFO - rapthor:parset - [32mCWLRunner is toil[0m
-INFO - rapthor:parset - [32mWorking directory is /tmp/rom-base[0m
+INFO - rapthor:parset - [32mWorking directory is /tmp/ropib[0m
 INFO - rapthor:parset - [32mWorking on 1 input MS file[0m
 WARNING - rapthor:parset - [33mComparison sky model for astrometry check not provided while `allow_internet_access` is False. The astrometry check will be skipped. If you want to run the astrometry check, please provide a path to the comparison sky model or allow internet access.[0m
 WARNING - rapthor:parset - [33mComparison sky model for photometry check not provided while `allow_internet_access` is False. The photometry check will be skipped. If you want to run the photometry check, please provide a path to the comparison sky model or allow internet access.[0m
 INFO - rapthor:parset - [32m=========================================================[0m
 INFO - rapthor - [32mSetting log level to INFO[0m
 INFO - rapthor:field - [32mUsing 1 imaging sector[0m
-INFO - rapthor:strategy - [32mUsing '/app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/base/normalization_rich_demo_strategy.py' processing strategy[0m
+INFO - rapthor:strategy - [32mUsing '/app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/base/prediction_path_image_based_strategy.py' processing strategy[0m
 INFO - rapthor - [32mUsing a data fraction of 1.00[0m
 INFO - rapthor:field - [32mPlotting field overview with initial sky-model coverage...[0m
 INFO - rapthor:field - [32mAnalyzing sky model...[0m
@@ -20,14 +21,12 @@ INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
 INFO - rapthor:calibrate_1 - [32m<-- Operation calibrate_1 started[0m
 INFO - rapthor:calibrate_1 - [32m--> Operation calibrate_1 completed[0m
 INFO - rapthor:calibrate_1 - [32mFraction of solutions that are flagged = 0.00[0m
-INFO - rapthor:normalize_1 - [32m<-- Operation normalize_1 started[0m
-INFO - rapthor:normalize_1 - [32m--> Operation normalize_1 completed[0m
 INFO - rapthor:image_1 - [32m<-- Operation image_1 started[0m
 INFO - rapthor:image_1 - [32m--> Operation image_1 completed[0m
 INFO - rapthor:image_1 - [32mDiagnostics for sector_1:[0m
-INFO - rapthor:image_1 - [32m    Min RMS noise = 7534.0 uJy/beam (non-PB-corrected), 7631.9 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
-INFO - rapthor:image_1 - [32m    Median RMS noise = 14581.2 uJy/beam (non-PB-corrected), 14850.2 uJy/beam (PB-corrected)[0m
-INFO - rapthor:image_1 - [32m    Dynamic range = 495.94 (non-PB-corrected), 489.58 (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Min RMS noise = 8514.5 uJy/beam (non-PB-corrected), 8618.5 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_1 - [32m    Median RMS noise = 15552.4 uJy/beam (non-PB-corrected), 15839.1 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Dynamic range = 536.83 (non-PB-corrected), 530.35 (PB-corrected)[0m
 INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 10[0m
 INFO - rapthor:image_1 - [32m    Reference frequency = 134.4 MHz[0m
 INFO - rapthor:image_1 - [32m    Beam = 44.6" x 43.1", PA = 172.9 deg[0m
