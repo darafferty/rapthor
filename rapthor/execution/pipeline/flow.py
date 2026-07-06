@@ -142,6 +142,13 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "prefect_log_commands": execution_config.log_commands,
             "prefect_command_profile": execution_config.command_profile,
             "prefect_publish_fits_previews": execution_config.publish_fits_previews,
+            "prefect_publish_postage_stamp_previews": (
+                execution_config.publish_postage_stamp_previews
+            ),
+            "prefect_postage_stamp_preview_count": execution_config.postage_stamp_preview_count,
+            "prefect_postage_stamp_preview_size_px": (
+                execution_config.postage_stamp_preview_size_px
+            ),
             "batch_system": execution_config.batch_system,
             "max_nodes": execution_config.max_nodes,
             "local_dask_workers": execution_config.local_dask_workers,

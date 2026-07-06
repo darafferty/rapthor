@@ -35,6 +35,9 @@ def test_generated_demo_parset_uses_prefect_settings_only(tmp_path):
     assert parser["cluster"]["local_dask_workers"] == "2"
     assert parser["cluster"]["prefect_command_profile"] == "time"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "True"
+    assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
+    assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
+    assert parser["cluster"]["prefect_postage_stamp_preview_size_px"] == "96"
     assert "cwl_runner" not in parser["cluster"]
 
 
@@ -55,6 +58,7 @@ def test_generated_demo_parset_can_use_benchmark_strategy(tmp_path):
     assert parser["cluster"]["cpus_per_task"] == "4"
     assert parser["cluster"]["max_threads"] == "4"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "True"
+    assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
 
 
 def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path):
@@ -80,6 +84,9 @@ def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path)
     assert parser["cluster"]["deconvolution_threads"] == "0"
     assert parser["cluster"]["parallel_gridding_tasks"] == "0"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "False"
+    assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "False"
+    assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
+    assert parser["cluster"]["prefect_postage_stamp_preview_size_px"] == "96"
 
 
 def test_generated_benchmark_strategy_exercises_legacy_default_and_fulljones(tmp_path):
@@ -124,4 +131,7 @@ def test_checked_in_demo_parset_uses_prefect_settings_only():
     assert parser["cluster"]["local_dask_workers"] == "1"
     assert parser["cluster"]["prefect_command_profile"] == "time"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "True"
+    assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
+    assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
+    assert parser["cluster"]["prefect_postage_stamp_preview_size_px"] == "96"
     assert "cwl_runner" not in parser["cluster"]

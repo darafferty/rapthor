@@ -5,6 +5,7 @@ from rapthor.execution.artifacts import (
     publish_command_metrics_artifact,
     publish_fits_image_artifacts,
     publish_fits_image_artifacts_for_field,
+    publish_fits_postage_stamp_artifacts,
     publish_plot_artifacts,
     publish_plot_file_records,
     render_command_profile_chart,
@@ -247,6 +248,61 @@ def test_publish_fits_image_artifacts_skips_fits_tables(tmp_path):
 
     assert records == []
     assert recorder.calls == []
+
+
+def test_publish_fits_postage_stamp_artifacts_renders_brightest_catalog_sources(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+    from astropy.table import Table
+
+    pipeline_dir = tmp_path / "pipelines" / "image_1"
+    pipeline_dir.mkdir(parents=True)
+    fits_path = pipeline_dir / "sector_1-MFS-I-image-pb.fits"
+    header = fits.Header()
+    header["NAXIS"] = 2
+    header["NAXIS1"] = 20
+    header["NAXIS2"] = 20
+    header["CTYPE1"] = "RA---TAN"
+    header["CTYPE2"] = "DEC--TAN"
+    header["CRVAL1"] = 15.0
+    header["CRVAL2"] = 30.0
+    header["CRPIX1"] = 10.0
+    header["CRPIX2"] = 10.0
+    header["CDELT1"] = -0.001
+    header["CDELT2"] = 0.001
+    fits.writeto(fits_path, np.arange(400, dtype=float).reshape(20, 20), header, overwrite=True)
+    catalog_path = pipeline_dir / "sector_1.source_catalog.fits"
+    Table(
+        {
+            "RA": [15.0, 14.997],
+            "DEC": [30.0, 30.002],
+            "Total_flux": [2.0, 5.0],
+        }
+    ).write(catalog_path, format="fits")
+    recorder = RecordingArtifactWriters()
+
+    records = publish_fits_postage_stamp_artifacts(
+        {"class": "File", "path": str(fits_path)},
+        {"class": "File", "path": str(catalog_path)},
+        pipeline_dir,
+        max_sources=2,
+        stamp_size_px=5,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert [record["source_rank"] for record in records] == [1, 2]
+    assert [record["source_flux"] for record in records] == [5.0, 2.0]
+    assert records[0]["artifact_type"] == "fits-postage-stamp-preview"
+    assert records[0]["relative_path"] == "image_1/sector_1-MFS-I-image-pb.fits:source-01"
+    assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
+    assert [call[0] for call in recorder.calls] == ["image", "image"]
+    assert recorder.calls[0][1]["key"].startswith(
+        "rapthor-postage-stamp-preview-image-1-sector-1-mfs-i-image-pb-fits-source-01-"
+    )
+    assert recorder.calls[0][1]["description"] == (
+        "Rapthor FITS postage-stamp preview: image_1/sector_1-MFS-I-image-pb.fits:source-01"
+    )
 
 
 def test_publish_fits_image_artifacts_for_field_requires_explicit_opt_in(tmp_path, monkeypatch):

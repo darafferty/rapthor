@@ -17,7 +17,8 @@ Prefect/Dask.
     - Prefect logs now include Rapthor Python logging and streamed external-tool
       output without the noisy Prefect Shell ``PID ... stream output`` prefixes.
     - The Prefect dashboard can show run logs, command timing summaries,
-      calibration plots, image diagnostics, and FITS PNG previews as artifacts.
+      calibration plots, image diagnostics, and optional FITS whole-field or
+      source-centred postage-stamp PNG previews as artifacts.
     - The demo helper can start or reuse a Prefect server, keep it running after
       a demo, create a unique working directory for each run, expose a local
       Dask dashboard, and write a Dask performance report.

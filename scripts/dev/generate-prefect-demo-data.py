@@ -415,6 +415,9 @@ def write_parset(
     deconvolution_threads: int = 2,
     parallel_gridding_tasks: int = 1,
     publish_fits_previews: bool = True,
+    publish_postage_stamp_previews: bool = True,
+    postage_stamp_preview_count: int = 5,
+    postage_stamp_preview_size_px: int = 96,
 ) -> None:
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
@@ -510,6 +513,9 @@ def write_parset(
             prefect_log_commands = True
             prefect_command_profile = time
             prefect_publish_fits_previews = {publish_fits_previews}
+            prefect_publish_postage_stamp_previews = {publish_postage_stamp_previews}
+            prefect_postage_stamp_preview_count = {postage_stamp_preview_count}
+            prefect_postage_stamp_preview_size_px = {postage_stamp_preview_size_px}
             debug_workflow = False
             keep_temporary_files = False
             allow_internet_access = False
@@ -537,6 +543,7 @@ def write_benchmark_parset(
         deconvolution_threads=0,
         parallel_gridding_tasks=0,
         publish_fits_previews=False,
+        publish_postage_stamp_previews=False,
     )
 
 

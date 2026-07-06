@@ -1654,6 +1654,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
 ):
     published = []
     fits_published = []
+    postage_published = []
 
     def fake_publish_plot_file_records(records, root_dir):
         published.append(([Path(record["path"]).name for record in records], root_dir))
@@ -1661,6 +1662,20 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
 
     def fake_publish_fits_image_artifacts(records, root_dir):
         fits_published.append(([Path(record["path"]).name for record in records], root_dir))
+        return []
+
+    def fake_publish_fits_postage_stamp_artifacts(
+        image_record, source_catalog_record, root_dir, *, max_sources, stamp_size_px
+    ):
+        postage_published.append(
+            (
+                Path(image_record["path"]).name,
+                Path(source_catalog_record["path"]).name,
+                root_dir,
+                max_sources,
+                stamp_size_px,
+            )
+        )
         return []
 
     monkeypatch.setattr(
@@ -1673,11 +1688,22 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         "publish_fits_image_artifacts",
         fake_publish_fits_image_artifacts,
     )
+    monkeypatch.setattr(
+        image_sector_module,
+        "publish_fits_postage_stamp_artifacts",
+        fake_publish_fits_postage_stamp_artifacts,
+    )
 
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path),
-        execution_config=ExecutionConfig(task_runner="sync", publish_fits_previews=True),
+        execution_config=ExecutionConfig(
+            task_runner="sync",
+            publish_fits_previews=True,
+            publish_postage_stamp_previews=True,
+            postage_stamp_preview_count=2,
+            postage_stamp_preview_size_px=64,
+        ),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
@@ -1710,6 +1736,15 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert "sector_1-MFS-I-image-pb-ast.fits" in fits_published[0][0]
     assert "sector_1.flat_noise_rms.fits" in fits_published[0][0]
     assert "sector_1.true_sky_rms.fits" in fits_published[0][0]
+    assert postage_published == [
+        (
+            "sector_1-MFS-I-image-pb.fits",
+            "sector_1.source_catalog.fits",
+            str(tmp_path),
+            2,
+            64,
+        )
+    ]
     validate_output_record(outputs["sector_I_images"])
     commands = [
         shlex.split(instance.kwargs["commands"][0])
@@ -1767,9 +1802,24 @@ def test_run_image_flow_can_skip_fits_preview_artifacts(
     tmp_path, monkeypatch, fake_image_shell_operation_cls
 ):
     fits_published = []
+    postage_published = []
 
     def fake_publish_fits_image_artifacts(records, root_dir):
         fits_published.append((records, root_dir))
+        return []
+
+    def fake_publish_fits_postage_stamp_artifacts(
+        image_record, source_catalog_record, root_dir, *, max_sources, stamp_size_px
+    ):
+        postage_published.append(
+            (
+                Path(image_record["path"]).name,
+                Path(source_catalog_record["path"]).name,
+                root_dir,
+                max_sources,
+                stamp_size_px,
+            )
+        )
         return []
 
     monkeypatch.setattr(
@@ -1777,16 +1827,36 @@ def test_run_image_flow_can_skip_fits_preview_artifacts(
         "publish_fits_image_artifacts",
         fake_publish_fits_image_artifacts,
     )
+    monkeypatch.setattr(
+        image_sector_module,
+        "publish_fits_postage_stamp_artifacts",
+        fake_publish_fits_postage_stamp_artifacts,
+    )
 
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path),
-        execution_config=ExecutionConfig(task_runner="sync", publish_fits_previews=False),
+        execution_config=ExecutionConfig(
+            task_runner="sync",
+            publish_fits_previews=False,
+            publish_postage_stamp_previews=True,
+            postage_stamp_preview_count=1,
+            postage_stamp_preview_size_px=32,
+        ),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     assert fits_published == []
+    assert postage_published == [
+        (
+            "sector_1-MFS-I-image-pb.fits",
+            "sector_1.source_catalog.fits",
+            str(tmp_path),
+            1,
+            32,
+        )
+    ]
 
 
 def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(

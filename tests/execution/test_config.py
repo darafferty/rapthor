@@ -25,6 +25,9 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
     assert config.log_commands is True
     assert config.command_profile == "auto"
     assert config.publish_fits_previews is False
+    assert config.publish_postage_stamp_previews is False
+    assert config.postage_stamp_preview_count == 5
+    assert config.postage_stamp_preview_size_px == 96
     assert config.batch_system == "single_machine"
     assert config.local_scratch_dir is None
 
@@ -43,6 +46,9 @@ def test_execution_config_reads_cluster_specific_values():
                 "prefect_log_commands": False,
                 "prefect_command_profile": "time",
                 "prefect_publish_fits_previews": True,
+                "prefect_publish_postage_stamp_previews": True,
+                "prefect_postage_stamp_preview_count": 3,
+                "prefect_postage_stamp_preview_size_px": 64,
                 "batch_system": "slurm",
                 "max_nodes": 4,
                 "local_dask_workers": 3,
@@ -67,6 +73,9 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.log_commands is False
     assert config.command_profile == "time"
     assert config.publish_fits_previews is True
+    assert config.publish_postage_stamp_previews is True
+    assert config.postage_stamp_preview_count == 3
+    assert config.postage_stamp_preview_size_px == 64
     assert config.batch_system == "slurm"
     assert config.max_nodes == 4
     assert config.local_dask_workers == 3
@@ -206,4 +215,19 @@ def test_execution_config_rejects_invalid_fits_preview_artifact_flag():
     with pytest.raises(ValueError, match="prefect_publish_fits_previews"):
         ExecutionConfig.from_parset(
             {"cluster_specific": {"prefect_publish_fits_previews": "sometimes"}}
+        )
+
+
+def test_execution_config_rejects_invalid_postage_stamp_preview_settings():
+    with pytest.raises(ValueError, match="prefect_publish_postage_stamp_previews"):
+        ExecutionConfig.from_parset(
+            {"cluster_specific": {"prefect_publish_postage_stamp_previews": "sometimes"}}
+        )
+    with pytest.raises(ValueError, match="prefect_postage_stamp_preview_count"):
+        ExecutionConfig.from_parset(
+            {"cluster_specific": {"prefect_postage_stamp_preview_count": -1}}
+        )
+    with pytest.raises(ValueError, match="prefect_postage_stamp_preview_size_px"):
+        ExecutionConfig.from_parset(
+            {"cluster_specific": {"prefect_postage_stamp_preview_size_px": 0}}
         )

@@ -144,6 +144,9 @@
         "prefect_log_commands": true,
         "prefect_command_profile": "auto",
         "prefect_publish_fits_previews": false,
+        "prefect_publish_postage_stamp_previews": false,
+        "prefect_postage_stamp_preview_count": 5,
+        "prefect_postage_stamp_preview_size_px": 96,
         "debug_workflow": false,
         "keep_temporary_files": false,
         "allow_internet_access": true

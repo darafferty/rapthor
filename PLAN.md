@@ -94,52 +94,37 @@ Known caveats:
 Use this section as the current work queue. The longer equivalence notes below
 are evidence and follow-up context, not a competing priority list.
 
-1. **Make pipeline PNG artifacts intentional and scalable.**
-   The whole-field FITS preview publication switch is now explicit and defaults
-   off; demo parsets opt in, while benchmark and normal defaults stay off. Keep
-   raw FITS/h5parm products, numeric diagnostics, and report JSON as the
-   scientific contract. Next, add a separate option for postage-stamp PNGs
-   around the brightest sources so image artifacts near important sources are
-   easier to inspect than whole-field previews.
+Completed preview-artifact work: whole-field FITS preview publication now
+defaults off, demo parsets opt in, benchmark and normal defaults stay off, and
+postage-stamp previews around the brightest catalog sources are a separate
+optional artifact path. Keep raw FITS/h5parm products, numeric diagnostics, and
+report JSON as the scientific contract.
 
-   Definition of done:
-
-   - parset defaults, docs, examples/templates, payloads, and tests agree on
-     when PNG previews are produced
-   - large-data runs can disable nonessential PNG generation without losing
-     scientific products or numeric diagnostics
-   - postage-stamp previews are optional and clearly separate from whole-field
-     previews
-   - tracked equivalence reports keep compact numeric summaries by default and
-     do not require committed PNG artifacts
-
-2. **Keep flexible-strategy carry-forward explicit.**
+1. **Keep flexible-strategy carry-forward explicit.**
    The current policy is no silent carry-over after a new calibration step:
    imaging and preapply use current-cycle products, while previous-cycle
-   products may only seed matching solves or be reused by an explicit image-only
-   cycle. Keep tests and docs aligned with this policy while making the PNG
-   artifact changes; do not re-open carry-forward semantics unless a new test or
-   equivalence run shows a regression.
+   products may only seed matching solves or be reused by an explicit
+   image-only cycle. Keep tests and docs aligned with this policy; do not
+   re-open carry-forward semantics unless a new test or equivalence run shows a
+   regression.
 
-3. **Take one low-risk image-cycle scalability slice.**
-   Do this only after the PNG artifact behavior is explicit, because PNG
-   generation and diagnostics affect image-cycle cost and output records. Start
-   with one natural boundary inside image-sector execution, such as
-   source/model filtering or diagnostics after WSClean. Preserve output records,
-   restart behavior, run names, worker payload serializability, and scientific
-   products.
+2. **Take one low-risk image-cycle scalability slice.**
+   Start with one natural boundary inside image-sector execution, such as
+   source/model filtering or diagnostics after WSClean. Preserve output
+   records, restart behavior, run names, worker payload serializability, and
+   scientific products.
 
-4. **Re-run scientific and performance gates after the slice.**
+3. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-5. **Refresh benchmark baseline documentation if the CI run is valid.**
+4. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-6. **Resume test-suite maintainability cleanup.**
+5. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.

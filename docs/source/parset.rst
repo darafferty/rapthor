@@ -902,6 +902,23 @@ The available options are described below under their respective sections.
         FITS products themselves, files under ``dir_working/plots``, or numeric
         image diagnostics.
 
+    prefect_publish_postage_stamp_previews
+        Render small PNG previews around the brightest PyBDSF catalog sources
+        and publish those previews as Prefect image artifacts (default =
+        ``False``). This is separate from ``prefect_publish_fits_previews``:
+        whole-field previews can stay disabled while source-centred postage
+        stamps are enabled for targeted visual inspection.
+
+    prefect_postage_stamp_preview_count
+        Maximum number of brightest catalog sources to render when
+        ``prefect_publish_postage_stamp_previews`` is enabled (default = ``5``).
+        Set this to ``0`` to keep the option enabled but publish no source
+        stamps.
+
+    prefect_postage_stamp_preview_size_px
+        Width and height, in image pixels, of each postage-stamp crop before
+        plotting (default = ``96``).
+
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option
         implies that temporary files, produced during the workflow run, will be kept

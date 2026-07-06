@@ -197,8 +197,11 @@ default because they add runtime and disk usage for large datasets. Set
 those FITS products to PNG previews and publish them as image artifacts; the
 demo parsets enable this, while the benchmark parset leaves it disabled. FITS
 products, files under ``dir_working/plots``, and numeric image diagnostics are
-still produced either way. At the end of the process flow, Rapthor publishes an
-index artifact for everything found under ``dir_working/plots``.
+still produced either way. Set ``prefect_publish_postage_stamp_previews = True``
+to publish source-centred PNG crops around the brightest catalog sources; the
+demo parsets enable these smaller previews, while the benchmark parset leaves
+them disabled. At the end of the process flow, Rapthor publishes an index
+artifact for everything found under ``dir_working/plots``.
 When running in the VS Code development container, the plot index rewrites
 ``/app`` paths to the host workspace path using ``RAPTHOR_HOST_WORKSPACE`` so
 the local file links can be opened from the browser.

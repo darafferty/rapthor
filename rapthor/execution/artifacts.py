@@ -19,6 +19,7 @@ log = logging.getLogger("rapthor")
 IMAGE_ARTIFACT_SUFFIXES = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
 FITS_ARTIFACT_SUFFIXES = (".fit", ".fits", ".fit.fz", ".fits.fz")
 FITS_PREVIEW_ARTIFACT_KEY_PREFIX = "rapthor-fits-preview"
+POSTAGE_STAMP_ARTIFACT_KEY_PREFIX = "rapthor-postage-stamp-preview"
 JSON_ARTIFACT_SUFFIXES = {".json"}
 PLOT_ARTIFACT_KEY_PREFIX = "rapthor-plot"
 COMMAND_METRICS_ARTIFACT_KEY = "rapthor-command-metrics"
@@ -118,7 +119,15 @@ def _fits_preview_path(fits_path: Path, root_dir: Path, preview_dir: Path) -> Pa
     return preview_dir / f"{_slug(relative_path, max_length=120)}.png"
 
 
-def _load_fits_image_data(fits_path: Path):
+def _fits_postage_stamp_path(
+    fits_path: Path, root_dir: Path, preview_dir: Path, source_rank: int
+) -> Path:
+    relative_path = _relative_artifact_path(fits_path, root_dir, include_root_name=False)
+    stem = _slug(relative_path, max_length=100)
+    return preview_dir / f"{stem}-source-{source_rank:02d}.png"
+
+
+def _load_fits_image_data_and_header(fits_path: Path):
     import numpy as np
     from astropy.io import fits
 
@@ -134,8 +143,16 @@ def _load_fits_image_data(fits_path: Path):
             while data.ndim > 2:
                 data = data[0]
             if data.ndim == 2:
-                return data.astype(float, copy=False)
+                return data.astype(float, copy=False), hdu.header
     return None
+
+
+def _load_fits_image_data(fits_path: Path):
+    loaded = _load_fits_image_data_and_header(fits_path)
+    if loaded is None:
+        return None
+    data, _header = loaded
+    return data
 
 
 def _image_limits(data) -> tuple[float, float]:
@@ -191,6 +208,137 @@ def render_fits_png(
     fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
     plt.close(fig)
     return png_path
+
+
+def _catalog_column(columns: Mapping[str, str], names: list[str]) -> Optional[str]:
+    for name in names:
+        if name.lower() in columns:
+            return columns[name.lower()]
+    return None
+
+
+def _bright_catalog_sources(source_catalog_path: Path, max_sources: int) -> list[dict]:
+    import numpy as np
+    from astropy.table import Table
+
+    if max_sources <= 0 or not source_catalog_path.is_file():
+        return []
+
+    table = Table.read(source_catalog_path)
+    columns = {name.lower(): name for name in table.colnames}
+    ra_column = _catalog_column(columns, ["RA", "RA_deg", "RAJ2000"])
+    dec_column = _catalog_column(columns, ["DEC", "DEC_deg", "DEJ2000"])
+    flux_column = _catalog_column(columns, ["Total_flux", "Peak_flux", "Isl_Total_flux", "I"])
+    if ra_column is None or dec_column is None or flux_column is None:
+        return []
+
+    ra_values = np.asarray(table[ra_column], dtype=float)
+    dec_values = np.asarray(table[dec_column], dtype=float)
+    flux_values = np.asarray(table[flux_column], dtype=float)
+    finite = np.isfinite(ra_values) & np.isfinite(dec_values) & np.isfinite(flux_values)
+    order = np.argsort(flux_values[finite])[::-1]
+    finite_indices = np.flatnonzero(finite)
+    selected_indices = finite_indices[order[:max_sources]]
+    return [
+        {
+            "catalog_index": int(index),
+            "ra_deg": float(ra_values[index]),
+            "dec_deg": float(dec_values[index]),
+            "flux": float(flux_values[index]),
+            "flux_column": flux_column,
+        }
+        for index in selected_indices
+    ]
+
+
+def render_fits_postage_stamp_pngs(
+    fits_path: Path,
+    source_catalog_path: Path,
+    output_dir: Path,
+    *,
+    root_dir: Optional[Path] = None,
+    max_sources: int = 5,
+    stamp_size_px: int = 96,
+) -> list[dict]:
+    """Render PNG postage stamps around the brightest catalog sources."""
+    fits_path = Path(fits_path)
+    source_catalog_path = Path(source_catalog_path)
+    if (
+        max_sources <= 0
+        or stamp_size_px <= 0
+        or not _is_fits_artifact(fits_path)
+        or not fits_path.is_file()
+    ):
+        return []
+
+    loaded = _load_fits_image_data_and_header(fits_path)
+    if loaded is None:
+        return []
+    data, header = loaded
+
+    sources = _bright_catalog_sources(source_catalog_path, max_sources)
+    if not sources:
+        return []
+
+    import matplotlib
+    import numpy as np
+    from astropy.wcs import WCS
+
+    if matplotlib.get_backend().lower() != "agg":
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    root_dir = Path(root_dir or fits_path.parent)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    wcs = WCS(header).celestial
+    half_size = max(1, stamp_size_px // 2)
+    height, width = data.shape
+    records = []
+    for rank, source in enumerate(sources, start=1):
+        try:
+            x_value, y_value = wcs.world_to_pixel_values(source["ra_deg"], source["dec_deg"])
+        except Exception as err:
+            log.debug("Could not project source %s in %s: %s", source, fits_path, err)
+            continue
+        if not np.isfinite(x_value) or not np.isfinite(y_value):
+            continue
+
+        x_center = int(round(float(x_value)))
+        y_center = int(round(float(y_value)))
+        if x_center < 0 or x_center >= width or y_center < 0 or y_center >= height:
+            continue
+
+        x_min = max(0, x_center - half_size)
+        x_max = min(width, x_center + half_size + 1)
+        y_min = max(0, y_center - half_size)
+        y_max = min(height, y_center + half_size + 1)
+        stamp = data[y_min:y_max, x_min:x_max]
+        if stamp.size == 0:
+            continue
+
+        png_path = _fits_postage_stamp_path(fits_path, root_dir, output_dir, rank)
+        vmin, vmax = _image_limits(stamp)
+        fig, ax = plt.subplots(figsize=(3.2, 3.2), dpi=150)
+        image = ax.imshow(stamp, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
+        ax.scatter([x_center - x_min], [y_center - y_min], marker="+", color="cyan", s=80)
+        ax.set_title(f"{fits_path.name} source {rank}", fontsize=7)
+        ax.set_axis_off()
+        fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+        fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
+        plt.close(fig)
+        records.append(
+            {
+                "path": png_path,
+                "source_rank": rank,
+                "catalog_index": source["catalog_index"],
+                "source_ra_deg": source["ra_deg"],
+                "source_dec_deg": source["dec_deg"],
+                "source_flux": source["flux"],
+                "source_flux_column": source["flux_column"],
+            }
+        )
+    return records
 
 
 def _json_markdown(path: Path, relative_path: str) -> str:
@@ -700,6 +848,88 @@ def publish_fits_image_artifacts(
 
     if records:
         log.info("Published %d Rapthor FITS preview artifacts from %s", len(records), root_dir)
+    return records
+
+
+def publish_fits_postage_stamp_artifacts(
+    image_record: Mapping[str, object],
+    source_catalog_record: Mapping[str, object],
+    root_dir: Path,
+    *,
+    max_sources: int = 5,
+    stamp_size_px: int = 96,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
+    preview_dir: Optional[Path] = None,
+) -> list[dict]:
+    """Render and publish small previews around the brightest catalog sources."""
+    if (
+        image_record.get("class") != "File"
+        or source_catalog_record.get("class") != "File"
+        or max_sources <= 0
+        or not in_run_context()
+    ):
+        return []
+
+    root_dir = Path(root_dir)
+    image_path = Path(str(image_record["path"]))
+    source_catalog_path = Path(str(source_catalog_record["path"]))
+    preview_dir = Path(preview_dir or root_dir / ".rapthor-artifacts" / "postage-stamps")
+    try:
+        stamp_records = render_fits_postage_stamp_pngs(
+            image_path,
+            source_catalog_path,
+            preview_dir,
+            root_dir=root_dir,
+            max_sources=max_sources,
+            stamp_size_px=stamp_size_px,
+        )
+    except Exception as err:
+        log.warning(
+            "Failed to render FITS postage-stamp previews for %s using %s: %s",
+            image_path,
+            source_catalog_path,
+            err,
+        )
+        return []
+
+    if not stamp_records:
+        return []
+
+    relative_path = _relative_artifact_path(image_path, root_dir, include_root_name=True)
+    writers = artifact_writers or _prefect_artifact_writers()
+    records = []
+    for stamp_record in stamp_records:
+        source_rank = int(stamp_record["source_rank"])
+        source_relative_path = f"{relative_path}:source-{source_rank:02d}"
+        artifact_key = _artifact_key(POSTAGE_STAMP_ARTIFACT_KEY_PREFIX, source_relative_path)
+        artifact_id = writers.image(
+            image_url=_data_url(stamp_record["path"]),
+            key=artifact_key,
+            description=f"Rapthor FITS postage-stamp preview: {source_relative_path}",
+        )
+        records.append(
+            {
+                "artifact_id": artifact_id,
+                "artifact_key": artifact_key,
+                "artifact_type": "fits-postage-stamp-preview",
+                "fits_path": str(image_path),
+                "path": str(stamp_record["path"]),
+                "relative_path": source_relative_path,
+                "source_catalog_path": str(source_catalog_path),
+                "source_rank": source_rank,
+                "source_ra_deg": stamp_record["source_ra_deg"],
+                "source_dec_deg": stamp_record["source_dec_deg"],
+                "source_flux": stamp_record["source_flux"],
+                "source_flux_column": stamp_record["source_flux_column"],
+            }
+        )
+
+    log.info(
+        "Published %d Rapthor FITS postage-stamp preview artifacts from %s",
+        len(records),
+        root_dir,
+    )
     return records
 
 

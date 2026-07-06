@@ -2,7 +2,10 @@
 
 from typing import Optional
 
-from rapthor.execution.artifacts import publish_fits_image_artifacts
+from rapthor.execution.artifacts import (
+    publish_fits_image_artifacts,
+    publish_fits_postage_stamp_artifacts,
+)
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.astrometry import make_astrometry_corrected_image_record
 from rapthor.execution.image.contracts import ImageSectorPayload
@@ -205,4 +208,12 @@ def run_image_sector(
     )
     if config.publish_fits_previews:
         publish_fits_image_artifacts(fits_records, pipeline_working_dir)
+    if config.publish_postage_stamp_previews:
+        publish_fits_postage_stamp_artifacts(
+            pb_image,
+            source_catalog,
+            pipeline_working_dir,
+            max_sources=config.postage_stamp_preview_count,
+            stamp_size_px=config.postage_stamp_preview_size_px,
+        )
     return result

@@ -39,6 +39,13 @@ def _as_non_negative_int(value: Any, name: str) -> int:
     return parsed
 
 
+def _as_positive_int(value: Any, name: str) -> int:
+    parsed = _as_non_negative_int(value, name)
+    if parsed <= 0:
+        raise ValueError(f"{name} must be > 0")
+    return parsed
+
+
 def _as_choice(value: Any, name: str, choices: tuple[str, ...]) -> str:
     if value is None:
         return choices[0]
@@ -83,6 +90,9 @@ class ExecutionConfig:
     log_commands: bool = True
     command_profile: str = "auto"
     publish_fits_previews: bool = False
+    publish_postage_stamp_previews: bool = False
+    postage_stamp_preview_count: int = 5
+    postage_stamp_preview_size_px: int = 96
     batch_system: str = "single_machine"
     max_nodes: int = 1
     local_dask_workers: int = 0
@@ -142,6 +152,18 @@ class ExecutionConfig:
             publish_fits_previews=_as_bool(
                 cluster.get("prefect_publish_fits_previews", False),
                 "prefect_publish_fits_previews",
+            ),
+            publish_postage_stamp_previews=_as_bool(
+                cluster.get("prefect_publish_postage_stamp_previews", False),
+                "prefect_publish_postage_stamp_previews",
+            ),
+            postage_stamp_preview_count=_as_non_negative_int(
+                cluster.get("prefect_postage_stamp_preview_count", 5),
+                "prefect_postage_stamp_preview_count",
+            ),
+            postage_stamp_preview_size_px=_as_positive_int(
+                cluster.get("prefect_postage_stamp_preview_size_px", 96),
+                "prefect_postage_stamp_preview_size_px",
             ),
             batch_system=str(cluster.get("batch_system", "single_machine")),
             max_nodes=_as_non_negative_int(cluster.get("max_nodes", 1), "max_nodes"),
