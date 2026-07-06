@@ -472,6 +472,65 @@ def test_compare_branch_outputs_records_image_diagnostics(tmp_path):
     } in diagnostics
 
 
+def test_classify_branch_differences_labels_known_residual_families(tmp_path):
+    module = load_branch_equivalence_script()
+    result = module.saved_equivalence.ComparisonResult("synthetic", tmp_path / "run")
+    result.warnings.append("output-record summary differs for calibrate_1")
+    result.failures.extend(
+        [
+            "FITS image pixels differ for field-MFS-image-pb.fits: max_abs_delta=2e-5",
+            "FITS image pixels differ for field-MFS-model-pb.fits: max_abs_delta=2e-3",
+            "FITS table column differs for sector_1.source_catalog.fits:E_Total_flux",
+            "FITS table column differs for sector_1.source_catalog.fits:Total_flux",
+            "text product differs for sector_1_facets_ds9.reg",
+        ]
+    )
+    result.product_statistics["fits"] = [
+        {
+            "product": "field-MFS-image-pb.fits",
+            "kind": "image",
+            "residual_rms_over_reference_rms": 5e-5,
+            "p99_abs_delta": 1e-5,
+        },
+        {
+            "product": "field-MFS-model-pb.fits",
+            "kind": "image",
+            "residual_rms_over_reference_rms": 9e-4,
+            "p99_abs_delta": 0.0,
+        },
+    ]
+
+    module._classify_branch_differences(result)
+
+    classified = {
+        (item["category"], item["item"]): item["disposition"]
+        for item in result.product_statistics["difference_classification"]
+    }
+    assert classified[("legacy_output_record_metadata", "calibrate_1")] == "warning"
+    assert (
+        classified[("small_image_residual", "field-MFS-image-pb.fits")] == "repeatability-candidate"
+    )
+    assert (
+        classified[("sparse_model_image_residual", "field-MFS-model-pb.fits")]
+        == "repeatability-candidate"
+    )
+    assert (
+        classified[
+            ("pybdsf_catalog_diagnostic_column", "sector_1.source_catalog.fits:E_Total_flux")
+        ]
+        == "repeatability-candidate"
+    )
+    assert (
+        classified[("strict_fits_table_column", "sector_1.source_catalog.fits:Total_flux")]
+        == "strict-failure"
+    )
+    assert (
+        classified[("region_text_formatting", "sector_1_facets_ds9.reg")]
+        == "semantic-comparison-needed"
+    )
+    assert result.metrics["classified_differences"] == 6
+
+
 def test_compare_branch_outputs_creates_visual_comparisons(tmp_path):
     module = load_branch_equivalence_script()
     base_work = tmp_path / "base-work"
@@ -527,7 +586,17 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
         "comparison": {
             "passed": True,
             "metrics": {"operations": 1},
-            "product_statistics": {"fits": []},
+            "product_statistics": {
+                "fits": [],
+                "difference_classification": [
+                    {
+                        "category": "small_image_residual",
+                        "disposition": "repeatability-candidate",
+                        "item": "field-MFS-image-pb.fits",
+                        "recommendation": "Bound with same-branch scatter.",
+                    }
+                ],
+            },
             "failures": [],
             "warnings": [],
         },
@@ -538,6 +607,8 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
     assert "# Rapthor Branch Equivalence" in markdown
     assert "`base.parset`" in markdown
     assert "`current.parset`" in markdown
+    assert "## Difference Classification" in markdown
+    assert "`small_image_residual`" in markdown
     assert "## Adaptations" not in markdown
 
 

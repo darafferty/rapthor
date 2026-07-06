@@ -387,6 +387,8 @@ h5parm difference that dominated the earlier run is gone: all three h5parm
 products pass the strengthened comparison. The remaining failures are now
 limited to small image residuals, PyBDSF/source-catalog uncertainty columns, the
 known DS9 facet-region text difference, and output-record metadata shape.
+The compact report now classifies every remaining warning/failure without
+changing strict pass/fail status.
 
 | Scenario | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Warnings | Failures |
 | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -401,6 +403,11 @@ Key deltas after the fix:
   RMS is about `3.978e-06`.
 - Image diagnostics are essentially aligned: source counts and theoretical RMS
   match exactly, and the largest relative diagnostic delta is about `0.021%`.
+- Difference classification: 4 small image residuals, 1 sparse model-image
+  residual, 23 PyBDSF diagnostic catalog columns, 1 DS9 region text-formatting
+  difference, and 2 legacy output-record metadata warnings. No h5parm
+  differences, primary source-flux differences, operation-order differences, or
+  product-presence differences remain in this focused run.
 
 Interpretation:
 
@@ -408,9 +415,11 @@ The systematic DD-plus-DI full-Jones h5parm/amplitude split was a
 current-branch regression in gain post-processing, not an intentional
 flexible-strategy behavior. The remaining differences are now in the same
 family as comparison-contract work: small WSClean/PyBDSF image/catalog
-residuals, text formatting, and legacy CWL output-record metadata. A full
-three-repeat envelope is only needed if we want to set final tolerances for
-these remaining residuals before merge.
+residuals, text formatting, and legacy CWL output-record metadata. The next
+comparison-contract work should keep h5parm structure, product presence,
+operation order, source count, and primary catalog values strict; add semantic
+region comparison; and derive any image/PyBDSF numeric tolerances from
+same-branch repeatability before accepting them.
 
 ## Branch-Vs-Master Fixed-Facet Carry-Over Run
 

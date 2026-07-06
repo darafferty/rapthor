@@ -63,6 +63,22 @@ IMAGE_PREVIEW_PRODUCTS = (
     "field-MFS-residual",
 )
 VISUAL_COMPARISON_LIMIT = 12
+SMALL_IMAGE_RESIDUAL_RMS_RATIO_LIMIT = 1e-3
+SPARSE_MODEL_IMAGE_P99_LIMIT = 1e-12
+PYBDSF_DIAGNOSTIC_CATALOG_COLUMNS = {
+    "PA",
+    "PA_img_plane",
+    "Isl_rms",
+    "Resid_Isl_rms",
+    "Resid_Isl_mean",
+}
+
+
+def _is_pybdsf_diagnostic_catalog_column(product: str, column: str) -> bool:
+    """Return whether a catalog column is diagnostic rather than primary flux/position."""
+    return product.endswith("source_catalog.fits") and (
+        column.startswith("E_") or column in PYBDSF_DIAGNOSTIC_CATALOG_COLUMNS
+    )
 
 
 @dataclass
@@ -882,6 +898,7 @@ def compare_branch_outputs(
     )
     _compare_image_diagnostics(base_work_dir, current_work_dir, result)
     _collect_visual_comparisons(base_work_dir, current_work_dir, run_dir, result)
+    _classify_branch_differences(result)
     return result
 
 
@@ -901,6 +918,209 @@ def _comparison_as_dict(comparison: saved_equivalence.ComparisonResult) -> dict[
         "failures": comparison.failures,
         "warnings": comparison.warnings,
     }
+
+
+def _image_metrics_by_product(
+    comparison: saved_equivalence.ComparisonResult,
+) -> dict[str, dict[str, Any]]:
+    return {
+        str(metric.get("product")): metric
+        for metric in comparison.product_statistics.get("fits", [])
+        if metric.get("kind") == "image"
+    }
+
+
+def _small_image_residual(metric: dict[str, Any]) -> bool:
+    value = metric.get("residual_rms_over_reference_rms")
+    if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+        return False
+    return abs(float(value)) <= SMALL_IMAGE_RESIDUAL_RMS_RATIO_LIMIT
+
+
+def _sparse_model_image_residual(metric: dict[str, Any]) -> bool:
+    product = str(metric.get("product", ""))
+    p99_abs_delta = metric.get("p99_abs_delta")
+    return (
+        "model" in product
+        and isinstance(p99_abs_delta, (int, float))
+        and abs(float(p99_abs_delta)) <= SPARSE_MODEL_IMAGE_P99_LIMIT
+        and _small_image_residual(metric)
+    )
+
+
+def _classification(
+    *,
+    item: str,
+    category: str,
+    disposition: str,
+    recommendation: str,
+) -> dict[str, str]:
+    return {
+        "item": item,
+        "category": category,
+        "disposition": disposition,
+        "recommendation": recommendation,
+    }
+
+
+def _classify_branch_differences(
+    comparison: saved_equivalence.ComparisonResult,
+) -> None:
+    """Classify branch-vs-master differences without changing pass/fail status."""
+    classifications: list[dict[str, str]] = []
+    image_metrics = _image_metrics_by_product(comparison)
+
+    for warning in comparison.warnings:
+        if warning.startswith("output-record summary differs for "):
+            classifications.append(
+                _classification(
+                    item=warning.removeprefix("output-record summary differs for "),
+                    category="legacy_output_record_metadata",
+                    disposition="warning",
+                    recommendation=(
+                        "Keep as non-blocking: legacy CWL records include metadata "
+                        "that current path-oriented records intentionally omit."
+                    ),
+                )
+            )
+
+    for failure in comparison.failures:
+        image_match = re.match(r"FITS image pixels differ for ([^:]+):", failure)
+        if image_match:
+            product = image_match.group(1)
+            metric = image_metrics.get(product, {})
+            if _sparse_model_image_residual(metric):
+                classifications.append(
+                    _classification(
+                        item=product,
+                        category="sparse_model_image_residual",
+                        disposition="repeatability-candidate",
+                        recommendation=(
+                            "Treat as a sparse model-component residual only after "
+                            "same-branch repeatability bounds it."
+                        ),
+                    )
+                )
+            elif _small_image_residual(metric):
+                classifications.append(
+                    _classification(
+                        item=product,
+                        category="small_image_residual",
+                        disposition="repeatability-candidate",
+                        recommendation=(
+                            "Bound with same-branch image residual scatter before "
+                            "turning this into a tolerance."
+                        ),
+                    )
+                )
+            else:
+                classifications.append(
+                    _classification(
+                        item=product,
+                        category="strict_fits_image_difference",
+                        disposition="strict-failure",
+                        recommendation="Investigate before relaxing comparison rules.",
+                    )
+                )
+            continue
+
+        table_match = re.match(r"FITS table column differs for ([^:]+):(.+)$", failure)
+        if table_match:
+            product, column = table_match.groups()
+            if _is_pybdsf_diagnostic_catalog_column(product, column):
+                classifications.append(
+                    _classification(
+                        item=f"{product}:{column}",
+                        category="pybdsf_catalog_diagnostic_column",
+                        disposition="repeatability-candidate",
+                        recommendation=(
+                            "Keep source count and primary flux/position strict; "
+                            "bound fitted uncertainty/shape/noise columns with "
+                            "same-branch PyBDSF scatter."
+                        ),
+                    )
+                )
+            else:
+                classifications.append(
+                    _classification(
+                        item=f"{product}:{column}",
+                        category="strict_fits_table_column",
+                        disposition="strict-failure",
+                        recommendation="Investigate catalog value drift before relaxing.",
+                    )
+                )
+            continue
+
+        schema_match = re.match(r"FITS table columns differ for (.+)$", failure)
+        if schema_match:
+            classifications.append(
+                _classification(
+                    item=schema_match.group(1),
+                    category="strict_fits_table_schema",
+                    disposition="strict-failure",
+                    recommendation="Column presence and order remain a strict contract.",
+                )
+            )
+            continue
+
+        text_match = re.match(r"text product differs for (.+\.reg)$", failure)
+        if text_match:
+            classifications.append(
+                _classification(
+                    item=text_match.group(1),
+                    category="region_text_formatting",
+                    disposition="semantic-comparison-needed",
+                    recommendation=(
+                        "Compare facet geometry semantically while keeping region "
+                        "presence and coordinate values strict."
+                    ),
+                )
+            )
+            continue
+
+        if failure.startswith("HDF5"):
+            classifications.append(
+                _classification(
+                    item=failure,
+                    category="strict_h5_difference",
+                    disposition="strict-failure",
+                    recommendation="Keep h5parm structure and datasets strict unless justified.",
+                )
+            )
+            continue
+
+        classifications.append(
+            _classification(
+                item=failure,
+                category="strict_contract_difference",
+                disposition="strict-failure",
+                recommendation="Investigate before accepting this branch difference.",
+            )
+        )
+
+    comparison.product_statistics["difference_classification"] = classifications
+    comparison.metrics["classified_differences"] = len(classifications)
+
+
+def _classification_summary_rows(classifications: list[dict[str, str]]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str, str], list[str]] = {}
+    for item in classifications:
+        key = (
+            item["category"],
+            item["disposition"],
+            item["recommendation"],
+        )
+        grouped.setdefault(key, []).append(item["item"])
+    return [
+        {
+            "category": category,
+            "disposition": disposition,
+            "count": len(items),
+            "examples": items[:3],
+            "recommendation": recommendation,
+        }
+        for (category, disposition, recommendation), items in sorted(grouped.items())
+    ]
 
 
 def _format_percent(value: Any) -> str:
@@ -1104,6 +1324,25 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
             )
         if len(visual_comparisons) > 20:
             lines.append(f"... {len(visual_comparisons) - 20} more visual comparison(s)")
+
+    classifications = comparison["product_statistics"].get("difference_classification", [])
+    if classifications:
+        lines.extend(
+            [
+                "",
+                "## Difference Classification",
+                "",
+                "| Category | Disposition | Count | Examples | Recommendation |",
+                "| --- | --- | ---: | --- | --- |",
+            ]
+        )
+        for row in _classification_summary_rows(classifications):
+            examples = ", ".join(f"`{item}`" for item in row["examples"])
+            lines.append(
+                "| "
+                f"`{row['category']}` | {row['disposition']} | {row['count']} | "
+                f"{examples} | {row['recommendation']} |"
+            )
 
     if comparison["warnings"]:
         lines.extend(["", "## Warnings", ""])

@@ -52,7 +52,8 @@
       "fits_image_hdus": 6,
       "fits_table_hdus": 1,
       "diagnostics": 1,
-      "visual_comparisons": 0
+      "visual_comparisons": 0,
+      "classified_differences": 31
     },
     "product_statistics": {
       "fits": [
@@ -497,7 +498,195 @@
           "relative_delta": -5.81908395544361e-06
         }
       ],
-      "visual_comparisons": []
+      "visual_comparisons": [],
+      "difference_classification": [
+        {
+          "item": "calibrate_1",
+          "category": "legacy_output_record_metadata",
+          "disposition": "warning",
+          "recommendation": "Keep as non-blocking: legacy CWL records include metadata that current path-oriented records intentionally omit."
+        },
+        {
+          "item": "calibrate_di_1",
+          "category": "legacy_output_record_metadata",
+          "disposition": "warning",
+          "recommendation": "Keep as non-blocking: legacy CWL records include metadata that current path-oriented records intentionally omit."
+        },
+        {
+          "item": "field-MFS-image-pb-ast.fits",
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "item": "field-MFS-image-pb.fits",
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "item": "field-MFS-image.fits",
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "item": "field-MFS-model-pb.fits",
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "item": "field-MFS-residual.fits",
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_RA",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DEC",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_Total_flux",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_Peak_flux",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_RA_max",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DEC_max",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_Maj",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_Min",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:PA",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_PA",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_Maj_img_plane",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_Min_img_plane",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:PA_img_plane",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_PA_img_plane",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DC_Maj",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DC_Min",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DC_PA",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DC_Maj_img_plane",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DC_Min_img_plane",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_DC_PA_img_plane",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:E_Isl_Total_flux",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:Isl_rms",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1.source_catalog.fits:Resid_Isl_mean",
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "item": "sector_1_facets_ds9.reg",
+          "category": "region_text_formatting",
+          "disposition": "semantic-comparison-needed",
+          "recommendation": "Compare facet geometry semantically while keeping region presence and coordinate values strict."
+        }
+      ]
     },
     "failures": [
       "FITS image pixels differ for field-MFS-image-pb-ast.fits: max_abs_delta=2.485513687133789e-05, p99_abs_delta=1.0585412383079529e-05, residual_rms=3.978058685467038e-06",

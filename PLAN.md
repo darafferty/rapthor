@@ -80,14 +80,17 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Classify the remaining DD plus DI full-Jones deltas.**
+1. **Turn classified DD plus DI full-Jones deltas into comparison rules.**
    The focused 2026-07-06 normalized rerun removed the strict h5parm failure
    and shrank the restored-image residual from about `1.025e-02` max absolute
-   delta to about `2.486e-05`. Decide whether the remaining small image
-   residuals, PyBDSF/catalog uncertainty-column differences, DS9 text
-   formatting, and output-record metadata shape should be handled by
-   product-specific comparison rules or need a three-repeat tolerance envelope
-   before merge.
+   delta to about `2.486e-05`. The branch-equivalence report now classifies the
+   remaining items as 4 small image residuals, 1 sparse model-image residual,
+   23 PyBDSF diagnostic catalog columns, 1 DS9 region text-formatting
+   difference, and 2 legacy output-record metadata warnings. Keep h5parm
+   structure, product presence, operation order, source count, and primary
+   catalog values strict. Next, implement semantic DS9 region comparison and
+   decide whether to run a fresh three-repeat normalized full-Jones envelope to
+   derive numeric tolerances for the image/PyBDSF repeatability candidates.
 
 2. **Use the repeatability envelope to classify remaining scientific deltas.**
    The fixed-`facet_layout` and DD phase plus DI full-Jones repeatability

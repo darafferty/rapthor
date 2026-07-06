@@ -40,11 +40,15 @@ Run root: `/tmp/rfjn`
 | `image_1` | `sector_1` | `median_rms_true_sky` | 1.622e-02 | 1.622e-02 | -1.099e-07 | -0.001% |
 | `image_1` | `sector_1` | `dynamic_range_global_true_sky` | 5.424e+02 | 5.424e+02 | -3.156e-03 | -0.001% |
 
-## Visual Comparisons
+## Difference Classification
 
-Visual PNGs were generated under the temporary run root but are not tracked;
-the numeric residual and diagnostic tables above are the retained review
-evidence.
+| Category | Disposition | Count | Examples | Recommendation |
+| --- | --- | ---: | --- | --- |
+| `legacy_output_record_metadata` | warning | 2 | `calibrate_1`, `calibrate_di_1` | Keep as non-blocking: legacy CWL records include metadata that current path-oriented records intentionally omit. |
+| `pybdsf_catalog_diagnostic_column` | repeatability-candidate | 23 | `sector_1.source_catalog.fits:E_RA`, `sector_1.source_catalog.fits:E_DEC`, `sector_1.source_catalog.fits:E_Total_flux` | Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter. |
+| `region_text_formatting` | semantic-comparison-needed | 1 | `sector_1_facets_ds9.reg` | Compare facet geometry semantically while keeping region presence and coordinate values strict. |
+| `small_image_residual` | repeatability-candidate | 4 | `field-MFS-image-pb-ast.fits`, `field-MFS-image-pb.fits`, `field-MFS-image.fits` | Bound with same-branch image residual scatter before turning this into a tolerance. |
+| `sparse_model_image_residual` | repeatability-candidate | 1 | `field-MFS-model-pb.fits` | Treat as a sparse model-component residual only after same-branch repeatability bounds it. |
 
 ## Warnings
 

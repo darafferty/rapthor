@@ -51,9 +51,10 @@ long`.
   tolerances.
 - `2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/`: focused
   rerun after porting the legacy full-Jones gain normalization step. Both
-  branches complete, strict h5parm comparison now passes, and remaining
-  failures are small image residuals, PyBDSF/catalog uncertainty columns, DS9
-  region text, and output-record metadata shape.
+  branches complete, strict h5parm comparison now passes, and the compact
+  report classifies the remaining items as small image residuals, a sparse
+  model-image residual, PyBDSF diagnostic catalog columns, DS9 region text
+  formatting, and legacy output-record metadata shape.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones
