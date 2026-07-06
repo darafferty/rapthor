@@ -52,8 +52,11 @@ Done:
   manifests, reuses the strengthened product comparison checks, records image
   diagnostic deltas, and generates compact side-by-side image/solution visual
   comparisons.
-- The full integration suite passed in the prepared dev container on
-  2026-07-05: `28 passed, 1 skipped, 1 xfailed`.
+- The full integration suite completed in the prepared dev container on
+  2026-07-06. The first full run reached `26 passed, 1 skipped, 1 xfailed` and
+  two WSClean facet-beam tests failed because the container overlay filesystem
+  was full; after removing raw `/tmp` run roots, the two failed tests passed in
+  a targeted rerun (`2 passed, 1 xfailed`).
 - WSClean-based DD calibration prediction is ported into the Prefect/Dask
   calibration owner package: `use_wsclean_predict`, WSClean predict command
   construction, generated region/readpatches support, narrow-band model drawing,
@@ -88,10 +91,11 @@ Known caveats:
    output-record warnings on cross-branch pairs. The refreshed
    saved-reference matrix also passes in the prepared dev container, with only
    optional output-record warnings for newer astrometry/prepared-MS
-   bookkeeping. Next, run the full integration suite and refresh any essential
-   branch-vs-master reports that are affected by comparison-rule changes.
-   Update `EQUIVALENCE_REPORT.md` and compact report bundles with the final
-   gate interpretation.
+   bookkeeping. The integration suite is green after clearing raw `/tmp` run
+   roots and rerunning the two disk-full false negatives. Next, refresh any
+   essential branch-vs-master reports that are affected by comparison-rule
+   changes, then update `EQUIVALENCE_REPORT.md` with the final gate
+   interpretation.
 
 2. **Add a risk-based option equivalence matrix.**
    Add a small set of option-specific equivalence scenarios rather than a full
