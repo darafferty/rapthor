@@ -209,7 +209,7 @@ class Field(object):
                         raise ValueError('Overlapping frequency coverage found for the '
                                          f'following input MS files: {ms1} and {ms2}')
 
-        # Check that all observations have the same pointing upto some tolerance level
+        # Check that all observations have the same pointing up to some tolerance level
         self.ra = obs0.ra
         self.dec = obs0.dec
         separation_tolerance_arcsec = self.parset['separation_tolerance_arcsec']
@@ -225,23 +225,6 @@ class Field(object):
                     "arcsec. Please check the files and adjust the "
                     "separation_tolerance_arcsec option in the parset if necessary."
                 )
-
-        # Check that all observations have the same station diameter
-        self.diam = obs0.diam
-        for obs in self.full_observations:
-            if self.diam != obs.diam:
-                raise ValueError(
-                    f'Station diameter for MS {obs.ms_filename} differs from the one for MS '
-                    f'{obs0.ms_filename}'
-                )
-
-        # Check that all observations have the same stations
-        self.stations = obs0.stations
-        for obs in self.full_observations:
-            if self.stations != obs.stations:
-                raise ValueError(
-                    f'Stations in MS {obs.ms_filename} differ from those in MS {obs0.ms_filename}'
-                )   
 
         # Find mean elevation and FOV over all observations
         el_rad_list = []
