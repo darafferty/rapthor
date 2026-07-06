@@ -490,6 +490,52 @@ def test_compare_branch_outputs_warns_for_auxiliary_output_record_drift(tmp_path
     assert classified[("output_record_auxiliary_artifacts", "calibrate_1")] == "warning"
 
 
+def test_compare_branch_outputs_warns_for_optional_output_record_drift(tmp_path):
+    module = load_branch_equivalence_script()
+    base_work = tmp_path / "base-work"
+    current_work = tmp_path / "current-work"
+    _write_operation(base_work, "image_1")
+    _write_operation(current_work, "image_1")
+    (base_work / "pipelines" / "image_1" / ".outputs.json").write_text(
+        json.dumps(
+            {
+                "image": {"class": "File", "basename": "sector_1-MFS-image-pb.fits"},
+                "visibilities": {"class": "Directory", "basename": "test.ms.sector_1.prep"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (current_work / "pipelines" / "image_1" / ".outputs.json").write_text(
+        json.dumps(
+            {
+                "image": [
+                    {"class": "File", "basename": "sector_1-MFS-image-pb.fits"},
+                    {"class": "File", "basename": "sector_1-MFS-image-pb-ast.fits"},
+                ],
+                "visibilities": {"class": "Directory", "basename": "test.sector_1_prep.ms"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = module.compare_branch_outputs(
+        scenario_id="synthetic",
+        base_work_dir=base_work,
+        current_work_dir=current_work,
+        run_dir=tmp_path / "run",
+        atol=1e-6,
+        rtol=1e-3,
+    )
+
+    assert result.failures == []
+    assert result.warnings == ["output-record optional artifact basenames differ for image_1"]
+    classified = {
+        (item["category"], item["item"]): item["disposition"]
+        for item in result.product_statistics["difference_classification"]
+    }
+    assert classified[("output_record_optional_artifacts", "image_1")] == "warning"
+
+
 def test_compare_branch_outputs_records_image_diagnostics(tmp_path):
     module = load_branch_equivalence_script()
     base_work = tmp_path / "base-work"

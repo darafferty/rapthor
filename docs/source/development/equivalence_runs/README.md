@@ -25,6 +25,11 @@ long`.
 
 - `2026-07-04-saved-reference-strengthened/`: compact strengthened
   saved-reference report copied out of the raw run directory before cleanup.
+- `2026-07-06-saved-reference-final-gate/`: refreshed saved-reference gate
+  after output-record semantic cleanup and relative image-jitter handling. All
+  default non-stale saved scenarios pass; the old DI full-Jones CWL fixture is
+  excluded from the default matrix because it predates same-cycle full-Jones
+  imaging application.
 - `2026-07-04-default-like-master-ref/`: default-like four-cycle comparison
   that exposes the legacy master slow-gain/amplitude-solution behavior.
 - `2026-07-04-phase-only-master-ref/`: four-cycle phase-only comparison using

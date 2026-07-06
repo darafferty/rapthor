@@ -95,6 +95,22 @@ def test_fits_equivalence_allows_sparse_near_zero_pixel_outliers(tmp_path):
     assert metric["p99_abs_delta"] == pytest.approx(0.0)
 
 
+def test_fits_equivalence_allows_small_relative_image_jitter(tmp_path):
+    module = load_equivalence_script()
+    reference = np.linspace(-0.5, 0.5, 10_000, dtype=float).reshape(100, 100)
+    jitter = np.sin(np.arange(reference.size, dtype=float)).reshape(reference.shape) * 2.0e-6
+    jitter[::17, ::19] += 1.0e-5
+    jitter -= np.mean(jitter)
+    current = reference + jitter
+
+    result = _compare_fits(module, tmp_path, reference, current)
+
+    assert result.failures == []
+    metric = result.product_statistics["fits"][0]
+    assert metric["residual_rms_over_reference_rms"] < 1.0e-5
+    assert metric["p99_abs_delta"] > 1.0e-6
+
+
 def test_fits_equivalence_catches_systematic_near_zero_pixel_drift(tmp_path):
     module = load_equivalence_script()
     reference = np.zeros((100, 100), dtype=float)
@@ -147,12 +163,15 @@ def test_equivalence_markdown_report_includes_fits_residual_table(tmp_path):
         np.ones((2, 2), dtype=float),
         np.ones((2, 2), dtype=float) + 1e-5,
     )
+    result.warnings.append("output-record optional artifact basenames differ for image_1")
     report = {"run_root": str(tmp_path)}
 
     markdown = module._render_markdown_report(report, [result])
 
     assert "## FITS Residual Metrics" in markdown
     assert "| `synthetic` | `current.fits` |" in markdown
+    assert "## Warnings" in markdown
+    assert "- `synthetic`: output-record optional artifact basenames differ for image_1" in markdown
 
 
 def _compare_text_product(module, tmp_path, reference_text, current_text, filename="facets.reg"):
@@ -319,3 +338,63 @@ def test_output_record_comparison_warns_for_auxiliary_artifact_name_changes(
     assert result.product_statistics["output_records"][0]["kind"] == (
         "auxiliary_artifact_basenames"
     )
+
+
+def test_output_record_comparison_warns_for_optional_artifact_drift(tmp_path):
+    module = load_equivalence_script()
+    reference = tmp_path / "reference"
+    current = tmp_path / "current"
+    _write_output_record(
+        reference,
+        "image_1",
+        {
+            "image": {"class": "File", "basename": "sector_1-MFS-image-pb.fits"},
+            "visibilities": {"class": "Directory", "basename": "test.ms.sector_1.prep"},
+        },
+    )
+    _write_output_record(
+        current,
+        "image_1",
+        {
+            "image": [
+                {"class": "File", "basename": "sector_1-MFS-image-pb.fits"},
+                {"class": "File", "basename": "sector_1-MFS-image-pb-ast.fits"},
+            ],
+            "visibilities": {"class": "Directory", "basename": "test.sector_1_prep.ms"},
+        },
+    )
+    result = module.ComparisonResult("synthetic", tmp_path / "run")
+
+    module._compare_output_records(reference, current, result)
+
+    assert result.failures == []
+    assert result.warnings == ["output-record optional artifact basenames differ for image_1"]
+    assert result.product_statistics["output_records"] == [
+        {
+            "operation": "image_1",
+            "kind": "optional_artifact_basenames",
+            "reference_count": 2,
+            "current_count": 3,
+            "missing_basenames": ["test.ms.sector_1.prep"],
+            "extra_basenames": [
+                "sector_1-MFS-image-pb-ast.fits",
+                "test.sector_1_prep.ms",
+            ],
+        }
+    ]
+
+
+def test_reference_scenarios_skip_stale_fulljones_reference_by_default(tmp_path, monkeypatch):
+    module = load_equivalence_script()
+    for name in ["dd_only_calibration", "di_full_jones_calibration"]:
+        (tmp_path / name).mkdir()
+    monkeypatch.setattr(module, "REFERENCE_ROOT", tmp_path)
+
+    default_scenarios = module._reference_scenarios([], include_stale=False)
+    explicit_stale_scenarios = module._reference_scenarios(
+        ["di_full_jones_calibration"],
+        include_stale=False,
+    )
+
+    assert [path.name for path in default_scenarios] == ["dd_only_calibration"]
+    assert [path.name for path in explicit_stale_scenarios] == ["di_full_jones_calibration"]

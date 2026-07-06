@@ -605,6 +605,10 @@ def _compare_output_records(
                 result.warnings.append(
                     f"output-record auxiliary artifact basenames differ for {operation}"
                 )
+            elif difference["kind"] == "optional_artifact_basenames":
+                result.warnings.append(
+                    f"output-record optional artifact basenames differ for {operation}"
+                )
             else:
                 result.failures.append(f"output-record product basenames differ for {operation}")
         compared += 1
@@ -1021,6 +1025,23 @@ def _classify_branch_differences(
                 )
             )
             continue
+        if warning.startswith("output-record optional artifact basenames differ for "):
+            operation = warning.removeprefix(
+                "output-record optional artifact basenames differ for "
+            )
+            classifications.append(
+                _classification(
+                    item=operation,
+                    category="output_record_optional_artifacts",
+                    disposition="warning",
+                    recommendation=(
+                        "Keep as non-blocking when the underlying compared science "
+                        "products pass and the drift is limited to optional astrometry "
+                        "artifacts or local prepared-MS record names."
+                    ),
+                )
+            )
+            continue
         if warning.startswith("output-record summary differs for "):
             operation = warning.removeprefix("output-record summary differs for ")
             difference = output_record_differences.get(operation)
@@ -1035,6 +1056,13 @@ def _classify_branch_differences(
                 recommendation = (
                     "Keep as non-blocking when only plot filenames or known local "
                     "intermediate aliases differ and final scientific products pass."
+                )
+            elif difference and difference.get("kind") == "optional_artifact_basenames":
+                category = "output_record_optional_artifacts"
+                recommendation = (
+                    "Keep as non-blocking when the drift is limited to optional "
+                    "astrometry artifacts or local prepared-MS record names and final "
+                    "scientific products pass."
                 )
             else:
                 category = "legacy_output_record_metadata"

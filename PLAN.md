@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-05.
+Status snapshot: 2026-07-06.
 
 ## Goal
 
@@ -41,8 +41,10 @@ Done:
   checks, WCS/header checks, pixel comparison, per-plane cube/Stokes metrics,
   sparse-outlier residual gating, JSON product statistics, and Markdown report
   output.
-- The strengthened saved-reference matrix passed on 2026-07-04, with the
-  current report recorded in `EQUIVALENCE_REPORT.md`.
+- The refreshed strengthened saved-reference matrix passed on 2026-07-06, with
+  compact reports stored under
+  `docs/source/development/equivalence_runs/2026-07-06-saved-reference-final-gate/`
+  and summarized in `EQUIVALENCE_REPORT.md`.
 - Branch-vs-master equivalence runner scaffolding is in place at
   `scripts/dev/run_branch_equivalence.py`: it accepts explicitly prepared
   base/current parsets, can create a base-ref worktree plus virtual environment
@@ -80,14 +82,16 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Re-run the full scientific gate with the refreshed comparison rules.**
+1. **Complete the full scientific gate with the refreshed comparison rules.**
    The DD-plus-DI full-Jones normalized repeatability envelope now passes all
    base-base, current-current, and base-current pairs with only auxiliary
-   output-record warnings on cross-branch pairs. Next, run the strengthened
-   saved-reference matrix, the essential branch-vs-master scenarios, and the
-   full integration suite in the prepared dev container. Update
-   `EQUIVALENCE_REPORT.md` and compact report bundles with the final gate
-   interpretation.
+   output-record warnings on cross-branch pairs. The refreshed
+   saved-reference matrix also passes in the prepared dev container, with only
+   optional output-record warnings for newer astrometry/prepared-MS
+   bookkeeping. Next, run the full integration suite and refresh any essential
+   branch-vs-master reports that are affected by comparison-rule changes.
+   Update `EQUIVALENCE_REPORT.md` and compact report bundles with the final
+   gate interpretation.
 
 2. **Add a risk-based option equivalence matrix.**
    Add a small set of option-specific equivalence scenarios rather than a full

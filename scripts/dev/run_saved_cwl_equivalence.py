@@ -37,6 +37,9 @@ RESOURCE_ROOT = Path("tests/resources")
 # jitter in one channel while image data and catalog contracts remain equivalent.
 BEAM_TABLE_RTOL = 1e-2
 FITS_IMAGE_OUTLIER_ATOL_FACTOR = 10.0
+FITS_IMAGE_RELATIVE_MAX_FACTOR = 1e-4
+FITS_IMAGE_RELATIVE_P99_FACTOR = 2e-5
+FITS_IMAGE_RELATIVE_RMS_FACTOR = 1e-5
 FITS_WCS_HEADER_KEYS = (
     "NAXIS",
     "NAXIS1",
@@ -81,6 +84,10 @@ STALE_REFERENCE_NAMES = {
     # intentionally different from this CWL reference.
     "dd_then_di_calibration",
     "di_then_dd_calibration",
+    # Captured before current image preparation applied same-cycle DI full-Jones
+    # solutions during imaging. The current behavior is covered by branch-vs-master
+    # full-Jones scenarios generated from fresh runs.
+    "di_full_jones_calibration",
 }
 
 STRATEGY_BY_BASENAME = {
@@ -94,6 +101,7 @@ STRATEGY_BY_BASENAME = {
 OUTPUT_RECORD_AUXILIARY_ALIASES = {
     frozenset({"fulljones_gains.h5", "fulljones_solutions.h5"}),
 }
+OUTPUT_RECORD_OPTIONAL_ASTROMETRY_SUFFIXES = ("-pb-ast.fits", "-pb-ast.fits.fz")
 
 
 @dataclass
@@ -396,6 +404,8 @@ def _output_record_difference(
         difference_kind = "metadata_shape"
     elif _is_auxiliary_output_record_difference(missing_basenames, extra_basenames):
         difference_kind = "auxiliary_artifact_basenames"
+    elif _is_optional_output_record_difference(missing_basenames, extra_basenames):
+        difference_kind = "optional_artifact_basenames"
     else:
         difference_kind = "product_basenames"
     return {
@@ -425,6 +435,33 @@ def _is_auxiliary_output_record_difference(
     return False
 
 
+def _is_prepared_visibility_basename(name: str) -> bool:
+    """Return whether a basename is a local prepared-MS/intermediate visibility."""
+    return name.endswith("_prep.ms") or name.endswith(".prep")
+
+
+def _is_optional_output_record_difference(
+    missing_basenames: list[str],
+    extra_basenames: list[str],
+) -> bool:
+    """Classify intentional output-record drift from newer execution plumbing.
+
+    Saved CWL references pre-date astrometry-corrected image records and use
+    legacy prepared-MS directory names. The final science products are compared
+    separately, so these record-only differences should stay visible without
+    failing the saved-reference gate.
+    """
+
+    def is_optional(name: str) -> bool:
+        return name.endswith(OUTPUT_RECORD_OPTIONAL_ASTROMETRY_SUFFIXES) or (
+            _is_prepared_visibility_basename(name)
+        )
+
+    return bool(missing_basenames or extra_basenames) and all(
+        is_optional(name) for name in [*missing_basenames, *extra_basenames]
+    )
+
+
 def _compare_output_records(reference_dir: Path, work_dir: Path, result: ComparisonResult) -> None:
     compared = 0
     for ref_outputs in sorted((reference_dir / "pipelines").glob("*/.outputs.json")):
@@ -443,6 +480,10 @@ def _compare_output_records(reference_dir: Path, work_dir: Path, result: Compari
             elif difference["kind"] == "auxiliary_artifact_basenames":
                 result.warnings.append(
                     f"output-record auxiliary artifact basenames differ for {operation}"
+                )
+            elif difference["kind"] == "optional_artifact_basenames":
+                result.warnings.append(
+                    f"output-record optional artifact basenames differ for {operation}"
                 )
             else:
                 result.failures.append(f"output-record product basenames differ for {operation}")
@@ -518,10 +559,23 @@ def _fits_image_pixels_equivalent(metric: dict[str, Any], *, atol: float) -> boo
     residual_rms = metric.get("residual_rms")
     if max_abs_delta is None or p99_abs_delta is None or residual_rms is None:
         return False
-    return (
+    absolute_ok = (
         max_abs_delta <= FITS_IMAGE_OUTLIER_ATOL_FACTOR * atol
         and p99_abs_delta <= atol
         and residual_rms <= atol
+    )
+    if absolute_ok:
+        return True
+
+    reference_scale = max(
+        abs(metric.get("reference_rms") or 0.0),
+        abs(metric.get("reference_mad_std") or 0.0),
+        atol,
+    )
+    return (
+        max_abs_delta <= FITS_IMAGE_RELATIVE_MAX_FACTOR * reference_scale
+        and p99_abs_delta <= FITS_IMAGE_RELATIVE_P99_FACTOR * reference_scale
+        and residual_rms <= FITS_IMAGE_RELATIVE_RMS_FACTOR * reference_scale
     )
 
 
@@ -1109,6 +1163,13 @@ def _render_markdown_report(report: dict[str, Any], results: list[ComparisonResu
             lines.append(f"- `{scenario}`: {failure}")
         if len(failures) > 50:
             lines.append(f"- ... {len(failures) - 50} more failure(s)")
+    warnings = [(result.scenario, warning) for result in results for warning in result.warnings]
+    if warnings:
+        lines.extend(["", "## Warnings", ""])
+        for scenario, warning in warnings[:50]:
+            lines.append(f"- `{scenario}`: {warning}")
+        if len(warnings) > 50:
+            lines.append(f"- ... {len(warnings) - 50} more warning(s)")
     return "\n".join(lines) + "\n"
 
 

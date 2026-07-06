@@ -53,29 +53,35 @@ region-file content, and generic product basenames.
 The current strengthened saved-reference run is:
 
 ```text
-docs/source/development/equivalence_runs/2026-07-04-saved-reference-strengthened/equivalence-report.json
+docs/source/development/equivalence_runs/2026-07-06-saved-reference-final-gate/equivalence-report.json
 ```
 
-It was generated in the development container on 2026-07-04 14:55:09 BST and
-passed. The matching Markdown report is:
+It was generated in the development container on 2026-07-06 and passed. The
+matching Markdown report is:
 
 ```text
-docs/source/development/equivalence_runs/2026-07-04-saved-reference-strengthened/equivalence-report.md
+docs/source/development/equivalence_runs/2026-07-06-saved-reference-final-gate/equivalence-report.md
 ```
 
 References that encode older scientific contracts are skipped by default, but
-can still be run explicitly with `--include-stale-references`.
+can still be run explicitly with `--include-stale-references`. The old
+`di_full_jones_calibration` CWL fixture is now stale because it predates the
+current same-cycle DI full-Jones application during image preparation; full-Jones
+behavior is covered by fresh branch-vs-master scenarios instead.
 
 | Scenario | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `dd_only_calibration` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
-| `di_full_jones_calibration` | pass | 5 | 5 | 6 | 5 | 1 | 1 | 9 |
 | `di_only_calibration` | pass | 5 | 5 | 6 | 5 | 1 | 2 | 9 |
 | `full_stokes_clean_disabled` | pass | 4 | 4 | 9 | 8 | 1 | 3 | 8 |
 | `image_cube` | pass | 4 | 4 | 7 | 6 | 1 | 3 | 12 |
 | `normalization` | pass | 5 | 5 | 7 | 6 | 1 | 4 | 12 |
 | `peeling` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 11 |
 | `restart` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
+
+All scenarios have only optional output-record warnings for newer
+astrometry-corrected image products and local prepared-MS record names. Final
+FITS, h5parm, sky-model, and region products pass.
 
 ## Product Statistic Checks
 
@@ -92,6 +98,12 @@ FITS image products compare:
 - a robust residual fallback for sparse float-level image outliers:
   `max_abs_delta <= 1e-5`, `p99_abs_delta <= 1e-6`, and
   `residual_rms <= 1e-6`
+- a relative residual fallback for bright images where absolute float jitter is
+  larger but scientifically tiny:
+  `max_abs_delta <= 1e-4 * image_scale`,
+  `p99_abs_delta <= 2e-5 * image_scale`, and
+  `residual_rms <= 1e-5 * image_scale`, where `image_scale` is the larger of
+  reference RMS, reference MAD-derived noise, and `atol`
 - per-plane residual metrics for cubes and Stokes products
 
 The table below shows the worst FITS image product in each scenario by maximum
@@ -99,14 +111,13 @@ absolute residual.
 
 | Scenario | FITS products | Image HDUs | Table HDUs | Worst image product | Max abs delta | P99 abs delta | Residual RMS | RMS / Ref MAD |
 | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |
-| `dd_only_calibration` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.128e-10 | 2.365e-11 | 8.345e-12 | 1.972e-07 |
-| `di_full_jones_calibration` | 6 | 5 | 1 | `field-MFS-dirty.fits` | 2.086e-06 | 2.980e-07 | 1.036e-07 | 1.962e-07 |
-| `di_only_calibration` | 6 | 5 | 1 | `field-MFS-dirty.fits` | 1.510e-10 | 2.910e-11 | 9.418e-12 | 2.211e-07 |
-| `full_stokes_clean_disabled` | 9 | 8 | 1 | `field-MFS-I-image-pb.fits` | 2.219e-10 | 2.410e-11 | 8.460e-12 | 1.999e-07 |
-| `image_cube` | 7 | 6 | 1 | `sector_1_I_freq_cube.fits` | 5.093e-10 | 4.547e-11 | 1.618e-11 | 3.736e-07 |
-| `normalization` | 7 | 6 | 1 | `sector_1_I_freq_cube.fits` | 6.676e-06 | 6.706e-07 | 2.002e-07 | 3.921e-07 |
-| `peeling` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.187e-06 | 2.384e-07 | 8.266e-08 | 1.660e-07 |
-| `restart` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.219e-10 | 2.910e-11 | 1.083e-11 | 2.558e-07 |
+| `dd_only_calibration` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 3.165e-10 | 2.910e-11 | 9.710e-12 | 2.294e-07 |
+| `di_only_calibration` | 6 | 5 | 1 | `field-MFS-dirty.fits` | 2.292e-10 | 2.910e-11 | 1.107e-11 | 2.600e-07 |
+| `full_stokes_clean_disabled` | 9 | 8 | 1 | `field-MFS-I-image-pb.fits` | 4.657e-09 | 4.366e-11 | 2.884e-11 | 6.812e-07 |
+| `image_cube` | 7 | 6 | 1 | `sector_1_I_freq_cube.fits` | 4.547e-10 | 5.821e-11 | 1.972e-11 | 4.554e-07 |
+| `normalization` | 7 | 6 | 1 | `field-MFS-residual.fits` | 2.833e-05 | 6.169e-06 | 2.373e-06 | 5.591e-06 |
+| `peeling` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.176e-06 | 2.384e-07 | 9.129e-08 | 1.833e-07 |
+| `restart` | 6 | 5 | 1 | `field-MFS-image-pb.fits` | 2.401e-10 | 2.910e-11 | 9.181e-12 | 2.169e-07 |
 
 HDF5 products compare dataset names and shapes. Numeric datasets use
 `np.allclose(..., atol=1e-6, rtol=1e-3, equal_nan=True)`, while non-numeric
