@@ -170,7 +170,9 @@ class Field(object):
         self.full_observations = []
         for ms_filename in self.ms_filenames:
             self.full_observations.append(Observation(ms_filename))
+        self.stations = list(set([obs.stations for obs in self.full_observations]))
         self.observations = self.full_observations[:]  # make copy so we don't alter originals
+
 
         # Define a reference observation for the comparisons below
         obs0 = self.full_observations[0]
@@ -227,6 +229,7 @@ class Field(object):
                 )
 
         # Find mean elevation and FOV over all observations
+        self.diam = np.mean([obs.diam for obs in self.full_observations])
         el_rad_list = []
         ref_freq_list = []
         for obs in self.full_observations:

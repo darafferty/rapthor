@@ -273,8 +273,8 @@ inputs:
   - id: fast_antennaconstraint
     label: Fast antenna constraint
     doc: |
-      The antenna constraint for the fast phase solve (length = 1).
-    type: string
+      The antenna constraint for the fast phase solve (length = n_obs * n_time_chunks).
+    type: string[]
 
   - id: solint_medium_timestep
     label: Medium solution interval in time
@@ -356,8 +356,8 @@ inputs:
   - id: medium_antennaconstraint
     label: Fast antenna constraint
     doc: |
-      The antenna constraint for the medium phase solve (length = 1).
-    type: string
+      The antenna constraint for the medium phase solve (length = n_obs * n_time_chunks).
+    type: string[]
 
   - id: dp3_steps
     label: Steps for DP3
@@ -906,7 +906,7 @@ steps:
         source: idgcal_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint]
+    scatter: [msin, starttime, ntimes, h5parm, solint, antennaconstraint]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
@@ -944,7 +944,7 @@ steps:
         source: idgcal_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
+    scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow, antennaconstraint]
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
@@ -1291,11 +1291,11 @@ steps:
         source: medium_antennaconstraint
 {% endif %}
     scatter: [msin, starttime, ntimes, maxinterval,
-              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
+              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, solve1_antennaconstraint,
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
 {% if do_slowgain_solve %}
-              solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
-              solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
+              solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors, solve3_antennaconstraint,
+              solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors, solve4_antennaconstraint,
 {% endif %}
               minchannels]
     scatterMethod: dotproduct

@@ -114,9 +114,20 @@ class Calibrate(Operation):
                     dd_factor
                 )
             # Antenna constraints
-            core_stations = self._get_core_stations()
-            fast_antennaconstraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
-            medium_antennaconstraint = fast_antennaconstraint  # ???
+            #   Set per observation as follows:
+            #   - fast solve: core stations constrained to have the same solutions
+            #   - first medium solve: no constraint (set in CWL solve step to "[]")
+            #   - second medium solve: same as for the fast solve
+            #   - slow solve: no constraint (set further below to "[]")
+            core_antennaconstraint = []
+            for obs in self.observations:
+                all_core_stations = self._get_core_stations()
+                obs_core_stations = [a for a in all_core_stations if a in obs.stations]
+                core_antennaconstraint.append(
+                    f"[[{','.join(obs_core_stations)}]]" if obs_core_stations else "[]"
+                )
+            fast_antennaconstraint = core_antennaconstraint
+            medium_antennaconstraint = core_antennaconstraint
 
             # --- DP3 pipeline steps ---
             dp3_steps = self._build_dp3_steps(
