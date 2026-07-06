@@ -91,6 +91,9 @@ STRATEGY_BY_BASENAME = {
     "di_full_jones_strategy.py": EQUIVALENCE_INPUTS / "di_full_jones_strategy.py",
     "di_then_dd_fast_medium_strategy.py": EQUIVALENCE_INPUTS / "di_then_dd_fast_medium_strategy.py",
 }
+OUTPUT_RECORD_AUXILIARY_ALIASES = {
+    frozenset({"fulljones_gains.h5", "fulljones_solutions.h5"}),
+}
 
 
 @dataclass
@@ -387,17 +390,39 @@ def _output_record_difference(
     current_basenames = _record_basenames(current_data)
     reference_set = set(reference_basenames)
     current_set = set(current_basenames)
-    difference_kind = (
-        "metadata_shape" if reference_basenames == current_basenames else "product_basenames"
-    )
+    missing_basenames = sorted(reference_set - current_set)
+    extra_basenames = sorted(current_set - reference_set)
+    if reference_basenames == current_basenames:
+        difference_kind = "metadata_shape"
+    elif _is_auxiliary_output_record_difference(missing_basenames, extra_basenames):
+        difference_kind = "auxiliary_artifact_basenames"
+    else:
+        difference_kind = "product_basenames"
     return {
         "operation": operation,
         "kind": difference_kind,
         "reference_count": len(reference_basenames),
         "current_count": len(current_basenames),
-        "missing_basenames": sorted(reference_set - current_set),
-        "extra_basenames": sorted(current_set - reference_set),
+        "missing_basenames": missing_basenames,
+        "extra_basenames": extra_basenames,
     }
+
+
+def _is_auxiliary_output_record_difference(
+    missing_basenames: list[str],
+    extra_basenames: list[str],
+) -> bool:
+    def is_auxiliary(name: str) -> bool:
+        return name.endswith(".png")
+
+    missing_contract = {name for name in missing_basenames if not is_auxiliary(name)}
+    extra_contract = {name for name in extra_basenames if not is_auxiliary(name)}
+    if not missing_contract and not extra_contract:
+        return True
+    for alias_group in OUTPUT_RECORD_AUXILIARY_ALIASES:
+        if (missing_contract | extra_contract) <= alias_group:
+            return True
+    return False
 
 
 def _compare_output_records(reference_dir: Path, work_dir: Path, result: ComparisonResult) -> None:
@@ -415,6 +440,10 @@ def _compare_output_records(reference_dir: Path, work_dir: Path, result: Compari
             result.product_statistics.setdefault("output_records", []).append(difference)
             if difference["kind"] == "metadata_shape":
                 result.warnings.append(f"output-record metadata shape differs for {operation}")
+            elif difference["kind"] == "auxiliary_artifact_basenames":
+                result.warnings.append(
+                    f"output-record auxiliary artifact basenames differ for {operation}"
+                )
             else:
                 result.failures.append(f"output-record product basenames differ for {operation}")
         compared += 1

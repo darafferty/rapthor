@@ -601,6 +601,10 @@ def _compare_output_records(
             result.product_statistics.setdefault("output_records", []).append(difference)
             if difference["kind"] == "metadata_shape":
                 result.warnings.append(f"output-record metadata shape differs for {operation}")
+            elif difference["kind"] == "auxiliary_artifact_basenames":
+                result.warnings.append(
+                    f"output-record auxiliary artifact basenames differ for {operation}"
+                )
             else:
                 result.failures.append(f"output-record product basenames differ for {operation}")
         compared += 1
@@ -1001,6 +1005,22 @@ def _classify_branch_differences(
                 )
             )
             continue
+        if warning.startswith("output-record auxiliary artifact basenames differ for "):
+            operation = warning.removeprefix(
+                "output-record auxiliary artifact basenames differ for "
+            )
+            classifications.append(
+                _classification(
+                    item=operation,
+                    category="output_record_auxiliary_artifacts",
+                    disposition="warning",
+                    recommendation=(
+                        "Keep as non-blocking when only plot filenames or known local "
+                        "intermediate aliases differ and final scientific products pass."
+                    ),
+                )
+            )
+            continue
         if warning.startswith("output-record summary differs for "):
             operation = warning.removeprefix("output-record summary differs for ")
             difference = output_record_differences.get(operation)
@@ -1009,6 +1029,12 @@ def _classify_branch_differences(
                 recommendation = (
                     "Keep as non-blocking when product basenames match; legacy CWL "
                     "records wrap equivalent products with different metadata shape."
+                )
+            elif difference and difference.get("kind") == "auxiliary_artifact_basenames":
+                category = "output_record_auxiliary_artifacts"
+                recommendation = (
+                    "Keep as non-blocking when only plot filenames or known local "
+                    "intermediate aliases differ and final scientific products pass."
                 )
             else:
                 category = "legacy_output_record_metadata"

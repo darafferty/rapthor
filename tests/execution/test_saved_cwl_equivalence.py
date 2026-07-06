@@ -283,3 +283,39 @@ def test_output_record_comparison_fails_for_product_basename_changes(tmp_path):
     assert result.product_statistics["output_records"][0]["extra_basenames"] == [
         "field-MFS-residual.fits"
     ]
+
+
+@pytest.mark.parametrize(
+    ("reference_name", "current_name"),
+    [
+        ("fast_phase_dir[Patch].png", "scalarphase_dir[Patch].png"),
+        ("fulljones_gains.h5", "fulljones_solutions.h5"),
+    ],
+)
+def test_output_record_comparison_warns_for_auxiliary_artifact_name_changes(
+    tmp_path,
+    reference_name,
+    current_name,
+):
+    module = load_equivalence_script()
+    reference = tmp_path / "reference"
+    current = tmp_path / "current"
+    _write_output_record(
+        reference,
+        "calibrate_1",
+        {"plot": {"class": "File", "basename": reference_name}},
+    )
+    _write_output_record(
+        current,
+        "calibrate_1",
+        {"plot": {"class": "File", "basename": current_name}},
+    )
+    result = module.ComparisonResult("synthetic", tmp_path / "run")
+
+    module._compare_output_records(reference, current, result)
+
+    assert result.failures == []
+    assert result.warnings == ["output-record auxiliary artifact basenames differ for calibrate_1"]
+    assert result.product_statistics["output_records"][0]["kind"] == (
+        "auxiliary_artifact_basenames"
+    )

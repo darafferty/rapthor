@@ -55,6 +55,12 @@ long`.
   report classifies the remaining items as small image residuals, a sparse
   model-image residual, PyBDSF diagnostic catalog columns, DS9 region text
   formatting, and legacy output-record metadata shape.
+- `2026-07-06-dd-phase-plus-di-fulljones-normalized-repeatability-master-ref/`:
+  refreshed three-repeat envelope after the full-Jones normalization fix and
+  comparison-rule cleanup. All base-base, current-current, and base-current
+  pairs pass; cross-branch pairs retain only non-blocking auxiliary
+  output-record artifact-name warnings for diagnostic plot names and the local
+  full-Jones h5 alias.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones

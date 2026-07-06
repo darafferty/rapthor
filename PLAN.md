@@ -80,31 +80,21 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Turn classified DD plus DI full-Jones deltas into comparison rules.**
-   The focused 2026-07-06 normalized rerun removed the strict h5parm failure
-   and shrank the restored-image residual from about `1.025e-02` max absolute
-   delta to about `2.486e-05`. The branch-equivalence report now classifies the
-   remaining items as 4 small image residuals, 1 sparse model-image residual,
-   23 PyBDSF diagnostic catalog columns, 1 DS9 region text-formatting
-   difference, and 2 legacy output-record metadata warnings. Keep h5parm
-   structure, product presence, operation order, source count, and primary
-   catalog values strict. Semantic DS9 region comparison is now implemented:
-   harmless label-placement differences are ignored, while coordinate systems,
-   geometry, and label sets remain strict. Output-record comparison now
-   distinguishes non-blocking metadata-shape differences from strict product
-   basename drift. Next, decide whether to run a fresh three-repeat normalized
-   full-Jones envelope to derive numeric tolerances for the image/PyBDSF
-   repeatability candidates.
+1. **Re-run the full scientific gate with the refreshed comparison rules.**
+   The DD-plus-DI full-Jones normalized repeatability envelope now passes all
+   base-base, current-current, and base-current pairs with only auxiliary
+   output-record warnings on cross-branch pairs. Next, run the strengthened
+   saved-reference matrix, the essential branch-vs-master scenarios, and the
+   full integration suite in the prepared dev container. Update
+   `EQUIVALENCE_REPORT.md` and compact report bundles with the final gate
+   interpretation.
 
-2. **Use the repeatability envelope to classify remaining scientific deltas.**
-   The fixed-`facet_layout` and DD phase plus DI full-Jones repeatability
-   envelopes are now tracked under `docs/source/development/equivalence_runs/`.
-   Use these data before changing tolerances: fixed-facet image differences are
-   repeatability-bounded, while the existing DD-plus-DI full-Jones envelope is
-   pre-normalization evidence and should only be refreshed if the normalized
-   focused rerun is not enough to classify the remaining residuals.
-   Run a phase-only DD repeatability envelope only if comparison-rule changes
-   need additional multi-cycle phase-only evidence.
+2. **Add a risk-based option equivalence matrix.**
+   Add a small set of option-specific equivalence scenarios rather than a full
+   combinatorial sweep. Prioritize normalization, WSClean predict versus
+   image-based predict, BDA/averaging behavior, and screens where the target
+   environment supports them. Keep each scenario to one meaningful option
+   family so failures remain attributable.
 
 3. **Keep flexible-strategy carry-forward explicit.**
    The current policy is no silent carry-over after a new calibration step:
@@ -112,30 +102,7 @@ Known caveats:
    products may only seed matching solves or be reused by an explicit image-only
    cycle. Keep tests and docs aligned with this policy.
 
-4. **Add a risk-based option equivalence matrix.**
-   After the core repeatability envelope is available, add a small set of
-   option-specific equivalence scenarios rather than a full combinatorial
-   sweep. Prioritize normalization, WSClean predict versus image-based predict,
-   BDA/averaging behavior, and screens where the target environment supports
-   them. Keep each scenario to one meaningful option family so failures remain
-   attributable.
-
-5. **Tighten the branch-equivalence comparison contract.**
-   Update `scripts/dev/run_branch_equivalence.py`,
-   `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
-   tracked report docs so expected legacy-vs-current differences are explicit.
-   Tolerances and semantic comparisons should distinguish output-record
-   metadata shape, h5parm phase drift, sparse model-image outliers, text/region
-   ordering, and restored-image residuals while keeping operation order,
-   product presence, shapes, axes, finite values, and soltab names strict.
-
-6. **Re-run the full scientific gate.**
-   Run focused tests, the strengthened saved-reference matrix, the essential
-   branch-vs-master matrix, and the full integration suite in the prepared dev
-   container. Update `EQUIVALENCE_REPORT.md` and compact report bundles with
-   the final interpretation before taking performance-sensitive work.
-
-7. **Make pipeline PNG artifacts intentional and scalable.**
+4. **Make pipeline PNG artifacts intentional and scalable.**
    Review PNG artifacts generated during normal pipeline runs, especially
    whole-field image and solution previews. Add options to disable nonessential
    PNG generation when it slows large runs or creates fragile artifacts, while
@@ -145,23 +112,23 @@ Known caveats:
    easier to inspect than in whole-field previews. Keep raw FITS/h5parm products
    as the scientific contract; treat PNGs as reviewer/debug artifacts.
 
-8. **Take one low-risk image-cycle scalability slice.**
+5. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-9. **Re-run scientific and performance gates after the slice.**
+6. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-10. **Refresh benchmark baseline documentation if the CI run is valid.**
+7. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-11. **Resume test-suite maintainability cleanup.**
+8. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -403,10 +370,12 @@ Remaining equivalence tasks, in order:
    The fixed-facet envelope shows aggregate image differences inside
    same-branch scatter. The DD plus DI full-Jones envelope shows stable
    same-branch master repeats but was generated before current-branch
-   full-Jones gain normalization was ported. The normalized focused rerun
-   removes the h5parm failure and leaves small image/catalog residuals; refresh
-   the repeatability envelope only if those remaining residuals need final
-   tolerance evidence.
+   full-Jones gain normalization was ported. The refreshed normalized envelope
+   is now tracked under
+   `docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-repeatability-master-ref/`
+   and passes all same-branch and cross-branch pairs, with only auxiliary
+   output-record artifact-name warnings in cross-branch comparisons. Use the
+   refreshed envelope, not the pre-fix envelope, for final tolerance evidence.
    Use short `/tmp` paths for `--run-root`, `--repeatability-work-root`, and
    any master checkout/venv paths when the master branch will run imaging. The
    legacy master CWL/Toil image filter path runs PyBDSF multiprocessing from

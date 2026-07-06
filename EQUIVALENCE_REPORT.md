@@ -4,7 +4,7 @@ Generated: 2026-06-11
 
 Archived for post-cutover cleanup: 2026-06-12
 
-Latest on-disk report scan: 2026-07-05
+Latest on-disk report scan: 2026-07-06
 
 ## Summary
 
@@ -426,6 +426,40 @@ drift, so future reports can keep legacy CWL metadata noise non-blocking while
 still failing if an operation record points at different products. Any
 image/PyBDSF numeric tolerances should still be derived from same-branch
 repeatability before being accepted.
+
+## DD Phase Plus DI Full-Jones Normalized Repeatability Envelope
+
+A refreshed three-repeat branch repeatability run was completed on 2026-07-06
+after the full-Jones normalization fix and comparison-rule cleanup. The run
+used short paths (`/tmp/rfjnr`, `/tmp/rfjnw`, and `/tmp/rfjnv`) to avoid the
+legacy master PyBDSF/Toil path-length failure.
+
+The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-repeatability-master-ref/
+```
+
+All six branch executions completed successfully: three `master` repeats and
+three current-branch repeats. All 15 pair comparisons passed under the refined
+comparison contract. Same-branch pairs had no warnings; all nine cross-branch
+pairs had only two non-blocking auxiliary output-record artifact warnings for
+diagnostic plot-name vocabulary and the local full-Jones h5 alias.
+
+| Pair Group | Pairs | Passed | Max Failures | Max Warnings | Max Abs Delta | Max P99 Abs Delta | Max Residual RMS | Max Diagnostic Rel Delta |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `base-base` | 3 | 3 | 0 | 0 | 9.537e-07 | 8.941e-08 | 3.157e-08 | 2.142e-04 |
+| `current-current` | 3 | 3 | 0 | 0 | 1.431e-06 | 8.941e-08 | 2.973e-08 | 1.000e-04 |
+| `base-current` | 9 | 9 | 0 | 2 | 1.431e-06 | 8.941e-08 | 3.079e-08 | 1.944e-04 |
+
+Interpretation:
+
+This is the strongest DD plus DI full-Jones evidence so far. After
+normalization and semantic comparison cleanup, cross-branch FITS, h5parm,
+text/region, catalog, and image-diagnostic differences are inside the
+same-branch repeatability envelope. The remaining cross-branch warnings are
+execution-record artifact naming only and do not represent scientific product
+drift.
 
 ## Branch-Vs-Master Fixed-Facet Carry-Over Run
 

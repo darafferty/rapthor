@@ -457,6 +457,39 @@ def test_compare_branch_outputs_marks_output_record_product_drift_strict(tmp_pat
     assert classified[("strict_output_record_products", "image_1")] == "strict-failure"
 
 
+def test_compare_branch_outputs_warns_for_auxiliary_output_record_drift(tmp_path):
+    module = load_branch_equivalence_script()
+    base_work = tmp_path / "base-work"
+    current_work = tmp_path / "current-work"
+    _write_operation(base_work, "calibrate_1")
+    _write_operation(current_work, "calibrate_1")
+    (base_work / "pipelines" / "calibrate_1" / ".outputs.json").write_text(
+        json.dumps({"plot": {"class": "File", "basename": "fast_phase_dir[Patch].png"}}),
+        encoding="utf-8",
+    )
+    (current_work / "pipelines" / "calibrate_1" / ".outputs.json").write_text(
+        json.dumps({"plot": {"class": "File", "basename": "scalarphase_dir[Patch].png"}}),
+        encoding="utf-8",
+    )
+
+    result = module.compare_branch_outputs(
+        scenario_id="synthetic",
+        base_work_dir=base_work,
+        current_work_dir=current_work,
+        run_dir=tmp_path / "run",
+        atol=1e-6,
+        rtol=1e-3,
+    )
+
+    assert result.failures == []
+    assert result.warnings == ["output-record auxiliary artifact basenames differ for calibrate_1"]
+    classified = {
+        (item["category"], item["item"]): item["disposition"]
+        for item in result.product_statistics["difference_classification"]
+    }
+    assert classified[("output_record_auxiliary_artifacts", "calibrate_1")] == "warning"
+
+
 def test_compare_branch_outputs_records_image_diagnostics(tmp_path):
     module = load_branch_equivalence_script()
     base_work = tmp_path / "base-work"
@@ -505,6 +538,7 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
     module = load_branch_equivalence_script()
     result = module.saved_equivalence.ComparisonResult("synthetic", tmp_path / "run")
     result.warnings.append("output-record metadata shape differs for calibrate_1")
+    result.warnings.append("output-record auxiliary artifact basenames differ for calibrate_2")
     result.failures.extend(
         [
             "output-record product basenames differ for calibrate_di_1",
@@ -538,6 +572,7 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
         for item in result.product_statistics["difference_classification"]
     }
     assert classified[("output_record_metadata_shape", "calibrate_1")] == "warning"
+    assert classified[("output_record_auxiliary_artifacts", "calibrate_2")] == "warning"
     assert classified[("strict_output_record_products", "calibrate_di_1")] == "strict-failure"
     assert (
         classified[("small_image_residual", "field-MFS-image-pb.fits")] == "repeatability-candidate"
@@ -561,7 +596,7 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
         == "semantic-comparison-needed"
     )
     assert classified[("strict_region_geometry", "sector_2_facets_ds9.reg")] == "strict-failure"
-    assert result.metrics["classified_differences"] == 8
+    assert result.metrics["classified_differences"] == 9
 
 
 def test_compare_branch_outputs_creates_visual_comparisons(tmp_path):
