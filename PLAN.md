@@ -131,23 +131,33 @@ Known caveats:
    container. Update `EQUIVALENCE_REPORT.md` and compact report bundles with
    the final interpretation before taking performance-sensitive work.
 
-7. **Take one low-risk image-cycle scalability slice.**
+7. **Make pipeline PNG artifacts intentional and scalable.**
+   Review PNG artifacts generated during normal pipeline runs, especially
+   whole-field image and solution previews. Add options to disable nonessential
+   PNG generation when it slows large runs or creates fragile artifacts, while
+   keeping scientifically useful diagnostics available by default where they
+   are cheap and robust. Add a separate option to generate postage-stamp PNGs
+   around the brightest sources so image artifacts near important sources are
+   easier to inspect than in whole-field previews. Keep raw FITS/h5parm products
+   as the scientific contract; treat PNGs as reviewer/debug artifacts.
+
+8. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-8. **Re-run scientific and performance gates after the slice.**
+9. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-9. **Refresh benchmark baseline documentation if the CI run is valid.**
+10. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-10. **Resume test-suite maintainability cleanup.**
+11. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
