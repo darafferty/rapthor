@@ -32,8 +32,9 @@ current branch for the covered scientific contract. Remaining cross-branch
 warnings in the strongest repeatability envelope are auxiliary output-record
 artifact names only; FITS, h5parm, text/region, catalog, and image-diagnostic
 differences are within the same-branch repeatability envelope. The next
-scientific checks should be risk-based option scenarios rather than broader
-default-like reruns.
+scientific checks should continue as risk-based option scenarios rather than
+broader default-like reruns. The first option-matrix scenario, provided
+sky-model flux-scale normalization on the rich demo data, now passes.
 
 ## Evidence
 
@@ -136,6 +137,34 @@ datasets use exact array equality. All HDF5 checks passed in the current run.
 Text-like products compare sky-model `lines` and `patches`, beam tables with
 `atol = 1e-6` and `rtol = 1e-2`, and all other text and region files exactly.
 All text-like product checks passed in the current run.
+
+## Risk-Based Option Matrix
+
+The first focused option matrix run is tracked under:
+
+```text
+docs/source/development/equivalence_runs/2026-07-06-option-matrix/
+```
+
+`normalization-rich-demo` compares `master` with the current branch using the
+generated rich demo data, `do_normalize = True`, and explicit two-frequency
+reference sky-model snapshots at 120 MHz and 160 MHz. It passed with one
+non-blocking auxiliary output-record warning for calibration plot artifact
+names. FITS image residuals, h5parm products, text products, source-catalog
+tables, and image diagnostics pass the strengthened branch-equivalence checks.
+
+The run also caught and fixed a current-branch payload migration bug: provided
+`normalization_skymodels` and `normalization_reference_frequencies` were present
+in the operation input records but were not passed through to
+`normalize_flux_scale`. Focused tests now cover that payload path.
+
+| Scenario | Result | Pairs | Passed Pairs | Failures | Warnings | FITS | H5 | Text | Diagnostics |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `normalization-rich-demo` | pass | 1 | 1 | 0 | 1 | 8 | 3 | 12 | 1 |
+
+The remaining matrix rows are intentionally skipped until focused input
+snapshots are prepared: image-based predict, WSClean predict, BDA/averaging,
+and screens.
 
 ## Branch-Vs-Master Default-Like Run
 

@@ -78,6 +78,8 @@ class ImageSectorPayload(TypedDict):
     output_source_catalog_path: Optional[str]
     output_normalize_h5parm_filename: Optional[str]
     output_normalize_h5parm_path: Optional[str]
+    normalization_skymodels: Optional[list[str]]
+    normalization_reference_frequencies: Optional[list[float]]
     ra_mid: Optional[float]
     dec_mid: Optional[float]
     width_ra: Optional[float]

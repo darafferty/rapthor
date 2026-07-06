@@ -166,6 +166,8 @@ def make_normalization_records(
         source_catalog["path"],
         concat_record["path"],
         str(sector["output_normalize_h5parm_path"]),
+        reference_skymodels=sector["normalization_skymodels"],
+        reference_skymodels_frequencies=sector["normalization_reference_frequencies"],
     )
     normalize_h5parm = require_file(
         str(sector["output_normalize_h5parm_path"]), "Flux-scale normalization h5parm"

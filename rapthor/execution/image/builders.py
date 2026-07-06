@@ -1,7 +1,7 @@
 """Payload builders for image execution."""
 
 import os
-from typing import Mapping
+from typing import Mapping, Optional
 
 from rapthor.execution.image.contracts import (
     ImageCubeSpecPayload,
@@ -27,6 +27,14 @@ def _pol_token(pol: object) -> str:
 
 def _is_stokes_i(pol: str) -> bool:
     return pol.upper() == "I"
+
+
+def _optional_file_record_paths(records: object, label: str) -> Optional[list[str]]:
+    if not records:
+        return None
+    if not isinstance(records, list):
+        raise ValueError(f"{label} must be a list of File records")
+    return [file_record_path(record) for record in records]
 
 
 def image_payload_from_inputs(
@@ -354,6 +362,13 @@ def image_payload_from_inputs(
                     None
                     if output_normalize_h5parm_filename is None
                     else os.path.join(pipeline_dir, output_normalize_h5parm_filename)
+                ),
+                "normalization_skymodels": _optional_file_record_paths(
+                    input_parms.get("normalization_skymodels"),
+                    "normalization_skymodels",
+                ),
+                "normalization_reference_frequencies": input_parms.get(
+                    "normalization_reference_frequencies"
                 ),
                 "ra_mid": (None if not use_facets else float(input_parms["ra_mid"][sector_index])),
                 "dec_mid": (

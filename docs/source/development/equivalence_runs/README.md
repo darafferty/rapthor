@@ -93,6 +93,11 @@ long`.
   pairs pass; cross-branch pairs retain only non-blocking auxiliary
   output-record artifact-name warnings for diagnostic plot names and the local
   full-Jones h5 alias.
+- `2026-07-06-option-matrix/`: risk-based option-equivalence matrix after the
+  core science gate. The normalization rich-demo scenario passes using explicit
+  two-frequency reference sky-model snapshots; prediction path, BDA/averaging,
+  and screens scenarios remain skipped until their focused input snapshots or
+  target tool support are ready.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones

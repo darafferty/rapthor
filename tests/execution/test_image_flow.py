@@ -1564,8 +1564,15 @@ def test_image_payload_from_inputs_builds_full_stokes_image_cube_payload(tmp_pat
 
 
 def test_image_payload_from_inputs_builds_normalization_payload(tmp_path):
+    input_parms = _normalize_image_input_parms()
+    input_parms["normalization_skymodels"] = [
+        file_record(tmp_path / "reference_true_sky.txt"),
+        file_record(tmp_path / "reference_apparent_sky.txt"),
+    ]
+    input_parms["normalization_reference_frequencies"] = [134375000.0, 150000000.0]
+
     payload = image_payload_from_inputs(
-        _normalize_image_input_parms(),
+        input_parms,
         tmp_path,
         make_image_cube=True,
         normalize_flux_scale=True,
@@ -1579,6 +1586,11 @@ def test_image_payload_from_inputs_builds_normalization_payload(tmp_path):
     assert sector["output_source_catalog_path"] == str(tmp_path / "sector_1_source_catalog.fits")
     assert sector["output_normalize_h5parm_filename"] == "sector_1_normalize.h5parm"
     assert sector["output_normalize_h5parm_path"] == str(tmp_path / "sector_1_normalize.h5parm")
+    assert sector["normalization_skymodels"] == [
+        str(tmp_path / "reference_true_sky.txt"),
+        str(tmp_path / "reference_apparent_sky.txt"),
+    ]
+    assert sector["normalization_reference_frequencies"] == [134375000.0, 150000000.0]
 
 
 def test_image_payload_from_inputs_rejects_unsupported_modes(tmp_path):
@@ -2343,11 +2355,22 @@ def test_run_image_flow_returns_full_stokes_image_cube_outputs(
     ]
 
 
-def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell_operation_cls):
+def test_run_image_flow_returns_normalization_outputs(
+    tmp_path,
+    fake_image_shell_operation_cls,
+    fake_direct_image_helpers,
+):
+    input_parms = _normalize_image_input_parms()
+    input_parms["normalization_skymodels"] = [
+        file_record(tmp_path / "reference_true_sky.txt"),
+        file_record(tmp_path / "reference_apparent_sky.txt"),
+    ]
+    input_parms["normalization_reference_frequencies"] = [134375000.0, 150000000.0]
+
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(
-            _normalize_image_input_parms(),
+            input_parms,
             tmp_path,
             make_image_cube=True,
             normalize_flux_scale=True,
@@ -2361,6 +2384,15 @@ def test_run_image_flow_returns_normalization_outputs(tmp_path, fake_image_shell
     ]
     assert outputs["sector_normalize_h5parm"] == [
         file_record(tmp_path / "sector_1_normalize.h5parm")
+    ]
+    normalize_call = fake_direct_image_helpers["normalize_flux_scale"][0]
+    assert normalize_call["kwargs"]["reference_skymodels"] == [
+        str(tmp_path / "reference_true_sky.txt"),
+        str(tmp_path / "reference_apparent_sky.txt"),
+    ]
+    assert normalize_call["kwargs"]["reference_skymodels_frequencies"] == [
+        134375000.0,
+        150000000.0,
     ]
     assert "sector_skymodels" not in outputs
     command_names = [

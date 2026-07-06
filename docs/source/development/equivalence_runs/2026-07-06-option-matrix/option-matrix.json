@@ -1,0 +1,31 @@
+{
+  "description": "Risk-based branch-vs-master option equivalence checks after the 2026-07-06 core science gate.",
+  "scenarios": [
+    {
+      "id": "normalization-rich-demo",
+      "base_parset": "inputs/base/normalization_rich_demo.parset",
+      "current_parset": "inputs/current/normalization_rich_demo.parset",
+      "notes": "Flux-scale normalization enabled on the generated rich demo data with provided reference sky models."
+    },
+    {
+      "id": "prediction-path-image-based",
+      "skip_reason": "input snapshots pending",
+      "notes": "Add after the normalization option scenario has a compact report."
+    },
+    {
+      "id": "prediction-path-wsclean",
+      "skip_reason": "input snapshots pending",
+      "notes": "Pair with the image-based predict scenario so prediction-path differences remain attributable."
+    },
+    {
+      "id": "bda-averaging",
+      "skip_reason": "input snapshots pending",
+      "notes": "Use one BDA or averaging-related configuration against the same stable baseline."
+    },
+    {
+      "id": "screens",
+      "skip_reason": "requires reliable IDGCal/screen support in the target environment",
+      "notes": "Record as skipped until the target environment can run screen workflows reproducibly."
+    }
+  ]
+}
