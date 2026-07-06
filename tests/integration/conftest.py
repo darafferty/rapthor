@@ -21,12 +21,12 @@ COMMON_STRATEGY_SETTINGS = {
     # Turn off flux-scale bootstrapping
     "do_normalize": False,
     # PyBDSF settings
-    "auto_mask": 5.0,
-    "auto_mask_nmiter": 2,
+    "auto_mask": 7.0,
+    "auto_mask_nmiter": 1,
     "threshisl": 3.0,
     "threshpix": 5.0,
     # Constrain max nr of imaging major cycles
-    "max_nmiter": 12,
+    "max_nmiter": 2,
     # Disable regrouping of sky model
     "regroup_model": True,
     # Max distance allowed between selected DD calibrators

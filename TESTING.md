@@ -276,6 +276,11 @@ Or through tox:
 tox -e test_integration
 ```
 
+The shared integration template is intentionally smoke-sized so CI and local
+dev-container runs exercise the same external-tool scenarios quickly. Use
+benchmark and equivalence checks for larger, science-representative imaging
+workloads.
+
 Integration-test guidelines:
 
 - Mark integration tests with `@pytest.mark.integration`.

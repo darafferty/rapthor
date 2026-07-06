@@ -37,8 +37,8 @@ stepsize = 0.2
 tolerance = 0.001
 
 [imaging]
-grid_width_ra_deg = 1.0
-grid_width_dec_deg = 1.0
+grid_width_ra_deg = 0.25
+grid_width_dec_deg = 0.25
 grid_center_ra = 1h37m41.299s
 grid_center_dec = +33d09m35.132s
 grid_nsectors_ra = 1
@@ -59,12 +59,12 @@ normalization_reference_frequencies =
 [cluster]
 batch_system = single_machine
 max_nodes = 1
-cpus_per_task = 4
+cpus_per_task = 6
 mem_per_node_gb = 0
-max_cores = 4
-max_threads = 4
-deconvolution_threads = 2
-parallel_gridding_tasks = 2
+max_cores = 6
+max_threads = 6
+deconvolution_threads = 3
+parallel_gridding_tasks = 3
 local_scratch_dir = 
 global_scratch_dir = 
 use_container = False
