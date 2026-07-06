@@ -37,6 +37,74 @@ broader default-like reruns. The first option-matrix scenarios now pass for
 provided sky-model flux-scale normalization, DP3 image-based predict, WSClean
 predict, and BDA/averaging on the rich demo data.
 
+## Science Equivalence Gate Decision
+
+Status: accepted for the covered scientific contract. The current branch is
+ready for the first low-risk scalability slice, provided product-affecting
+changes continue to rerun the relevant focused equivalence checks.
+
+The accepted contract is:
+
+- keep operation order, operation presence, product presence, product basenames,
+  FITS/HDF5/text product structure, h5parm solset/soltab names, axes, shapes,
+  finite masks, source counts, and primary catalog values strict
+- accept FITS image, source-catalog diagnostic, and image-diagnostic numeric
+  differences only when they are inside the measured same-branch repeatability
+  envelope
+- treat legacy CWL output-record metadata, auxiliary diagnostic plot artifact
+  names, and generated preview PNGs as non-scientific review aids
+- keep raw FITS, h5parm, sky-model, catalog, region, and diagnostic JSON/report
+  products as the scientific comparison surface
+
+| Evidence | Latest tracked report | Result | Gate decision |
+| --- | --- | --- | --- |
+| Saved-reference final gate | `docs/source/development/equivalence_runs/2026-07-06-saved-reference-final-gate/` | pass | Current Prefect/Dask path preserves the saved legacy product contract for all non-stale references. |
+| Core DD phase plus DI full-Jones repeatability | `docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-repeatability-master-ref/` | pass | All 15 base-base, current-current, and base-current pairs pass; cross-branch warnings are auxiliary output-record artifact names only. |
+| Core DD phase plus DI full-Jones focused smoke | `docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/` | strict fail, classified | All h5parm products pass; remaining strict failures are repeatability-bounded small image residuals, PyBDSF diagnostic catalog columns, DS9 formatting, and legacy metadata shape. |
+| Risk-based option matrix | `docs/source/development/equivalence_runs/2026-07-06-option-matrix/` | pass for active rows | Provided normalization sky models, DP3 image-based predict, WSClean predict, and BDA/averaging pass against `master`; screens are skipped until target tool support is available. |
+| Flexible carry-over matrix | `2026-07-05-*carryover*` and `2026-07-05-*mode-boundary*` reports | intentional strict differences | Current behavior follows the explicit strategy contract rather than copying unsafe implicit master state. |
+
+Accepted current-vs-master intentional differences:
+
+- Previous-cycle solutions may seed later matching solves, but they are optimizer
+  seeds only. They are not silently applied during imaging after a new
+  calibration step unless they are part of that cycle's calibration state.
+- DD previous-cycle seeds require compatible directions. Fixed facets allow
+  compatible fast and medium phase seeds; changed/regrouped facets block those
+  seeds. Master can still pass stale DD seeds across direction changes.
+- Previous full-Jones products may seed compatible later DI full-Jones solves,
+  using `[amplitude000, phase000]`. They are not silently carried into a later
+  DD-only imaging step after new DD calibration.
+- Slow-gain/default-like current runs preserve the active amplitude solution in
+  the final field-solutions h5parm. The current branch should not mimic the
+  master run that logs an h5parm-combination broadcast error and finishes with
+  phase-only active solutions.
+
+Known target-environment or reference caveats:
+
+- The `screens` option-matrix row remains skipped until reliable IDGCal/screen
+  support is available in the target environment.
+- MPI WSClean and Slurm/external-Dask checks remain deployment checks rather
+  than local science-gate blockers.
+- Legacy master repeatability runs must use short `/tmp` paths to avoid the
+  PyBDSF/Toil `AF_UNIX path too long` failure.
+
+Possible master bugs or legacy limitations to investigate separately:
+
+- slow-gain h5parm combination logs a broadcasting error but the master run
+  still returns success and leaves final field solutions without amplitude
+- previous DD fast-phase seeds are reused across changed facet/direction sets
+  without a direction-compatibility guard
+- previous DI full-Jones products can be applied in later DD-only imaging after
+  a new calibration step, making correction state implicit rather than
+  strategy-scoped
+
+Rerun policy: documentation, report-only, and preview-artifact changes may use
+the current evidence plus focused tests. Changes to calibration, prediction,
+imaging, h5parm collection, FITS products, sky models, source catalogs, or
+diagnostics should rerun the relevant saved-reference and branch-vs-master
+scenario before new scalability work is judged.
+
 ## Evidence
 
 Saved CWL reference artifacts were captured from legacy commit:

@@ -16,9 +16,11 @@ production architecture over unreleased compatibility shims.
 
 ## Current Position
 
-The architecture cleanup is complete enough to focus first on scientific
-confidence. Benchmark-guided scalability and broader test maintainability come
-after the branch-vs-master science gate is documented and accepted.
+The architecture cleanup and science-equivalence gate are complete enough to
+start the first low-risk scalability slice. Keep the science gate guarded: any
+product-affecting calibration, prediction, imaging, h5parm, FITS, catalog, or
+sky-model change must rerun the relevant focused equivalence checks before it
+is judged.
 
 Done:
 
@@ -77,6 +79,11 @@ Done:
   `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`;
   screens remain a skipped target-environment scenario until reliable
   IDGCal/screen support is available.
+- The science-equivalence gate is accepted for the covered contract in
+  `EQUIVALENCE_REPORT.md`: saved-reference products pass, the normalized DD
+  phase plus DI full-Jones three-repeat branch-vs-master envelope passes, the
+  active risk-based option rows pass, and intentional master/current policy
+  differences are documented.
 
 Known caveats:
 
@@ -92,51 +99,36 @@ Known caveats:
 
 ## Immediate Next Work, In Order
 
-Use this section as the current work queue. Do not start the first scalability
-slice until the science-equivalence gate below is complete or explicitly
-accepted with documented caveats.
+Use this section as the current work queue. The science-equivalence gate is
+accepted for the covered contract; keep it current while taking the first
+scalability slice.
 
 Preview artifacts remain diagnostic aids only: whole-field FITS previews and
 source postage stamps can be generated for demo/debugging, but raw FITS/h5parm
 products, numeric diagnostics, catalog products, and report JSON remain the
 scientific contract.
 
-1. **Close the science-equivalence gate.**
-   Use the saved-reference final gate, branch-vs-master reports, option matrix,
-   and repeatability envelopes to decide whether the current branch is
-   scientifically equivalent for the intended contract. Update
-   `EQUIVALENCE_REPORT.md` with the final summary, accepted tolerances,
-   intentional current-vs-master differences, skipped target-environment
-   scenarios, and possible master bugs.
-
-2. **Keep flexible-strategy carry-forward explicit while closing the gate.**
-   The current policy is no silent carry-over after a new calibration step:
-   imaging and preapply use current-cycle products, while previous-cycle
-   products may only seed matching solves or be reused by an explicit
-   image-only cycle. Keep this policy covered by tests, documentation, and the
-   branch-vs-master evidence. Label expected master divergences clearly instead
-   of copying unsafe implicit state.
-
-3. **Run only targeted science reruns for product-affecting changes.**
+1. **Guard the accepted science-equivalence contract.**
    For documentation, preview-artifact, or report-only changes, keep the
    previous equivalence evidence and run focused tests. For calibration,
    prediction, imaging, h5parm, FITS, catalog, or sky-model changes, rerun the
    relevant saved-reference and branch-vs-master scenarios before changing
    scalability code.
 
-4. **Take one low-risk image-cycle scalability slice only after sign-off.**
+2. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output
    records, restart behavior, run names, worker payload serializability, and
    scientific products.
 
-5. **Re-run performance gates after the first scalability slice.**
-   Run focused tests, saved-reference equivalence, then the three-repetition
+3. **Re-run science and performance gates after the first slice.**
+   Run focused tests, saved-reference equivalence, the relevant
+   branch-vs-master check if products changed, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
-   second slice. Commit only compact benchmark reports; keep bulky artifacts in
-   CI artifacts or external storage.
+   second slice. Commit only compact reports; keep bulky artifacts in CI
+   artifacts or external storage.
 
-6. **Resume test-suite maintainability cleanup after the first slice is
+4. **Resume test-suite maintainability cleanup after the first slice is
    guarded.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in sync.
 
