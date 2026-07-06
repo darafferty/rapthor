@@ -120,7 +120,7 @@ class Calibrate(Operation):
             #   - second medium solve: same as for the fast solve
             #   - slow solve: no constraint (set further below to "[]")
             core_antennaconstraint = []
-            for obs in self.observations:
+            for obs in self.field.observations:
                 all_core_stations = self._get_core_stations()
                 obs_core_stations = [a for a in all_core_stations if a in obs.stations]
                 core_antennaconstraint.append(
