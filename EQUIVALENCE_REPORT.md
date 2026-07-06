@@ -417,9 +417,12 @@ flexible-strategy behavior. The remaining differences are now in the same
 family as comparison-contract work: small WSClean/PyBDSF image/catalog
 residuals, text formatting, and legacy CWL output-record metadata. The next
 comparison-contract work should keep h5parm structure, product presence,
-operation order, source count, and primary catalog values strict; add semantic
-region comparison; and derive any image/PyBDSF numeric tolerances from
-same-branch repeatability before accepting them.
+operation order, source count, and primary catalog values strict. Semantic DS9
+region comparison has now been added to the shared product comparator, so
+future reruns will ignore harmless label-placement differences while keeping
+coordinate systems, geometry, and label sets strict. Any image/PyBDSF numeric
+tolerances should still be derived from same-branch repeatability before being
+accepted.
 
 ## Branch-Vs-Master Fixed-Facet Carry-Over Run
 

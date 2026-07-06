@@ -1078,6 +1078,25 @@ def _classify_branch_differences(
             )
             continue
 
+        region_match = re.match(
+            r"DS9 region (coordinate system|geometry|labels) differs for (.+\.reg)$",
+            failure,
+        )
+        if region_match:
+            difference, product = region_match.groups()
+            classifications.append(
+                _classification(
+                    item=product,
+                    category=f"strict_region_{difference.replace(' ', '_')}",
+                    disposition="strict-failure",
+                    recommendation=(
+                        "Region coordinate systems, geometry, and label sets remain strict "
+                        "after semantic DS9 parsing."
+                    ),
+                )
+            )
+            continue
+
         if failure.startswith("HDF5"):
             classifications.append(
                 _classification(

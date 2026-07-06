@@ -483,6 +483,7 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
             "FITS table column differs for sector_1.source_catalog.fits:E_Total_flux",
             "FITS table column differs for sector_1.source_catalog.fits:Total_flux",
             "text product differs for sector_1_facets_ds9.reg",
+            "DS9 region geometry differs for sector_2_facets_ds9.reg",
         ]
     )
     result.product_statistics["fits"] = [
@@ -528,7 +529,8 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
         classified[("region_text_formatting", "sector_1_facets_ds9.reg")]
         == "semantic-comparison-needed"
     )
-    assert result.metrics["classified_differences"] == 6
+    assert classified[("strict_region_geometry", "sector_2_facets_ds9.reg")] == "strict-failure"
+    assert result.metrics["classified_differences"] == 7
 
 
 def test_compare_branch_outputs_creates_visual_comparisons(tmp_path):

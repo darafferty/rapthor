@@ -152,3 +152,67 @@ def test_equivalence_markdown_report_includes_fits_residual_table(tmp_path):
 
     assert "## FITS Residual Metrics" in markdown
     assert "| `synthetic` | `current.fits` |" in markdown
+
+
+def _compare_text_product(module, tmp_path, reference_text, current_text, filename="facets.reg"):
+    reference = tmp_path / "reference" / filename
+    current = tmp_path / "current" / filename
+    reference.parent.mkdir()
+    current.parent.mkdir()
+    reference.write_text(reference_text.strip() + "\n", encoding="utf-8")
+    current.write_text(current_text.strip() + "\n", encoding="utf-8")
+    result = module.ComparisonResult("synthetic", tmp_path / "run")
+
+    module._compare_text_product(reference, current, result, atol=1e-6, rtol=1e-3)
+
+    return result
+
+
+def test_ds9_region_equivalence_ignores_label_placement(tmp_path):
+    module = load_equivalence_script()
+    reference = """
+    # Region file format: DS9 version 4.0
+    global color=green
+    fk5
+    polygon(1.0, 2.0, 3.0, 2.0, 3.0, 4.0, 1.0, 4.0)
+    point(2.0, 3.0) # text={Patch_A}
+    """
+    current = """
+    # Region file format: DS9 version 4.0
+    fk5
+    polygon(1.0, 2.0, 3.0, 2.0, 3.0, 4.0, 1.0, 4.0) # text={Patch_A}
+    """
+
+    result = _compare_text_product(module, tmp_path, reference, current)
+
+    assert result.failures == []
+    assert result.product_statistics["text"] == [
+        {
+            "product": "facets.reg",
+            "kind": "ds9_region",
+            "reference_shapes": 1,
+            "current_shapes": 1,
+            "reference_labels": 1,
+            "current_labels": 1,
+        }
+    ]
+
+
+def test_ds9_region_equivalence_catches_geometry_changes(tmp_path):
+    module = load_equivalence_script()
+    reference = "fk5\npolygon(1.0, 2.0, 3.0, 2.0, 3.0, 4.0) # text={Patch_A}"
+    current = "fk5\npolygon(1.0, 2.0, 3.0, 2.0, 3.1, 4.0) # text={Patch_A}"
+
+    result = _compare_text_product(module, tmp_path, reference, current)
+
+    assert result.failures == ["DS9 region geometry differs for facets.reg"]
+
+
+def test_ds9_region_equivalence_catches_label_changes(tmp_path):
+    module = load_equivalence_script()
+    reference = "fk5\npolygon(1.0, 2.0, 3.0, 2.0, 3.0, 4.0) # text={Patch_A}"
+    current = "fk5\npolygon(1.0, 2.0, 3.0, 2.0, 3.0, 4.0) # text={Patch_B}"
+
+    result = _compare_text_product(module, tmp_path, reference, current)
+
+    assert result.failures == ["DS9 region labels differ for facets.reg"]

@@ -16,6 +16,7 @@ import configparser
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -765,6 +766,127 @@ def _beam_table(path: Path) -> np.ndarray:
     return np.asarray(ast.literal_eval(f"[{path.read_text(encoding='utf-8')} ]"), dtype=float)
 
 
+DS9_SHAPE_RE = re.compile(r"^\s*([A-Za-z]+)\s*\(([^)]*)\)\s*(?:#\s*(.*))?$")
+DS9_TEXT_RE = re.compile(
+    r"text\s*=\s*(?:\{([^}]*)\}|\"([^\"]*)\"|'([^']*)'|([^\s]+))",
+    re.IGNORECASE,
+)
+
+
+def _ds9_text_label(comment: str | None) -> str | None:
+    if not comment:
+        return None
+    match = DS9_TEXT_RE.search(comment)
+    if not match:
+        return None
+    return next(group for group in match.groups() if group is not None).strip()
+
+
+def _parse_ds9_coordinates(coordinates: str) -> tuple[float, ...]:
+    return tuple(float(value.strip()) for value in coordinates.split(",") if value.strip())
+
+
+def _ds9_shape_sort_key(shape: tuple[str, tuple[float, ...]]) -> tuple[str, tuple[float, ...]]:
+    kind, coordinates = shape
+    return kind, tuple(round(value, 12) for value in coordinates)
+
+
+def _ds9_region_semantics(path: Path) -> dict[str, Any]:
+    """Return geometry and labels from a DS9 region file.
+
+    Facet labels may be attached to point helper rows or to polygon rows
+    depending on the producer. Geometry remains strict, but label placement is
+    not part of the scientific region contract.
+    """
+    directives = []
+    region_shapes = []
+    point_shapes = []
+    labels = []
+    unparsed_content = []
+    for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.lower().startswith("global"):
+            continue
+        match = DS9_SHAPE_RE.match(line)
+        if not match:
+            directives.append(line.lower())
+            continue
+        kind = match.group(1).lower()
+        coordinates = _parse_ds9_coordinates(match.group(2))
+        label = _ds9_text_label(match.group(3))
+        if label:
+            labels.append(label)
+        if kind == "point":
+            point_shapes.append((kind, coordinates))
+        else:
+            region_shapes.append((kind, coordinates))
+        unparsed_content.append(line)
+
+    geometry_shapes = region_shapes if region_shapes else point_shapes
+    return {
+        "directives": tuple(sorted(directives)),
+        "geometry": sorted(geometry_shapes, key=_ds9_shape_sort_key),
+        "labels": tuple(sorted(labels)),
+        "shape_lines": len(unparsed_content),
+    }
+
+
+def _ds9_shape_lists_equal(
+    reference_shapes: list[tuple[str, tuple[float, ...]]],
+    current_shapes: list[tuple[str, tuple[float, ...]]],
+    *,
+    atol: float,
+    rtol: float,
+) -> bool:
+    if len(reference_shapes) != len(current_shapes):
+        return False
+    for (ref_kind, ref_coordinates), (cur_kind, cur_coordinates) in zip(
+        reference_shapes, current_shapes
+    ):
+        if ref_kind != cur_kind or len(ref_coordinates) != len(cur_coordinates):
+            return False
+        if not np.allclose(ref_coordinates, cur_coordinates, atol=atol, rtol=rtol):
+            return False
+    return True
+
+
+def _compare_ds9_region(
+    reference: Path,
+    current: Path,
+    result: ComparisonResult,
+    *,
+    atol: float,
+    rtol: float,
+) -> None:
+    reference_region = _ds9_region_semantics(reference)
+    current_region = _ds9_region_semantics(current)
+    result.product_statistics.setdefault("text", []).append(
+        {
+            "product": current.name,
+            "kind": "ds9_region",
+            "reference_shapes": len(reference_region["geometry"]),
+            "current_shapes": len(current_region["geometry"]),
+            "reference_labels": len(reference_region["labels"]),
+            "current_labels": len(current_region["labels"]),
+        }
+    )
+    if reference_region["directives"] != current_region["directives"]:
+        result.failures.append(f"DS9 region coordinate system differs for {current.name}")
+        return
+    if not _ds9_shape_lists_equal(
+        reference_region["geometry"],
+        current_region["geometry"],
+        atol=atol,
+        rtol=rtol,
+    ):
+        result.failures.append(f"DS9 region geometry differs for {current.name}")
+        return
+    if reference_region["labels"] != current_region["labels"]:
+        result.failures.append(f"DS9 region labels differ for {current.name}")
+
+
 def _compare_text_product(
     reference: Path,
     current: Path,
@@ -780,6 +902,9 @@ def _compare_text_product(
         beam_rtol = max(rtol, BEAM_TABLE_RTOL)
         if not np.allclose(_beam_table(reference), _beam_table(current), atol=atol, rtol=beam_rtol):
             result.failures.append(f"beam table differs for {current.name}")
+        return
+    if reference.suffix == ".reg":
+        _compare_ds9_region(reference, current, result, atol=atol, rtol=rtol)
         return
     if reference.suffix == ".txt" and ("sky" in reference.name or "model" in reference.name):
         if _skymodel_summary(reference) != _skymodel_summary(current):

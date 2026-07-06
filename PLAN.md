@@ -88,9 +88,11 @@ Known caveats:
    23 PyBDSF diagnostic catalog columns, 1 DS9 region text-formatting
    difference, and 2 legacy output-record metadata warnings. Keep h5parm
    structure, product presence, operation order, source count, and primary
-   catalog values strict. Next, implement semantic DS9 region comparison and
-   decide whether to run a fresh three-repeat normalized full-Jones envelope to
-   derive numeric tolerances for the image/PyBDSF repeatability candidates.
+   catalog values strict. Semantic DS9 region comparison is now implemented:
+   harmless label-placement differences are ignored, while coordinate systems,
+   geometry, and label sets remain strict. Next, decide whether to run a fresh
+   three-repeat normalized full-Jones envelope to derive numeric tolerances for
+   the image/PyBDSF repeatability candidates.
 
 2. **Use the repeatability envelope to classify remaining scientific deltas.**
    The fixed-`facet_layout` and DD phase plus DI full-Jones repeatability
