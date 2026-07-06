@@ -89,26 +89,44 @@ Known caveats:
   curated reports, manifests, and short command logs may be tracked under
   `docs/source/development/` when they explain an important result.
 
-## Next Work, In Order
+## Immediate Next Work, In Order
+
+Use this section as the current work queue. The longer equivalence notes below
+are evidence and follow-up context, not a competing priority list.
 
 1. **Make pipeline PNG artifacts intentional and scalable.**
-   Review PNG artifacts generated during normal pipeline runs, especially
-   whole-field image and solution previews. Add options to disable nonessential
-   PNG generation when it slows large runs or creates fragile artifacts, while
-   keeping scientifically useful diagnostics available by default where they
-   are cheap and robust. Add a separate option to generate postage-stamp PNGs
-   around the brightest sources so image artifacts near important sources are
-   easier to inspect than in whole-field previews. Keep raw FITS/h5parm products
-   as the scientific contract; treat PNGs as reviewer/debug artifacts.
+   First inventory where PNGs are currently produced during normal pipeline,
+   equivalence, and report generation. Then add an explicit user-facing switch
+   for nonessential pipeline PNG previews, defaulting to the current reviewer
+   behavior only where the files are cheap and robust. Keep raw FITS/h5parm
+   products, numeric diagnostics, and report JSON as the scientific contract.
+   After the disable/enable path is covered, add a separate option for
+   postage-stamp PNGs around the brightest sources so image artifacts near
+   important sources are easier to inspect than whole-field previews.
+
+   Definition of done:
+
+   - parset defaults, docs, examples/templates, payloads, and tests agree on
+     when PNG previews are produced
+   - large-data runs can disable nonessential PNG generation without losing
+     scientific products or numeric diagnostics
+   - postage-stamp previews are optional and clearly separate from whole-field
+     previews
+   - tracked equivalence reports keep compact numeric summaries by default and
+     do not require committed PNG artifacts
 
 2. **Keep flexible-strategy carry-forward explicit.**
    The current policy is no silent carry-over after a new calibration step:
    imaging and preapply use current-cycle products, while previous-cycle
    products may only seed matching solves or be reused by an explicit image-only
-   cycle. Keep tests and docs aligned with this policy.
+   cycle. Keep tests and docs aligned with this policy while making the PNG
+   artifact changes; do not re-open carry-forward semantics unless a new test or
+   equivalence run shows a regression.
 
 3. **Take one low-risk image-cycle scalability slice.**
-   Start with one natural boundary inside image-sector execution, such as
+   Do this only after the PNG artifact behavior is explicit, because PNG
+   generation and diagnostics affect image-cycle cost and output records. Start
+   with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
@@ -347,7 +365,11 @@ Possible bugs on the master branch to investigate:
   Treat this as legacy implicit-state behavior that should remain documented
   but should not be copied silently into the flexible strategy.
 
-Remaining equivalence tasks, in order:
+Equivalence follow-up backlog:
+
+The core science gate is closed for the covered contract. Treat this list as
+follow-up evidence work or reviewer-driven cleanup, not as the immediate
+implementation queue unless a new equivalence result re-opens the gate.
 
 1. **Use branch repeatability controls before tuning tolerances.**
    The essential branch-vs-master scenario matrix now has compact tracked
