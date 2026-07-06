@@ -912,7 +912,7 @@ The available options are described below under their respective sections.
         ``dir_working/.rapthor-artifacts/postage-stamps`` and publishes them as
         Prefect image artifacts when running inside a Prefect context. Stamps
         are rendered from the ``image-pb`` product and include the catalog
-        source coordinates in the title.
+        source coordinates in the title using the FITS WCS coordinate units.
 
     prefect_postage_stamp_preview_count
         Maximum number of brightest catalog sources to render when
@@ -928,8 +928,10 @@ The available options are described below under their respective sections.
         Upper percentile used for FITS preview display limits (default =
         ``99.9``). Rapthor uses ``100 - value`` as the lower percentile, so the
         default displays whole-field previews and postage stamps with ``0.1``
-        and ``99.9`` percentile clipping. Set this to ``100`` to use the finite
-        minimum and maximum values.
+        and ``99.9`` percentile clipping. Postage stamps use limits computed
+        from the full FITS image plane, not from the cropped stamp, so their
+        colour scale matches the corresponding full-field preview. Set this to
+        ``100`` to use the finite minimum and maximum values.
 
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option

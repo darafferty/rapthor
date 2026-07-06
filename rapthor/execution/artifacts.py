@@ -196,6 +196,35 @@ def _clip_percentiles(clip_percentile: float) -> tuple[float, float]:
     return 100.0 - clip_percentile, clip_percentile
 
 
+def _coordinate_axis(header, prefix: str, default: int) -> int:
+    naxis = int(header.get("WCSAXES", header.get("NAXIS", 2)) or 2)
+    for axis in range(1, naxis + 1):
+        if str(header.get(f"CTYPE{axis}", "")).upper().startswith(prefix):
+            return axis
+    return default
+
+
+def _coordinate_value_text(value_deg: float, header, axis: int, *, signed: bool = False) -> str:
+    from astropy import units as u
+
+    unit_text = str(header.get(f"CUNIT{axis}", "deg")).strip() or "deg"
+    try:
+        value = (value_deg * u.deg).to_value(u.Unit(unit_text))
+    except Exception:
+        unit_text = "deg"
+        value = value_deg
+    format_spec = "+.6f" if signed else ".6f"
+    return f"{value:{format_spec}} {unit_text}"
+
+
+def _source_coordinate_text(source: Mapping[str, object], header) -> str:
+    ra_axis = _coordinate_axis(header, "RA", 1)
+    dec_axis = _coordinate_axis(header, "DEC", 2)
+    ra_text = _coordinate_value_text(float(source["ra_deg"]), header, ra_axis)
+    dec_text = _coordinate_value_text(float(source["dec_deg"]), header, dec_axis, signed=True)
+    return f"RA {ra_text}, Dec {dec_text}"
+
+
 def render_fits_png(
     fits_path: Path,
     output_dir: Path,
@@ -325,6 +354,11 @@ def render_fits_postage_stamp_pngs(
     half_size = max(1, stamp_size_px // 2)
     height, width = data.shape
     lower_percentile, upper_percentile = _clip_percentiles(clip_percentile)
+    vmin, vmax = _image_limits(
+        data,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+    )
     records = []
     for rank, source in enumerate(sources, start=1):
         try:
@@ -352,19 +386,12 @@ def render_fits_postage_stamp_pngs(
             continue
 
         png_path = _fits_postage_stamp_path(fits_path, root_dir, output_dir, rank)
-        vmin, vmax = _image_limits(
-            stamp,
-            lower_percentile=lower_percentile,
-            upper_percentile=upper_percentile,
-        )
+        coordinate_text = _source_coordinate_text(source, header)
         fig, ax = plt.subplots(figsize=(3.4, 3.4), dpi=150)
         image = ax.imshow(stamp, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
         ax.scatter([x_center - x_min], [y_center - y_min], marker="+", color="cyan", s=80)
         ax.set_title(
-            (
-                f"{_postage_stamp_label(fits_path)} source {rank}\n"
-                f"RA {source['ra_deg']:.6f} deg, Dec {source['dec_deg']:+.6f} deg"
-            ),
+            (f"{_postage_stamp_label(fits_path)} source {rank}\n{coordinate_text}"),
             fontsize=7,
         )
         ax.set_axis_off()
@@ -382,6 +409,7 @@ def render_fits_postage_stamp_pngs(
                 "catalog_index": source["catalog_index"],
                 "source_ra_deg": source["ra_deg"],
                 "source_dec_deg": source["dec_deg"],
+                "source_coordinate_text": coordinate_text,
                 "source_flux": source["flux"],
                 "source_flux_column": source["flux_column"],
             }
@@ -971,6 +999,7 @@ def publish_fits_postage_stamp_artifacts(
             "source_rank": source_rank,
             "source_ra_deg": stamp_record["source_ra_deg"],
             "source_dec_deg": stamp_record["source_dec_deg"],
+            "source_coordinate_text": stamp_record["source_coordinate_text"],
             "source_flux": stamp_record["source_flux"],
             "source_flux_column": stamp_record["source_flux_column"],
             "clip_percentile": stamp_record["clip_percentile"],

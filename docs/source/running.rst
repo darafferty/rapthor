@@ -202,10 +202,10 @@ to write source-centred PNG crops around the brightest catalog sources under
 ``dir_working/.rapthor-artifacts/postage-stamps`` and publish them from Prefect
 when a run context is active; the demo parsets enable these smaller previews,
 while the benchmark parset leaves them disabled. Each postage stamp is rendered
-from the ``image-pb`` product, includes the catalog source coordinates, and uses
-the same configurable percentile clipping as whole-field FITS previews. At the
-end of the process flow, Rapthor publishes an index artifact for everything
-found under ``dir_working/plots``.
+from the ``image-pb`` product, includes the catalog source coordinates in the
+FITS WCS units, and uses the same full-image configurable percentile clipping
+as whole-field FITS previews. At the end of the process flow, Rapthor publishes
+an index artifact for everything found under ``dir_working/plots``.
 When running in the VS Code development container, the plot index rewrites
 ``/app`` paths to the host workspace path using ``RAPTHOR_HOST_WORKSPACE`` so
 the local file links can be opened from the browser.

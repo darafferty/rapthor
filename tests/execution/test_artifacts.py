@@ -322,12 +322,14 @@ def test_render_fits_postage_stamp_pngs_uses_configurable_clip_limits(tmp_path):
     header["NAXIS2"] = 11
     header["CTYPE1"] = "RA---TAN"
     header["CTYPE2"] = "DEC--TAN"
-    header["CRVAL1"] = 15.0
-    header["CRVAL2"] = 30.0
+    header["CUNIT1"] = "arcmin"
+    header["CUNIT2"] = "arcmin"
+    header["CRVAL1"] = 900.0
+    header["CRVAL2"] = 1800.0
     header["CRPIX1"] = 6.0
     header["CRPIX2"] = 6.0
-    header["CDELT1"] = -0.001
-    header["CDELT2"] = 0.001
+    header["CDELT1"] = -0.06
+    header["CDELT2"] = 0.06
     image_pb_path = tmp_path / "sector_1-MFS-I-image-pb.fits"
     image_pb_data = np.arange(121, dtype=float).reshape(11, 11)
     fits.writeto(image_pb_path, image_pb_data, header, overwrite=True)
@@ -343,7 +345,7 @@ def test_render_fits_postage_stamp_pngs_uses_configurable_clip_limits(tmp_path):
         tmp_path / "previews",
         root_dir=tmp_path,
         max_sources=1,
-        stamp_size_px=11,
+        stamp_size_px=5,
         clip_percentile=90.0,
     )
 
@@ -351,6 +353,7 @@ def test_render_fits_postage_stamp_pngs_uses_configurable_clip_limits(tmp_path):
     assert records[0]["fits_paths"] == [str(image_pb_path)]
     assert records[0]["source_ra_deg"] == 15.0
     assert records[0]["source_dec_deg"] == 30.0
+    assert records[0]["source_coordinate_text"] == "RA 900.000000 arcmin, Dec +1800.000000 arcmin"
     assert records[0]["display_vmin"] == np.nanpercentile(image_pb_data, 10.0)
     assert records[0]["display_vmax"] == np.nanpercentile(image_pb_data, 90.0)
     assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
