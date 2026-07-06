@@ -94,10 +94,18 @@ def run_mosaic_image_type(
             shell_operation_cls=shell_operation_cls,
         )
         if config.publish_fits_previews:
-            publish_fits_image_artifacts([output_record], pipeline_working_dir)
+            publish_fits_image_artifacts(
+                [output_record],
+                pipeline_working_dir,
+                clip_percentile=config.fits_preview_clip_percentile,
+            )
         return output_record
     if config.publish_fits_previews:
-        publish_fits_image_artifacts([output_record], pipeline_working_dir)
+        publish_fits_image_artifacts(
+            [output_record],
+            pipeline_working_dir,
+            clip_percentile=config.fits_preview_clip_percentile,
+        )
     return output_record
 
 

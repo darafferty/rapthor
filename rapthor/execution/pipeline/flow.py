@@ -149,6 +149,7 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "prefect_postage_stamp_preview_size_px": (
                 execution_config.postage_stamp_preview_size_px
             ),
+            "prefect_fits_preview_clip_percentile": (execution_config.fits_preview_clip_percentile),
             "batch_system": execution_config.batch_system,
             "max_nodes": execution_config.max_nodes,
             "local_dask_workers": execution_config.local_dask_workers,

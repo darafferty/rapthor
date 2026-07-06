@@ -18,7 +18,9 @@ Prefect/Dask.
       output without the noisy Prefect Shell ``PID ... stream output`` prefixes.
     - The Prefect dashboard can show run logs, command timing summaries,
       calibration plots, image diagnostics, and optional FITS whole-field or
-      source-centred postage-stamp PNG previews as artifacts.
+      source-centred postage-stamp PNG previews as artifacts. Postage-stamp
+      previews are also saved as files, include catalog source coordinates, and
+      use the same clipped colour-scale policy as whole-field FITS previews.
     - The demo helper can start or reuse a Prefect server, keep it running after
       a demo, create a unique working directory for each run, expose a local
       Dask dashboard, and write a Dask performance report.

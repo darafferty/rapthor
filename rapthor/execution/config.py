@@ -46,6 +46,16 @@ def _as_positive_int(value: Any, name: str) -> int:
     return parsed
 
 
+def _as_clip_percentile(value: Any, name: str) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"{name} must be a number") from err
+    if not 50.0 < parsed <= 100.0:
+        raise ValueError(f"{name} must be > 50 and <= 100")
+    return parsed
+
+
 def _as_choice(value: Any, name: str, choices: tuple[str, ...]) -> str:
     if value is None:
         return choices[0]
@@ -93,6 +103,7 @@ class ExecutionConfig:
     publish_postage_stamp_previews: bool = False
     postage_stamp_preview_count: int = 5
     postage_stamp_preview_size_px: int = 96
+    fits_preview_clip_percentile: float = 99.9
     batch_system: str = "single_machine"
     max_nodes: int = 1
     local_dask_workers: int = 0
@@ -164,6 +175,10 @@ class ExecutionConfig:
             postage_stamp_preview_size_px=_as_positive_int(
                 cluster.get("prefect_postage_stamp_preview_size_px", 96),
                 "prefect_postage_stamp_preview_size_px",
+            ),
+            fits_preview_clip_percentile=_as_clip_percentile(
+                cluster.get("prefect_fits_preview_clip_percentile", 99.9),
+                "prefect_fits_preview_clip_percentile",
             ),
             batch_system=str(cluster.get("batch_system", "single_machine")),
             max_nodes=_as_non_negative_int(cluster.get("max_nodes", 1), "max_nodes"),

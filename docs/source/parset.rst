@@ -907,7 +907,12 @@ The available options are described below under their respective sections.
         and publish those previews as Prefect image artifacts (default =
         ``False``). This is separate from ``prefect_publish_fits_previews``:
         whole-field previews can stay disabled while source-centred postage
-        stamps are enabled for targeted visual inspection.
+        stamps are enabled for targeted visual inspection. When enabled,
+        Rapthor writes the PNG files under
+        ``dir_working/.rapthor-artifacts/postage-stamps`` and publishes them as
+        Prefect image artifacts when running inside a Prefect context. Stamps
+        are rendered from the ``image-pb`` product and include the catalog
+        source coordinates in the title.
 
     prefect_postage_stamp_preview_count
         Maximum number of brightest catalog sources to render when
@@ -918,6 +923,13 @@ The available options are described below under their respective sections.
     prefect_postage_stamp_preview_size_px
         Width and height, in image pixels, of each postage-stamp crop before
         plotting (default = ``96``).
+
+    prefect_fits_preview_clip_percentile
+        Upper percentile used for FITS preview display limits (default =
+        ``99.9``). Rapthor uses ``100 - value`` as the lower percentile, so the
+        default displays whole-field previews and postage stamps with ``0.1``
+        and ``99.9`` percentile clipping. Set this to ``100`` to use the finite
+        minimum and maximum values.
 
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option

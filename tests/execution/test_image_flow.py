@@ -1660,12 +1660,20 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         published.append(([Path(record["path"]).name for record in records], root_dir))
         return []
 
-    def fake_publish_fits_image_artifacts(records, root_dir):
-        fits_published.append(([Path(record["path"]).name for record in records], root_dir))
+    def fake_publish_fits_image_artifacts(records, root_dir, *, clip_percentile):
+        fits_published.append(
+            ([Path(record["path"]).name for record in records], root_dir, clip_percentile)
+        )
         return []
 
     def fake_publish_fits_postage_stamp_artifacts(
-        image_record, source_catalog_record, root_dir, *, max_sources, stamp_size_px
+        image_record,
+        source_catalog_record,
+        root_dir,
+        *,
+        max_sources,
+        stamp_size_px,
+        clip_percentile,
     ):
         postage_published.append(
             (
@@ -1674,6 +1682,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
                 root_dir,
                 max_sources,
                 stamp_size_px,
+                clip_percentile,
             )
         )
         return []
@@ -1703,6 +1712,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
             publish_postage_stamp_previews=True,
             postage_stamp_preview_count=2,
             postage_stamp_preview_size_px=64,
+            fits_preview_clip_percentile=99.8,
         ),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
@@ -1731,6 +1741,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert (["sector_1.photometry.pdf"], str(tmp_path)) in published
     assert len(fits_published) == 1
     assert fits_published[0][1] == str(tmp_path)
+    assert fits_published[0][2] == 99.8
     assert "sector_1-MFS-I-image.fits" in fits_published[0][0]
     assert "sector_1-MFS-I-image-pb.fits" in fits_published[0][0]
     assert "sector_1-MFS-I-image-pb-ast.fits" in fits_published[0][0]
@@ -1743,6 +1754,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
             str(tmp_path),
             2,
             64,
+            99.8,
         )
     ]
     validate_output_record(outputs["sector_I_images"])
@@ -1804,12 +1816,18 @@ def test_run_image_flow_can_skip_fits_preview_artifacts(
     fits_published = []
     postage_published = []
 
-    def fake_publish_fits_image_artifacts(records, root_dir):
-        fits_published.append((records, root_dir))
+    def fake_publish_fits_image_artifacts(records, root_dir, *, clip_percentile):
+        fits_published.append((records, root_dir, clip_percentile))
         return []
 
     def fake_publish_fits_postage_stamp_artifacts(
-        image_record, source_catalog_record, root_dir, *, max_sources, stamp_size_px
+        image_record,
+        source_catalog_record,
+        root_dir,
+        *,
+        max_sources,
+        stamp_size_px,
+        clip_percentile,
     ):
         postage_published.append(
             (
@@ -1818,6 +1836,7 @@ def test_run_image_flow_can_skip_fits_preview_artifacts(
                 root_dir,
                 max_sources,
                 stamp_size_px,
+                clip_percentile,
             )
         )
         return []
@@ -1855,6 +1874,7 @@ def test_run_image_flow_can_skip_fits_preview_artifacts(
             str(tmp_path),
             1,
             32,
+            99.9,
         )
     ]
 

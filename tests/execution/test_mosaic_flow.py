@@ -259,8 +259,10 @@ def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
 ):
     published = []
 
-    def fake_publish_fits_image_artifacts(records, root_dir):
-        published.append(([Path(record["path"]).name for record in records], root_dir))
+    def fake_publish_fits_image_artifacts(records, root_dir, *, clip_percentile):
+        published.append(
+            ([Path(record["path"]).name for record in records], root_dir, clip_percentile)
+        )
         return []
 
     monkeypatch.setattr(
@@ -272,12 +274,16 @@ def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
     outputs = run_flow_for_test(
         mosaic_flow,
         _mosaic_payload(tmp_path),
-        execution_config=ExecutionConfig(task_runner="sync", publish_fits_previews=True),
+        execution_config=ExecutionConfig(
+            task_runner="sync",
+            publish_fits_previews=True,
+            fits_preview_clip_percentile=99.7,
+        ),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
     )
 
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits")]}
-    assert published == [(["mosaic_1-I-image.fits"], str(tmp_path))]
+    assert published == [(["mosaic_1-I-image.fits"], str(tmp_path), 99.7)]
     validate_output_record(outputs["mosaic_image"])
     assert fake_mosaic_shell_operation_cls.instances == []
     assert fake_direct_mosaic_helpers["make_mosaic_template"] == [
@@ -324,8 +330,8 @@ def test_run_mosaic_flow_can_skip_fits_preview_artifacts(
 ):
     published = []
 
-    def fake_publish_fits_image_artifacts(records, root_dir):
-        published.append((records, root_dir))
+    def fake_publish_fits_image_artifacts(records, root_dir, *, clip_percentile):
+        published.append((records, root_dir, clip_percentile))
         return []
 
     monkeypatch.setattr(

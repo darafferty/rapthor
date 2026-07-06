@@ -10,6 +10,7 @@ from rapthor.execution.artifacts import (
     publish_plot_file_records,
     render_command_profile_chart,
     render_fits_png,
+    render_fits_postage_stamp_pngs,
 )
 
 
@@ -218,6 +219,7 @@ def test_publish_fits_image_artifacts_renders_png_preview(tmp_path):
 
     assert [record["relative_path"] for record in records] == ["image_1/sector_1-MFS-I-image.fits"]
     assert records[0]["artifact_type"] == "fits-preview"
+    assert records[0]["clip_percentile"] == 99.9
     assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
     assert [call[0] for call in recorder.calls] == ["image"]
     image_call = recorder.calls[0][1]
@@ -287,6 +289,7 @@ def test_publish_fits_postage_stamp_artifacts_renders_brightest_catalog_sources(
         pipeline_dir,
         max_sources=2,
         stamp_size_px=5,
+        clip_percentile=99.8,
         artifact_writers=recorder.writers,
         in_run_context=lambda: True,
     )
@@ -295,6 +298,9 @@ def test_publish_fits_postage_stamp_artifacts_renders_brightest_catalog_sources(
     assert [record["source_flux"] for record in records] == [5.0, 2.0]
     assert records[0]["artifact_type"] == "fits-postage-stamp-preview"
     assert records[0]["relative_path"] == "image_1/sector_1-MFS-I-image-pb.fits:source-01"
+    assert records[0]["fits_paths"] == [str(fits_path)]
+    assert records[0]["clip_percentile"] == 99.8
+    assert records[0]["display_vmin"] < records[0]["display_vmax"]
     assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
     assert [call[0] for call in recorder.calls] == ["image", "image"]
     assert recorder.calls[0][1]["key"].startswith(
@@ -305,6 +311,93 @@ def test_publish_fits_postage_stamp_artifacts_renders_brightest_catalog_sources(
     )
 
 
+def test_render_fits_postage_stamp_pngs_uses_configurable_clip_limits(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+    from astropy.table import Table
+
+    header = fits.Header()
+    header["NAXIS"] = 2
+    header["NAXIS1"] = 11
+    header["NAXIS2"] = 11
+    header["CTYPE1"] = "RA---TAN"
+    header["CTYPE2"] = "DEC--TAN"
+    header["CRVAL1"] = 15.0
+    header["CRVAL2"] = 30.0
+    header["CRPIX1"] = 6.0
+    header["CRPIX2"] = 6.0
+    header["CDELT1"] = -0.001
+    header["CDELT2"] = 0.001
+    image_pb_path = tmp_path / "sector_1-MFS-I-image-pb.fits"
+    image_pb_data = np.arange(121, dtype=float).reshape(11, 11)
+    fits.writeto(image_pb_path, image_pb_data, header, overwrite=True)
+    catalog_path = tmp_path / "sector_1.source_catalog.fits"
+    Table({"RA": [15.0], "DEC": [30.0], "Total_flux": [10.0]}).write(
+        catalog_path,
+        format="fits",
+    )
+
+    records = render_fits_postage_stamp_pngs(
+        image_pb_path,
+        catalog_path,
+        tmp_path / "previews",
+        root_dir=tmp_path,
+        max_sources=1,
+        stamp_size_px=11,
+        clip_percentile=90.0,
+    )
+
+    assert len(records) == 1
+    assert records[0]["fits_paths"] == [str(image_pb_path)]
+    assert records[0]["source_ra_deg"] == 15.0
+    assert records[0]["source_dec_deg"] == 30.0
+    assert records[0]["display_vmin"] == np.nanpercentile(image_pb_data, 10.0)
+    assert records[0]["display_vmax"] == np.nanpercentile(image_pb_data, 90.0)
+    assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
+
+
+def test_publish_fits_postage_stamp_artifacts_saves_files_without_prefect_context(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+    from astropy.table import Table
+
+    header = fits.Header()
+    header["NAXIS"] = 2
+    header["NAXIS1"] = 9
+    header["NAXIS2"] = 9
+    header["CTYPE1"] = "RA---TAN"
+    header["CTYPE2"] = "DEC--TAN"
+    header["CRVAL1"] = 15.0
+    header["CRVAL2"] = 30.0
+    header["CRPIX1"] = 5.0
+    header["CRPIX2"] = 5.0
+    header["CDELT1"] = -0.001
+    header["CDELT2"] = 0.001
+    fits_path = tmp_path / "sector_1-MFS-I-image-pb.fits"
+    fits.writeto(fits_path, np.arange(81, dtype=float).reshape(9, 9), header, overwrite=True)
+    catalog_path = tmp_path / "sector_1.source_catalog.fits"
+    Table({"RA": [15.0], "DEC": [30.0], "Total_flux": [1.0]}).write(
+        catalog_path,
+        format="fits",
+    )
+    recorder = RecordingArtifactWriters()
+
+    records = publish_fits_postage_stamp_artifacts(
+        {"class": "File", "path": str(fits_path)},
+        {"class": "File", "path": str(catalog_path)},
+        tmp_path,
+        max_sources=1,
+        stamp_size_px=5,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: False,
+    )
+
+    assert len(records) == 1
+    assert "artifact_id" not in records[0]
+    assert Path(records[0]["path"]).is_file()
+    assert recorder.calls == []
+
+
 def test_publish_fits_image_artifacts_for_field_requires_explicit_opt_in(tmp_path, monkeypatch):
     images_dir = tmp_path / "images"
     images_dir.mkdir()
@@ -312,8 +405,8 @@ def test_publish_fits_image_artifacts_for_field_requires_explicit_opt_in(tmp_pat
     image_path.write_bytes(b"fits-data")
     calls = []
 
-    def fake_publish_fits_image_artifacts(records, root_dir):
-        calls.append((records, root_dir))
+    def fake_publish_fits_image_artifacts(records, root_dir, *, clip_percentile):
+        calls.append((records, root_dir, clip_percentile))
         return [{"path": str(image_path)}]
 
     monkeypatch.setattr(
@@ -325,9 +418,12 @@ def test_publish_fits_image_artifacts_for_field_requires_explicit_opt_in(tmp_pat
     assert publish_fits_image_artifacts_for_field(field) == []
     assert calls == []
 
-    field.parset["cluster_specific"] = {"prefect_publish_fits_previews": "True"}
+    field.parset["cluster_specific"] = {
+        "prefect_publish_fits_previews": "True",
+        "prefect_fits_preview_clip_percentile": "99.8",
+    }
     assert publish_fits_image_artifacts_for_field(field) == [{"path": str(image_path)}]
-    assert calls == [([{"class": "File", "path": str(image_path)}], images_dir)]
+    assert calls == [([{"class": "File", "path": str(image_path)}], images_dir, 99.8)]
 
 
 def test_publish_plot_artifacts_is_noop_without_plots_directory(tmp_path):

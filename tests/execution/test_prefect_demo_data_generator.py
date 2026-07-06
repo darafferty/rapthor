@@ -38,6 +38,7 @@ def test_generated_demo_parset_uses_prefect_settings_only(tmp_path):
     assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
     assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
     assert parser["cluster"]["prefect_postage_stamp_preview_size_px"] == "96"
+    assert parser["cluster"]["prefect_fits_preview_clip_percentile"] == "99.9"
     assert "cwl_runner" not in parser["cluster"]
 
 
@@ -87,6 +88,7 @@ def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path)
     assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "False"
     assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
     assert parser["cluster"]["prefect_postage_stamp_preview_size_px"] == "96"
+    assert parser["cluster"]["prefect_fits_preview_clip_percentile"] == "99.9"
 
 
 def test_generated_benchmark_strategy_exercises_legacy_default_and_fulljones(tmp_path):
@@ -134,4 +136,5 @@ def test_checked_in_demo_parset_uses_prefect_settings_only():
     assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
     assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
     assert parser["cluster"]["prefect_postage_stamp_preview_size_px"] == "96"
+    assert parser["cluster"]["prefect_fits_preview_clip_percentile"] == "99.9"
     assert "cwl_runner" not in parser["cluster"]

@@ -146,6 +146,15 @@ def run_image_sector(
         sector_images.append(
             make_astrometry_corrected_image_record(pb_image, region_record, offsets)
         )
+    if config.publish_postage_stamp_previews:
+        publish_fits_postage_stamp_artifacts(
+            pb_image,
+            source_catalog,
+            pipeline_working_dir,
+            max_sources=config.postage_stamp_preview_count,
+            stamp_size_px=config.postage_stamp_preview_size_px,
+            clip_percentile=config.fits_preview_clip_percentile,
+        )
 
     output_sector_images = sector_images
     output_extra_images = extra_images
@@ -207,13 +216,9 @@ def run_image_sector(
         + image_cubes
     )
     if config.publish_fits_previews:
-        publish_fits_image_artifacts(fits_records, pipeline_working_dir)
-    if config.publish_postage_stamp_previews:
-        publish_fits_postage_stamp_artifacts(
-            pb_image,
-            source_catalog,
+        publish_fits_image_artifacts(
+            fits_records,
             pipeline_working_dir,
-            max_sources=config.postage_stamp_preview_count,
-            stamp_size_px=config.postage_stamp_preview_size_px,
+            clip_percentile=config.fits_preview_clip_percentile,
         )
     return result

@@ -28,6 +28,7 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
     assert config.publish_postage_stamp_previews is False
     assert config.postage_stamp_preview_count == 5
     assert config.postage_stamp_preview_size_px == 96
+    assert config.fits_preview_clip_percentile == 99.9
     assert config.batch_system == "single_machine"
     assert config.local_scratch_dir is None
 
@@ -49,6 +50,7 @@ def test_execution_config_reads_cluster_specific_values():
                 "prefect_publish_postage_stamp_previews": True,
                 "prefect_postage_stamp_preview_count": 3,
                 "prefect_postage_stamp_preview_size_px": 64,
+                "prefect_fits_preview_clip_percentile": 99.8,
                 "batch_system": "slurm",
                 "max_nodes": 4,
                 "local_dask_workers": 3,
@@ -76,6 +78,7 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.publish_postage_stamp_previews is True
     assert config.postage_stamp_preview_count == 3
     assert config.postage_stamp_preview_size_px == 64
+    assert config.fits_preview_clip_percentile == 99.8
     assert config.batch_system == "slurm"
     assert config.max_nodes == 4
     assert config.local_dask_workers == 3
@@ -230,4 +233,12 @@ def test_execution_config_rejects_invalid_postage_stamp_preview_settings():
     with pytest.raises(ValueError, match="prefect_postage_stamp_preview_size_px"):
         ExecutionConfig.from_parset(
             {"cluster_specific": {"prefect_postage_stamp_preview_size_px": 0}}
+        )
+    with pytest.raises(ValueError, match="prefect_fits_preview_clip_percentile"):
+        ExecutionConfig.from_parset(
+            {"cluster_specific": {"prefect_fits_preview_clip_percentile": 50}}
+        )
+    with pytest.raises(ValueError, match="prefect_fits_preview_clip_percentile"):
+        ExecutionConfig.from_parset(
+            {"cluster_specific": {"prefect_fits_preview_clip_percentile": 100.1}}
         )

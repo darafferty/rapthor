@@ -127,6 +127,17 @@ def _fits_postage_stamp_path(
     return preview_dir / f"{stem}-source-{source_rank:02d}.png"
 
 
+def _postage_stamp_label(fits_path: Path) -> str:
+    name = fits_path.name.lower()
+    if "-dirty" in name:
+        return "dirty"
+    if "image-pb" in name:
+        return "image-pb"
+    if "-image" in name:
+        return "image"
+    return fits_path.name
+
+
 def _load_fits_image_data_and_header(fits_path: Path):
     import numpy as np
     from astropy.io import fits
@@ -155,14 +166,19 @@ def _load_fits_image_data(fits_path: Path):
     return data
 
 
-def _image_limits(data) -> tuple[float, float]:
+def _image_limits(
+    data,
+    *,
+    lower_percentile: float = 1.0,
+    upper_percentile: float = 99.5,
+) -> tuple[float, float]:
     import numpy as np
 
     finite = data[np.isfinite(data)]
     if finite.size == 0:
         raise ValueError("FITS image has no finite pixels")
 
-    vmin, vmax = np.nanpercentile(finite, [1.0, 99.5])
+    vmin, vmax = np.nanpercentile(finite, [lower_percentile, upper_percentile])
     if not np.isfinite(vmin) or not np.isfinite(vmax) or vmin == vmax:
         vmin = float(np.nanmin(finite))
         vmax = float(np.nanmax(finite))
@@ -173,11 +189,19 @@ def _image_limits(data) -> tuple[float, float]:
     return float(vmin), float(vmax)
 
 
+def _clip_percentiles(clip_percentile: float) -> tuple[float, float]:
+    clip_percentile = float(clip_percentile)
+    if not 50.0 < clip_percentile <= 100.0:
+        raise ValueError("clip_percentile must be > 50 and <= 100")
+    return 100.0 - clip_percentile, clip_percentile
+
+
 def render_fits_png(
     fits_path: Path,
     output_dir: Path,
     *,
     root_dir: Optional[Path] = None,
+    clip_percentile: float = 99.9,
 ) -> Optional[Path]:
     """Render a FITS image to a PNG preview and return the PNG path."""
     fits_path = Path(fits_path)
@@ -199,7 +223,12 @@ def render_fits_png(
     output_dir.mkdir(parents=True, exist_ok=True)
     png_path = _fits_preview_path(fits_path, root_dir, output_dir)
 
-    vmin, vmax = _image_limits(data)
+    lower_percentile, upper_percentile = _clip_percentiles(clip_percentile)
+    vmin, vmax = _image_limits(
+        data,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+    )
     fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
     image = ax.imshow(data, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
     ax.set_title(fits_path.name, fontsize=8)
@@ -259,6 +288,7 @@ def render_fits_postage_stamp_pngs(
     root_dir: Optional[Path] = None,
     max_sources: int = 5,
     stamp_size_px: int = 96,
+    clip_percentile: float = 99.9,
 ) -> list[dict]:
     """Render PNG postage stamps around the brightest catalog sources."""
     fits_path = Path(fits_path)
@@ -294,10 +324,14 @@ def render_fits_postage_stamp_pngs(
     wcs = WCS(header).celestial
     half_size = max(1, stamp_size_px // 2)
     height, width = data.shape
+    lower_percentile, upper_percentile = _clip_percentiles(clip_percentile)
     records = []
     for rank, source in enumerate(sources, start=1):
         try:
-            x_value, y_value = wcs.world_to_pixel_values(source["ra_deg"], source["dec_deg"])
+            x_value, y_value = wcs.world_to_pixel_values(
+                source["ra_deg"],
+                source["dec_deg"],
+            )
         except Exception as err:
             log.debug("Could not project source %s in %s: %s", source, fits_path, err)
             continue
@@ -318,11 +352,21 @@ def render_fits_postage_stamp_pngs(
             continue
 
         png_path = _fits_postage_stamp_path(fits_path, root_dir, output_dir, rank)
-        vmin, vmax = _image_limits(stamp)
-        fig, ax = plt.subplots(figsize=(3.2, 3.2), dpi=150)
+        vmin, vmax = _image_limits(
+            stamp,
+            lower_percentile=lower_percentile,
+            upper_percentile=upper_percentile,
+        )
+        fig, ax = plt.subplots(figsize=(3.4, 3.4), dpi=150)
         image = ax.imshow(stamp, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
         ax.scatter([x_center - x_min], [y_center - y_min], marker="+", color="cyan", s=80)
-        ax.set_title(f"{fits_path.name} source {rank}", fontsize=7)
+        ax.set_title(
+            (
+                f"{_postage_stamp_label(fits_path)} source {rank}\n"
+                f"RA {source['ra_deg']:.6f} deg, Dec {source['dec_deg']:+.6f} deg"
+            ),
+            fontsize=7,
+        )
         ax.set_axis_off()
         fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
         fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
@@ -330,6 +374,10 @@ def render_fits_postage_stamp_pngs(
         records.append(
             {
                 "path": png_path,
+                "fits_paths": [str(fits_path)],
+                "clip_percentile": float(clip_percentile),
+                "display_vmin": vmin,
+                "display_vmax": vmax,
                 "source_rank": rank,
                 "catalog_index": source["catalog_index"],
                 "source_ra_deg": source["ra_deg"],
@@ -806,6 +854,7 @@ def publish_fits_image_artifacts(
     file_records: list[Mapping[str, object]],
     root_dir: Path,
     *,
+    clip_percentile: float = 99.9,
     artifact_writers: Optional[ArtifactWriters] = None,
     in_run_context: Callable[[], bool] = in_prefect_run_context,
     preview_dir: Optional[Path] = None,
@@ -822,7 +871,12 @@ def publish_fits_image_artifacts(
     for fits_path in sorted(fits_paths):
         relative_path = _relative_artifact_path(fits_path, root_dir, include_root_name=True)
         try:
-            png_path = render_fits_png(fits_path, preview_dir, root_dir=root_dir)
+            png_path = render_fits_png(
+                fits_path,
+                preview_dir,
+                root_dir=root_dir,
+                clip_percentile=clip_percentile,
+            )
         except Exception as err:
             log.warning("Failed to render FITS preview for %s: %s", fits_path, err)
             continue
@@ -843,6 +897,7 @@ def publish_fits_image_artifacts(
                 "fits_path": str(fits_path),
                 "path": str(png_path),
                 "relative_path": relative_path,
+                "clip_percentile": float(clip_percentile),
             }
         )
 
@@ -858,16 +913,16 @@ def publish_fits_postage_stamp_artifacts(
     *,
     max_sources: int = 5,
     stamp_size_px: int = 96,
+    clip_percentile: float = 99.9,
     artifact_writers: Optional[ArtifactWriters] = None,
     in_run_context: Callable[[], bool] = in_prefect_run_context,
     preview_dir: Optional[Path] = None,
 ) -> list[dict]:
-    """Render and publish small previews around the brightest catalog sources."""
+    """Render small previews around the brightest catalog sources and publish if possible."""
     if (
         image_record.get("class") != "File"
         or source_catalog_record.get("class") != "File"
         or max_sources <= 0
-        or not in_run_context()
     ):
         return []
 
@@ -883,6 +938,7 @@ def publish_fits_postage_stamp_artifacts(
             root_dir=root_dir,
             max_sources=max_sources,
             stamp_size_px=stamp_size_px,
+            clip_percentile=clip_percentile,
         )
     except Exception as err:
         log.warning(
@@ -897,39 +953,41 @@ def publish_fits_postage_stamp_artifacts(
         return []
 
     relative_path = _relative_artifact_path(image_path, root_dir, include_root_name=True)
-    writers = artifact_writers or _prefect_artifact_writers()
+    should_publish = in_run_context()
+    writers = (artifact_writers or _prefect_artifact_writers()) if should_publish else None
     records = []
     for stamp_record in stamp_records:
         source_rank = int(stamp_record["source_rank"])
         source_relative_path = f"{relative_path}:source-{source_rank:02d}"
         artifact_key = _artifact_key(POSTAGE_STAMP_ARTIFACT_KEY_PREFIX, source_relative_path)
-        artifact_id = writers.image(
-            image_url=_data_url(stamp_record["path"]),
-            key=artifact_key,
-            description=f"Rapthor FITS postage-stamp preview: {source_relative_path}",
-        )
-        records.append(
-            {
-                "artifact_id": artifact_id,
-                "artifact_key": artifact_key,
-                "artifact_type": "fits-postage-stamp-preview",
-                "fits_path": str(image_path),
-                "path": str(stamp_record["path"]),
-                "relative_path": source_relative_path,
-                "source_catalog_path": str(source_catalog_path),
-                "source_rank": source_rank,
-                "source_ra_deg": stamp_record["source_ra_deg"],
-                "source_dec_deg": stamp_record["source_dec_deg"],
-                "source_flux": stamp_record["source_flux"],
-                "source_flux_column": stamp_record["source_flux_column"],
-            }
-        )
+        record = {
+            "artifact_key": artifact_key,
+            "artifact_type": "fits-postage-stamp-preview",
+            "fits_path": str(image_path),
+            "fits_paths": stamp_record["fits_paths"],
+            "path": str(stamp_record["path"]),
+            "relative_path": source_relative_path,
+            "source_catalog_path": str(source_catalog_path),
+            "source_rank": source_rank,
+            "source_ra_deg": stamp_record["source_ra_deg"],
+            "source_dec_deg": stamp_record["source_dec_deg"],
+            "source_flux": stamp_record["source_flux"],
+            "source_flux_column": stamp_record["source_flux_column"],
+            "clip_percentile": stamp_record["clip_percentile"],
+            "display_vmin": stamp_record["display_vmin"],
+            "display_vmax": stamp_record["display_vmax"],
+        }
+        if writers is not None:
+            artifact_id = writers.image(
+                image_url=_data_url(stamp_record["path"]),
+                key=artifact_key,
+                description=f"Rapthor FITS postage-stamp preview: {source_relative_path}",
+            )
+            record["artifact_id"] = artifact_id
+        records.append(record)
 
-    log.info(
-        "Published %d Rapthor FITS postage-stamp preview artifacts from %s",
-        len(records),
-        root_dir,
-    )
+    action = "Published" if should_publish else "Rendered"
+    log.info("%s %d Rapthor FITS postage-stamp previews from %s", action, len(records), root_dir)
     return records
 
 
@@ -1015,7 +1073,11 @@ def publish_fits_image_artifacts_for_field(field: object) -> list[dict]:
         for path in sorted(images_dir.rglob("*"))
         if path.is_file() and _is_fits_artifact(path)
     ]
-    return publish_fits_image_artifacts(records, images_dir)
+    return publish_fits_image_artifacts(
+        records,
+        images_dir,
+        clip_percentile=float(cluster.get("prefect_fits_preview_clip_percentile", 99.9)),
+    )
 
 
 def publish_command_metrics_artifact(

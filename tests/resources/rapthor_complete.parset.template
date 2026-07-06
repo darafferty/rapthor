@@ -128,6 +128,7 @@ prefect_publish_fits_previews = False
 prefect_publish_postage_stamp_previews = False
 prefect_postage_stamp_preview_count = 5
 prefect_postage_stamp_preview_size_px = 96
+prefect_fits_preview_clip_percentile = 99.9
 debug_workflow = True
 keep_temporary_files = True
 allow_internet_access = True

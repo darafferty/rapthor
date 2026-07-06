@@ -418,6 +418,7 @@ def write_parset(
     publish_postage_stamp_previews: bool = True,
     postage_stamp_preview_count: int = 5,
     postage_stamp_preview_size_px: int = 96,
+    fits_preview_clip_percentile: float = 99.9,
 ) -> None:
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
@@ -516,6 +517,7 @@ def write_parset(
             prefect_publish_postage_stamp_previews = {publish_postage_stamp_previews}
             prefect_postage_stamp_preview_count = {postage_stamp_preview_count}
             prefect_postage_stamp_preview_size_px = {postage_stamp_preview_size_px}
+            prefect_fits_preview_clip_percentile = {fits_preview_clip_percentile}
             debug_workflow = False
             keep_temporary_files = False
             allow_internet_access = False
