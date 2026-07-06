@@ -25,6 +25,16 @@ active CWL equivalence harness, CWL workflow/parset files, and `cwltool`
 validation tests have since been removed as part of post-cutover cleanup. This
 file is now the historical parity record.
 
+Current gate verdict as of 2026-07-06: the saved-reference matrix, focused
+DD-plus-DI full-Jones branch-vs-master rerun, three-repeat normalized
+branch-repeatability envelope, and full integration suite support accepting the
+current branch for the covered scientific contract. Remaining cross-branch
+warnings in the strongest repeatability envelope are auxiliary output-record
+artifact names only; FITS, h5parm, text/region, catalog, and image-diagnostic
+differences are within the same-branch repeatability envelope. The next
+scientific checks should be risk-based option scenarios rather than broader
+default-like reruns.
+
 ## Evidence
 
 Saved CWL reference artifacts were captured from legacy commit:

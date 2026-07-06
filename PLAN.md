@@ -85,24 +85,25 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Complete the full scientific gate with the refreshed comparison rules.**
-   The DD-plus-DI full-Jones normalized repeatability envelope now passes all
-   base-base, current-current, and base-current pairs with only auxiliary
-   output-record warnings on cross-branch pairs. The refreshed
-   saved-reference matrix also passes in the prepared dev container, with only
-   optional output-record warnings for newer astrometry/prepared-MS
-   bookkeeping. The integration suite is green after clearing raw `/tmp` run
-   roots and rerunning the two disk-full false negatives. Next, refresh any
-   essential branch-vs-master reports that are affected by comparison-rule
-   changes, then update `EQUIVALENCE_REPORT.md` with the final gate
-   interpretation.
+1. **Run the risk-based option equivalence matrix.**
+   The core science gate is closed: the DD-plus-DI full-Jones normalized
+   repeatability envelope passes all base-base, current-current, and
+   base-current pairs with only auxiliary output-record warnings on
+   cross-branch pairs; the refreshed saved-reference matrix passes in the
+   prepared dev container; and the full integration suite is green after
+   clearing raw `/tmp` run roots and rerunning the two disk-full false
+   negatives. `EQUIVALENCE_REPORT.md` records the final gate interpretation.
+   Next, use `scripts/dev/run_branch_option_matrix.py` to run focused
+   option-specific branch comparisons. Start with normalization, then prediction
+   path, then BDA/averaging, and record screens as skipped/blocked unless the
+   target environment has reliable IDGCal/screen support.
 
-2. **Add a risk-based option equivalence matrix.**
-   Add a small set of option-specific equivalence scenarios rather than a full
-   combinatorial sweep. Prioritize normalization, WSClean predict versus
-   image-based predict, BDA/averaging behavior, and screens where the target
-   environment supports them. Keep each scenario to one meaningful option
-   family so failures remain attributable.
+2. **Curate option-matrix inputs and reports.**
+   Add explicitly prepared base/current parset and strategy snapshots for each
+   option scenario under `docs/source/development/equivalence_runs/` as they are
+   run. Keep each scenario to one meaningful option family so failures remain
+   attributable. Store compact `option-matrix-summary.*` files and selected
+   branch reports; keep raw FITS/MS/h5parm products in ignored run directories.
 
 3. **Keep flexible-strategy carry-forward explicit.**
    The current policy is no silent carry-over after a new calibration step:

@@ -16,6 +16,33 @@ summaries are usually more informative and much lighter for git history.
 Force-add only a tiny curated PNG set when a visual difference is genuinely
 useful for review.
 
+Use `scripts/dev/run_branch_option_matrix.py` for focused option-equivalence
+checks after the core science gate. The matrix file should list explicitly
+prepared base/current parsets; the wrapper only orchestrates scenarios and
+summarizes the existing branch-equivalence reports. Keep each scenario scoped to
+one option family, for example normalization, prediction path, BDA/averaging, or
+screens. Mark target-environment scenarios as skipped until the required
+external tools are available.
+
+Example matrix shape:
+
+```json
+{
+  "description": "Risk-based option equivalence checks.",
+  "scenarios": [
+    {
+      "id": "normalization",
+      "base_parset": "inputs/base/normalization.parset",
+      "current_parset": "inputs/current/normalization.parset"
+    },
+    {
+      "id": "screens",
+      "skip_reason": "requires reliable IDGCal/screen support"
+    }
+  ]
+}
+```
+
 When running repeatability or branch-vs-master checks that execute the legacy
 master CWL path, keep `--run-root`, `--repeatability-work-root`, and any base
 checkout/venv paths short, preferably under `/tmp` with compact names. The
