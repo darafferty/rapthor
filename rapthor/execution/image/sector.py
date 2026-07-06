@@ -1,6 +1,6 @@
 """Execution helpers for one image sector."""
 
-from typing import Optional
+from typing import Mapping, Optional
 
 from rapthor.execution.artifacts import (
     publish_fits_image_artifacts,
@@ -33,13 +33,13 @@ from rapthor.execution.image.wsclean import (
 from rapthor.execution.outputs import file_records_for_patterns
 
 
-def run_image_sector(
+def prepare_image_sector(
     sector: ImageSectorPayload,
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run one imaging sector."""
+    """Run data preparation and WSClean for one imaging sector."""
     config = execution_config or ExecutionConfig(task_runner="sync")
     image_name = str(sector["image_name"])
 
@@ -103,6 +103,49 @@ def run_image_sector(
             (pb_image, nonpb_image),
             sector,
         )
+
+    return {
+        "prepared_records": prepared_records,
+        "concat_record": concat_record,
+        "mask_record": mask_record,
+        "region_record": region_record,
+        "nonpb_image": nonpb_image,
+        "pb_image": pb_image,
+        "wsclean_ran": wsclean_ran,
+        "extra_images": extra_images,
+        "residual_visibilities": residual_visibilities,
+        "sector_images": sector_images,
+        "image_cubes": image_cubes,
+        "image_cube_beams": image_cube_beams,
+        "image_cube_frequencies": image_cube_frequencies,
+        "skymodel_nonpb": skymodel_nonpb,
+        "skymodel_pb": skymodel_pb,
+    }
+
+
+def finalize_image_sector(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Build post-WSClean sector products and assemble the output record."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    image_name = str(sector["image_name"])
+    prepared_records = list(prepared["prepared_records"])
+    concat_record = prepared["concat_record"]
+    region_record = prepared["region_record"]
+    nonpb_image = prepared["nonpb_image"]
+    pb_image = prepared["pb_image"]
+    extra_images = list(prepared["extra_images"])
+    residual_visibilities = prepared["residual_visibilities"]
+    sector_images = list(prepared["sector_images"])
+    image_cubes = list(prepared["image_cubes"])
+    image_cube_beams = list(prepared["image_cube_beams"])
+    image_cube_frequencies = list(prepared["image_cube_frequencies"])
+    skymodel_nonpb = prepared["skymodel_nonpb"]
+    skymodel_pb = prepared["skymodel_pb"]
 
     (
         filtered_true_sky,
@@ -222,3 +265,25 @@ def run_image_sector(
             clip_percentile=config.fits_preview_clip_percentile,
         )
     return result
+
+
+def run_image_sector(
+    sector: ImageSectorPayload,
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run one imaging sector sequentially."""
+    prepared = prepare_image_sector(
+        sector,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return finalize_image_sector(
+        sector,
+        prepared,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )

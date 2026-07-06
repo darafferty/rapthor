@@ -4,9 +4,9 @@ from typing import Mapping, Optional
 
 from prefect import flow, task
 
+import rapthor.execution.image.sector as image_sector
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.contracts import ImageSectorPayload
-from rapthor.execution.image.sector import run_image_sector as _run_image_sector
 from rapthor.execution.image.validation import validate_image_payload
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
@@ -24,8 +24,47 @@ def image_sector_task(
 ) -> dict:
     """Prefect task wrapper for one imaging sector."""
     with publish_python_logs_to_prefect():
-        return _run_image_sector(
+        return image_sector.run_image_sector(
             sector,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+
+
+@task(name="image_sector_prepare")
+def image_sector_prepare_task(
+    sector: ImageSectorPayload,
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for data preparation and WSClean for one sector."""
+    with publish_python_logs_to_prefect():
+        prepared = image_sector.prepare_image_sector(
+            sector,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(prepared)
+    return prepared
+
+
+@task(name="image_sector_finalize")
+def image_sector_finalize_task(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for post-WSClean sector finalization."""
+    assert_serializable_payload(prepared)
+    with publish_python_logs_to_prefect():
+        return image_sector.finalize_image_sector(
+            sector,
+            prepared,
             pipeline_working_dir,
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
@@ -93,14 +132,29 @@ def _run_image_prefect_tasks(
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_image_payload(payload)
     operation_name = operation_run_name(payload, "image")
-    sector_outputs = [
-        image_sector_task.with_options(
+    prepared_futures = [
+        image_sector_prepare_task.with_options(
             task_run_name=task_run_name(
                 operation_name,
-                sector.get("image_name") or f"sector_{index + 1}",
+                f"{sector.get('image_name') or f'sector_{index + 1}'}_prepare",
             )
         ).submit(
             sector,
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(payload["sectors"])
+    ]
+    prepared_outputs = [output.result() for output in prepared_futures]
+    sector_outputs = [
+        image_sector_finalize_task.with_options(
+            task_run_name=task_run_name(
+                operation_name,
+                f"{sector.get('image_name') or f'sector_{index + 1}'}_finalize",
+            )
+        ).submit(
+            sector,
+            prepared_outputs[index],
             payload["pipeline_working_dir"],
             execution_config=config,
         )

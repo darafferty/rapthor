@@ -100,9 +100,9 @@ Known caveats:
 ## Immediate Next Work, In Order
 
 Use this section as the current work queue. The science-equivalence gate is
-accepted for the covered contract; harden the tests around the first
-scalability boundary before changing execution granularity, then keep the gate
-current while taking the slice.
+accepted for the covered contract. The first low-risk image-cycle scalability
+slice now splits image-sector execution into post-WSClean preparation and
+finalization task boundaries, so verify that slice before taking another one.
 
 Preview artifacts remain diagnostic aids only: whole-field FITS previews and
 source postage stamps can be generated for demo/debugging, but raw FITS/h5parm
@@ -116,28 +116,21 @@ scientific contract.
    relevant saved-reference and branch-vs-master scenarios before changing
    scalability code.
 
-2. **Harden the tests around the first scalability boundary.**
-   Do not block on the whole historical test-maintainability backlog, but add
-   or clean the focused tests needed for the image-cycle area being split.
-   Cover payload serializability, task-boundary inputs, output records, restart
-   behavior, image-sector product discovery, diagnostics/artifact behavior, and
-   the expected equivalence rerun after the slice. Keep tests readable and
-   reusable so they act as living documentation for the intended behavior.
+2. **Complete the verification gate for the first scalability slice.**
+   Run focused image-flow, Dask-boundary, operation, and integration tests.
+   Because the slice is intended to preserve scientific products, rerun
+   saved-reference or branch-vs-master equivalence only if verification reveals
+   product/output drift. Then run the three-repetition `ci-benchmark` job and
+   compare against the 2026-07-04 baseline before taking another scalability
+   slice.
 
-3. **Take one low-risk image-cycle scalability slice.**
-   Start with one natural boundary inside image-sector execution, such as
-   source/model filtering or diagnostics after WSClean. Preserve output
-   records, restart behavior, run names, worker payload serializability, and
-   scientific products.
+3. **Decide the next scalability action from benchmark evidence.**
+   If the post-WSClean split reduces scheduler gaps or improves observability
+   without changing products, choose the next image-sector boundary using the
+   benchmark report. If it regresses performance or adds noise, adjust or
+   revert the boundary before adding more task granularity.
 
-4. **Re-run science and performance gates after the first slice.**
-   Run focused tests, saved-reference equivalence, the relevant
-   branch-vs-master check if products changed, then the three-repetition
-   `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
-   second slice. Commit only compact reports; keep bulky artifacts in CI
-   artifacts or external storage.
-
-5. **Resume test-suite maintainability cleanup after the first slice is
+4. **Resume test-suite maintainability cleanup after the first slice is
    guarded.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in sync.
 

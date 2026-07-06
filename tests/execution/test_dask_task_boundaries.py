@@ -84,11 +84,37 @@ def _image_sector_result(index: int) -> dict:
     }
 
 
-def test_image_flow_submits_one_plain_payload_per_sector(monkeypatch):
+def _image_sector_preparation_result(index: int) -> dict:
+    root = f"/work/image_1/sector_{index + 1}"
+    return {
+        "prepared_records": [directory_record(f"{root}.prep.ms")],
+        "concat_record": directory_record(f"{root}.concat.ms"),
+        "mask_record": file_record(f"{root}.mask.fits"),
+        "region_record": None,
+        "nonpb_image": file_record(f"{root}-I-image.fits"),
+        "pb_image": file_record(f"{root}-I-image-pb.fits"),
+        "wsclean_ran": True,
+        "extra_images": [],
+        "residual_visibilities": None,
+        "sector_images": [
+            file_record(f"{root}-I-image.fits"),
+            file_record(f"{root}-I-image-pb.fits"),
+        ],
+        "image_cubes": [],
+        "image_cube_beams": [],
+        "image_cube_frequencies": [],
+        "skymodel_nonpb": None,
+        "skymodel_pb": None,
+    }
+
+
+def test_image_flow_submits_plain_prepare_and_finalize_payloads_per_sector(monkeypatch):
     config = ExecutionConfig(task_runner="sync")
     payload = representative_image_payload()
-    image_task = _CapturedTask(_image_sector_result)
-    monkeypatch.setattr(image_module, "image_sector_task", image_task)
+    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    finalize_task = _CapturedTask(_image_sector_result)
+    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
+    monkeypatch.setattr(image_module, "image_sector_finalize_task", finalize_task)
 
     result = image_module._run_image_prefect_tasks(payload, execution_config=config)
 
@@ -97,10 +123,15 @@ def test_image_flow_submits_one_plain_payload_per_sector(monkeypatch):
         "filtered_skymodel_apparent_sky",
         "pybdsf_catalog",
     ]
-    assert [submission["options"]["task_run_name"] for submission in image_task.submissions] == [
-        "image_1_sector_1",
+    assert [submission["options"]["task_run_name"] for submission in prepare_task.submissions] == [
+        "image_1_sector_1_prepare",
     ]
-    _assert_worker_submission_is_serializable(image_task.submissions[0], config)
+    assert [submission["options"]["task_run_name"] for submission in finalize_task.submissions] == [
+        "image_1_sector_1_finalize",
+    ]
+    _assert_worker_submission_is_serializable(prepare_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(finalize_task.submissions[0], config)
+    assert finalize_task.submissions[0]["args"][1] == _image_sector_preparation_result(0)
 
 
 def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypatch):

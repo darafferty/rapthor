@@ -38,6 +38,8 @@ from rapthor.execution.image.commands import (
 )
 from rapthor.execution.image.flow import (
     image_flow,
+    image_sector_finalize_task,
+    image_sector_prepare_task,
     image_sector_task,
 )
 from rapthor.lib.field import Field as RapthorField
@@ -2537,6 +2539,41 @@ def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls
     )
 
     assert output["sector_I_images"] == _sector_i_image_records(tmp_path)
+
+
+def test_image_sector_prepare_and_finalize_tasks_split_post_wsclean_work(
+    tmp_path, fake_image_shell_operation_cls
+):
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
+    sector = payload["sectors"][0]
+    config = ExecutionConfig(task_runner="sync")
+
+    prepare_fn = getattr(image_sector_prepare_task, "fn", image_sector_prepare_task)
+    finalize_fn = getattr(image_sector_finalize_task, "fn", image_sector_finalize_task)
+
+    prepared = prepare_fn(
+        sector,
+        str(tmp_path),
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    output = finalize_fn(
+        sector,
+        prepared,
+        str(tmp_path),
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    validate_output_record(prepared["sector_images"])
+    validate_output_record(prepared["prepared_records"])
+    assert prepared["wsclean_ran"] is True
+    assert output["sector_I_images"] == _sector_i_image_records(tmp_path)
+    assert output["visibilities"] == [
+        directory_record(tmp_path / "sector_1_obs_0_prep.ms"),
+        directory_record(tmp_path / "sector_1_obs_1_prep.ms"),
+    ]
+    assert output["sector_diagnostics"] == file_record(tmp_path / "sector_1.image_diagnostics.json")
 
 
 def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
