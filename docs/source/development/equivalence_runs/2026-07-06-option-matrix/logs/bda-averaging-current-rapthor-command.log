@@ -1,21 +1,19 @@
-INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-0gvstw6x/prediction_path_image_based.materialized.parset[0m
-WARNING - rapthor:parset - [33mSwitching off BDA during solving, since image-based prediction is activated.[0m
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-cldp2ya_/bda_averaging.materialized.parset[0m
 INFO - rapthor:runtime - [32mNo Prefect API configured; Prefect may start a temporary local API/server.[0m
 INFO - rapthor:runtime - [32mUsing synchronous Prefect task execution.[0m
 INFO - rapthor:runtime - [32mIgnoring any Prefect profile API URL for this run.[0m
 INFO - rapthor:runtime - [32mUsing isolated temporary Prefect home for this run.[0m
-14:12:12.166 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
-INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-0gvstw6x/prediction_path_image_based.materialized.parset[0m
-WARNING - rapthor:parset - [33mSwitching off BDA during solving, since image-based prediction is activated.[0m
+14:23:41.855 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-cldp2ya_/bda_averaging.materialized.parset[0m
 INFO - rapthor:parset - [32m=========================================================[0m
 INFO - rapthor:parset - [32mRapthor version 2.2.dev479+gfa2f6767e.d20260703[0m
 INFO - rapthor:parset - [32mExecution backend is Prefect/Dask[0m
-INFO - rapthor:parset - [32mWorking directory is /tmp/ropic[0m
+INFO - rapthor:parset - [32mWorking directory is /tmp/robc[0m
 INFO - rapthor:parset - [32mWorking on 1 input MS file[0m
 INFO - rapthor:parset - [32m=========================================================[0m
 INFO - rapthor - [32mSetting log level to INFO[0m
 INFO - rapthor:field - [32mUsing 1 imaging sector[0m
-INFO - rapthor:strategy - [32mUsing '/app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/current/prediction_path_image_based_strategy.py' processing strategy[0m
+INFO - rapthor:strategy - [32mUsing '/app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/current/bda_averaging_strategy.py' processing strategy[0m
 INFO - rapthor - [32mUsing a data fraction of 1.00[0m
 INFO - rapthor:field - [32mPlotting field overview with initial sky-model coverage...[0m
 INFO - rapthor:field - [32mAnalyzing sky model...[0m
@@ -24,49 +22,49 @@ INFO - rapthor:field - [32mUsing 5 calibration patches[0m
 INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
 INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
 INFO - rapthor:calibrate_1 - [32m<-- Operation calibrate_1 started[0m
-14:12:14.209 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
-INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/ropic/pipelines/calibrate_1[0m
-INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/ropic/pipelines/calibrate_1[0m
+14:23:43.381 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/robc/pipelines/calibrate_1[0m
+INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/robc/pipelines/calibrate_1[0m
 /usr/local/lib/python3.10/dist-packages/tables/atom.py:373: FlavorWarning: support for unicode type is very limited, and only works for strings that can be cast as ascii
   warnings.warn("support for unicode type is very limited, and "
 INFO - rapthor:calibrate_1 - [32m--> Operation calibrate_1 completed[0m
 INFO - rapthor:calibrate_1 - [32mFraction of solutions that are flagged = 0.00[0m
-INFO - rapthor - [32mPublished 12 Rapthor plot artifacts from /tmp/ropic/plots[0m
-INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/ropic/logs/commands.jsonl[0m
+INFO - rapthor - [32mPublished 12 Rapthor plot artifacts from /tmp/robc/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/robc/logs/commands.jsonl[0m
 INFO - rapthor:image_1 - [32m<-- Operation image_1 started[0m
 INFO - rapthor:image:masking - [32mInput image not given. Making empty image...[0m
-WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583310 from DATE-OBS'. [astropy.wcs.wcs]
 WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
   'HZ' -> 'Hz'. [astropy.wcs.wcs]
-WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583252 from DATE-OBS'. [astropy.wcs.wcs]
+WARNING: FITSFixedWarning: 'datfix' made the change 'Set MJD-OBS to 56380.583310 from DATE-OBS'. [astropy.wcs.wcs]
 WARNING: FITSFixedWarning: 'unitfix' made the change 'Changed units:
   'HZ' -> 'Hz'. [astropy.wcs.wcs]
 INFO - rapthor:calculate_image_diagnostics - [32mA comparison sky model is not available and a list of comparison surveys was not supplied. Skipping photometry check...[0m
 INFO - rapthor:calculate_image_diagnostics - [32mSkipping astrometry check since no comparison skymodel is provided, and internet access is not permitted[0m
-INFO - rapthor - [32mPublished 1 Rapthor plot artifacts from /tmp/ropic/pipelines/image_1[0m
-INFO - rapthor - [32mPublished 9 Rapthor FITS preview artifacts from /tmp/ropic/pipelines/image_1[0m
+INFO - rapthor - [32mPublished 1 Rapthor plot artifacts from /tmp/robc/pipelines/image_1[0m
+INFO - rapthor - [32mPublished 9 Rapthor FITS preview artifacts from /tmp/robc/pipelines/image_1[0m
 INFO - rapthor:image_1 - [32m--> Operation image_1 completed[0m
 INFO - rapthor:image_1 - [32mDiagnostics for sector_1:[0m
-INFO - rapthor:image_1 - [32m    Min RMS noise = 8514.7 uJy/beam (non-PB-corrected), 8618.4 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
-INFO - rapthor:image_1 - [32m    Median RMS noise = 15552.4 uJy/beam (non-PB-corrected), 15839.1 uJy/beam (PB-corrected)[0m
-INFO - rapthor:image_1 - [32m    Dynamic range = 536.82 (non-PB-corrected), 530.36 (PB-corrected)[0m
-INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 10[0m
+INFO - rapthor:image_1 - [32m    Min RMS noise = 31795.8 uJy/beam (non-PB-corrected), 32330.5 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_1 - [32m    Median RMS noise = 47348.1 uJy/beam (non-PB-corrected), 48361.5 uJy/beam (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Dynamic range = 143.16 (non-PB-corrected), 140.80 (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 15[0m
 INFO - rapthor:image_1 - [32m    Reference frequency = 134.4 MHz[0m
-INFO - rapthor:image_1 - [32m    Beam = 44.6" x 43.1", PA = 172.9 deg[0m
+INFO - rapthor:image_1 - [32m    Beam = 47.2" x 45.3", PA = 154.6 deg[0m
 INFO - rapthor:image_1 - [32m    Fraction of unflagged data = 1.00[0m
 INFO - rapthor:image_1 - [32m    LOFAR/TGSS flux ratio = N/A[0m
 INFO - rapthor:image_1 - [32m    LOFAR/LOTSS flux ratio = N/A[0m
 INFO - rapthor:image_1 - [32m    LOFAR/NVSS flux ratio = N/A[0m
 INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS RA offset = N/A[0m
 INFO - rapthor:image_1 - [32m    LOFAR-PanSTARRS DEC offset = N/A[0m
-INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/ropic/plots[0m
-INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/ropic/logs/commands.jsonl[0m
+INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/robc/plots[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/robc/logs/commands.jsonl[0m
 INFO - rapthor:mosaic_1 - [32m<-- Operation mosaic_1 started[0m
 INFO - rapthor:mosaic_1 - [32m--> Operation mosaic_1 completed[0m
-INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/ropic/plots[0m
-INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/ropic/images[0m
-INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/ropic/logs/commands.jsonl[0m
-INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/ropic/plots[0m
-INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/ropic/images[0m
-INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/ropic/logs/commands.jsonl[0m
+INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/robc/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/robc/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/robc/logs/commands.jsonl[0m
+INFO - rapthor - [32mPublished 13 Rapthor plot artifacts from /tmp/robc/plots[0m
+INFO - rapthor - [32mPublished 6 Rapthor FITS preview artifacts from /tmp/robc/images[0m
+INFO - rapthor - [32mPublished Rapthor command timing artifact from /tmp/robc/logs/commands.jsonl[0m
 INFO - rapthor - [32mRapthor has finished :)[0m

@@ -96,9 +96,10 @@ long`.
 - `2026-07-06-option-matrix/`: risk-based option-equivalence matrix after the
   core science gate. The normalization rich-demo scenario passes using explicit
   two-frequency reference sky-model snapshots; DP3 image-based predict and
-  WSClean predict rich-demo scenarios also pass. BDA/averaging and screens
-  remain skipped until their focused input snapshots or target tool support are
-  ready.
+  WSClean predict rich-demo scenarios also pass; the focused BDA/averaging
+  scenario passes after capping imaging averaging so the 8-channel demo data
+  still leaves four unique WSClean output channels. Screens remain skipped
+  until target tool support is ready.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones

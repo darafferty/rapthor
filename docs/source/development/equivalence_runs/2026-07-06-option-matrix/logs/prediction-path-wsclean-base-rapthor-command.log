@@ -23,9 +23,9 @@ INFO - rapthor:calibrate_1 - [32mFraction of solutions that are flagged = 0.00
 INFO - rapthor:image_1 - [32m<-- Operation image_1 started[0m
 INFO - rapthor:image_1 - [32m--> Operation image_1 completed[0m
 INFO - rapthor:image_1 - [32mDiagnostics for sector_1:[0m
-INFO - rapthor:image_1 - [32m    Min RMS noise = 8919.7 uJy/beam (non-PB-corrected), 9060.5 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_1 - [32m    Min RMS noise = 8920.2 uJy/beam (non-PB-corrected), 9062.9 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
 INFO - rapthor:image_1 - [32m    Median RMS noise = 15930.8 uJy/beam (non-PB-corrected), 16219.8 uJy/beam (PB-corrected)[0m
-INFO - rapthor:image_1 - [32m    Dynamic range = 510.91 (non-PB-corrected), 502.98 (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Dynamic range = 510.88 (non-PB-corrected), 502.84 (PB-corrected)[0m
 INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 10[0m
 INFO - rapthor:image_1 - [32m    Reference frequency = 134.4 MHz[0m
 INFO - rapthor:image_1 - [32m    Beam = 44.6" x 43.1", PA = 172.9 deg[0m

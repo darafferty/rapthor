@@ -34,8 +34,8 @@ artifact names only; FITS, h5parm, text/region, catalog, and image-diagnostic
 differences are within the same-branch repeatability envelope. The next
 scientific checks should continue as risk-based option scenarios rather than
 broader default-like reruns. The first option-matrix scenarios now pass for
-provided sky-model flux-scale normalization, DP3 image-based predict, and
-WSClean predict on the rich demo data.
+provided sky-model flux-scale normalization, DP3 image-based predict, WSClean
+predict, and BDA/averaging on the rich demo data.
 
 ## Evidence
 
@@ -156,8 +156,11 @@ rich demo data:
   DP3 image-based predict.
 - `prediction-path-wsclean` enables DD fast+medium phase calibration with
   WSClean predict.
+- `bda-averaging` enables calibration BDA plus imaging visibility averaging/BDA
+  with an imaging-averaging cap that leaves four unique channels in the
+  8-channel rich demo data.
 
-All three rows passed with one non-blocking auxiliary output-record warning
+All four rows passed with one non-blocking auxiliary output-record warning
 for calibration plot artifact names. FITS image residuals, h5parm products,
 text products, source-catalog tables, and image diagnostics pass the
 strengthened branch-equivalence checks.
@@ -175,9 +178,10 @@ tests now cover these paths.
 | `normalization-rich-demo` | pass | 1 | 1 | 0 | 1 | 8 | 3 | 12 | 1 |
 | `prediction-path-image-based` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
 | `prediction-path-wsclean` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `bda-averaging` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
 
-The remaining matrix rows are intentionally skipped until focused input
-snapshots or tool support are ready: BDA/averaging and screens.
+The remaining matrix row is intentionally skipped until target tool support is
+ready: screens.
 
 ## Branch-Vs-Master Default-Like Run
 

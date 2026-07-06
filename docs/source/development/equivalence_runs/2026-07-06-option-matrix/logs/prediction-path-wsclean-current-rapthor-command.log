@@ -1,11 +1,11 @@
-INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-kbbd1gcs/prediction_path_wsclean.materialized.parset[0m
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-k6os_n4i/prediction_path_wsclean.materialized.parset[0m
 WARNING - rapthor:parset - [33mSwitching off BDA during solving, since image-based prediction is activated.[0m
 INFO - rapthor:runtime - [32mNo Prefect API configured; Prefect may start a temporary local API/server.[0m
 INFO - rapthor:runtime - [32mUsing synchronous Prefect task execution.[0m
 INFO - rapthor:runtime - [32mIgnoring any Prefect profile API URL for this run.[0m
 INFO - rapthor:runtime - [32mUsing isolated temporary Prefect home for this run.[0m
-13:43:42.935 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 1 pending items.
-INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-kbbd1gcs/prediction_path_wsclean.materialized.parset[0m
+14:16:27.399 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+INFO - rapthor:parset - [32mReading parset file: /tmp/rapthor-parset-k6os_n4i/prediction_path_wsclean.materialized.parset[0m
 WARNING - rapthor:parset - [33mSwitching off BDA during solving, since image-based prediction is activated.[0m
 INFO - rapthor:parset - [32m=========================================================[0m
 INFO - rapthor:parset - [32mRapthor version 2.2.dev479+gfa2f6767e.d20260703[0m
@@ -24,7 +24,7 @@ INFO - rapthor:field - [32mUsing 5 calibration patches[0m
 INFO - rapthor:field - [32mPlotting field overview with calibration patches...[0m
 INFO - rapthor:field - [32mMaking sector sky models (for predicting)...[0m
 INFO - rapthor:calibrate_1 - [32m<-- Operation calibrate_1 started[0m
-13:43:44.655 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
+14:16:29.232 | ERROR   | GlobalEventLoopThread | prefect._internal.concurrency - Service 'EventsWorker' failed with 0 pending items.
 INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/ropwc/pipelines/calibrate_1[0m
 INFO - rapthor - [32mPublished 5 Rapthor plot artifacts from /tmp/ropwc/pipelines/calibrate_1[0m
 /usr/local/lib/python3.10/dist-packages/tables/atom.py:373: FlavorWarning: support for unicode type is very limited, and only works for strings that can be cast as ascii
@@ -47,9 +47,9 @@ INFO - rapthor - [32mPublished 1 Rapthor plot artifacts from /tmp/ropwc/pipelin
 INFO - rapthor - [32mPublished 9 Rapthor FITS preview artifacts from /tmp/ropwc/pipelines/image_1[0m
 INFO - rapthor:image_1 - [32m--> Operation image_1 completed[0m
 INFO - rapthor:image_1 - [32mDiagnostics for sector_1:[0m
-INFO - rapthor:image_1 - [32m    Min RMS noise = 8918.1 uJy/beam (non-PB-corrected), 9060.5 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
+INFO - rapthor:image_1 - [32m    Min RMS noise = 8918.1 uJy/beam (non-PB-corrected), 9062.8 uJy/beam (PB-corrected), 9006.402988 (expected)[0m
 INFO - rapthor:image_1 - [32m    Median RMS noise = 15930.8 uJy/beam (non-PB-corrected), 16219.8 uJy/beam (PB-corrected)[0m
-INFO - rapthor:image_1 - [32m    Dynamic range = 511.01 (non-PB-corrected), 502.98 (PB-corrected)[0m
+INFO - rapthor:image_1 - [32m    Dynamic range = 511.01 (non-PB-corrected), 502.85 (PB-corrected)[0m
 INFO - rapthor:image_1 - [32m    Number of sources found by PyBDSF = 10[0m
 INFO - rapthor:image_1 - [32m    Reference frequency = 134.4 MHz[0m
 INFO - rapthor:image_1 - [32m    Beam = 44.6" x 43.1", PA = 172.9 deg[0m

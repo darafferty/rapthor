@@ -21,8 +21,9 @@
     },
     {
       "id": "bda-averaging",
-      "skip_reason": "input snapshots pending",
-      "notes": "Use one BDA or averaging-related configuration against the same stable baseline."
+      "base_parset": "inputs/base/bda_averaging.parset",
+      "current_parset": "inputs/current/bda_averaging.parset",
+      "notes": "DD fast+medium phase calibration with calibration BDA and imaging averaging/BDA enabled on the generated rich demo data."
     },
     {
       "id": "screens",

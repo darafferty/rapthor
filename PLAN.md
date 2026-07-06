@@ -70,6 +70,12 @@ Done:
 - DI full-Jones collection now matches the legacy master post-processing step:
   collected full-Jones gains are amplitude-normalized before plotting/finalizer
   handoff, without slow-gain flagging or smoothing.
+- The first risk-based option matrix rows pass against `master`: provided
+  flux-scale normalization, DP3 image-based predict, WSClean predict, and
+  BDA/averaging. Compact reports are stored under
+  `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`;
+  screens remain a skipped target-environment scenario until reliable
+  IDGCal/screen support is available.
 
 Known caveats:
 
@@ -85,34 +91,7 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Continue the risk-based option equivalence matrix.**
-   The core science gate is closed: the DD-plus-DI full-Jones normalized
-   repeatability envelope passes all base-base, current-current, and
-   base-current pairs with only auxiliary output-record warnings on
-   cross-branch pairs; the refreshed saved-reference matrix passes in the
-   prepared dev container; and the full integration suite is green after
-   clearing raw `/tmp` run roots and rerunning the two disk-full false
-   negatives. `EQUIVALENCE_REPORT.md` records the final gate interpretation.
-   The first focused option scenarios now pass and are tracked under
-   `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`:
-   `normalization-rich-demo`, `prediction-path-image-based`, and
-   `prediction-path-wsclean`. Next, prepare and run the BDA/averaging scenario.
-
-2. **Curate option-matrix inputs and reports.**
-   Keep each scenario to one meaningful option family so failures remain
-   attributable. The normalization scenario also exposed that provided
-   normalization sky models must use distinct reference frequencies; keep that
-   pattern in future snapshots. Store compact `option-matrix-summary.*` files
-   and selected branch reports; keep raw FITS/MS/h5parm products in ignored run
-   directories.
-
-3. **Keep flexible-strategy carry-forward explicit.**
-   The current policy is no silent carry-over after a new calibration step:
-   imaging and preapply use current-cycle products, while previous-cycle
-   products may only seed matching solves or be reused by an explicit image-only
-   cycle. Keep tests and docs aligned with this policy.
-
-4. **Make pipeline PNG artifacts intentional and scalable.**
+1. **Make pipeline PNG artifacts intentional and scalable.**
    Review PNG artifacts generated during normal pipeline runs, especially
    whole-field image and solution previews. Add options to disable nonessential
    PNG generation when it slows large runs or creates fragile artifacts, while
@@ -122,23 +101,29 @@ Known caveats:
    easier to inspect than in whole-field previews. Keep raw FITS/h5parm products
    as the scientific contract; treat PNGs as reviewer/debug artifacts.
 
-5. **Take one low-risk image-cycle scalability slice.**
+2. **Keep flexible-strategy carry-forward explicit.**
+   The current policy is no silent carry-over after a new calibration step:
+   imaging and preapply use current-cycle products, while previous-cycle
+   products may only seed matching solves or be reused by an explicit image-only
+   cycle. Keep tests and docs aligned with this policy.
+
+3. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-6. **Re-run scientific and performance gates after the slice.**
+4. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-7. **Refresh benchmark baseline documentation if the CI run is valid.**
+5. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-8. **Resume test-suite maintainability cleanup.**
+6. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -436,34 +421,16 @@ Remaining equivalence tasks, in order:
    calibration state. Current-cycle full-Jones imaging application is guarded by
    focused image-operation tests; keep DD direction compatibility checks strict.
 
-3. **Add option-specific equivalence scenarios.**
-   After the repeatability envelope exists, build a small risk-based option
-   matrix. Do not combine many options in one run; each scenario should toggle
-   one meaningful behavior against a stable baseline, preferably with fixed
-   facets and short demo data.
-
-   Recommended priority:
-
-   - **Normalization:** high scientific impact and already covered by saved
-     references; add a branch-vs-master scenario if master can represent the
-     configuration cleanly.
-   - **Prediction path:** run separate scenarios for image-based predict and
-     WSClean predict, because WSClean predict was recently ported and failures
-     should clearly point to model-column/predict behavior.
-   - **BDA/averaging:** add one focused scenario for BDA or averaging-related
-     options because they change calibration/imaging inputs even when solve
-     logic is unchanged.
-   - **Screens/IDGCal/hybrid screens:** keep as target-environment checks unless
-     the prepared dev container can run them reliably; record skipped/blocked
-     status explicitly.
-   - **Other imaging options:** keep cubes, QUV/full-Stokes, astrometry,
-     photometry, and peeling primarily in saved-reference or integration
-     coverage unless a reviewer needs branch-vs-master parity for one of them.
-
-   Use the option matrix after the core tolerance/repeatability work, not as a
-   replacement for it. When an option scenario fails, decide whether the delta
-   is within the repeatability envelope, a master limitation, or a current
-   branch regression.
+3. **Option-specific equivalence scenarios.**
+   The initial risk-based matrix is complete for the options most likely to
+   regress during this migration: provided normalization sky models, DP3
+   image-based predict, WSClean predict, and BDA/averaging all pass against
+   `master` on the generated rich demo data. Keep future additions scoped to one
+   meaningful option family per row so failures remain attributable. Screens
+   remain recorded as skipped until the target environment can run IDGCal/screen
+   workflows reproducibly. Keep cubes, QUV/full-Stokes, astrometry, photometry,
+   and peeling primarily in saved-reference or integration coverage unless a
+   reviewer needs branch-vs-master parity for one of them.
 
 4. **Comparison-rule cleanup.**
    Add h5parm numeric statistics/tolerances for accepted phase-only drift while
