@@ -170,9 +170,13 @@ class Field(object):
         self.full_observations = []
         for ms_filename in self.ms_filenames:
             self.full_observations.append(Observation(ms_filename))
-        self.stations = list(set([obs.stations for obs in self.full_observations]))
         self.observations = self.full_observations[:]  # make copy so we don't alter originals
 
+        # Make a list of the station names used across all observations
+        all_stations = []
+        for obs in self.full_observations:
+            all_stations.extend(obs.stations)
+        self.stations = list(set(all_stations))
 
         # Define a reference observation for the comparisons below
         obs0 = self.full_observations[0]
