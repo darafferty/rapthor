@@ -893,6 +893,15 @@ The available options are described below under their respective sections.
         image artifacts. ``off`` disables command resource profiling while
         leaving normal command timing controlled by :term:`prefect_log_commands`.
 
+    prefect_publish_fits_previews
+        Render FITS image products to PNG previews and publish those previews as
+        Prefect image artifacts (default = ``False``). Set this to ``True`` for
+        dashboard-oriented demo or debugging runs where quick visual inspection
+        is worth the extra runtime and disk usage. Leave it disabled for
+        benchmarks and large batch runs. This does not disable creation of the
+        FITS products themselves, files under ``dir_working/plots``, or numeric
+        image diagnostics.
+
     debug_workflow
         Debug workflow related issues (default = ``False``). Enabling this option
         implies that temporary files, produced during the workflow run, will be kept

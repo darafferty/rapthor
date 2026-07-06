@@ -24,6 +24,7 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
     assert config.retries == 0
     assert config.log_commands is True
     assert config.command_profile == "auto"
+    assert config.publish_fits_previews is False
     assert config.batch_system == "single_machine"
     assert config.local_scratch_dir is None
 
@@ -41,6 +42,7 @@ def test_execution_config_reads_cluster_specific_values():
                 "prefect_retries": 2,
                 "prefect_log_commands": False,
                 "prefect_command_profile": "time",
+                "prefect_publish_fits_previews": True,
                 "batch_system": "slurm",
                 "max_nodes": 4,
                 "local_dask_workers": 3,
@@ -64,6 +66,7 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.retries == 2
     assert config.log_commands is False
     assert config.command_profile == "time"
+    assert config.publish_fits_previews is True
     assert config.batch_system == "slurm"
     assert config.max_nodes == 4
     assert config.local_dask_workers == 3
@@ -197,3 +200,10 @@ def test_execution_config_rejects_negative_retries():
 def test_execution_config_rejects_negative_local_dask_workers():
     with pytest.raises(ValueError, match="local_dask_workers"):
         ExecutionConfig.from_parset({"cluster_specific": {"local_dask_workers": -1}})
+
+
+def test_execution_config_rejects_invalid_fits_preview_artifact_flag():
+    with pytest.raises(ValueError, match="prefect_publish_fits_previews"):
+        ExecutionConfig.from_parset(
+            {"cluster_specific": {"prefect_publish_fits_previews": "sometimes"}}
+        )

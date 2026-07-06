@@ -1677,7 +1677,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(_image_input_parms(), tmp_path),
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(task_runner="sync", publish_fits_previews=True),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
@@ -1761,6 +1761,32 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     assert fake_direct_image_helpers["calculate_image_diagnostics"][0]["output_root"] == str(
         tmp_path / "sector_1"
     )
+
+
+def test_run_image_flow_can_skip_fits_preview_artifacts(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls
+):
+    fits_published = []
+
+    def fake_publish_fits_image_artifacts(records, root_dir):
+        fits_published.append((records, root_dir))
+        return []
+
+    monkeypatch.setattr(
+        image_sector_module,
+        "publish_fits_image_artifacts",
+        fake_publish_fits_image_artifacts,
+    )
+
+    outputs = run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(_image_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync", publish_fits_previews=False),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
+    assert fits_published == []
 
 
 def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(

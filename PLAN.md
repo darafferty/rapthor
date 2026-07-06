@@ -95,14 +95,12 @@ Use this section as the current work queue. The longer equivalence notes below
 are evidence and follow-up context, not a competing priority list.
 
 1. **Make pipeline PNG artifacts intentional and scalable.**
-   First inventory where PNGs are currently produced during normal pipeline,
-   equivalence, and report generation. Then add an explicit user-facing switch
-   for nonessential pipeline PNG previews, defaulting to the current reviewer
-   behavior only where the files are cheap and robust. Keep raw FITS/h5parm
-   products, numeric diagnostics, and report JSON as the scientific contract.
-   After the disable/enable path is covered, add a separate option for
-   postage-stamp PNGs around the brightest sources so image artifacts near
-   important sources are easier to inspect than whole-field previews.
+   The whole-field FITS preview publication switch is now explicit and defaults
+   off; demo parsets opt in, while benchmark and normal defaults stay off. Keep
+   raw FITS/h5parm products, numeric diagnostics, and report JSON as the
+   scientific contract. Next, add a separate option for postage-stamp PNGs
+   around the brightest sources so image artifacts near important sources are
+   easier to inspect than whole-field previews.
 
    Definition of done:
 

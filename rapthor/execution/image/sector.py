@@ -203,5 +203,6 @@ def run_image_sector(
         + ([skymodel_image] if skymodel_image is not None else [])
         + image_cubes
     )
-    publish_fits_image_artifacts(fits_records, pipeline_working_dir)
+    if config.publish_fits_previews:
+        publish_fits_image_artifacts(fits_records, pipeline_working_dir)
     return result

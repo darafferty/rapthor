@@ -750,10 +750,26 @@ def publish_plot_artifacts_for_field(field: object, publish_index: bool = True) 
     return publish_plot_artifacts(Path(working_dir) / "plots", publish_index=publish_index)
 
 
+def _bool_setting_is_enabled(value: object, *, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "yes", "1", "on"}
+    return bool(value)
+
+
 def publish_fits_image_artifacts_for_field(field: object) -> list[dict]:
     """Publish FITS preview artifacts for finalized image products, if possible."""
     parset = getattr(field, "parset", {})
     if not isinstance(parset, dict):
+        return []
+
+    cluster = parset.get("cluster_specific", parset.get("cluster", {}))
+    if not isinstance(cluster, Mapping) or not _bool_setting_is_enabled(
+        cluster.get("prefect_publish_fits_previews")
+    ):
         return []
 
     working_dir = parset.get("dir_working")

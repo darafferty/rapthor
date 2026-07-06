@@ -272,7 +272,7 @@ def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
     outputs = run_flow_for_test(
         mosaic_flow,
         _mosaic_payload(tmp_path),
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(task_runner="sync", publish_fits_previews=True),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
     )
 
@@ -317,6 +317,32 @@ def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
             "output_image": str(tmp_path / "mosaic_1-I-image.fits"),
         }
     ]
+
+
+def test_run_mosaic_flow_can_skip_fits_preview_artifacts(
+    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
+):
+    published = []
+
+    def fake_publish_fits_image_artifacts(records, root_dir):
+        published.append((records, root_dir))
+        return []
+
+    monkeypatch.setattr(
+        mosaic_module,
+        "publish_fits_image_artifacts",
+        fake_publish_fits_image_artifacts,
+    )
+
+    outputs = run_flow_for_test(
+        mosaic_flow,
+        _mosaic_payload(tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync", publish_fits_previews=False),
+        shell_operation_cls=fake_mosaic_shell_operation_cls,
+    )
+
+    assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits")]}
+    assert published == []
 
 
 def test_run_mosaic_flow_rejects_invalid_image_type_lists(

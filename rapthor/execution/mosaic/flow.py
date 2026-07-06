@@ -93,9 +93,11 @@ def run_mosaic_image_type(
             config,
             shell_operation_cls=shell_operation_cls,
         )
-        publish_fits_image_artifacts([output_record], pipeline_working_dir)
+        if config.publish_fits_previews:
+            publish_fits_image_artifacts([output_record], pipeline_working_dir)
         return output_record
-    publish_fits_image_artifacts([output_record], pipeline_working_dir)
+    if config.publish_fits_previews:
+        publish_fits_image_artifacts([output_record], pipeline_working_dir)
     return output_record
 
 

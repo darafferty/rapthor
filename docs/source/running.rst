@@ -191,9 +191,14 @@ forwarded to the active Prefect flow or task run. Plot files are also published 
 Prefect artifacts as plotting tasks and operation finalizers create them, so
 calibration PNGs and image diagnostic PDFs can be inspected from the dashboard
 during the run. Image diagnostic JSON files are rendered as Markdown artifacts
-with formatted JSON content. FITS image products are rendered to PNG previews
-and published as image artifacts. At the end of the process flow, Rapthor
-publishes an index artifact for everything found under ``dir_working/plots``.
+with formatted JSON content. FITS image product previews are disabled by
+default because they add runtime and disk usage for large datasets. Set
+``prefect_publish_fits_previews = True`` for demo or debugging runs to render
+those FITS products to PNG previews and publish them as image artifacts; the
+demo parsets enable this, while the benchmark parset leaves it disabled. FITS
+products, files under ``dir_working/plots``, and numeric image diagnostics are
+still produced either way. At the end of the process flow, Rapthor publishes an
+index artifact for everything found under ``dir_working/plots``.
 When running in the VS Code development container, the plot index rewrites
 ``/app`` paths to the host workspace path using ``RAPTHOR_HOST_WORKSPACE`` so
 the local file links can be opened from the browser.

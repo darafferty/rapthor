@@ -143,6 +143,7 @@
         "prefect_retries": 0,
         "prefect_log_commands": true,
         "prefect_command_profile": "auto",
+        "prefect_publish_fits_previews": false,
         "debug_workflow": false,
         "keep_temporary_files": false,
         "allow_internet_access": true

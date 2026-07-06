@@ -4,6 +4,7 @@ from rapthor.execution.artifacts import (
     ArtifactWriters,
     publish_command_metrics_artifact,
     publish_fits_image_artifacts,
+    publish_fits_image_artifacts_for_field,
     publish_plot_artifacts,
     publish_plot_file_records,
     render_command_profile_chart,
@@ -246,6 +247,31 @@ def test_publish_fits_image_artifacts_skips_fits_tables(tmp_path):
 
     assert records == []
     assert recorder.calls == []
+
+
+def test_publish_fits_image_artifacts_for_field_requires_explicit_opt_in(tmp_path, monkeypatch):
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    image_path = images_dir / "field-image.fits"
+    image_path.write_bytes(b"fits-data")
+    calls = []
+
+    def fake_publish_fits_image_artifacts(records, root_dir):
+        calls.append((records, root_dir))
+        return [{"path": str(image_path)}]
+
+    monkeypatch.setattr(
+        "rapthor.execution.artifacts.publish_fits_image_artifacts",
+        fake_publish_fits_image_artifacts,
+    )
+
+    field = type("Field", (), {"parset": {"dir_working": str(tmp_path)}})()
+    assert publish_fits_image_artifacts_for_field(field) == []
+    assert calls == []
+
+    field.parset["cluster_specific"] = {"prefect_publish_fits_previews": "True"}
+    assert publish_fits_image_artifacts_for_field(field) == [{"path": str(image_path)}]
+    assert calls == [([{"class": "File", "path": str(image_path)}], images_dir)]
 
 
 def test_publish_plot_artifacts_is_noop_without_plots_directory(tmp_path):

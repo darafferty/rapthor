@@ -414,6 +414,7 @@ def write_parset(
     max_threads: int = 4,
     deconvolution_threads: int = 2,
     parallel_gridding_tasks: int = 1,
+    publish_fits_previews: bool = True,
 ) -> None:
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
@@ -508,6 +509,7 @@ def write_parset(
             prefect_retries = 0
             prefect_log_commands = True
             prefect_command_profile = time
+            prefect_publish_fits_previews = {publish_fits_previews}
             debug_workflow = False
             keep_temporary_files = False
             allow_internet_access = False
@@ -534,6 +536,7 @@ def write_benchmark_parset(
         max_threads=0,
         deconvolution_threads=0,
         parallel_gridding_tasks=0,
+        publish_fits_previews=False,
     )
 
 

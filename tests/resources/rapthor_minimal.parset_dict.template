@@ -57,6 +57,7 @@
                       'prefect_api_url': None,
                       'prefect_command_profile': 'auto',
                       'prefect_log_commands': True,
+                      'prefect_publish_fits_previews': False,
                       'prefect_retries': 0,
                       'prefect_stream_output': True,
                       'prefect_task_runner': None,

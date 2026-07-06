@@ -141,6 +141,7 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "prefect_retries": execution_config.retries,
             "prefect_log_commands": execution_config.log_commands,
             "prefect_command_profile": execution_config.command_profile,
+            "prefect_publish_fits_previews": execution_config.publish_fits_previews,
             "batch_system": execution_config.batch_system,
             "max_nodes": execution_config.max_nodes,
             "local_dask_workers": execution_config.local_dask_workers,
