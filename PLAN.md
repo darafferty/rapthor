@@ -62,6 +62,9 @@ Done:
   later solves only as optimizer seeds, DD seeds require direction
   compatibility, and preapply/imaging-time h5parm use remains current-cycle
   guarded.
+- DI full-Jones collection now matches the legacy master post-processing step:
+  collected full-Jones gains are amplitude-normalized before plotting/finalizer
+  handoff, without slow-gain flagging or smoothing.
 
 Known caveats:
 
@@ -77,24 +80,24 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Use the repeatability envelope to classify scientific deltas.**
+1. **Classify the remaining DD plus DI full-Jones deltas.**
+   The focused 2026-07-06 normalized rerun removed the strict h5parm failure
+   and shrank the restored-image residual from about `1.025e-02` max absolute
+   delta to about `2.486e-05`. Decide whether the remaining small image
+   residuals, PyBDSF/catalog uncertainty-column differences, DS9 text
+   formatting, and output-record metadata shape should be handled by
+   product-specific comparison rules or need a three-repeat tolerance envelope
+   before merge.
+
+2. **Use the repeatability envelope to classify remaining scientific deltas.**
    The fixed-`facet_layout` and DD phase plus DI full-Jones repeatability
    envelopes are now tracked under `docs/source/development/equivalence_runs/`.
    Use these data before changing tolerances: fixed-facet image differences are
-   repeatability-bounded, while DD-plus-DI full-Jones branch-vs-master deltas
-   are systematically larger than same-branch master scatter and need a
-   scientific explanation, bug fix, or explicit intentional-difference label.
+   repeatability-bounded, while the existing DD-plus-DI full-Jones envelope is
+   pre-normalization evidence and should only be refreshed if the normalized
+   focused rerun is not enough to classify the remaining residuals.
    Run a phase-only DD repeatability envelope only if comparison-rule changes
    need additional multi-cycle phase-only evidence.
-
-2. **Investigate the DD plus DI full-Jones systematic difference.**
-   Inspect the full-Jones repeatability reports and products to determine why
-   branch-vs-master differences are larger than same-branch scatter, especially
-   in restored/dirty/residual FITS metrics,
-   `fulljones-solutions.h5:sol000/amplitude000/val`, PyBDSF source-catalog
-   columns, and image diagnostics. Decide whether this is an intended
-   flexible-strategy behavior, a current-branch regression, or a comparison
-   rule that needs product-specific repeatability-bounded tolerances.
 
 3. **Keep flexible-strategy carry-forward explicit.**
    The current policy is no silent carry-over after a new calibration step:
@@ -267,6 +270,23 @@ Initial-solution alignment status:
   presence, source counts, and high-level diagnostics are close; the largest
   image-diagnostic relative deltas are about `0.24%`, and the full-Jones
   amplitude h5parm delta is about `1.14e-03`.
+- Follow-up investigation found that the DP3 solve commands, WSClean imaging
+  commands, image preapply payloads, and full-Jones applycal settings match
+  between branches. The systematic amplitude offset comes from post-processing:
+  legacy master runs `process_gains.py` on the collected full-Jones h5parm with
+  normalization enabled and flagging/smoothing disabled, while the current
+  branch was previously handing the raw collected full-Jones gains to imaging.
+  The current branch now ports that normalization behavior and focused tests
+  cover the exact processing options. Rerun the focused full-Jones equivalence
+  check before interpreting the old DD-plus-DI full-Jones repeatability envelope.
+- The normalized focused rerun is tracked under
+  `docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/`.
+  Both branches return `0`; strict h5parm comparison now passes for all three
+  h5parm products. The restored-image max absolute residual dropped from about
+  `1.025e-02` to about `2.486e-05`, and the largest diagnostic relative delta
+  is about `0.021%`. Remaining failures are small FITS image residuals, PyBDSF
+  source-catalog uncertainty/shape columns, DS9 region text formatting, and
+  legacy output-record metadata shape.
 - The DI multi-cycle carry-over scenario is tracked under
   `docs/source/development/equivalence_runs/2026-07-05-di-multicycle-carryover-master-ref/`.
   It uses two selfcal/image cycles of master-compatible DD fast+medium
@@ -365,11 +385,11 @@ Remaining equivalence tasks, in order:
    `docs/source/development/equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-repeatability-master-ref/`.
    The fixed-facet envelope shows aggregate image differences inside
    same-branch scatter. The DD plus DI full-Jones envelope shows stable
-   same-branch master repeats but systematic branch-vs-master image,
-   full-Jones amplitude, and source-catalog differences larger than master
-   scatter. Next, use these envelopes to tighten comparison rules and
-   investigate the full-Jones systematic difference before accepting scientific
-   parity.
+   same-branch master repeats but was generated before current-branch
+   full-Jones gain normalization was ported. The normalized focused rerun
+   removes the h5parm failure and leaves small image/catalog residuals; refresh
+   the repeatability envelope only if those remaining residuals need final
+   tolerance evidence.
    Use short `/tmp` paths for `--run-root`, `--repeatability-work-root`, and
    any master checkout/venv paths when the master branch will run imaging. The
    legacy master CWL/Toil image filter path runs PyBDSF multiprocessing from

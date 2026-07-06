@@ -311,10 +311,15 @@ Interpretation:
 
 This scenario confirms that the current branch can represent and execute the
 legacy DD-then-DI full-Jones mixed calibration order. It is not a passing
-scientific equivalence gate yet. The next useful checks are the fixed-facet and
-changing-facet DD carry-over scenarios, because they isolate whether remaining
-DD seed compatibility behavior is correct before broadening comparison
-tolerances.
+scientific equivalence gate yet. Follow-up inspection found that the active DP3
+solve commands, image-preparation applycal payloads, WSClean imaging commands,
+and full-Jones applycal soltabs match between branches. The systematic
+full-Jones amplitude offset is explained by a missing current-branch
+post-processing step: legacy master normalizes the collected full-Jones gain
+amplitudes with flagging and smoothing disabled before plotting and imaging.
+The current branch now ports that full-Jones normalization behavior. Rerun this
+focused scenario before interpreting the pre-fix residuals as scientific
+differences or tolerance work.
 
 ## DD Phase Plus DI Full-Jones Repeatability Envelope
 
@@ -358,12 +363,54 @@ Key findings:
 
 Interpretation:
 
-This envelope keeps the mixed DD-plus-DI full-Jones scenario open as a real
-scientific-equivalence question. Before accepting full-Jones parity, inspect
-whether the systematic branch-vs-master amplitude/image/source-catalog deltas
-come from an intended flexible-strategy difference, a current-branch regression,
-or a comparison rule that should be product-specific but still bounded by the
-same-branch scatter.
+This envelope was useful because it showed the DD-plus-DI full-Jones
+branch-vs-master split was systematic rather than ordinary master scatter.
+Subsequent product inspection traced the split to the missing current-branch
+full-Jones gain normalization step described above. Treat this envelope as
+pre-fix evidence: rerun the focused DD-plus-DI full-Jones comparison after the
+normalization port, then refresh the three-repeat envelope only if the focused
+rerun still shows residuals larger than same-branch scatter.
+
+## DD Phase Plus DI Full-Jones Normalized Rerun
+
+A focused branch-vs-master rerun was completed on 2026-07-06 after porting the
+legacy full-Jones gain normalization step into the current Prefect/Dask
+calibration collection path. The run used short paths (`/tmp/rfjn` and
+`/tmp/rfjnw`) and the tracked input snapshots copied into:
+
+```text
+docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/
+```
+
+Both branches returned `0`. Strict comparison still failed, but the full-Jones
+h5parm difference that dominated the earlier run is gone: all three h5parm
+products pass the strengthened comparison. The remaining failures are now
+limited to small image residuals, PyBDSF/source-catalog uncertainty columns, the
+known DS9 facet-region text difference, and output-record metadata shape.
+
+| Scenario | Base RC | Current RC | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text | Diagnostics | Warnings | Failures |
+| --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `dd-phase-plus-di-fulljones-normalized-smoke` | 0 | 0 | fail | 5 | 5 | 7 | 6 | 1 | 3 | 10 | 1 | 2 | 29 |
+
+Key deltas after the fix:
+
+- `fulljones-solutions.h5` no longer appears in the failure list.
+- The restored image max absolute residual dropped from about `1.025e-02` in
+  the pre-fix report to about `2.486e-05`.
+- The residual-image RMS is about `4.194e-06`, and the restored-image residual
+  RMS is about `3.978e-06`.
+- Image diagnostics are essentially aligned: source counts and theoretical RMS
+  match exactly, and the largest relative diagnostic delta is about `0.021%`.
+
+Interpretation:
+
+The systematic DD-plus-DI full-Jones h5parm/amplitude split was a
+current-branch regression in gain post-processing, not an intentional
+flexible-strategy behavior. The remaining differences are now in the same
+family as comparison-contract work: small WSClean/PyBDSF image/catalog
+residuals, text formatting, and legacy CWL output-record metadata. A full
+three-repeat envelope is only needed if we want to set final tolerances for
+these remaining residuals before merge.
 
 ## Branch-Vs-Master Fixed-Facet Carry-Over Run
 

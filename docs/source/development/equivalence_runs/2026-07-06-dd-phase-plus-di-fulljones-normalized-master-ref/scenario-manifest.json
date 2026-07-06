@@ -1,0 +1,19 @@
+{
+  "scenario_id": "dd-phase-plus-di-fulljones-normalized-smoke",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/tmp/rfjn/inputs/base/master_dd_phase_plus_di_fulljones.parset",
+  "current_parset": "/tmp/rfjn/inputs/current/current_dd_phase_plus_di_fulljones.parset",
+  "base_work_dir": "/tmp/rfjnw/base",
+  "current_work_dir": "/tmp/rfjnw/current",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/master_dd_phase_plus_di_fulljones.parset",
+      "strategy": "inputs/base/master_dd_phase_plus_di_fulljones_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/current_dd_phase_plus_di_fulljones.parset",
+      "strategy": "inputs/current/current_dd_phase_plus_di_fulljones_strategy.py"
+    }
+  }
+}

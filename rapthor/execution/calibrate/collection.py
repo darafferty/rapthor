@@ -138,6 +138,22 @@ def _run_process_gains(
     return require_file(h5parm_record["path"], "Processed slow-gain h5parm")
 
 
+def _run_process_fulljones_gains(
+    h5parm_record: Mapping[str, str],
+    payload: Mapping[str, object],
+) -> dict:
+    process_gain_solutions(
+        h5parm_record["path"],
+        normalize=True,
+        flag=False,
+        smooth=False,
+        max_station_delta=float(payload["max_normalization_delta"]),
+        scale_delta_with_dist=False,
+        phase_center=(0.0, 0.0),
+    )
+    return require_file(h5parm_record["path"], "Processed full-Jones h5parm")
+
+
 def _should_adjust_dd_sources(payload: Mapping[str, object]) -> bool:
     return str(payload.get("mode")) == "dd" and len(payload.get("calibrator_patch_names", [])) > 1
 
@@ -275,6 +291,20 @@ def _collect_strategy_solve_products(
                     first_dir=plot_first_dir,
                     shell_operation_cls=shell_operation_cls,
                 )
+        elif solve_type == "full_jones":
+            combine_record = _run_process_fulljones_gains(
+                collected_record,
+                payload,
+            )
+            result[_plot_output_key(solve_slot, "phase")] = run_plot_solutions(
+                combine_record,
+                "phase",
+                pipeline_working_dir,
+                execution_config,
+                root=_phase_plot_root(solve_slot),
+                first_dir=plot_first_dir,
+                shell_operation_cls=shell_operation_cls,
+            )
         else:
             combine_record = collected_record
             result[_plot_output_key(solve_slot, "phase")] = run_plot_solutions(

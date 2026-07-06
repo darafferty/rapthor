@@ -44,7 +44,16 @@ long`.
   three-repeat branch-vs-master repeatability envelope for the DD phase plus
   DI full-Jones scenario. Master is stable within current strict tolerances;
   one current repetition drifts beyond strict tolerances, and all cross-branch
-  pairs remain systematically larger than same-branch master scatter.
+  pairs remain systematically larger than same-branch master scatter. This is
+  pre-fix evidence: later investigation traced the systematic split to missing
+  current-branch full-Jones gain normalization after h5parm collection, so the
+  focused scenario should be rerun before using this envelope to set
+  tolerances.
+- `2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/`: focused
+  rerun after porting the legacy full-Jones gain normalization step. Both
+  branches complete, strict h5parm comparison now passes, and remaining
+  failures are small image residuals, PyBDSF/catalog uncertainty columns, DS9
+  region text, and output-record metadata shape.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones

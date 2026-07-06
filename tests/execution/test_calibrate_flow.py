@@ -592,6 +592,7 @@ def _di_fulljones_input_parms():
             "correctfreqsmearing": False,
             "correcttimesmearing": True,
             "max_threads": 4,
+            "max_normalization_delta": 0.3,
         }
     )
 
@@ -2137,6 +2138,12 @@ def test_calibrate_payload_from_inputs_builds_dd_screen_slow_payload(tmp_path):
         (
             "di",
             _di_fulljones_input_parms,
+            {"max_normalization_delta": None},
+            "Full-Jones gain processing requires max_normalization_delta",
+        ),
+        (
+            "di",
+            _di_fulljones_input_parms,
             {"solve1_mode": "slow"},
             "Unsupported DI calibration solve slot",
         ),
@@ -2217,7 +2224,9 @@ def test_run_plot_solutions_publishes_new_plot_artifacts(
     assert "--first-dir" in command
 
 
-def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_di_fulljones(
+    tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
+):
     payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2254,6 +2263,17 @@ def test_run_calibrate_flow_supports_di_fulljones(tmp_path, fake_calibrate_shell
         commands[2][2]
         == f"{tmp_path / 'fulljones_gain_0.h5parm'},{tmp_path / 'fulljones_gain_1.h5parm'}"
     )
+    assert fake_direct_calibrate_helpers["process_gains"] == [
+        {
+            "h5parmfile": str(tmp_path / "fulljones_solutions.h5"),
+            "normalize": True,
+            "flag": False,
+            "smooth": False,
+            "max_station_delta": 0.3,
+            "scale_delta_with_dist": False,
+            "phase_center": (0.0, 0.0),
+        }
+    ]
 
 
 def test_run_calibrate_flow_rejects_invalid_chunk_payload(
@@ -2416,7 +2436,7 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
 
 
 def test_run_calibrate_flow_supports_mixed_di_strategy(
-    tmp_path, fake_calibrate_shell_operation_cls
+    tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
 ):
     payload = calibrate_payload_from_inputs("di", _di_scalar_slow_fulljones_input_parms(), tmp_path)
 
@@ -2458,6 +2478,26 @@ def test_run_calibrate_flow_supports_mixed_di_strategy(
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
     assert "solve4.h5parm=fulljones_gain_0.h5parm" in commands[0]
     assert "solve4.mode=fulljones" in commands[0]
+    assert fake_direct_calibrate_helpers["process_gains"] == [
+        {
+            "h5parmfile": str(tmp_path / "slow_gains_di.h5parm"),
+            "normalize": True,
+            "flag": True,
+            "smooth": True,
+            "max_station_delta": 0.25,
+            "scale_delta_with_dist": "False",
+            "phase_center": (123.0, 45.0),
+        },
+        {
+            "h5parmfile": str(tmp_path / "fulljones_solutions.h5"),
+            "normalize": True,
+            "flag": False,
+            "smooth": False,
+            "max_station_delta": 0.25,
+            "scale_delta_with_dist": False,
+            "phase_center": (0.0, 0.0),
+        },
+    ]
 
 
 def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):

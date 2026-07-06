@@ -272,6 +272,13 @@ def _validate_slow_gain_processing_inputs(input_parms: Mapping[str, object]) -> 
         raise ValueError("Slow-gain processing requires " + ", ".join(missing))
 
 
+def _validate_fulljones_processing_inputs(input_parms: Mapping[str, object]) -> None:
+    required = ["max_normalization_delta"]
+    missing = [name for name in required if input_parms.get(name) is None]
+    if missing:
+        raise ValueError("Full-Jones gain processing requires " + ", ".join(missing))
+
+
 def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) -> str:
     steps = parse_steps(input_parms.get("dp3_steps"))
     _validate_screen_inputs(mode, input_parms)
@@ -293,6 +300,8 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
         raise ValueError("A calibration cycle can contain at most one slow_gains solve")
     if "slow_gains" in solve_types:
         _validate_slow_gain_processing_inputs(input_parms)
+    if "full_jones" in solve_types:
+        _validate_fulljones_processing_inputs(input_parms)
 
     if mode == "di":
         if solve_types == ["full_jones"]:
