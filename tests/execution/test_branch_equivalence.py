@@ -27,6 +27,10 @@ def _write_parset(path, work_dir):
 dir_working = {work_dir}
 input_ms = data/input.ms
 strategy = strategy.py
+
+[cluster]
+local_scratch_dir = old-local-scratch
+global_scratch_dir = old-global-scratch
 """.strip(),
         encoding="utf-8",
     )
@@ -117,6 +121,9 @@ def test_prepare_repeatability_branch_inputs_write_unique_working_parsets(tmp_pa
         parser = module._read_parset(run.parset_path)
         assert parser.get("global", "dir_working") == str(run.work_dir)
         assert parser.get("global", "strategy") == str(strategy.resolve())
+        assert parser.get("cluster", "local_scratch_dir") == str(run.work_dir / "scratch")
+        assert parser.get("cluster", "global_scratch_dir") == str(run.work_dir / "scratch")
+        assert run.work_dir.parent.is_dir()
 
 
 def test_prepare_repeatability_branch_inputs_requires_global_section(tmp_path):

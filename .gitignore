@@ -11,6 +11,10 @@ tests/resources/test.ms
 tests/test.ms_di.ms
 test.ms_di.ms/
 
+# Equivalence reports are tracked, but generated visual comparison PNGs are
+# binary-heavy and usually less informative than the numeric summaries.
+docs/source/development/equivalence_runs/**/visual-comparisons/**/*.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

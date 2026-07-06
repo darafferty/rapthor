@@ -1,0 +1,553 @@
+{
+  "scenario_id": "fixed-facet-carryover-repeatability:base-rep-01_vs_base-rep-03",
+  "run_root": "/tmp/rffr/pairs/base-rep-01_vs_base-rep-03",
+  "repeatability_pair": {
+    "group": "base-base",
+    "reference_side": "base",
+    "reference_rep": 1,
+    "current_side": "base",
+    "current_rep": 3,
+    "pair_id": "base-rep-01_vs_base-rep-03",
+    "reference": "base/rep-01",
+    "current": "base/rep-03"
+  },
+  "base": {
+    "side": "base",
+    "ref": "master",
+    "repo_root": "/tmp/rffr/checkouts/base",
+    "run_dir": "/tmp/rffr/base/rep-01",
+    "parset_path": "/tmp/rffr/inputs/base/rep-01/master_fixed_facet_carryover.parset",
+    "work_dir": "/tmp/rffw/base/rep-01",
+    "command": [
+      "/tmp/rffr/checkouts/base/.venv/bin/rapthor",
+      "/tmp/rffr/inputs/base/rep-01/master_fixed_facet_carryover.parset"
+    ],
+    "returncode": 0,
+    "log_path": "/tmp/rffr/base/rep-01/rapthor-command.log",
+    "input_snapshot": {}
+  },
+  "current": {
+    "side": "base",
+    "ref": "master",
+    "repo_root": "/tmp/rffr/checkouts/base",
+    "run_dir": "/tmp/rffr/base/rep-03",
+    "parset_path": "/tmp/rffr/inputs/base/rep-03/master_fixed_facet_carryover.parset",
+    "work_dir": "/tmp/rffw/base/rep-03",
+    "command": [
+      "/tmp/rffr/checkouts/base/.venv/bin/rapthor",
+      "/tmp/rffr/inputs/base/rep-03/master_fixed_facet_carryover.parset"
+    ],
+    "returncode": 0,
+    "log_path": "/tmp/rffr/base/rep-03/rapthor-command.log",
+    "input_snapshot": {}
+  },
+  "comparison": {
+    "passed": false,
+    "metrics": {
+      "base_operations": 4,
+      "current_operations": 4,
+      "operations": 4,
+      "output_records": 4,
+      "fits": 7,
+      "h5": 4,
+      "text": 16,
+      "fits_image_hdus": 6,
+      "fits_table_hdus": 1,
+      "diagnostics": 1,
+      "visual_comparisons": 7
+    },
+    "product_statistics": {
+      "fits": [
+        {
+          "product": "field-MFS-dirty.fits.fz",
+          "kind": "image",
+          "hdu_index": 1,
+          "hdu_name": "COMPRESSED_IMAGE",
+          "shape": [
+            1,
+            1,
+            2400,
+            2400
+          ],
+          "reference_count": 5760000,
+          "reference_mean": -0.0003774861629511556,
+          "reference_std": 0.1727768899396591,
+          "reference_rms": 0.1727773023085621,
+          "reference_min": -0.7161877155303955,
+          "reference_max": 4.5232462882995605,
+          "current_count": 5760000,
+          "current_mean": -0.0003774894034884433,
+          "current_std": 0.17277689573159874,
+          "current_rms": 0.17277730810756814,
+          "current_min": -0.7161925435066223,
+          "current_max": 4.52325439453125,
+          "residual_count": 5760000,
+          "residual_mean": -3.240537287536948e-09,
+          "residual_std": 4.153945329079695e-06,
+          "residual_rms": 4.1539465930684454e-06,
+          "residual_min": -1.461617648601532e-05,
+          "residual_max": 1.4528632164001465e-05,
+          "reference_mad_std": 0.15487234344750175,
+          "residual_mad_std": 4.2859375476837155e-06,
+          "max_abs_delta": 1.461617648601532e-05,
+          "max_relative_delta": 8.373283492346673,
+          "p50_abs_delta": 2.8908252716064453e-06,
+          "p95_abs_delta": 7.994472980499268e-06,
+          "p99_abs_delta": 9.931623935699463e-06,
+          "p999_abs_delta": 1.1682510375976562e-05,
+          "residual_rms_over_reference_rms": 2.404220078427856e-05,
+          "residual_rms_over_reference_mad_std": 2.6821745578328774e-05,
+          "planes": [
+            {
+              "plane": 0,
+              "leading_index": [
+                0,
+                0
+              ],
+              "max_abs_delta": 1.461617648601532e-05,
+              "p99_abs_delta": 9.931623935699463e-06,
+              "residual_rms": 4.1539465930684454e-06
+            }
+          ]
+        },
+        {
+          "product": "field-MFS-image-pb-ast.fits.fz",
+          "kind": "image",
+          "hdu_index": 1,
+          "hdu_name": "COMPRESSED_IMAGE",
+          "shape": [
+            1,
+            1,
+            2400,
+            2400
+          ],
+          "reference_count": 5760000,
+          "reference_mean": 0.0027388119305511802,
+          "reference_std": 0.084198385047443,
+          "reference_rms": 0.08424291741973564,
+          "reference_min": -0.18066538870334625,
+          "reference_max": 4.561817169189453,
+          "current_count": 5760000,
+          "current_mean": 0.0027388127723526378,
+          "current_std": 0.08419838113529558,
+          "current_rms": 0.08424291353702404,
+          "current_min": -0.1806647926568985,
+          "current_max": 4.561816215515137,
+          "residual_count": 5760000,
+          "residual_mean": 8.418014620518536e-10,
+          "residual_std": 1.1931274505293879e-06,
+          "residual_rms": 1.1931277474924715e-06,
+          "residual_min": -4.3101608753204346e-06,
+          "residual_max": 4.2887404561042786e-06,
+          "reference_mad_std": 0.04171130433562793,
+          "residual_mad_std": 1.2316547334194183e-06,
+          "max_abs_delta": 4.3101608753204346e-06,
+          "max_relative_delta": 3.3325157033914365,
+          "p50_abs_delta": 8.307397365570068e-07,
+          "p95_abs_delta": 2.294778823852539e-06,
+          "p99_abs_delta": 2.8479844331741333e-06,
+          "p999_abs_delta": 3.4123659133911133e-06,
+          "residual_rms_over_reference_rms": 1.4162944304834306e-05,
+          "residual_rms_over_reference_mad_std": 2.8604421906637793e-05,
+          "planes": [
+            {
+              "plane": 0,
+              "leading_index": [
+                0,
+                0
+              ],
+              "max_abs_delta": 4.3101608753204346e-06,
+              "p99_abs_delta": 2.8479844331741333e-06,
+              "residual_rms": 1.1931277474924715e-06
+            }
+          ]
+        },
+        {
+          "product": "field-MFS-image-pb.fits.fz",
+          "kind": "image",
+          "hdu_index": 1,
+          "hdu_name": "COMPRESSED_IMAGE",
+          "shape": [
+            1,
+            1,
+            2400,
+            2400
+          ],
+          "reference_count": 5760000,
+          "reference_mean": 0.0027388119305511802,
+          "reference_std": 0.084198385047443,
+          "reference_rms": 0.08424291741973564,
+          "reference_min": -0.18066538870334625,
+          "reference_max": 4.561817169189453,
+          "current_count": 5760000,
+          "current_mean": 0.0027388127723526378,
+          "current_std": 0.08419838113529558,
+          "current_rms": 0.08424291353702404,
+          "current_min": -0.1806647926568985,
+          "current_max": 4.561816215515137,
+          "residual_count": 5760000,
+          "residual_mean": 8.418014620518536e-10,
+          "residual_std": 1.1931274505293879e-06,
+          "residual_rms": 1.1931277474924715e-06,
+          "residual_min": -4.3101608753204346e-06,
+          "residual_max": 4.2887404561042786e-06,
+          "reference_mad_std": 0.04171130433562793,
+          "residual_mad_std": 1.2316547334194183e-06,
+          "max_abs_delta": 4.3101608753204346e-06,
+          "max_relative_delta": 3.3325157033914365,
+          "p50_abs_delta": 8.307397365570068e-07,
+          "p95_abs_delta": 2.294778823852539e-06,
+          "p99_abs_delta": 2.8479844331741333e-06,
+          "p999_abs_delta": 3.4123659133911133e-06,
+          "residual_rms_over_reference_rms": 1.4162944304834306e-05,
+          "residual_rms_over_reference_mad_std": 2.8604421906637793e-05,
+          "planes": [
+            {
+              "plane": 0,
+              "leading_index": [
+                0,
+                0
+              ],
+              "max_abs_delta": 4.3101608753204346e-06,
+              "p99_abs_delta": 2.8479844331741333e-06,
+              "residual_rms": 1.1931277474924715e-06
+            }
+          ]
+        },
+        {
+          "product": "field-MFS-image.fits.fz",
+          "kind": "image",
+          "hdu_index": 1,
+          "hdu_name": "COMPRESSED_IMAGE",
+          "shape": [
+            1,
+            1,
+            2400,
+            2400
+          ],
+          "reference_count": 5760000,
+          "reference_mean": 0.002698225267868487,
+          "reference_std": 0.08294792103243621,
+          "reference_rms": 0.08299179491491578,
+          "reference_min": -0.17797890305519104,
+          "reference_max": 4.561806678771973,
+          "current_count": 5760000,
+          "current_mean": 0.0026982253414627676,
+          "current_std": 0.0829479177645442,
+          "current_rms": 0.08299179165114402,
+          "current_min": -0.17798002064228058,
+          "current_max": 4.561809062957764,
+          "residual_count": 5760000,
+          "residual_mean": 7.359428096615248e-11,
+          "residual_std": 1.1695065248871196e-06,
+          "residual_rms": 1.1695065272026775e-06,
+          "residual_min": -4.235655069351196e-06,
+          "residual_max": 4.170462489128113e-06,
+          "reference_mad_std": 0.04086875907965004,
+          "residual_mad_std": 1.2040391564369201e-06,
+          "max_abs_delta": 4.235655069351196e-06,
+          "max_relative_delta": 2.7683948360390787,
+          "p50_abs_delta": 8.121132850646973e-07,
+          "p95_abs_delta": 2.250075340270996e-06,
+          "p99_abs_delta": 2.7939677238464355e-06,
+          "p999_abs_delta": 3.335997462272644e-06,
+          "residual_rms_over_reference_rms": 1.4091833155333852e-05,
+          "residual_rms_over_reference_mad_std": 2.861614968351253e-05,
+          "planes": [
+            {
+              "plane": 0,
+              "leading_index": [
+                0,
+                0
+              ],
+              "max_abs_delta": 4.235655069351196e-06,
+              "p99_abs_delta": 2.7939677238464355e-06,
+              "residual_rms": 1.1695065272026775e-06
+            }
+          ]
+        },
+        {
+          "product": "field-MFS-model-pb.fits.fz",
+          "kind": "image",
+          "hdu_index": 1,
+          "hdu_name": "COMPRESSED_IMAGE",
+          "shape": [
+            1,
+            1,
+            2400,
+            2400
+          ],
+          "reference_count": 5760000,
+          "reference_mean": 5.106031373602349e-06,
+          "reference_std": 0.0030284670880311054,
+          "reference_rms": 0.00302847139244273,
+          "reference_min": -0.1177365854382515,
+          "reference_max": 1.6887661218643188,
+          "current_count": 5760000,
+          "current_mean": 4.9528286645629475e-06,
+          "current_std": 0.0030333440612578507,
+          "current_rms": 0.0030333481047317788,
+          "current_min": -0.11773659288883209,
+          "current_max": 1.675413966178894,
+          "residual_count": 5760000,
+          "residual_mean": -1.532027090394017e-07,
+          "residual_std": 0.003479835769786285,
+          "residual_rms": 0.003479835773158745,
+          "residual_min": -0.23298529535531998,
+          "residual_max": 0.23070261627435684,
+          "reference_mad_std": 0.0,
+          "residual_mad_std": 0.0,
+          "max_abs_delta": 0.23298529535531998,
+          "max_relative_delta": 11173.49952346613,
+          "p50_abs_delta": 0.0,
+          "p95_abs_delta": 0.0,
+          "p99_abs_delta": 0.0,
+          "p999_abs_delta": 0.054451248755681754,
+          "residual_rms_over_reference_rms": 1.1490403316479572,
+          "residual_rms_over_reference_mad_std": null,
+          "planes": [
+            {
+              "plane": 0,
+              "leading_index": [
+                0,
+                0
+              ],
+              "max_abs_delta": 0.23298529535531998,
+              "p99_abs_delta": 0.0,
+              "residual_rms": 0.003479835773158745
+            }
+          ]
+        },
+        {
+          "product": "field-MFS-residual.fits.fz",
+          "kind": "image",
+          "hdu_index": 1,
+          "hdu_name": "COMPRESSED_IMAGE",
+          "shape": [
+            1,
+            1,
+            2400,
+            2400
+          ],
+          "reference_count": 5760000,
+          "reference_mean": -0.0002454548788564816,
+          "reference_std": 0.04169940974807042,
+          "reference_rms": 0.04170013215128968,
+          "reference_min": -0.17798031866550446,
+          "reference_max": 0.20548783242702484,
+          "current_count": 5760000,
+          "current_mean": -0.00024545439992386777,
+          "current_std": 0.04169940561664313,
+          "current_rms": 0.04170012801711487,
+          "current_min": -0.17798013985157013,
+          "current_max": 0.20548877120018005,
+          "residual_count": 5760000,
+          "residual_mean": 4.789326140192426e-10,
+          "residual_std": 1.162254431138596e-06,
+          "residual_rms": 1.1622545298159724e-06,
+          "residual_min": -4.134140908718109e-06,
+          "residual_max": 4.16487455368042e-06,
+          "reference_mad_std": 0.04074425425082445,
+          "residual_mad_std": 1.1985160410404205e-06,
+          "max_abs_delta": 4.16487455368042e-06,
+          "max_relative_delta": 2.754426313207345,
+          "p50_abs_delta": 8.083879947662354e-07,
+          "p95_abs_delta": 2.2347085177898407e-06,
+          "p99_abs_delta": 2.7725473046302795e-06,
+          "p999_abs_delta": 3.3192336559295654e-06,
+          "residual_rms_over_reference_rms": 2.787172293841344e-05,
+          "residual_rms_over_reference_mad_std": 2.852560566358763e-05,
+          "planes": [
+            {
+              "plane": 0,
+              "leading_index": [
+                0,
+                0
+              ],
+              "max_abs_delta": 4.16487455368042e-06,
+              "p99_abs_delta": 2.7725473046302795e-06,
+              "residual_rms": 1.1622545298159724e-06
+            }
+          ]
+        },
+        {
+          "product": "sector_1.source_catalog.fits",
+          "kind": "table",
+          "hdu_index": 1,
+          "hdu_name": "",
+          "rows": 10,
+          "columns": [
+            "Source_id",
+            "Isl_id",
+            "RA",
+            "E_RA",
+            "DEC",
+            "E_DEC",
+            "Total_flux",
+            "E_Total_flux",
+            "Peak_flux",
+            "E_Peak_flux",
+            "RA_max",
+            "E_RA_max",
+            "DEC_max",
+            "E_DEC_max",
+            "Maj",
+            "E_Maj",
+            "Min",
+            "E_Min",
+            "PA",
+            "E_PA",
+            "Maj_img_plane",
+            "E_Maj_img_plane",
+            "Min_img_plane",
+            "E_Min_img_plane",
+            "PA_img_plane",
+            "E_PA_img_plane",
+            "DC_Maj",
+            "E_DC_Maj",
+            "DC_Min",
+            "E_DC_Min",
+            "DC_PA",
+            "E_DC_PA",
+            "DC_Maj_img_plane",
+            "E_DC_Maj_img_plane",
+            "DC_Min_img_plane",
+            "E_DC_Min_img_plane",
+            "DC_PA_img_plane",
+            "E_DC_PA_img_plane",
+            "Isl_Total_flux",
+            "E_Isl_Total_flux",
+            "Isl_rms",
+            "Isl_mean",
+            "Resid_Isl_rms",
+            "Resid_Isl_mean",
+            "S_Code"
+          ]
+        }
+      ],
+      "diagnostics": [
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "nsources",
+          "reference": 10.0,
+          "current": 10.0,
+          "delta": 0.0,
+          "relative_delta": 0.0
+        },
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "theoretical_rms",
+          "reference": 0.009006402987775022,
+          "current": 0.009006402987775022,
+          "delta": 0.0,
+          "relative_delta": 0.0
+        },
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "min_rms_flat_noise",
+          "reference": 0.019869189709424973,
+          "current": 0.019869180396199226,
+          "delta": -9.313225746154785e-09,
+          "relative_delta": -4.687270030814113e-07
+        },
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "median_rms_flat_noise",
+          "reference": 0.03982413560152054,
+          "current": 0.03982413187623024,
+          "delta": -3.725290298461914e-09,
+          "relative_delta": -9.3543531885716e-08
+        },
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "dynamic_range_global_flat_noise",
+          "reference": 229.59205563977017,
+          "current": 229.59218725465058,
+          "delta": 0.00013161488041646408,
+          "relative_delta": 5.732553770195244e-07
+        },
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "min_rms_true_sky",
+          "reference": 0.020377827808260918,
+          "current": 0.020377816632390022,
+          "delta": -1.1175870895385742e-08,
+          "relative_delta": -5.484328850229652e-07
+        },
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "median_rms_true_sky",
+          "reference": 0.04061480611562729,
+          "current": 0.04061480239033699,
+          "delta": -3.725290298461914e-09,
+          "relative_delta": -9.172246908815208e-08
+        },
+        {
+          "operation": "image_1",
+          "sector": "sector_1",
+          "field": "dynamic_range_global_true_sky",
+          "reference": 223.86172763854032,
+          "current": 223.8618504117408,
+          "delta": 0.00012277320047360263,
+          "relative_delta": 5.48433185827276e-07
+        }
+      ],
+      "visual_comparisons": [
+        {
+          "kind": "image",
+          "label": "image_1/field-MFS-image-pb-ast.fits.fz",
+          "path": "visual-comparisons/images/image_1-field-mfs-image-pb-ast.fits.fz.png"
+        },
+        {
+          "kind": "image",
+          "label": "image_1/field-MFS-image-pb.fits.fz",
+          "path": "visual-comparisons/images/image_1-field-mfs-image-pb.fits.fz.png"
+        },
+        {
+          "kind": "image",
+          "label": "image_1/field-MFS-residual.fits.fz",
+          "path": "visual-comparisons/images/image_1-field-mfs-residual.fits.fz.png"
+        },
+        {
+          "kind": "solution",
+          "label": "calibrate_1/fast_phase_dir[Patch_rich_centre].png",
+          "path": "visual-comparisons/solutions/calibrate_1-fast_phase_dir-patch_rich_centre-.png.png"
+        },
+        {
+          "kind": "solution",
+          "label": "calibrate_1/medium1_phase_dir[Patch_rich_centre].png",
+          "path": "visual-comparisons/solutions/calibrate_1-medium1_phase_dir-patch_rich_centre-.png.png"
+        },
+        {
+          "kind": "solution",
+          "label": "calibrate_2/fast_phase_dir[Patch_rich_centre].png",
+          "path": "visual-comparisons/solutions/calibrate_2-fast_phase_dir-patch_rich_centre-.png.png"
+        },
+        {
+          "kind": "solution",
+          "label": "calibrate_2/medium1_phase_dir[Patch_rich_centre].png",
+          "path": "visual-comparisons/solutions/calibrate_2-medium1_phase_dir-patch_rich_centre-.png.png"
+        }
+      ]
+    },
+    "failures": [
+      "FITS image pixels differ for field-MFS-dirty.fits.fz: max_abs_delta=1.461617648601532e-05, p99_abs_delta=9.931623935699463e-06, residual_rms=4.1539465930684454e-06",
+      "FITS image pixels differ for field-MFS-image-pb-ast.fits.fz: max_abs_delta=4.3101608753204346e-06, p99_abs_delta=2.8479844331741333e-06, residual_rms=1.1931277474924715e-06",
+      "FITS image pixels differ for field-MFS-image-pb.fits.fz: max_abs_delta=4.3101608753204346e-06, p99_abs_delta=2.8479844331741333e-06, residual_rms=1.1931277474924715e-06",
+      "FITS image pixels differ for field-MFS-image.fits.fz: max_abs_delta=4.235655069351196e-06, p99_abs_delta=2.7939677238464355e-06, residual_rms=1.1695065272026775e-06",
+      "FITS std differs for field-MFS-model-pb.fits.fz: 0.0030284670880311054 != 0.0030333440612578507",
+      "FITS rms differs for field-MFS-model-pb.fits.fz: 0.00302847139244273 != 0.0030333481047317788",
+      "FITS max differs for field-MFS-model-pb.fits.fz: 1.6887661218643188 != 1.675413966178894",
+      "FITS image pixels differ for field-MFS-model-pb.fits.fz: max_abs_delta=0.23298529535531998, p99_abs_delta=0.0, residual_rms=0.003479835773158745",
+      "FITS image pixels differ for field-MFS-residual.fits.fz: max_abs_delta=4.16487455368042e-06, p99_abs_delta=2.7725473046302795e-06, residual_rms=1.1622545298159724e-06"
+    ],
+    "warnings": []
+  }
+}

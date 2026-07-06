@@ -3,8 +3,7 @@
 This directory stores compact branch-vs-master equivalence reports that are
 useful for reviewing calibration-strategy migration behavior. Generated data
 products remain under ignored run directories; only reports, manifests, Rapthor
-command logs, compact visual comparisons, and input parset/strategy snapshots
-are tracked here.
+command logs, and input parset/strategy snapshots are tracked here.
 
 Use `scripts/dev/run_branch_equivalence.py --repeatability-repetitions 3` when
 deciding whether branch differences are scientifically meaningful. This writes
@@ -12,6 +11,17 @@ unique generated parsets and work directories for each base/current repetition,
 then compares all same-branch pairs and all base-current pairs. Track the
 compact `repeatability-summary.*` files and selected per-pair reports here; keep
 raw FITS, MS, h5parm, and full log products in ignored run directories.
+Generated visual-comparison PNGs are ignored by default because the numeric
+summaries are usually more informative and much lighter for git history.
+Force-add only a tiny curated PNG set when a visual difference is genuinely
+useful for review.
+
+When running repeatability or branch-vs-master checks that execute the legacy
+master CWL path, keep `--run-root`, `--repeatability-work-root`, and any base
+checkout/venv paths short, preferably under `/tmp` with compact names. The
+master image/filter path runs PyBDSF through Toil scratch directories, and long
+paths can make Python multiprocessing fail with `OSError: AF_UNIX path too
+long`.
 
 - `2026-07-04-saved-reference-strengthened/`: compact strengthened
   saved-reference report copied out of the raw run directory before cleanup.
@@ -30,6 +40,11 @@ raw FITS, MS, h5parm, and full log products in ignored run directories.
   fast+medium phase-only calibration followed by DI full-Jones, using explicit
   master/current strategies; both branches complete, with compact diagnostics
   and visual comparisons for the remaining strict product differences.
+- `2026-07-05-dd-phase-plus-di-fulljones-repeatability-master-ref/`:
+  three-repeat branch-vs-master repeatability envelope for the DD phase plus
+  DI full-Jones scenario. Master is stable within current strict tolerances;
+  one current repetition drifts beyond strict tolerances, and all cross-branch
+  pairs remain systematically larger than same-branch master scatter.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones
@@ -50,6 +65,10 @@ raw FITS, MS, h5parm, and full log products in ignored run directories.
   phase-only carry-over scenario; cycle 2 is calibration-only so the report
   isolates previous-cycle solution seeding. Master carries only the fast-phase
   seed, while the current branch carries compatible fast and medium seeds.
+- `2026-07-05-fixed-facet-repeatability-master-ref/`: three-repeat
+  branch-vs-master repeatability envelope for the fixed-facet DD carry-over
+  scenario. The run used short `/tmp` paths to avoid the legacy master
+  PyBDSF/Toil AF_UNIX path-length failure, and stores all compact pair reports.
 - `2026-07-05-changing-facet-carryover-master-ref/`: two-cycle DD phase-only
   carry-over scenario with no fixed facet layout and a five-to-three direction
   change in cycle 2. Master carries the previous fast-phase seed despite the

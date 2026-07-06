@@ -316,6 +316,55 @@ changing-facet DD carry-over scenarios, because they isolate whether remaining
 DD seed compatibility behavior is correct before broadening comparison
 tolerances.
 
+## DD Phase Plus DI Full-Jones Repeatability Envelope
+
+A three-repeat branch repeatability run was completed for the DD phase plus DI
+full-Jones scenario. The run used short paths (`/tmp/rfjr` and `/tmp/rfjw`) and
+reused the short-path master checkout/venv so the legacy master CWL imaging
+path did not hit the PyBDSF/Toil `AF_UNIX path too long` failure.
+
+The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-repeatability-master-ref/
+```
+
+All six branch executions completed successfully: three `master` repeats and
+three current-branch repeats. Master was stable within the current strict
+comparison rules. The current branch had one outlying repetition: pairs
+involving `current` `rep-01` failed, while `current` `rep-02` versus `rep-03`
+passed. All branch-vs-master pairs failed and were systematically larger than
+same-branch master scatter.
+
+| Pair Group | Pairs | Passed | Max Failures | Max Warnings | Max Abs Delta | Max P99 Abs Delta | Max Residual RMS | Max Diagnostic Rel Delta |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `base-base` | 3 | 3 | 0 | 0 | 1.431e-06 | 8.941e-08 | 3.340e-08 | 1.909e-04 |
+| `current-current` | 3 | 1 | 29 | 0 | 2.745e-03 | 1.061e-05 | 4.204e-06 | 1.351e-04 |
+| `base-current` | 9 | 0 | 61 | 2 | 1.025e-02 | 9.260e-04 | 3.872e-04 | 2.390e-03 |
+
+Key findings:
+
+- Master same-branch pairs all pass, so this scenario is stable on the legacy
+  reference branch under the current strict rules.
+- The current branch's `rep-01` differs from `rep-02` and `rep-03`, but the
+  current-current deltas remain much smaller than the branch-vs-master deltas.
+- Cross-branch differences are concentrated in restored/dirty/residual FITS
+  metrics, the `fulljones-solutions.h5:sol000/amplitude000/val` dataset,
+  PyBDSF source-catalog flux/error/rms columns, exact DS9 region text, and
+  output-record metadata summaries.
+- Unlike the fixed-facet DD carry-over repeatability envelope below, the
+  DD-plus-DI full-Jones branch-vs-master residuals are not explained by
+  ordinary same-branch scatter alone.
+
+Interpretation:
+
+This envelope keeps the mixed DD-plus-DI full-Jones scenario open as a real
+scientific-equivalence question. Before accepting full-Jones parity, inspect
+whether the systematic branch-vs-master amplitude/image/source-catalog deltas
+come from an intended flexible-strategy difference, a current-branch regression,
+or a comparison rule that should be product-specific but still bounded by the
+same-branch scatter.
+
 ## Branch-Vs-Master Fixed-Facet Carry-Over Run
 
 A two-cycle fixed-`facet_layout` DD phase-only branch comparison was run on
@@ -361,6 +410,54 @@ not persist for phase-only DD cycles. Scientifically, this is the desired
 flexible-strategy behavior when the facet layout is fixed. The next DD
 carry-over scenario should use changing/regrouped facets and should verify that
 the current branch refuses unsafe previous-cycle DD seeds.
+
+## Fixed-Facet Repeatability Envelope
+
+A three-repeat branch repeatability run was completed for the fixed-facet DD
+carry-over scenario. The first attempt used long run/work paths and reproduced
+a legacy master imaging failure in PyBDSF multiprocessing:
+`OSError: AF_UNIX path too long`. The successful run used short paths
+(`/tmp/rffr` and `/tmp/rffw`). Keep repeatability `--run-root`,
+`--repeatability-work-root`, and base checkout/venv paths short when master
+executes the CWL imaging path.
+
+The tracked compact report bundle is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-05-fixed-facet-repeatability-master-ref/
+```
+
+All six branch executions completed successfully: three `master` repeats and
+three current-branch repeats. Strict pair comparison still failed for all
+same-branch and cross-branch pairs, which shows that the current strict
+comparison rules are tighter than normal DP3/WSClean/PyBDSF run-to-run scatter.
+
+| Pair Group | Pairs | Passed | Max Failures | Max Warnings | Max Abs Delta | Max P99 Abs Delta | Max Residual RMS | Max Diagnostic Rel Delta |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `base-base` | 3 | 0 | 9 | 0 | 2.330e-01 | 9.939e-06 | 3.480e-03 | 2.906e-06 |
+| `current-current` | 3 | 0 | 9 | 0 | 2.347e-01 | 9.939e-06 | 3.491e-03 | 4.218e-06 |
+| `base-current` | 9 | 0 | 10 | 2 | 2.348e-01 | 9.939e-06 | 3.478e-03 | 3.565e-06 |
+
+Key findings:
+
+- The branch-vs-master FITS residual envelope is not larger than same-branch
+  scatter for the aggregate image metrics shown above.
+- Same-branch failures are dominated by low-level FITS pixel drift and sparse
+  `field-MFS-model-pb.fits.fz` component differences. These need
+  repeatability-bounded comparison rules rather than strict allclose checks.
+- Cross-branch-only differences remain for metadata/output-record summaries
+  and exact DS9 region text formatting. Those should be classified separately
+  from image numeric scatter.
+- Image diagnostics are effectively stable within and across branches for this
+  scenario; the maximum relative diagnostic delta is below `5e-06`.
+
+Interpretation:
+
+This repeatability envelope supports treating the fixed-facet branch-vs-master
+image differences as repeatability-bounded rather than as a scientific
+regression. The next comparison-rule work should derive product-specific
+tolerances from same-branch scatter, keep structural contracts strict, and
+separate exact text/metadata differences from numeric product differences.
 
 ## Branch-Vs-Master Changing-Facet Carry-Over Run
 

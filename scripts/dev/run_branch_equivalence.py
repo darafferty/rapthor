@@ -151,6 +151,13 @@ def _write_parset_with_work_dir(
     if not parser.has_section("global"):
         raise ValueError(f"{source_parset} is missing required [global] section")
     parser.set("global", "dir_working", str(work_dir))
+    work_dir.parent.mkdir(parents=True, exist_ok=True)
+
+    if parser.has_section("cluster"):
+        scratch_dir = work_dir / "scratch"
+        for option in ("local_scratch_dir", "global_scratch_dir"):
+            if parser.has_option("cluster", option):
+                parser.set("cluster", option, str(scratch_dir))
 
     # Strategy files are executed directly with runpy, so materialize a found
     # relative strategy path when copying the parset away from its original

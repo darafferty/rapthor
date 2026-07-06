@@ -77,24 +77,32 @@ Known caveats:
 
 ## Next Work, In Order
 
-1. **Build a repeatability envelope for scientific equivalence.**
-   Before declaring remaining branch-vs-master deltas acceptable or adjusting
-   product tolerances, run representative scenarios repeatedly and compare
-   within-branch variation against branch-vs-master variation. Use at least
-   three clean repeats for `master` and three clean repeats for the current
-   branch for the phase-only DD, DD phase plus DI full-Jones, and
-   fixed-`facet_layout` carry-over scenarios. Compare all same-branch pairs
-   and all cross-branch pairs using the same product metrics so the report can
-   show whether current-vs-master deltas are larger than ordinary DP3/WSClean/
-   PyBDSF run-to-run scatter.
+1. **Use the repeatability envelope to classify scientific deltas.**
+   The fixed-`facet_layout` and DD phase plus DI full-Jones repeatability
+   envelopes are now tracked under `docs/source/development/equivalence_runs/`.
+   Use these data before changing tolerances: fixed-facet image differences are
+   repeatability-bounded, while DD-plus-DI full-Jones branch-vs-master deltas
+   are systematically larger than same-branch master scatter and need a
+   scientific explanation, bug fix, or explicit intentional-difference label.
+   Run a phase-only DD repeatability envelope only if comparison-rule changes
+   need additional multi-cycle phase-only evidence.
 
-2. **Keep flexible-strategy carry-forward explicit.**
+2. **Investigate the DD plus DI full-Jones systematic difference.**
+   Inspect the full-Jones repeatability reports and products to determine why
+   branch-vs-master differences are larger than same-branch scatter, especially
+   in restored/dirty/residual FITS metrics,
+   `fulljones-solutions.h5:sol000/amplitude000/val`, PyBDSF source-catalog
+   columns, and image diagnostics. Decide whether this is an intended
+   flexible-strategy behavior, a current-branch regression, or a comparison
+   rule that needs product-specific repeatability-bounded tolerances.
+
+3. **Keep flexible-strategy carry-forward explicit.**
    The current policy is no silent carry-over after a new calibration step:
    imaging and preapply use current-cycle products, while previous-cycle
    products may only seed matching solves or be reused by an explicit image-only
    cycle. Keep tests and docs aligned with this policy.
 
-3. **Add a risk-based option equivalence matrix.**
+4. **Add a risk-based option equivalence matrix.**
    After the core repeatability envelope is available, add a small set of
    option-specific equivalence scenarios rather than a full combinatorial
    sweep. Prioritize normalization, WSClean predict versus image-based predict,
@@ -102,7 +110,7 @@ Known caveats:
    them. Keep each scenario to one meaningful option family so failures remain
    attributable.
 
-4. **Tighten the branch-equivalence comparison contract.**
+5. **Tighten the branch-equivalence comparison contract.**
    Update `scripts/dev/run_branch_equivalence.py`,
    `tests/execution/test_branch_equivalence.py`, `EQUIVALENCE_REPORT.md`, and
    tracked report docs so expected legacy-vs-current differences are explicit.
@@ -111,29 +119,29 @@ Known caveats:
    ordering, and restored-image residuals while keeping operation order,
    product presence, shapes, axes, finite values, and soltab names strict.
 
-5. **Re-run the full scientific gate.**
+6. **Re-run the full scientific gate.**
    Run focused tests, the strengthened saved-reference matrix, the essential
    branch-vs-master matrix, and the full integration suite in the prepared dev
    container. Update `EQUIVALENCE_REPORT.md` and compact report bundles with
    the final interpretation before taking performance-sensitive work.
 
-6. **Take one low-risk image-cycle scalability slice.**
+7. **Take one low-risk image-cycle scalability slice.**
    Start with one natural boundary inside image-sector execution, such as
    source/model filtering or diagnostics after WSClean. Preserve output records,
    restart behavior, run names, worker payload serializability, and scientific
    products.
 
-7. **Re-run scientific and performance gates after the slice.**
+8. **Re-run scientific and performance gates after the slice.**
    Run focused tests, saved-reference equivalence, then the three-repetition
    `ci-benchmark` job. Compare against the 2026-07-04 baseline before taking a
    second slice.
 
-8. **Refresh benchmark baseline documentation if the CI run is valid.**
+9. **Refresh benchmark baseline documentation if the CI run is valid.**
    Commit only compact curated reports under
    `docs/source/development/benchmark_baselines/`. Keep bulky artifacts in CI
    artifacts or external storage.
 
-9. **Resume test-suite maintainability cleanup.**
+10. **Resume test-suite maintainability cleanup.**
    Continue after the first benchmark-led scalability slice is guarded and
    measured. Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in
    sync.
@@ -342,7 +350,7 @@ Possible bugs on the master branch to investigate:
 
 Remaining equivalence tasks, in order:
 
-1. **Build branch repeatability controls before tuning tolerances.**
+1. **Use branch repeatability controls before tuning tolerances.**
    The essential branch-vs-master scenario matrix now has compact tracked
    reports for phase-only DD, DD plus DI full-Jones, fixed-facet DD carry-over,
    changing-facet DD carry-over, slow-gain/default-like behavior, DI
@@ -351,13 +359,26 @@ Remaining equivalence tasks, in order:
    `--repeatability-repetitions N`, which creates generated per-repetition
    parsets with unique clean work directories, writes pair reports, and writes
    aggregate `repeatability-summary.json` and `repeatability-summary.md` files.
-   Next, run this mode with `--repeatability-repetitions 3` for the chosen
-   reviewer scenario and copy the compact summary plus any informative per-pair
-   reports under `docs/source/development/equivalence_runs/`.
+   Two successful envelopes are tracked so far:
+   `docs/source/development/equivalence_runs/2026-07-05-fixed-facet-repeatability-master-ref/`
+   and
+   `docs/source/development/equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-repeatability-master-ref/`.
+   The fixed-facet envelope shows aggregate image differences inside
+   same-branch scatter. The DD plus DI full-Jones envelope shows stable
+   same-branch master repeats but systematic branch-vs-master image,
+   full-Jones amplitude, and source-catalog differences larger than master
+   scatter. Next, use these envelopes to tighten comparison rules and
+   investigate the full-Jones systematic difference before accepting scientific
+   parity.
+   Use short `/tmp` paths for `--run-root`, `--repeatability-work-root`, and
+   any master checkout/venv paths when the master branch will run imaging. The
+   legacy master CWL/Toil image filter path runs PyBDSF multiprocessing from
+   scratch directories and can fail with `OSError: AF_UNIX path too long` when
+   the generated paths are too deep.
    Set up a repeatability run directory that contains frozen input snapshots
    and unique clean work directories for each repetition, for example
-   `runs/repeatability-<scenario>-<date>/{master,current}/rep-01..03`. Do not
-   reuse `.done` markers or previous pipeline products. Keep resource settings,
+   `/tmp/r<scenario>` for summaries and `/tmp/w<scenario>` for work products.
+   Do not reuse `.done` markers or previous pipeline products. Keep resource settings,
    thread counts, parsets, strategy files, input data, external-tool versions,
    base commit, and current commit fixed across repetitions. Use the production
    thread/resource settings that reviewers will care about; optionally add a
