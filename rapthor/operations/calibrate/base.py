@@ -869,8 +869,8 @@ class Calibrate(Operation):
         -------
         frequency_bandwidth : [float, float]
             Central frequency and bandwidth as [frequency, bandwidth] of model image in Hz
-        center_coords : [str, str]
-            Center of the image as [HHMMSS.S, DDMMSS.S] strings
+        center_coords : tuple
+            Center of the image as (HHMMSS.S, DDMMSS.S) strings
         size : [int, int]
             Size of image as [RA, Dec] in pixels
         cellsize : float
@@ -929,7 +929,7 @@ class Calibrate(Operation):
             ]  # pixels
 
         # Convert RA and Dec to strings (required by WSClean)
-        center_coords = list(lsmtool.utils.format_coordinates(*center_coords))
+        center_coords = lsmtool.utils.format_coordinates(*center_coords)
 
         return frequency_bandwidth, center_coords, size, cellsize
 
