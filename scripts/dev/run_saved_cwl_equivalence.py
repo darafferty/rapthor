@@ -352,6 +352,54 @@ def _record_basename_summary(value: Any) -> Any:
     return value
 
 
+def _record_basenames(value: Any) -> list[str]:
+    basenames: list[str] = []
+
+    def collect(item: Any) -> None:
+        if isinstance(item, dict):
+            if isinstance(item.get("basename"), str):
+                basenames.append(item["basename"])
+                return
+            if isinstance(item.get("path"), str) and ("class" in item or len(item) <= 3):
+                basenames.append(Path(item["path"]).name)
+                return
+            for child in item.values():
+                collect(child)
+        elif isinstance(item, list):
+            for child in item:
+                collect(child)
+
+    collect(value)
+    return sorted(basenames)
+
+
+def _output_record_difference(
+    operation: str,
+    reference_data: Any,
+    current_data: Any,
+) -> dict[str, Any] | None:
+    reference_summary = _record_basename_summary(reference_data)
+    current_summary = _record_basename_summary(current_data)
+    if reference_summary == current_summary:
+        return None
+
+    reference_basenames = _record_basenames(reference_data)
+    current_basenames = _record_basenames(current_data)
+    reference_set = set(reference_basenames)
+    current_set = set(current_basenames)
+    difference_kind = (
+        "metadata_shape" if reference_basenames == current_basenames else "product_basenames"
+    )
+    return {
+        "operation": operation,
+        "kind": difference_kind,
+        "reference_count": len(reference_basenames),
+        "current_count": len(current_basenames),
+        "missing_basenames": sorted(reference_set - current_set),
+        "extra_basenames": sorted(current_set - reference_set),
+    }
+
+
 def _compare_output_records(reference_dir: Path, work_dir: Path, result: ComparisonResult) -> None:
     compared = 0
     for ref_outputs in sorted((reference_dir / "pipelines").glob("*/.outputs.json")):
@@ -360,12 +408,15 @@ def _compare_output_records(reference_dir: Path, work_dir: Path, result: Compari
         if not current_outputs.is_file():
             result.failures.append(f"missing output record for {operation}")
             continue
-        ref_data = _record_basename_summary(json.loads(ref_outputs.read_text(encoding="utf-8")))
-        current_data = _record_basename_summary(
-            json.loads(current_outputs.read_text(encoding="utf-8"))
-        )
-        if ref_data != current_data:
-            result.warnings.append(f"output-record summary differs for {operation}")
+        ref_data = json.loads(ref_outputs.read_text(encoding="utf-8"))
+        current_data = json.loads(current_outputs.read_text(encoding="utf-8"))
+        difference = _output_record_difference(operation, ref_data, current_data)
+        if difference:
+            result.product_statistics.setdefault("output_records", []).append(difference)
+            if difference["kind"] == "metadata_shape":
+                result.warnings.append(f"output-record metadata shape differs for {operation}")
+            else:
+                result.failures.append(f"output-record product basenames differ for {operation}")
         compared += 1
     result.metrics["output_records"] = compared
 

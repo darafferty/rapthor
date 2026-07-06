@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -216,3 +217,69 @@ def test_ds9_region_equivalence_catches_label_changes(tmp_path):
     result = _compare_text_product(module, tmp_path, reference, current)
 
     assert result.failures == ["DS9 region labels differ for facets.reg"]
+
+
+def _write_output_record(root, operation, data):
+    output_dir = root / "pipelines" / operation
+    output_dir.mkdir(parents=True)
+    (output_dir / ".outputs.json").write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_output_record_comparison_warns_for_metadata_shape_only(tmp_path):
+    module = load_equivalence_script()
+    reference = tmp_path / "reference"
+    current = tmp_path / "current"
+    _write_output_record(
+        reference,
+        "image_1",
+        {"image": {"class": "File", "basename": "field-MFS-image.fits"}},
+    )
+    _write_output_record(
+        current,
+        "image_1",
+        {"image": [{"class": "File", "basename": "field-MFS-image.fits"}]},
+    )
+    result = module.ComparisonResult("synthetic", tmp_path / "run")
+
+    module._compare_output_records(reference, current, result)
+
+    assert result.failures == []
+    assert result.warnings == ["output-record metadata shape differs for image_1"]
+    assert result.product_statistics["output_records"] == [
+        {
+            "operation": "image_1",
+            "kind": "metadata_shape",
+            "reference_count": 1,
+            "current_count": 1,
+            "missing_basenames": [],
+            "extra_basenames": [],
+        }
+    ]
+
+
+def test_output_record_comparison_fails_for_product_basename_changes(tmp_path):
+    module = load_equivalence_script()
+    reference = tmp_path / "reference"
+    current = tmp_path / "current"
+    _write_output_record(
+        reference,
+        "image_1",
+        {"image": {"class": "File", "basename": "field-MFS-image.fits"}},
+    )
+    _write_output_record(
+        current,
+        "image_1",
+        {"image": {"class": "File", "basename": "field-MFS-residual.fits"}},
+    )
+    result = module.ComparisonResult("synthetic", tmp_path / "run")
+
+    module._compare_output_records(reference, current, result)
+
+    assert result.warnings == []
+    assert result.failures == ["output-record product basenames differ for image_1"]
+    assert result.product_statistics["output_records"][0]["missing_basenames"] == [
+        "field-MFS-image.fits"
+    ]
+    assert result.product_statistics["output_records"][0]["extra_basenames"] == [
+        "field-MFS-residual.fits"
+    ]

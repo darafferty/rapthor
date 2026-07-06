@@ -420,9 +420,12 @@ comparison-contract work should keep h5parm structure, product presence,
 operation order, source count, and primary catalog values strict. Semantic DS9
 region comparison has now been added to the shared product comparator, so
 future reruns will ignore harmless label-placement differences while keeping
-coordinate systems, geometry, and label sets strict. Any image/PyBDSF numeric
-tolerances should still be derived from same-branch repeatability before being
-accepted.
+coordinate systems, geometry, and label sets strict. Output-record comparison
+now also separates metadata-shape differences from strict product-basename
+drift, so future reports can keep legacy CWL metadata noise non-blocking while
+still failing if an operation record points at different products. Any
+image/PyBDSF numeric tolerances should still be derived from same-branch
+repeatability before being accepted.
 
 ## Branch-Vs-Master Fixed-Facet Carry-Over Run
 

@@ -90,9 +90,11 @@ Known caveats:
    structure, product presence, operation order, source count, and primary
    catalog values strict. Semantic DS9 region comparison is now implemented:
    harmless label-placement differences are ignored, while coordinate systems,
-   geometry, and label sets remain strict. Next, decide whether to run a fresh
-   three-repeat normalized full-Jones envelope to derive numeric tolerances for
-   the image/PyBDSF repeatability candidates.
+   geometry, and label sets remain strict. Output-record comparison now
+   distinguishes non-blocking metadata-shape differences from strict product
+   basename drift. Next, decide whether to run a fresh three-repeat normalized
+   full-Jones envelope to derive numeric tolerances for the image/PyBDSF
+   repeatability candidates.
 
 2. **Use the repeatability envelope to classify remaining scientific deltas.**
    The fixed-`facet_layout` and DD phase plus DI full-Jones repeatability
@@ -485,14 +487,13 @@ Remaining equivalence tasks, in order:
    branch regression.
 
 4. **Comparison-rule cleanup.**
-   Classify output-record summary differences as metadata-shape differences or
-   real product-record differences. Add h5parm numeric statistics/tolerances
-   for accepted phase-only drift while keeping solset/soltab names, axes,
-   shapes, finite values, and source tables strict. Decide whether sparse
-   `field-MFS-model-pb` differences need model-specific sparse-outlier
-   tolerances or deeper deconvolution/model-selection investigation. Handle
-   source-catalog and facet-region text differences with deterministic ordering
-   or semantic comparison where possible.
+   Add h5parm numeric statistics/tolerances for accepted phase-only drift while
+   keeping solset/soltab names, axes, shapes, finite values, and source tables
+   strict. Decide whether sparse `field-MFS-model-pb` differences need
+   model-specific sparse-outlier tolerances or deeper deconvolution/model-
+   selection investigation. Handle source-catalog differences with deterministic
+   ordering, semantic comparison, or repeatability-bounded tolerances where
+   possible.
 
 5. **Master-reference decisions.**
    Decide whether the slow-gain default-like reference should remain a

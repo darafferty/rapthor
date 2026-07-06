@@ -590,14 +590,19 @@ def _compare_output_records(
         if not current_outputs.is_file():
             result.failures.append(f"current missing output record for {operation}")
             continue
-        base_data = saved_equivalence._record_basename_summary(
-            json.loads(base_outputs.read_text(encoding="utf-8"))
+        base_data = json.loads(base_outputs.read_text(encoding="utf-8"))
+        current_data = json.loads(current_outputs.read_text(encoding="utf-8"))
+        difference = saved_equivalence._output_record_difference(
+            operation,
+            base_data,
+            current_data,
         )
-        current_data = saved_equivalence._record_basename_summary(
-            json.loads(current_outputs.read_text(encoding="utf-8"))
-        )
-        if base_data != current_data:
-            result.warnings.append(f"output-record summary differs for {operation}")
+        if difference:
+            result.product_statistics.setdefault("output_records", []).append(difference)
+            if difference["kind"] == "metadata_shape":
+                result.warnings.append(f"output-record metadata shape differs for {operation}")
+            else:
+                result.failures.append(f"output-record product basenames differ for {operation}")
         compared += 1
     result.metrics["output_records"] = compared
 
@@ -963,28 +968,80 @@ def _classification(
     }
 
 
+def _output_record_differences_by_operation(
+    comparison: saved_equivalence.ComparisonResult,
+) -> dict[str, dict[str, Any]]:
+    return {
+        str(item.get("operation")): item
+        for item in comparison.product_statistics.get("output_records", [])
+        if item.get("operation")
+    }
+
+
 def _classify_branch_differences(
     comparison: saved_equivalence.ComparisonResult,
 ) -> None:
     """Classify branch-vs-master differences without changing pass/fail status."""
     classifications: list[dict[str, str]] = []
     image_metrics = _image_metrics_by_product(comparison)
+    output_record_differences = _output_record_differences_by_operation(comparison)
 
     for warning in comparison.warnings:
-        if warning.startswith("output-record summary differs for "):
+        if warning.startswith("output-record metadata shape differs for "):
+            operation = warning.removeprefix("output-record metadata shape differs for ")
             classifications.append(
                 _classification(
-                    item=warning.removeprefix("output-record summary differs for "),
-                    category="legacy_output_record_metadata",
+                    item=operation,
+                    category="output_record_metadata_shape",
                     disposition="warning",
                     recommendation=(
-                        "Keep as non-blocking: legacy CWL records include metadata "
-                        "that current path-oriented records intentionally omit."
+                        "Keep as non-blocking when product basenames match; legacy CWL "
+                        "records wrap equivalent products with different metadata shape."
                     ),
                 )
             )
+            continue
+        if warning.startswith("output-record summary differs for "):
+            operation = warning.removeprefix("output-record summary differs for ")
+            difference = output_record_differences.get(operation)
+            if difference and difference.get("kind") == "metadata_shape":
+                category = "output_record_metadata_shape"
+                recommendation = (
+                    "Keep as non-blocking when product basenames match; legacy CWL "
+                    "records wrap equivalent products with different metadata shape."
+                )
+            else:
+                category = "legacy_output_record_metadata"
+                recommendation = (
+                    "Keep as non-blocking only after checking product basenames; this "
+                    "older warning did not record the output-record difference kind."
+                )
+            classifications.append(
+                _classification(
+                    item=operation,
+                    category=category,
+                    disposition="warning",
+                    recommendation=recommendation,
+                )
+            )
+            continue
 
     for failure in comparison.failures:
+        record_match = re.match(r"output-record product basenames differ for (.+)$", failure)
+        if record_match:
+            classifications.append(
+                _classification(
+                    item=record_match.group(1),
+                    category="strict_output_record_products",
+                    disposition="strict-failure",
+                    recommendation=(
+                        "Output records may differ in metadata shape, but they must point "
+                        "at the same product basenames."
+                    ),
+                )
+            )
+            continue
+
         image_match = re.match(r"FITS image pixels differ for ([^:]+):", failure)
         if image_match:
             product = image_match.group(1)
