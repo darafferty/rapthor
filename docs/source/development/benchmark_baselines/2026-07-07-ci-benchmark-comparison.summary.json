@@ -36,6 +36,8 @@
     "keep_first_split_for_now": true,
     "performance_status": "observability improvement; roughly wall-time neutral relative to 20260706",
     "main_finding": "large wall-time and Dask-gap improvement occurred between 20260704 and 20260706 before the split appeared as separate task groups",
-    "next_step": "identify the code or configuration change between b8ed119e and df67648f before adding another task boundary"
+    "likely_july4_to_july6_cause": "FITS preview artifact rendering and Prefect artifact publication moved from always-on image/mosaic behavior to opt-in settings that default false in benchmark parsets",
+    "confidence": "high for the orchestration-gap reduction; external-tool and parallel-gridding changes may contribute to smaller compute-time differences",
+    "next_step": "keep the existing generated-parset guard for benchmark preview defaults, then choose the next task boundary from remaining image operation-gap evidence"
   }
 }

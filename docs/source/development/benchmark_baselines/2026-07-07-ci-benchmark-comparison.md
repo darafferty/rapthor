@@ -94,14 +94,46 @@ The evidence says:
   improvement before adding another task boundary. Otherwise we risk
   attributing the gain to the wrong change.
 
+## July 4 to July 6 Improvement
+
+The most likely explanation is that FITS preview artifact rendering moved from
+always-on behavior to explicit opt-in behavior between `b8ed119e` and
+`df67648f`.
+
+Evidence:
+
+- The July 4 image-sector and mosaic code called
+  `publish_fits_image_artifacts(...)` unconditionally after producing FITS
+  products.
+- By July 6, image-sector and mosaic preview publication were guarded by
+  `config.publish_fits_previews`, with the default
+  `prefect_publish_fits_previews = False`.
+- The July 6 benchmark parsets explicitly contain
+  `prefect_publish_fits_previews = False` and
+  `prefect_publish_postage_stamp_previews = False`.
+- The command-profile median is essentially unchanged at about `230 s`, while
+  wall time, Dask gap, and image operation-minus-command gap all drop sharply.
+  That is the expected shape for removing Python-side preview rendering,
+  artifact-file writing, and Prefect artifact publication from the benchmark
+  path, rather than speeding up DP3/WSClean commands themselves.
+- The command logs for the first commands in the July 4 and July 6 runs have
+  the same command shape apart from timestamped run-root paths, supporting the
+  conclusion that the main improvement is outside the external-command profile.
+
+This explanation has high confidence for the orchestration-gap reduction. Other
+changes in the same range, such as parallel-gridding option updates and pinned
+external-tool versions, may contribute to the smaller image-task compute
+difference, but they do not explain the much larger reduction in wall time and
+operation overhead by themselves.
+
 ## Recommended Next Steps
 
 1. Keep the current image-sector split unless dashboard noise or focused tests
    show a clear downside.
-2. Identify the code/config change between commits `b8ed119e` and `df67648f`
-   that reduced the wall time and Dask gap.
-3. Compare one more benchmark after any explanation/fix using the same
+2. Keep the existing generated-parset guard that disables preview artifacts for
+   CI benchmarks, while allowing demo/debug parsets to enable previews for
+   dashboard inspection.
+3. Compare one more benchmark after any scalability change using the same
    `ci-benchmark` resource shape.
-4. Choose the next task boundary only after the July 4 to July 6 improvement is
-   understood. Candidate boundaries should come from the image operation gap and
-   Dask reports, not from tidiness alone.
+4. Choose the next task boundary from the remaining image operation gap and Dask
+   reports, not from tidiness alone.

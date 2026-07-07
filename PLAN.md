@@ -60,6 +60,9 @@ Completed:
 - Benchmark scaffolding exists for the `ci-benchmark` scenario, including
   timestamped run roots, GitLab metadata, Dask report parsing, command timing,
   operation-boundary timing, JSON summaries, and Markdown reports.
+- Benchmark preview overhead is explained and guarded: generated CI benchmark
+  parsets keep FITS and postage-stamp preview artifacts disabled, while demo
+  parsets keep them enabled for visual dashboard inspection.
 
 Keep these caveats visible:
 
@@ -80,14 +83,12 @@ Keep these caveats visible:
 
 Use this section as the active queue.
 
-1. **Explain the July 4 to July 6 benchmark improvement.**
+1. **Choose the next scalability action from the benchmark evidence.**
    The compact benchmark comparison is recorded in
    `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`.
-   It shows that wall time and Dask idle/orchestration gap improved sharply
-   before the July 7 image-sector split appeared as separate Dask task groups.
-   Identify the code or configuration change between commits `b8ed119e` and
-   `df67648f` before attributing performance gains or adding another task
-   boundary.
+   With preview overhead accounted for, choose the next image-sector boundary
+   from the remaining image operation gap and Dask report evidence. Do not add
+   a second boundary for tidiness alone.
 
 2. **Keep the first scalability split for now, but treat it as an observability
    improvement rather than a proven speedup.**
@@ -96,18 +97,13 @@ Use this section as the active queue.
    time remains close to the July 6 run. Revisit this if dashboard noise,
    focused tests, or product checks show a downside.
 
-3. **Choose the next scalability action from the benchmark explanation.**
-   Once the July 4 to July 6 improvement is understood, choose the next
-   image-sector boundary from the remaining image operation gap and Dask report
-   evidence. Do not add a second boundary for tidiness alone.
-
-4. **Guard the accepted science-equivalence contract.**
+3. **Guard the accepted science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-5. **Resume maintainability and runtime-UX cleanup after the next scalability
+4. **Resume maintainability and runtime-UX cleanup after the next scalability
    decision.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned as the test and runtime surfaces settle.
@@ -153,10 +149,17 @@ Common benchmark shape:
 - Worker/thread shape: `2` workers, `60` threads
 - Command timing remains stable at about `230 s` median across runs
 
+Resolved finding:
+
+- The large July 4 to July 6 wall-time and Dask-gap improvement is most likely
+  explained by FITS preview artifact rendering and Prefect artifact publication
+  moving from always-on image/mosaic behavior to opt-in settings that default
+  false in benchmark parsets. Command-profile time remains stable, so the
+  improvement is mostly Python-side orchestration/artifact overhead rather than
+  faster external commands.
+
 Remaining questions:
 
-- Which code or configuration change between `b8ed119e` and `df67648f` caused
-  the large wall-time and Dask-gap improvement?
 - Is wall time stable across the three repetitions, or is scheduler/runtime
   variance larger than the expected effect size?
 - Is the `duration-minus-compute` gap dominated by Prefect/Dask orchestration,
