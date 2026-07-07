@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-06.
+Status snapshot: 2026-07-07.
 
 ## Goal
 
@@ -16,153 +16,155 @@ production architecture over unreleased compatibility shims.
 
 ## Current Position
 
-The architecture cleanup and science-equivalence gate are complete enough to
-start the first low-risk scalability slice. Keep the science gate guarded: any
-product-affecting calibration, prediction, imaging, h5parm, FITS, catalog, or
-sky-model change must rerun the relevant focused equivalence checks before it
-is judged.
+The architecture and science-equivalence work has moved from active migration
+to guarded scalability work. The next decision should be evidence-led: analyse
+the CI benchmark artifacts in `runs/benchmark-20260704-122100/`,
+`runs/benchmark-20260706-203026/`, and `runs/benchmark-20260707-153316/`
+before adding, reverting, or reshaping any more task boundaries.
 
-Done:
+Completed:
 
 - Execution code is organized by owner package:
   `image`, `calibrate`, `concatenate`, `predict`, `mosaic`, and `pipeline`.
 - Operation adapters are thin. Payload builders, validation, command builders,
-  output discovery, and flow wiring live in execution owner packages.
-- Prefect/Dask runtime bootstrap, local/external Dask setup, CLI smoke coverage,
-  and dashboard/report logging are in place.
-- Benchmark scaffolding is in place for the single `ci-benchmark` scenario,
-  including timestamped CI artifacts, GitLab metadata, Dask report parsing, and
-  operation-boundary timing.
-- Dask task-boundary guardrails now cover owner-flow submissions, plain
-  serializable worker payloads, readable task names, and representative payload
-  fixtures.
-- Resource-propagation guardrails now cover CI-style demo/benchmark overrides
-  into local Dask startup, effective `ExecutionConfig`, runtime parsets, and
-  representative operation payload thread fields.
-- The first FITS image-equivalence robustness pass is implemented in
-  `scripts/dev/run_saved_cwl_equivalence.py`: residual metrics, finite-mask
-  checks, WCS/header checks, pixel comparison, per-plane cube/Stokes metrics,
-  sparse-outlier residual gating, JSON product statistics, and Markdown report
-  output.
-- The refreshed strengthened saved-reference matrix passed on 2026-07-06, with
-  compact reports stored under
-  `docs/source/development/equivalence_runs/2026-07-06-saved-reference-final-gate/`
-  and summarized in `EQUIVALENCE_REPORT.md`.
-- Branch-vs-master equivalence runner scaffolding is in place at
-  `scripts/dev/run_branch_equivalence.py`: it accepts explicitly prepared
-  base/current parsets, can create a base-ref worktree plus virtual environment
-  for `master` or a chosen commit, runs each branch, records command logs and
-  manifests, reuses the strengthened product comparison checks, records image
-  diagnostic deltas, and generates compact side-by-side image/solution visual
-  comparisons.
-- The full integration suite completed in the prepared dev container on
-  2026-07-06. The first full run reached `26 passed, 1 skipped, 1 xfailed` and
-  two WSClean facet-beam tests failed because the container overlay filesystem
-  was full; after removing raw `/tmp` run roots, the two failed tests passed in
-  a targeted rerun (`2 passed, 1 xfailed`).
-- WSClean-based DD calibration prediction is ported into the Prefect/Dask
-  calibration owner package: `use_wsclean_predict`, WSClean predict command
-  construction, generated region/readpatches support, narrow-band model drawing,
-  copied-MS model-column prediction, payload validation, defaults, docs, and
-  focused tests are in place.
-- The flexible calibration initial-solution contract is implemented and
-  documented: matching previous-cycle same-mode/same-solve products may seed
-  later solves only as optimizer seeds, DD seeds require direction
-  compatibility, and preapply/imaging-time h5parm use remains current-cycle
-  guarded.
-- DI full-Jones collection now matches the legacy master post-processing step:
+  output discovery, migrated helper-script logic, and flow wiring live in
+  execution owner packages.
+- Prefect/Dask runtime bootstrap, local/external Dask setup, CLI smoke
+  coverage, runtime parset materialization, readable run names, and dashboard
+  / report logging are in place.
+- Dask task-boundary guardrails cover owner-flow submissions, plain
+  serializable worker payloads, readable task names, representative payload
+  fixtures, and resource propagation into local Dask startup and operation
+  payloads.
+- Master feature catch-up is complete for the known runtime/product features:
+  MS time ordering, reset-directory guards, astrometry-corrected products,
+  per-facet RMS diagnostics, residual visibilities, WSClean-based prediction,
+  normalization semantics, parallel gridding, and shared-facet behavior.
+- The flexible calibration strategy contract is implemented and documented:
+  `calibration_strategy` controls solve type/order; previous-cycle products may
+  seed matching solves only as optimizer seeds when product role and DD
+  direction compatibility are valid; preapply and imaging-time h5parm use
+  remains current-cycle guarded except for explicit image-only carry-forward.
+- Image-only application semantics are covered: DI scalar phase, DI diagonal
+  slow-gain, and DI full-Jones products are pre-applied; DD products are
+  applied on the fly during imaging when matching directions are available.
+- DI full-Jones collection now matches legacy master post-processing:
   collected full-Jones gains are amplitude-normalized before plotting/finalizer
   handoff, without slow-gain flagging or smoothing.
-- The first risk-based option matrix rows pass against `master`: provided
-  flux-scale normalization, DP3 image-based predict, WSClean predict, and
-  BDA/averaging. Compact reports are stored under
-  `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`;
-  screens remain a skipped target-environment scenario until reliable
-  IDGCal/screen support is available.
-- The science-equivalence gate is accepted for the covered contract in
-  `EQUIVALENCE_REPORT.md`: saved-reference products pass, the normalized DD
-  phase plus DI full-Jones three-repeat branch-vs-master envelope passes, the
-  active risk-based option rows pass, and intentional master/current policy
-  differences are documented.
+- The strengthened saved-reference equivalence matrix, the active
+  branch-vs-master scenarios, and the risk-based option rows are accepted for
+  the covered contract and summarized in `EQUIVALENCE_REPORT.md`.
+- The first low-risk image-cycle scalability slice has been implemented:
+  image-sector work is split into post-WSClean preparation/finalization task
+  boundaries with the same Dask-shaped graph for supported task-runner modes.
+- Benchmark scaffolding exists for the `ci-benchmark` scenario, including
+  timestamped run roots, GitLab metadata, Dask report parsing, command timing,
+  operation-boundary timing, JSON summaries, and Markdown reports.
 
-Known caveats:
+Keep these caveats visible:
 
 - Use the prepared dev-container Python environment for tests, formatting,
-  integration checks, equivalence checks, and demo/benchmark runs. Local tox
-  environments may fail to build astronomy dependencies.
+  integration checks, equivalence checks, demo runs, and benchmark runs. Local
+  tox environments may fail to build astronomy dependencies.
 - Keep large integration, equivalence, benchmark, and demo run roots outside
-  git, preferably under `/tmp` or CI artifacts.
+  git, preferably under `/tmp`, `runs/`, or CI artifacts.
 - Do not commit raw run directories, FITS/MS products, full Dask HTML reports,
   Prefect logs, `.tox`, `.ruff_cache`, `htmlcov`, or build products. Compact
   curated reports, manifests, and short command logs may be tracked under
   `docs/source/development/` when they explain an important result.
+- Preview artifacts remain diagnostic aids only. Raw FITS/h5parm products,
+  numeric diagnostics, catalogs, region files, command records, and report JSON
+  remain the scientific contract.
 
 ## Immediate Next Work, In Order
 
-Use this section as the current work queue. The science-equivalence gate is
-accepted for the covered contract. The first low-risk image-cycle scalability
-slice now splits image-sector execution into post-WSClean preparation and
-finalization task boundaries, with the same Dask-shaped task graph for all task
-runner settings, so verify that slice before taking another one.
+Use this section as the active queue.
 
-Preview artifacts remain diagnostic aids only: whole-field FITS previews and
-source postage stamps can be generated for demo/debugging, but raw FITS/h5parm
-products, numeric diagnostics, catalog products, and report JSON remain the
-scientific contract.
+1. **Analyse the new CI benchmark outputs.**
+   Use the three available benchmark run roots:
+   `runs/benchmark-20260704-122100/`, `runs/benchmark-20260706-203026/`, and
+   `runs/benchmark-20260707-153316/`. Compare wall time, Dask task count, Dask
+   duration-minus-compute gap, image-sector task timing,
+   operation-minus-command gaps, worker/thread shape, and run-to-run variance.
+   Record a short interpretation before making further scalability changes.
 
-1. **Guard the accepted science-equivalence contract.**
-   For documentation, preview-artifact, or report-only changes, keep the
-   previous equivalence evidence and run focused tests. For calibration,
-   prediction, imaging, h5parm, FITS, catalog, or sky-model changes, rerun the
-   relevant saved-reference and branch-vs-master scenarios before changing
-   scalability code.
+2. **Decide whether the first scalability slice is beneficial.**
+   If the benchmark shows better observability or lower scheduler/operation
+   gaps without product drift, keep the split and choose the next image-sector
+   boundary from the evidence. If task count, wall time, scheduler gap, or
+   operational noise regresses, adjust or revert the slice before adding more
+   granularity.
 
-2. **Complete the verification gate for the first scalability slice.**
-   Run focused image-flow, Dask-boundary, operation, and Dask-backed
-   integration tests. Keep `sync` as a deterministic fallback for focused unit
-   checks only; do not add separate production branches per task runner.
-   Because the slice is intended to preserve scientific products, rerun
-   saved-reference or branch-vs-master equivalence only if verification reveals
-   product/output drift. Then run the three-repetition `ci-benchmark` job and
-   compare against the 2026-07-04 baseline before taking another scalability
-   slice.
+3. **Publish only compact benchmark evidence.**
+   Keep raw `runs/benchmark-*` products as local or CI artifacts. If the result
+   is useful for review, commit only a compact Markdown summary and companion
+   summary JSON under `docs/source/development/benchmark_baselines/`.
 
-3. **Decide the next scalability action from benchmark evidence.**
-   If the post-WSClean split reduces scheduler gaps or improves observability
-   without changing products, choose the next image-sector boundary using the
-   benchmark report. If it regresses performance or adds noise, adjust or
-   revert the boundary before adding more task granularity.
+4. **Guard the accepted science-equivalence contract.**
+   For documentation, preview-artifact, benchmark-report, or refactor-only
+   changes, run focused tests. For calibration, prediction, imaging, h5parm,
+   FITS, catalog, sky-model, or product-record changes, rerun the relevant
+   saved-reference and branch-vs-master scenarios before judging the change.
 
-4. **Resume test-suite maintainability cleanup after the first slice is
-   guarded.**
-   Keep `TESTING.md`, `.agents/testing_playbook.md`, and this plan in sync.
+5. **Resume maintainability and runtime-UX cleanup after the benchmark
+   decision.**
+   Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
+   and this plan aligned as the test and runtime surfaces settle.
 
-## Current Benchmarks
+## Benchmark Evidence To Analyse
 
-Use `docs/source/development/benchmark_baselines/2026-07-04-gitlab-60core.md`
-and its companion summary JSON as the current compact baseline.
+Latest raw artifacts:
 
-The regenerated 2026-07-04 report shows:
+- `runs/benchmark-20260704-122100/benchmark-report.md`
+- `runs/benchmark-20260704-122100/benchmark-summary.json`
+- `runs/benchmark-20260704-122100/benchmark-results.json`
+- `runs/benchmark-20260704-122100/ci-benchmark/rep-*/benchmark-result.json`
+- `runs/benchmark-20260704-122100/ci-benchmark/rep-*/dask-performance-report.html`
+- `runs/benchmark-20260706-203026/benchmark-report.md`
+- `runs/benchmark-20260706-203026/benchmark-summary.json`
+- `runs/benchmark-20260706-203026/benchmark-results.json`
+- `runs/benchmark-20260706-203026/ci-benchmark/rep-*/benchmark-result.json`
+- `runs/benchmark-20260706-203026/ci-benchmark/rep-*/dask-performance-report.html`
+- `runs/benchmark-20260707-153316/benchmark-report.md`
+- `runs/benchmark-20260707-153316/benchmark-summary.json`
+- `runs/benchmark-20260707-153316/benchmark-results.json`
+- `runs/benchmark-20260707-153316/ci-benchmark/rep-*/benchmark-result.json`
+- `runs/benchmark-20260707-153316/ci-benchmark/rep-*/dask-performance-report.html`
 
-- Median wall time: `482.894 s`
-- Dask report duration: `469.550 s`
-- Dask task compute time: `247.350 s`
-- Dask duration-minus-compute gap: `220.940 s`
-- Dask task count: `12`
-- `image_sector_task` compute dominates at about `239 s` total median
-- Command profiling accounts for about `231 s` median
-- Operation elapsed median is `281.881 s`
-- Operation-minus-command gap is concentrated in image operations:
-  about `11 s` for `image_1`, `9-10 s` for `image_2` and `image_3`, and
-  `8.6 s` for `image_4`
+Headline comparison:
 
-Benchmark interpretation:
+| Run | Commit | Wall Median (s) | Dask Gap Median (s) | Task Count | Image Task Shape | Notes |
+| --- | --- | ---: | ---: | ---: | --- | --- |
+| `20260704-122100` | unavailable in report | `482.894` | `220.940` | `12` | `image_sector_task` x4 | Original compact baseline in this plan. |
+| `20260706-203026` | `df67648f` | `305.320` | `70.480` | `12` | `image_sector_task` x4 | Large wall-time and scheduler-gap improvement with similar command time. |
+| `20260707-153316` | `eb0a4033` | `308.563` | `72.570` | `16` | `image_sector_prepare_task` x4 plus `image_sector_finalize_task` x4 | First visible split in Dask task groups; wall time remains close to 2026-07-06. |
 
-- The configured `2` worker / `60` thread shape is reaching Dask.
-- The main opportunity is task granularity and orchestration visibility, not
-  simply adding more CPU.
-- Benchmark before and after any task-boundary, scheduler, dependency, or
-  performance-sensitive execution change.
+Common benchmark shape:
+
+- Scenario: `ci-benchmark`
+- Repetitions: `3`
+- Return codes: `0, 0, 0`
+- Worker/thread shape: `2` workers, `60` threads
+- Command timing remains stable at about `230 s` median across runs
+
+Questions for the benchmark analysis:
+
+- Did the recent image-sector task split change the Dask graph shape and
+  observability in the way intended? If task count remains unchanged, verify
+  whether the benchmark used the intended code path and task-runner mode.
+- Is wall time stable across the three repetitions, or is scheduler/runtime
+  variance larger than the expected effect size?
+- Is the `duration-minus-compute` gap dominated by Prefect/Dask orchestration,
+  external-command blocking, task dependencies, or idle workers?
+- Are image operation-minus-command gaps reduced after the split, or do they
+  point to another boundary such as diagnostics, filtering, compression, cube
+  generation, catalog extraction, or h5parm/product collection?
+- Does the 2-worker / 60-thread shape leave meaningful work idle, suggesting
+  better task granularity, or are the external tools already saturating the
+  available resources?
+
+Benchmark before and after any task-boundary, scheduler, dependency, or
+performance-sensitive execution change.
 
 Local smoke benchmark command for smaller workstations:
 
@@ -548,13 +550,27 @@ change the exact product set compared with master.
 
 ## First Scalability Slice
 
-Start only after the science-equivalence gate checklist is complete and
-`EQUIVALENCE_REPORT.md` records the final accepted branch-vs-master position.
+Status: implemented, pending benchmark interpretation.
 
-Preferred first slice:
+Implemented slice:
 
-- Split one image-sector post-WSClean step into a separate task boundary,
-  likely source/model filtering or diagnostics.
+- Image-sector execution has been split around post-WSClean
+  preparation/finalization work.
+- The task graph should remain Dask-shaped for supported task-runner modes,
+  with `sync` reserved as a deterministic focused-test fallback.
+- The scientific product contract should remain unchanged.
+
+Remaining verification:
+
+- Analyse `runs/benchmark-20260704-122100/`,
+  `runs/benchmark-20260706-203026/`, and
+  `runs/benchmark-20260707-153316/` together.
+- Confirm whether the slice changed Dask task count, idle/scheduler gap,
+  image-sector operation-minus-command gaps, and dashboard observability.
+- If the benchmark did not exercise the intended split, fix the benchmark setup
+  before choosing the next scalability action.
+- If the slice causes product drift, rerun the relevant equivalence scenario
+  and fix/revert before continuing.
 
 Guardrails:
 
@@ -569,11 +585,14 @@ Guardrails:
   unless a proven library-level integration exists.
 
 Do not split a second image boundary until the first one has focused tests,
-saved-equivalence evidence, and a benchmark comparison.
+saved-equivalence evidence when needed, and an interpreted benchmark
+comparison.
 
 ## Test Suite Track
 
-Paused while equivalence and the first scalability slice are handled.
+Resume after the benchmark interpretation decides whether the first
+scalability slice is kept, adjusted, or reverted. Continue opportunistic test
+cleanup only when touching the relevant files.
 
 Keep doing as files are touched:
 
