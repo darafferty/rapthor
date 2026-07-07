@@ -249,7 +249,11 @@ Tasks:
    sky-model filtering, and h5parm handling. Add larger-node or multi-node
    scenarios only after the local/CI runner gate is repeatable. Avoid scenarios
    where master has a known scientific bug unless the report labels it as a
-   legacy limitation rather than a current-branch regression.
+   legacy limitation rather than a current-branch regression. The initial
+   matrix is documented in
+   `docs/source/development/performance_equivalence_contract.rst`:
+   `phase-only-core`, `dd-phase-plus-di-fulljones`, and the supporting
+   current-branch-only `ci-benchmark-current-profile`.
 
 3. **Extend the branch-equivalence workflow with performance metadata.**
    Either add a performance mode to `scripts/dev/run_branch_equivalence.py` or

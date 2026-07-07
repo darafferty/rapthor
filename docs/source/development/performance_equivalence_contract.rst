@@ -51,6 +51,48 @@ the fast and rich scenarios are repeatable. Avoid scenarios where ``master`` has
 a known scientific bug unless the report explicitly treats the base result as a
 legacy limitation rather than a current-branch regression.
 
+Initial Branch-Vs-Master Matrix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use these scenarios first. They are intentionally conservative so the first
+performance gate measures branch/runtime behavior rather than known scientific
+contract disputes.
+
+``phase-only-core``
+  Fast branch-vs-master smoke scenario based on the prepared inputs in
+  ``docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/``.
+  It uses DD fast and medium phase solves across multiple cycles and avoids the
+  legacy slow-gain combination issue. This should be the first repeated
+  performance comparison because both branches complete it and it exercises the
+  main self-calibration loop without known master slow-gain failure modes.
+
+``dd-phase-plus-di-fulljones``
+  Mixed-mode branch-vs-master scenario based on the prepared normalized inputs
+  in
+  ``docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/inputs/``.
+  It exercises DD phase calibration followed by DI full-Jones calibration,
+  h5parm collection/normalization, and imaging. Use this as the richer
+  branch-vs-master performance check once ``phase-only-core`` is repeatable.
+
+``ci-benchmark-current-profile``
+  Current-branch scalability benchmark based on
+  ``examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset`` and
+  the committed benchmark resource profiles. This is not a branch-vs-master
+  equivalence scenario, because the benchmark strategy intentionally exercises
+  current-branch Prefect/Dask behavior that ``master`` cannot represent exactly.
+  Use it as supporting evidence for Dask task shape, command timing, and
+  worker/thread resource choices.
+
+Deferred Scenario
+~~~~~~~~~~~~~~~~~
+
+After the first gate is repeatable, prepare a richer master-compatible scenario
+that explicitly exercises mosaicking and sky-model filtering on both branches.
+The scenario should avoid known master slow-gain and unsafe DD carry-forward
+limitations unless the report labels those limitations clearly. It should become
+the main "replace master?" performance scenario once both science and runtime
+contracts are stable.
+
 Run Protocol
 ------------
 
@@ -140,4 +182,3 @@ Add tests for runtime shape, not elapsed time. Useful guards include:
 * expected Dask task groups remain visible
 * worker payloads remain plain and serializable
 * command logs keep fields required by performance reports
-
