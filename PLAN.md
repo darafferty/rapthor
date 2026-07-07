@@ -80,25 +80,26 @@ Keep these caveats visible:
 
 Use this section as the active queue.
 
-1. **Analyse the new CI benchmark outputs.**
-   Use the three available benchmark run roots:
-   `runs/benchmark-20260704-122100/`, `runs/benchmark-20260706-203026/`, and
-   `runs/benchmark-20260707-153316/`. Compare wall time, Dask task count, Dask
-   duration-minus-compute gap, image-sector task timing,
-   operation-minus-command gaps, worker/thread shape, and run-to-run variance.
-   Record a short interpretation before making further scalability changes.
+1. **Explain the July 4 to July 6 benchmark improvement.**
+   The compact benchmark comparison is recorded in
+   `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`.
+   It shows that wall time and Dask idle/orchestration gap improved sharply
+   before the July 7 image-sector split appeared as separate Dask task groups.
+   Identify the code or configuration change between commits `b8ed119e` and
+   `df67648f` before attributing performance gains or adding another task
+   boundary.
 
-2. **Decide whether the first scalability slice is beneficial.**
-   If the benchmark shows better observability or lower scheduler/operation
-   gaps without product drift, keep the split and choose the next image-sector
-   boundary from the evidence. If task count, wall time, scheduler gap, or
-   operational noise regresses, adjust or revert the slice before adding more
-   granularity.
+2. **Keep the first scalability split for now, but treat it as an observability
+   improvement rather than a proven speedup.**
+   The July 7 split increases Dask task count from `12` to `16` and exposes
+   `image_sector_prepare_task` and `image_sector_finalize_task`, while wall
+   time remains close to the July 6 run. Revisit this if dashboard noise,
+   focused tests, or product checks show a downside.
 
-3. **Publish only compact benchmark evidence.**
-   Keep raw `runs/benchmark-*` products as local or CI artifacts. If the result
-   is useful for review, commit only a compact Markdown summary and companion
-   summary JSON under `docs/source/development/benchmark_baselines/`.
+3. **Choose the next scalability action from the benchmark explanation.**
+   Once the July 4 to July 6 improvement is understood, choose the next
+   image-sector boundary from the remaining image operation gap and Dask report
+   evidence. Do not add a second boundary for tidiness alone.
 
 4. **Guard the accepted science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
@@ -106,12 +107,17 @@ Use this section as the active queue.
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-5. **Resume maintainability and runtime-UX cleanup after the benchmark
+5. **Resume maintainability and runtime-UX cleanup after the next scalability
    decision.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned as the test and runtime surfaces settle.
 
-## Benchmark Evidence To Analyse
+## Benchmark Evidence
+
+Compact analysis:
+
+- `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`
+- `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.summary.json`
 
 Latest raw artifacts:
 
@@ -147,11 +153,10 @@ Common benchmark shape:
 - Worker/thread shape: `2` workers, `60` threads
 - Command timing remains stable at about `230 s` median across runs
 
-Questions for the benchmark analysis:
+Remaining questions:
 
-- Did the recent image-sector task split change the Dask graph shape and
-  observability in the way intended? If task count remains unchanged, verify
-  whether the benchmark used the intended code path and task-runner mode.
+- Which code or configuration change between `b8ed119e` and `df67648f` caused
+  the large wall-time and Dask-gap improvement?
 - Is wall time stable across the three repetitions, or is scheduler/runtime
   variance larger than the expected effect size?
 - Is the `duration-minus-compute` gap dominated by Prefect/Dask orchestration,
@@ -550,7 +555,8 @@ change the exact product set compared with master.
 
 ## First Scalability Slice
 
-Status: implemented, pending benchmark interpretation.
+Status: implemented, benchmark interpretation recorded, keep for now as an
+observability improvement.
 
 Implemented slice:
 
@@ -562,13 +568,10 @@ Implemented slice:
 
 Remaining verification:
 
-- Analyse `runs/benchmark-20260704-122100/`,
-  `runs/benchmark-20260706-203026/`, and
-  `runs/benchmark-20260707-153316/` together.
-- Confirm whether the slice changed Dask task count, idle/scheduler gap,
-  image-sector operation-minus-command gaps, and dashboard observability.
-- If the benchmark did not exercise the intended split, fix the benchmark setup
-  before choosing the next scalability action.
+- Explain the July 4 to July 6 wall-time and Dask-gap improvement before
+  adding another task boundary.
+- Keep the July 7 split unless dashboard noise, focused tests, or product
+  checks show a downside.
 - If the slice causes product drift, rerun the relevant equivalence scenario
   and fix/revert before continuing.
 

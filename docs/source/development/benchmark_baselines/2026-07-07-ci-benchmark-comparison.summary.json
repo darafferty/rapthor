@@ -1,0 +1,41 @@
+{
+  "scenario": "ci-benchmark",
+  "runs": {
+    "20260704-122100": {
+      "source_artifacts": "runs/benchmark-20260704-122100",
+      "commit": "b8ed119e",
+      "repetitions": 3,
+      "returncodes": [0, 0, 0],
+      "wall_median_seconds": 482.894,
+      "dask_gap_median_seconds": 220.94,
+      "dask_task_count_median": 12,
+      "image_operation_gap_seconds": 39.136
+    },
+    "20260706-203026": {
+      "source_artifacts": "runs/benchmark-20260706-203026",
+      "commit": "df67648f",
+      "repetitions": 3,
+      "returncodes": [0, 0, 0],
+      "wall_median_seconds": 305.32,
+      "dask_gap_median_seconds": 70.48,
+      "dask_task_count_median": 12,
+      "image_operation_gap_seconds": 12.442
+    },
+    "20260707-153316": {
+      "source_artifacts": "runs/benchmark-20260707-153316",
+      "commit": "eb0a4033",
+      "repetitions": 3,
+      "returncodes": [0, 0, 0],
+      "wall_median_seconds": 308.563,
+      "dask_gap_median_seconds": 72.57,
+      "dask_task_count_median": 16,
+      "image_operation_gap_seconds": 15.22
+    }
+  },
+  "interpretation": {
+    "keep_first_split_for_now": true,
+    "performance_status": "observability improvement; roughly wall-time neutral relative to 20260706",
+    "main_finding": "large wall-time and Dask-gap improvement occurred between 20260704 and 20260706 before the split appeared as separate task groups",
+    "next_step": "identify the code or configuration change between b8ed119e and df67648f before adding another task boundary"
+  }
+}
