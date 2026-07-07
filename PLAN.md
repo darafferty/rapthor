@@ -83,12 +83,14 @@ Keep these caveats visible:
 
 Use this section as the active queue.
 
-1. **Choose the next scalability action from the benchmark evidence.**
+1. **Benchmark and optimize the `filter_skymodel` image leaf command.**
    The compact benchmark comparison is recorded in
    `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`.
-   With preview overhead accounted for, choose the next image-sector boundary
-   from the remaining image operation gap and Dask report evidence. Do not add
-   a second boundary for tidiness alone.
+   With preview overhead accounted for, the command logs show
+   `filter_skymodel` as the dominant image leaf command: about `110 s` total
+   across four image operations, compared with about `89 s` for WSClean. The
+   next scalability slice should therefore benchmark `filter_skymodel`
+   resource use and placement before adding another Prefect task boundary.
 
 2. **Keep the first scalability split for now, but treat it as an observability
    improvement rather than a proven speedup.**
@@ -149,6 +151,15 @@ Common benchmark shape:
 - Worker/thread shape: `2` workers, `60` threads
 - Command timing remains stable at about `230 s` median across runs
 
+Latest command timing by name:
+
+| Run | Dominant Command | Median Total (s) | Median Count | Notes |
+| --- | --- | ---: | ---: | --- |
+| `20260706-203026` | `filter_skymodel` | `110.228` | `4` | Dominates image command time before the image-sector split. |
+| `20260706-203026` | `wsclean` | `87.567` | `4` | Second-largest image command group. |
+| `20260707-153316` | `filter_skymodel` | `110.312` | `4` | Still dominant after the image-sector split. |
+| `20260707-153316` | `wsclean` | `88.961` | `4` | Stable relative to July 6. |
+
 Resolved finding:
 
 - The large July 4 to July 6 wall-time and Dask-gap improvement is most likely
@@ -160,6 +171,10 @@ Resolved finding:
 
 Remaining questions:
 
+- What `filter_skymodel` `ncores` / Dask worker shape gives the best wall time
+  without over-subscribing CPU or memory?
+- Should `filter_skymodel` remain an isolated subprocess, become its own
+  explicitly named task boundary, or receive explicit resource annotations?
 - Is wall time stable across the three repetitions, or is scheduler/runtime
   variance larger than the expected effect size?
 - Is the `duration-minus-compute` gap dominated by Prefect/Dask orchestration,
