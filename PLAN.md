@@ -240,7 +240,8 @@ Tasks:
    current branch. Keep generated preview artifacts disabled unless the scenario
    explicitly measures dashboard/reporting overhead. Record the exact git refs,
    container image, CPU count, worker/thread shape, environment variables, and
-   parset materialization in every report.
+   parset materialization in every report. The first draft is documented in
+   `docs/source/development/performance_equivalence_contract.rst`.
 
 2. **Choose a small scenario matrix.**
    Start with one fast CI-sized scenario that both branches can represent, plus

@@ -6,6 +6,8 @@ Archived for post-cutover cleanup: 2026-06-12
 
 Latest on-disk report scan: 2026-07-06
 
+Method contract: `docs/source/development/science_equivalence_contract.rst`
+
 ## Summary
 
 Rapthor's Prefect/Dask execution path was validated against the legacy CWL path

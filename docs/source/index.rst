@@ -58,4 +58,6 @@ Development
    :maxdepth: 2
 
    development/architecture
+   development/science_equivalence_contract
+   development/performance_equivalence_contract
    development/scientific_glossary
