@@ -76,6 +76,28 @@ the large July 4 to July 6 improvement. Relative to July 6, it is close to
 neutral on wall time and Dask gap, with a small increase in image operation
 gap.
 
+## Command Timing
+
+Median command totals by name for the two most recent benchmark runs:
+
+| Run | Command | Median Total (s) | Median Count |
+| --- | --- | ---: | ---: |
+| `20260706-203026` | `filter_skymodel` | `110.228` | `4` |
+| `20260706-203026` | `wsclean` | `87.567` | `4` |
+| `20260706-203026` | `python3` | `17.837` | `10` |
+| `20260706-203026` | `DP3` | `8.217` | `10` |
+| `20260707-153316` | `filter_skymodel` | `110.312` | `4` |
+| `20260707-153316` | `wsclean` | `88.961` | `4` |
+| `20260707-153316` | `python3` | `17.955` | `10` |
+| `20260707-153316` | `DP3` | `8.279` | `10` |
+
+The next scalability work should focus on `filter_skymodel` resource use and
+placement. It is currently isolated as a subprocess when needed because PyBDSF
+and daemonic Dask workers do not make safe direct in-worker execution a simple
+default. The right next question is therefore not "where can we add another
+tidy Prefect box?", but "what worker/thread shape and task placement gives
+`filter_skymodel` enough resources without over-subscribing the machine?"
+
 ## Interpretation
 
 The first scalability slice should be kept for now as an observability
@@ -90,9 +112,8 @@ The evidence says:
 - The command profile is stable, so the remaining opportunity is orchestration
   shape, dependency gaps, and work that is still hidden inside image-sector
   commands/tasks.
-- The next performance investigation should explain the July 4 to July 6
-  improvement before adding another task boundary. Otherwise we risk
-  attributing the gain to the wrong change.
+- The next performance investigation should target the dominant
+  `filter_skymodel` command group before adding another task boundary.
 
 ## July 4 to July 6 Improvement
 
@@ -133,7 +154,11 @@ operation overhead by themselves.
 2. Keep the existing generated-parset guard that disables preview artifacts for
    CI benchmarks, while allowing demo/debug parsets to enable previews for
    dashboard inspection.
-3. Compare one more benchmark after any scalability change using the same
+3. Benchmark `filter_skymodel` resource settings and task placement before
+   adding another image-sector task boundary. Candidate comparisons should keep
+   the same `ci-benchmark` scenario and vary only the worker/thread shape or
+   filter-skymodel resource allocation.
+4. Compare one more benchmark after any scalability change using the same
    `ci-benchmark` resource shape.
-4. Choose the next task boundary from the remaining image operation gap and Dask
-   reports, not from tidiness alone.
+5. Choose any further task boundary from measured command and Dask report
+   evidence, not from tidiness alone.

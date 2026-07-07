@@ -6,6 +6,7 @@ from pathlib import Path
 
 from rapthor.execution.benchmarking import (
     BenchmarkRunResult,
+    CommandMetric,
     OperationTimingMetric,
     benchmark_run_result,
     benchmark_scenarios_by_id,
@@ -164,6 +165,10 @@ def test_benchmark_run_result_reads_commands_and_dask_report(tmp_path):
 
     assert result.command_count == 2
     assert result.command_seconds == 11.5
+    assert [(command.name, command.duration_seconds) for command in result.command_timings] == [
+        ("DP3", 1.5),
+        ("wsclean", 10.0),
+    ]
     assert result.dask_performance_report == str(run_dir / "dask-performance-report.html")
     assert result.dask_duration_seconds == 12.5
     assert result.dask_compute_seconds == 7.25
@@ -233,6 +238,10 @@ def test_summarize_benchmark_runs_and_render_markdown():
                 dask_task_count=5,
                 dask_workers=2,
                 dask_threads=8,
+                command_timings=(
+                    CommandMetric("wsclean", "image_1", "completed", 40.0),
+                    CommandMetric("filter_skymodel", "image_1", "completed", 20.0),
+                ),
                 operation_timings=(
                     OperationTimingMetric(
                         "image_1",
@@ -257,6 +266,10 @@ def test_summarize_benchmark_runs_and_render_markdown():
                 dask_task_count=3,
                 dask_workers=2,
                 dask_threads=8,
+                command_timings=(
+                    CommandMetric("wsclean", "image_1", "completed", 38.0),
+                    CommandMetric("filter_skymodel", "image_1", "completed", 20.0),
+                ),
                 operation_timings=(
                     OperationTimingMetric(
                         "image_1",
@@ -294,6 +307,11 @@ def test_summarize_benchmark_runs_and_render_markdown():
         "median": 71.0,
         "max": 72.0,
     }
+    assert summary["scenarios"]["ci-benchmark"]["commands"]["wsclean"]["seconds"] == {
+        "min": 38.0,
+        "median": 39.0,
+        "max": 40.0,
+    }
 
     report = render_markdown_report(summary)
 
@@ -304,6 +322,9 @@ def test_summarize_benchmark_runs_and_render_markdown():
     assert "| ci-benchmark | 11.000 | 7.000 | 4.000 | 4.000 | 2 | 8 |" in report
     assert "## Operation Timing" in report
     assert "| ci-benchmark | image_1 | 71.000 | 59.000 | 12.000 | 4.000 |" in report
+    assert "## Command Timing" in report
+    assert "| ci-benchmark | wsclean | 39.000 | 1.000 |" in report
+    assert "| ci-benchmark | filter_skymodel | 20.000 | 1.000 |" in report
 
 
 def test_benchmark_report_includes_metadata():

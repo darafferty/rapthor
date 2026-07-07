@@ -138,6 +138,7 @@ class BenchmarkRunResult:
     dask_memory: Optional[str] = None
     dask_task_groups: tuple[DaskTaskGroupMetric, ...] = ()
     operation_timings: tuple[OperationTimingMetric, ...] = ()
+    command_timings: tuple[CommandMetric, ...] = ()
 
 
 def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
@@ -270,6 +271,7 @@ def benchmark_run_result(
         dask_memory=dask_metrics.memory if dask_metrics else None,
         dask_task_groups=dask_metrics.task_groups if dask_metrics else (),
         operation_timings=operation_timings,
+        command_timings=tuple(command_metrics),
     )
 
 
@@ -302,6 +304,9 @@ def summarize_benchmark_runs(results: Iterable[BenchmarkRunResult]) -> dict[str,
         operation_summary = _summarize_operation_timings(scenario_results)
         if operation_summary:
             scenarios[scenario_id]["operations"] = operation_summary
+        command_summary = _summarize_command_timings(scenario_results)
+        if command_summary:
+            scenarios[scenario_id]["commands"] = command_summary
 
     return {"scenarios": scenarios}
 
@@ -351,6 +356,9 @@ def render_markdown_report(summary: Mapping[str, object]) -> str:
     operation_lines = _render_operation_summary_table(scenarios)
     if operation_lines:
         lines.extend(operation_lines)
+    command_lines = _render_command_summary_table(scenarios)
+    if command_lines:
+        lines.extend(command_lines)
     return "\n".join(lines)
 
 
@@ -601,6 +609,25 @@ def _summarize_dask_task_groups(results: Sequence[BenchmarkRunResult]) -> dict[s
     }
 
 
+def _summarize_command_timings(results: Sequence[BenchmarkRunResult]) -> dict[str, object]:
+    grouped: dict[str, dict[str, list[float]]] = {}
+    for result in results:
+        per_run: dict[str, dict[str, float]] = {}
+        for command in result.command_timings:
+            values = per_run.setdefault(command.name, {"count": 0.0, "seconds": 0.0})
+            values["count"] += 1.0
+            values["seconds"] += command.duration_seconds
+        for name, values in per_run.items():
+            summary_values = grouped.setdefault(name, {"count": [], "seconds": []})
+            summary_values["count"].append(values["count"])
+            summary_values["seconds"].append(values["seconds"])
+
+    return {
+        name: {metric: _stats(values) for metric, values in metrics.items()}
+        for name, metrics in sorted(grouped.items())
+    }
+
+
 def _render_dask_summary_table(scenarios: Mapping[str, object]) -> list[str]:
     rows = []
     for scenario_id, data in sorted(scenarios.items()):
@@ -686,6 +713,47 @@ def _render_operation_summary_table(scenarios: Mapping[str, object]) -> list[str
         "| Scenario | Operation | Elapsed Median (s) | Command Median (s) | "
         "Operation-Command Median (s) | Command Count Median |",
         "| --- | --- | ---: | ---: | ---: | ---: |",
+        *rows,
+        "",
+    ]
+
+
+def _render_command_summary_table(scenarios: Mapping[str, object]) -> list[str]:
+    rows = []
+    for scenario_id, data in sorted(scenarios.items()):
+        if not isinstance(data, Mapping):
+            continue
+        commands = data.get("commands")
+        if not isinstance(commands, Mapping):
+            continue
+        command_rows = []
+        for command_name, metrics in sorted(commands.items()):
+            if not isinstance(metrics, Mapping):
+                continue
+            seconds = metrics.get("seconds")
+            count = metrics.get("count")
+            if not all(isinstance(item, Mapping) for item in (seconds, count)):
+                continue
+            command_rows.append(
+                (
+                    float(seconds["median"]),
+                    "| {scenario} | {command} | {seconds:.3f} | {count:.3f} |".format(
+                        scenario=scenario_id,
+                        command=_markdown_cell(str(command_name)),
+                        seconds=seconds["median"],
+                        count=count["median"],
+                    ),
+                )
+            )
+        rows.extend(row for _seconds, row in sorted(command_rows, reverse=True)[:10])
+    if not rows:
+        return []
+
+    return [
+        "## Command Timing",
+        "",
+        "| Scenario | Command | Total Median (s) | Count Median |",
+        "| --- | --- | ---: | ---: |",
         *rows,
         "",
     ]

@@ -19,7 +19,17 @@
       "wall_median_seconds": 305.32,
       "dask_gap_median_seconds": 70.48,
       "dask_task_count_median": 12,
-      "image_operation_gap_seconds": 12.442
+      "image_operation_gap_seconds": 12.442,
+      "dominant_commands": {
+        "filter_skymodel": {
+          "median_count": 4,
+          "median_seconds": 110.228
+        },
+        "wsclean": {
+          "median_count": 4,
+          "median_seconds": 87.567
+        }
+      }
     },
     "20260707-153316": {
       "source_artifacts": "runs/benchmark-20260707-153316",
@@ -29,7 +39,17 @@
       "wall_median_seconds": 308.563,
       "dask_gap_median_seconds": 72.57,
       "dask_task_count_median": 16,
-      "image_operation_gap_seconds": 15.22
+      "image_operation_gap_seconds": 15.22,
+      "dominant_commands": {
+        "filter_skymodel": {
+          "median_count": 4,
+          "median_seconds": 110.312
+        },
+        "wsclean": {
+          "median_count": 4,
+          "median_seconds": 88.961
+        }
+      }
     }
   },
   "interpretation": {
@@ -37,7 +57,8 @@
     "performance_status": "observability improvement; roughly wall-time neutral relative to 20260706",
     "main_finding": "large wall-time and Dask-gap improvement occurred between 20260704 and 20260706 before the split appeared as separate task groups",
     "likely_july4_to_july6_cause": "FITS preview artifact rendering and Prefect artifact publication moved from always-on image/mosaic behavior to opt-in settings that default false in benchmark parsets",
+    "next_scalability_target": "filter_skymodel resource use and task placement",
     "confidence": "high for the orchestration-gap reduction; external-tool and parallel-gridding changes may contribute to smaller compute-time differences",
-    "next_step": "keep the existing generated-parset guard for benchmark preview defaults, then choose the next task boundary from remaining image operation-gap evidence"
+    "next_step": "benchmark filter_skymodel worker/thread/resource settings before adding another image-sector task boundary"
   }
 }
