@@ -116,13 +116,20 @@ Use this section as the active queue.
    time remains close to the July 6 run. Revisit this if dashboard noise,
    focused tests, or product checks show a downside.
 
-3. **Guard the accepted science-equivalence contract.**
+3. **Add a scalability/performance equivalence gate next to the science gate.**
+   The branch-vs-master decision should have explicit performance evidence, not
+   just successful science-product comparison. Build this as an advisory gate
+   first, then promote it to a required release/merge gate once the scenarios
+   and variance are stable. See "Scalability and Performance Equivalence Gate"
+   below for the task list.
+
+4. **Guard the accepted science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-4. **Resume maintainability and runtime-UX cleanup after the next scalability
+5. **Resume maintainability and runtime-UX cleanup after the next scalability
    decision.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned as the test and runtime surfaces settle.
@@ -216,6 +223,73 @@ scripts/dev/run_benchmark_baseline.py \
   --cpus-per-task 4 \
   --max-threads 4
 ```
+
+## Scalability and Performance Equivalence Gate
+
+Goal: provide the same kind of decision-quality evidence for runtime behavior
+that the science-equivalence gate provides for scientific products. The gate
+should answer: on the same inputs and hardware, does the current Prefect/Dask
+branch preserve science outputs while matching or improving master wall time,
+resource use, and scaling behavior?
+
+Tasks:
+
+1. **Define the comparison contract.**
+   Use identical input data, strategy intent, output-product expectations,
+   preview-artifact settings, thread limits, and run roots for master and the
+   current branch. Keep generated preview artifacts disabled unless the scenario
+   explicitly measures dashboard/reporting overhead. Record the exact git refs,
+   container image, CPU count, worker/thread shape, environment variables, and
+   parset materialization in every report.
+
+2. **Choose a small scenario matrix.**
+   Start with one fast CI-sized scenario that both branches can represent, plus
+   one rich scenario that exercises DI/DD calibration, imaging, mosaicking,
+   sky-model filtering, and h5parm handling. Add larger-node or multi-node
+   scenarios only after the local/CI runner gate is repeatable. Avoid scenarios
+   where master has a known scientific bug unless the report labels it as a
+   legacy limitation rather than a current-branch regression.
+
+3. **Extend the branch-equivalence workflow with performance metadata.**
+   Either add a performance mode to `scripts/dev/run_branch_equivalence.py` or
+   create a sibling `scripts/dev/run_branch_performance_equivalence.py` that
+   runs master and current with the same prepared inputs for `N` repetitions.
+   Capture wall time, return code, command timing where available, operation
+   timing where available, Dask task counts for the current branch, output
+   product summaries, and the science-equivalence result for the same run.
+
+4. **Make the first gate advisory, not a hard CI failure.**
+   Store a compact Markdown report and JSON summary as CI artifacts and, for
+   accepted milestone runs, under
+   `docs/source/development/performance_equivalence_runs/`. Fail only on
+   infrastructure errors, missing outputs, failed runs, or science-equivalence
+   failures. Report performance deltas as pass/warn/fail bands until enough
+   repeatability data exists to set strict thresholds.
+
+5. **Define decision metrics before reading new results.**
+   Compare median wall time, min/max spread, command-profile totals, dominant
+   command groups, operation-minus-command gap, Dask duration-minus-compute gap,
+   task count, and resource shape. Treat "current branch is faster by a stable
+   margin", "current branch is neutral but cleaner/scales better", and "current
+   branch is slower but scientifically safer" as separate decision outcomes.
+
+6. **Add architecture guard tests for performance-sensitive contracts.**
+   Tests should protect shape, not elapsed seconds: benchmark profiles remain
+   configured, `ci-benchmark` keeps preview artifacts disabled and command
+   profiling enabled, resource profiles override generic runtime args, expected
+   Dask task groups stay visible, worker payloads remain serializable, and
+   command logs keep the fields needed by reports.
+
+7. **Document the reviewer workflow.**
+   Add copy/paste commands for running the gate locally and on CI, where to
+   find artifacts, which compact files are safe to commit, and how to interpret
+   master-vs-current deltas. Link the gate from `TESTING.md`,
+   `.agents/testing_playbook.md`, and the development architecture docs once it
+   is stable.
+
+Do not use absolute wall-clock thresholds as unit or architecture tests. Use
+tests to protect the benchmarkable runtime shape, and use benchmark/equivalence
+artifacts to make the performance decision.
 
 ## Scientific Equivalence Track
 
