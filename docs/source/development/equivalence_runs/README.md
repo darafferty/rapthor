@@ -5,6 +5,10 @@ useful for reviewing calibration-strategy migration behavior. Generated data
 products remain under ignored run directories; only reports, manifests, Rapthor
 command logs, and input parset/strategy snapshots are tracked here.
 
+The historical long-form science-gate run log is preserved in
+`science_gate_history.md`. The current gate verdict and evidence summary live
+in the root `EQUIVALENCE_REPORT.md`.
+
 Use `scripts/dev/run_branch_equivalence.py --repeatability-repetitions 3` when
 deciding whether branch differences are scientifically meaningful. This writes
 unique generated parsets and work directories for each base/current repetition,
