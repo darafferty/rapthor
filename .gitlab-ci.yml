@@ -282,6 +282,11 @@ run_benchmark_baseline:
     RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS: "2"
     RAPTHOR_BENCHMARK_MAX_THREADS: "30"
     RAPTHOR_BENCHMARK_REPETITIONS: "3"
+    RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
+      --resource-profile baseline-2x30
+      --resource-profile filter-threads-15
+      --resource-profile filter-workers-4x15
+      --resource-profile filter-wide-1x60
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: "--scenario ci-benchmark"
     VECLIB_MAXIMUM_THREADS: "1"
   script:
@@ -289,12 +294,12 @@ run_benchmark_baseline:
     - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
-    # Use 2 workers x 30 threads to expose predict/calibration chunk parallelism
-    # without oversubscribing the 60-core GitLab runner. The single benchmark
-    # scenario is sized so three repetitions should fit inside the CI job limit.
+    # Run the baseline and filter-skymodel resource profiles on the 60-core
+    # runner so the next benchmark artifact can compare worker/thread shapes.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS
+      $RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS
       --prepare-inputs
       --local-dask-workers "$RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS"
       --cpus-per-task "$RAPTHOR_BENCHMARK_CPUS_PER_TASK"

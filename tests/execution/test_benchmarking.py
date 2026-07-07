@@ -92,6 +92,47 @@ def test_benchmark_runner_applies_runtime_overrides():
     assert command[command.index("--max-threads") + 1] == "4"
 
 
+def test_benchmark_runner_expands_resource_profiles_after_runtime_overrides():
+    module = load_benchmark_script()
+    args = module._parse_args(
+        [
+            "--scenario",
+            "ci-benchmark",
+            "--local-dask-workers",
+            "2",
+            "--cpus-per-task",
+            "30",
+            "--max-threads",
+            "30",
+            "--resource-profile",
+            "filter-threads-15",
+            "--resource-profile",
+            "filter-workers-4x15",
+        ]
+    )
+
+    scenarios = module._selected_scenarios(benchmark_scenarios_by_id(), args)
+
+    assert [scenario.scenario_id for scenario in scenarios] == [
+        "ci-benchmark-filter-threads-15",
+        "ci-benchmark-filter-workers-4x15",
+    ]
+    assert [
+        (scenario.local_dask_workers, scenario.cpus_per_task, scenario.max_threads)
+        for scenario in scenarios
+    ] == [(2, 30, 15), (4, 15, 15)]
+
+
+def test_benchmark_resource_profile_scenarios_still_use_generated_inputs():
+    module = load_benchmark_script()
+    args = module._parse_args(
+        ["--scenario", "ci-benchmark", "--resource-profile", "filter-threads-15"]
+    )
+    scenario = module._selected_scenarios(benchmark_scenarios_by_id(), args)[0]
+
+    assert module._scenario_uses_generated_demo_inputs(scenario) is True
+
+
 def test_parse_command_log_extracts_timing_records(tmp_path):
     command_log = tmp_path / "commands.jsonl"
     command_log.write_text(

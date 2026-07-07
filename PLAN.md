@@ -89,8 +89,25 @@ Use this section as the active queue.
    With preview overhead accounted for, the command logs show
    `filter_skymodel` as the dominant image leaf command: about `110 s` total
    across four image operations, compared with about `89 s` for WSClean. The
-   next scalability slice should therefore benchmark `filter_skymodel`
-   resource use and placement before adding another Prefect task boundary.
+   benchmark runner now has named resource profiles for this comparison. Run
+   the same `ci-benchmark` scenario with:
+
+   ```bash
+   scripts/dev/run_benchmark_baseline.py \
+     --scenario ci-benchmark \
+     --resource-profile baseline-2x30 \
+     --resource-profile filter-threads-15 \
+     --resource-profile filter-workers-4x15 \
+     --resource-profile filter-wide-1x60 \
+     --repetitions 3 \
+     --prepare-inputs
+   ```
+
+   The GitLab benchmark job is configured to run these profiles by default, so
+   trigger the manual benchmark job on the next pipeline or use a scheduled
+   benchmark run. Compare `filter_skymodel` command totals, wall time, Dask
+   gap, and WSClean timing before changing task boundaries or adding a
+   dedicated filter-skymodel thread option.
 
 2. **Keep the first scalability split for now, but treat it as an observability
    improvement rather than a proven speedup.**

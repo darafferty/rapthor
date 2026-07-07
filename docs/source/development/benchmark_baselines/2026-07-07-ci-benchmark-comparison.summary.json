@@ -58,6 +58,12 @@
     "main_finding": "large wall-time and Dask-gap improvement occurred between 20260704 and 20260706 before the split appeared as separate task groups",
     "likely_july4_to_july6_cause": "FITS preview artifact rendering and Prefect artifact publication moved from always-on image/mosaic behavior to opt-in settings that default false in benchmark parsets",
     "next_scalability_target": "filter_skymodel resource use and task placement",
+    "resource_profiles_available": [
+      "baseline-2x30",
+      "filter-threads-15",
+      "filter-workers-4x15",
+      "filter-wide-1x60"
+    ],
     "confidence": "high for the orchestration-gap reduction; external-tool and parallel-gridding changes may contribute to smaller compute-time differences",
     "next_step": "benchmark filter_skymodel worker/thread/resource settings before adding another image-sector task boundary"
   }

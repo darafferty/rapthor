@@ -98,6 +98,25 @@ default. The right next question is therefore not "where can we add another
 tidy Prefect box?", but "what worker/thread shape and task placement gives
 `filter_skymodel` enough resources without over-subscribing the machine?"
 
+The benchmark runner now supports named resource profiles for this comparison.
+Use the same scientific `ci-benchmark` scenario and vary only the resource
+shape:
+
+```bash
+scripts/dev/run_benchmark_baseline.py \
+  --scenario ci-benchmark \
+  --resource-profile baseline-2x30 \
+  --resource-profile filter-threads-15 \
+  --resource-profile filter-workers-4x15 \
+  --resource-profile filter-wide-1x60 \
+  --repetitions 3 \
+  --prepare-inputs
+```
+
+The GitLab benchmark job is configured to run these profiles by default.
+Profiles override the job's `--local-dask-workers`, `--cpus-per-task`, and
+`--max-threads` arguments so the matrix entries remain distinct.
+
 ## Interpretation
 
 The first scalability slice should be kept for now as an observability

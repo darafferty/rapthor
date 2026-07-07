@@ -10,7 +10,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Mapping
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Sequence
 
@@ -23,7 +23,9 @@ from rapthor.execution.benchmarking import (
     write_summary_artifacts,
 )
 
-GENERATED_DEMO_SCENARIO_IDS = frozenset({"ci-benchmark"})
+GENERATED_DEMO_PARSETS = frozenset(
+    {"examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset"}
+)
 TEST_RESOURCE_DIR = Path("tests/resources")
 BENCHMARK_PARSET_PATH_OPTIONS = (
     "input_ms",
@@ -45,6 +47,51 @@ CI_METADATA_ENV_VARS = {
     "gitlab_ref_name": "CI_COMMIT_REF_NAME",
     "runner_description": "CI_RUNNER_DESCRIPTION",
     "runner_id": "CI_RUNNER_ID",
+}
+
+
+@dataclass(frozen=True)
+class ResourceProfile:
+    """Named benchmark resource shape for comparing scheduler/tool scaling."""
+
+    profile_id: str
+    description: str
+    local_dask_workers: int
+    cpus_per_task: int
+    max_threads: int
+
+
+RESOURCE_PROFILES = {
+    "baseline-2x30": ResourceProfile(
+        profile_id="baseline-2x30",
+        description="current CI baseline: two local Dask workers, 30 threads per worker",
+        local_dask_workers=2,
+        cpus_per_task=30,
+        max_threads=30,
+    ),
+    "filter-threads-15": ResourceProfile(
+        profile_id="filter-threads-15",
+        description=("keep the current Dask shape but halve external-tool/filter_skymodel threads"),
+        local_dask_workers=2,
+        cpus_per_task=30,
+        max_threads=15,
+    ),
+    "filter-workers-4x15": ResourceProfile(
+        profile_id="filter-workers-4x15",
+        description=(
+            "use four smaller local Dask workers and 15 external-tool/filter_skymodel threads"
+        ),
+        local_dask_workers=4,
+        cpus_per_task=15,
+        max_threads=15,
+    ),
+    "filter-wide-1x60": ResourceProfile(
+        profile_id="filter-wide-1x60",
+        description="use one wider local Dask worker and 60 external-tool/filter_skymodel threads",
+        local_dask_workers=1,
+        cpus_per_task=60,
+        max_threads=60,
+    ),
 }
 
 
@@ -90,6 +137,16 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--max-threads",
         type=int,
         help="Override cluster.max_threads for external tools in every selected scenario.",
+    )
+    parser.add_argument(
+        "--resource-profile",
+        action="append",
+        choices=sorted(RESOURCE_PROFILES),
+        help=(
+            "Run each selected scenario with a named resource profile. Repeat to "
+            "compare worker/thread shapes in one report. Profiles override "
+            "--local-dask-workers, --cpus-per-task, and --max-threads."
+        ),
     )
     parser.add_argument(
         "--run-root",
@@ -139,13 +196,44 @@ def _scenario_with_runtime_overrides(scenario, args: argparse.Namespace):
     return replace(scenario, **overrides) if overrides else scenario
 
 
+def _scenario_with_resource_profile(scenario, profile: ResourceProfile):
+    return replace(
+        scenario,
+        scenario_id=f"{scenario.scenario_id}-{profile.profile_id}",
+        description=f"{scenario.description} Resource profile: {profile.description}.",
+        local_dask_workers=profile.local_dask_workers,
+        cpus_per_task=profile.cpus_per_task,
+        max_threads=profile.max_threads,
+    )
+
+
+def _selected_scenarios(scenarios_by_id: Mapping[str, object], args: argparse.Namespace):
+    selected_ids = args.scenario or sorted(scenarios_by_id)
+    selected_scenarios = [
+        _scenario_with_runtime_overrides(scenarios_by_id[scenario_id], args)
+        for scenario_id in selected_ids
+    ]
+    if not args.resource_profile:
+        return selected_scenarios
+
+    return [
+        _scenario_with_resource_profile(scenario, RESOURCE_PROFILES[profile_id])
+        for scenario in selected_scenarios
+        for profile_id in args.resource_profile
+    ]
+
+
+def _scenario_uses_generated_demo_inputs(scenario) -> bool:
+    return Path(scenario.parset).as_posix() in GENERATED_DEMO_PARSETS
+
+
 def _prepare_benchmark_inputs(repo_root: Path, selected_scenarios) -> None:
     """Create ignored benchmark inputs that are not present in a fresh checkout."""
     test_ms = _ensure_test_ms(repo_root)
     generated_scenarios = [
         scenario
         for scenario in selected_scenarios
-        if scenario.scenario_id in GENERATED_DEMO_SCENARIO_IDS
+        if _scenario_uses_generated_demo_inputs(scenario)
     ]
     if generated_scenarios and _missing_scenario_inputs(repo_root, generated_scenarios):
         subprocess.run(
@@ -242,6 +330,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.list_scenarios:
         for scenario in default_benchmark_scenarios():
             print(f"{scenario.scenario_id}: {scenario.description}")
+        print("\nResource profiles:")
+        for profile in RESOURCE_PROFILES.values():
+            worker_label = "worker" if profile.local_dask_workers == 1 else "workers"
+            print(
+                f"{profile.profile_id}: {profile.description} "
+                f"({profile.local_dask_workers} {worker_label}, "
+                f"{profile.cpus_per_task} threads/worker, max_threads={profile.max_threads})"
+            )
         return 0
 
     if args.repetitions < 1:
@@ -251,11 +347,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     run_root = args.run_root.expanduser().resolve()
     output_json = args.output_json or run_root / "benchmark-summary.json"
     output_markdown = args.output_markdown or run_root / "benchmark-report.md"
-    selected_ids = args.scenario or sorted(scenarios_by_id)
-    selected_scenarios = [
-        _scenario_with_runtime_overrides(scenarios_by_id[scenario_id], args)
-        for scenario_id in selected_ids
-    ]
+    selected_scenarios = _selected_scenarios(scenarios_by_id, args)
 
     if args.prepare_inputs:
         _prepare_benchmark_inputs(repo_root, selected_scenarios)
