@@ -102,7 +102,8 @@ Known caveats:
 Use this section as the current work queue. The science-equivalence gate is
 accepted for the covered contract. The first low-risk image-cycle scalability
 slice now splits image-sector execution into post-WSClean preparation and
-finalization task boundaries, so verify that slice before taking another one.
+finalization task boundaries, with the same Dask-shaped task graph for all task
+runner settings, so verify that slice before taking another one.
 
 Preview artifacts remain diagnostic aids only: whole-field FITS previews and
 source postage stamps can be generated for demo/debugging, but raw FITS/h5parm
@@ -117,7 +118,9 @@ scientific contract.
    scalability code.
 
 2. **Complete the verification gate for the first scalability slice.**
-   Run focused image-flow, Dask-boundary, operation, and integration tests.
+   Run focused image-flow, Dask-boundary, operation, and Dask-backed
+   integration tests. Keep `sync` as a deterministic fallback for focused unit
+   checks only; do not add separate production branches per task runner.
    Because the slice is intended to preserve scientific products, rerun
    saved-reference or branch-vs-master equivalence only if verification reveals
    product/output drift. Then run the three-repetition `ci-benchmark` job and

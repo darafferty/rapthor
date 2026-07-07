@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+import pytest
+
 import rapthor.execution.calibrate.flow as calibrate_module
 import rapthor.execution.concatenate.flow as concatenate_module
 import rapthor.execution.image.flow as image_module
@@ -29,6 +31,7 @@ class _CapturedTask:
     def __init__(self, result_factory):
         self._result_factory = result_factory
         self.submissions = []
+        self.futures = []
 
     def with_options(self, **options):
         return _ConfiguredCapturedTask(self, options)
@@ -46,7 +49,9 @@ class _ConfiguredCapturedTask:
             "options": self._options,
         }
         self._task.submissions.append(submission)
-        return _CapturedFuture(self._task._result_factory(len(self._task.submissions) - 1))
+        future = _CapturedFuture(self._task._result_factory(len(self._task.submissions) - 1))
+        self._task.futures.append(future)
+        return future
 
 
 def _assert_worker_submission_is_serializable(
@@ -55,7 +60,10 @@ def _assert_worker_submission_is_serializable(
 ) -> None:
     """Worker task inputs stay plain; runtime config travels as a separate object."""
     for arg in submission["args"]:
-        assert_serializable_payload(arg)
+        if isinstance(arg, _CapturedFuture):
+            assert_serializable_payload(arg.result())
+        else:
+            assert_serializable_payload(arg)
     for name, value in submission["kwargs"].items():
         if name == "execution_config":
             assert value == execution_config
@@ -108,8 +116,11 @@ def _image_sector_preparation_result(index: int) -> dict:
     }
 
 
-def test_image_flow_submits_plain_prepare_and_finalize_payloads_per_sector(monkeypatch):
-    config = ExecutionConfig(task_runner="sync")
+@pytest.mark.parametrize("task_runner", ["sync", "local_dask", "external_dask"])
+def test_image_flow_submits_plain_prepare_and_finalize_payloads_per_sector(
+    monkeypatch, task_runner
+):
+    config = ExecutionConfig(task_runner=task_runner)
     payload = representative_image_payload()
     prepare_task = _CapturedTask(_image_sector_preparation_result)
     finalize_task = _CapturedTask(_image_sector_result)
@@ -131,7 +142,8 @@ def test_image_flow_submits_plain_prepare_and_finalize_payloads_per_sector(monke
     ]
     _assert_worker_submission_is_serializable(prepare_task.submissions[0], config)
     _assert_worker_submission_is_serializable(finalize_task.submissions[0], config)
-    assert finalize_task.submissions[0]["args"][1] == _image_sector_preparation_result(0)
+    assert finalize_task.submissions[0]["args"][1] is prepare_task.futures[0]
+    assert finalize_task.submissions[0]["args"][1].result() == (_image_sector_preparation_result(0))
 
 
 def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypatch):

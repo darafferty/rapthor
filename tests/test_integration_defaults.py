@@ -15,10 +15,12 @@ def test_generated_integration_parset_uses_fast_shared_defaults(tmp_path, monkey
     assert parset["imaging"]["grid_width_ra_deg"] == "0.25"
     assert parset["imaging"]["grid_width_dec_deg"] == "0.25"
     assert parset["cluster"]["cpus_per_task"] == "6"
+    assert parset["cluster"]["local_dask_workers"] == "1"
     assert parset["cluster"]["max_cores"] == "6"
     assert parset["cluster"]["max_threads"] == "6"
     assert parset["cluster"]["deconvolution_threads"] == "3"
     assert parset["cluster"]["parallel_gridding_tasks"] == "3"
+    assert parset["cluster"]["prefect_task_runner"] == "local_dask"
 
 
 def test_make_strategy_step_uses_fast_shared_imaging_depth():

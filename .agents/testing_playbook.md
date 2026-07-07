@@ -71,9 +71,10 @@ needed by the scenario:
 RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs python -m pytest -m integration -vv -ra --durations=0 tests/integration tests/operations/integration
 ```
 
-The shared integration template is intentionally smoke-sized so local
-dev-container and CI runs exercise the same scenarios quickly. Use benchmark
-and equivalence checks for larger, science-representative imaging workloads.
+The shared integration template is intentionally smoke-sized and Dask-based so
+local dev-container and CI runs exercise the same scenarios quickly. Use
+benchmark and equivalence checks for larger, science-representative imaging
+workloads.
 
 Run equivalence after scientific logic changes, script-to-module migrations,
 calibration strategy changes, or changes to FITS, h5parm, or sky-model products:

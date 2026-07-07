@@ -243,9 +243,11 @@ def test_flow_uses_payload(payload):
 
 Guidelines for Prefect tests:
 
-- Default to `ExecutionConfig(task_runner="sync")` for behavior checks.
-- Use local Dask only when testing scheduler, Dask resource, or task-runner
-  behavior.
+- Use the production Dask-shaped flow graph in tests. `sync` is acceptable for
+  narrow behavior checks when the scheduler itself is not under test, but it
+  should not require a separate implementation path.
+- Use local Dask for scheduler, Dask resource, task-runner, scalability, and
+  integration-template behavior.
 - Patch external command loading with fake shell operation classes when the
   test is about flow wiring rather than the external command itself.
 - Keep payloads plain and serializable. Do not pass live `Field`, `Observation`,
@@ -260,9 +262,10 @@ Guidelines for Prefect tests:
 ## Integration Tests With External Tools
 
 Integration tests exercise the pipeline with external astronomy tools such as
-DP3, WSClean, EveryBeam, IDG, PyBDSF, and Casacore. They are heavier than unit
-tests and should be run only in an environment that has the required tools and
-data access.
+DP3, WSClean, EveryBeam, IDG, PyBDSF, and Casacore. The shared integration
+template uses local Dask by default so local dev-container and CI runs exercise
+the same execution shape. These tests are heavier than unit tests and should be
+run only in an environment that has the required tools and data access.
 
 Run the integration suite with:
 

@@ -59,6 +59,7 @@ normalization_reference_frequencies =
 [cluster]
 batch_system = single_machine
 max_nodes = 1
+local_dask_workers = 1
 cpus_per_task = 6
 mem_per_node_gb = 0
 max_cores = 6
@@ -72,7 +73,7 @@ container_type = docker
 debug_workflow = False
 keep_temporary_files = False
 allow_internet_access = 
-prefect_task_runner = sync
+prefect_task_runner = local_dask
 prefect_command_profile = auto
 prefect_publish_fits_previews = False
 prefect_publish_postage_stamp_previews = False

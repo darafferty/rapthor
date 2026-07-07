@@ -3,6 +3,7 @@
 from typing import Mapping, Optional
 
 from prefect import flow, task
+from prefect.exceptions import UnfinishedRun
 
 import rapthor.execution.image.sector as image_sector
 from rapthor.execution.config import ExecutionConfig
@@ -124,15 +125,12 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
     return result
 
 
-def _run_image_prefect_tasks(
+def _submit_split_image_sector_tasks(
     payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-) -> dict:
-    assert_serializable_payload(payload)
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    payload = validate_image_payload(payload)
-    operation_name = operation_run_name(payload, "image")
-    prepared_futures = [
+    operation_name: str,
+    config: ExecutionConfig,
+):
+    prepared_sector_futures = [
         image_sector_prepare_task.with_options(
             task_run_name=task_run_name(
                 operation_name,
@@ -145,8 +143,7 @@ def _run_image_prefect_tasks(
         )
         for index, sector in enumerate(payload["sectors"])
     ]
-    prepared_outputs = [output.result() for output in prepared_futures]
-    sector_outputs = [
+    finalized_sector_futures = [
         image_sector_finalize_task.with_options(
             task_run_name=task_run_name(
                 operation_name,
@@ -154,13 +151,39 @@ def _run_image_prefect_tasks(
             )
         ).submit(
             sector,
-            prepared_outputs[index],
+            prepared_sector_futures[index],
             payload["pipeline_working_dir"],
             execution_config=config,
         )
         for index, sector in enumerate(payload["sectors"])
     ]
-    sector_outputs = [output.result() for output in sector_outputs]
+    return prepared_sector_futures, finalized_sector_futures
+
+
+def _collect_image_sector_results(prepared_sector_futures, finalized_sector_futures) -> list[dict]:
+    try:
+        return [output.result() for output in finalized_sector_futures]
+    except UnfinishedRun:
+        for prepared_sector in prepared_sector_futures:
+            prepared_sector.result()
+        raise
+
+
+def _run_image_prefect_tasks(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+) -> dict:
+    assert_serializable_payload(payload)
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    payload = validate_image_payload(payload)
+    operation_name = operation_run_name(payload, "image")
+    prepared_sector_futures, finalized_sector_futures = _submit_split_image_sector_tasks(
+        payload, operation_name, config
+    )
+    sector_outputs = _collect_image_sector_results(
+        prepared_sector_futures,
+        finalized_sector_futures,
+    )
     return _result_from_sector_records(sector_outputs)
 
 
