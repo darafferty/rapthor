@@ -127,7 +127,7 @@
         "mem_per_node_gb": 0,
         "max_cores": 0,
         "max_threads": 0,
-        "filter_skymodel_ncores": 0,
+        "filter_skymodel_ncores": 15,
         "deconvolution_threads": 0,
         "parallel_gridding_tasks": 0,
         "dir_local": null,

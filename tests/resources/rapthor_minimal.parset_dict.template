@@ -51,7 +51,7 @@
                       'max_cores': 8,
                       'max_nodes': 1,
                       'max_threads': 8,
-                      'filter_skymodel_ncores': 8,
+                      'filter_skymodel_ncores': 15,
                       'mem_per_node_gb': 0,
                       'parallel_gridding_tasks': 1,
                       'prefect_api_mode': 'auto',

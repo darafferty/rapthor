@@ -764,9 +764,9 @@ The available options are described below under their respective sections.
 
     filter_skymodel_ncores
         Number of cores to pass to the PyBDSF/LSMTool sky-model filtering step
-        during imaging (default = 0 = :term:`max_threads`). This can be reduced
-        independently when filtering benefits from fewer cores than WSClean or
-        DP3 on the same node.
+        during imaging (default = 15). Set to 0 to use :term:`max_threads`.
+        This can be reduced independently when filtering benefits from fewer
+        cores than WSClean or DP3 on the same node.
 
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of

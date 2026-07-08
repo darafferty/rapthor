@@ -167,6 +167,24 @@ def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
         parset_read(str(parset_scenario.parset))
 
 
+def test_filter_skymodel_ncores_default_is_proposed_production_value(parset_scenario):
+    parset = parset_read(str(parset_scenario.parset))
+
+    assert parset["cluster_specific"]["filter_skymodel_ncores"] == 15
+
+
+def test_filter_skymodel_ncores_zero_uses_max_threads(parset_scenario):
+    _append_to_parset(
+        parset_scenario.parset,
+        "\n[cluster]\nmax_threads = 12\nfilter_skymodel_ncores = 0\n",
+    )
+
+    parset = parset_read(str(parset_scenario.parset))
+
+    assert parset["cluster_specific"]["max_threads"] == 12
+    assert parset["cluster_specific"]["filter_skymodel_ncores"] == 12
+
+
 def test_unequal_sector_list_lengths(parset_scenario):
     _append_to_parset(parset_scenario.parset, "\n[imaging]\nsector_center_ra_list = [1]\n")
 

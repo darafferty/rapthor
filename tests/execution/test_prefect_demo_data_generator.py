@@ -62,7 +62,7 @@ def test_generated_demo_parset_can_use_benchmark_strategy(tmp_path):
     assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
 
 
-def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path):
+def test_generated_benchmark_parset_uses_runtime_sized_threads_and_filter_default(tmp_path):
     module = load_generator_script()
     output_dir = tmp_path / "generated" / "prefect_demo_rich"
     output_dir.mkdir(parents=True)
@@ -82,7 +82,7 @@ def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path)
     assert parser["cluster"]["cpus_per_task"] == "0"
     assert parser["cluster"]["max_cores"] == "0"
     assert parser["cluster"]["max_threads"] == "0"
-    assert parser["cluster"]["filter_skymodel_ncores"] == "0"
+    assert parser["cluster"]["filter_skymodel_ncores"] == "15"
     assert parser["cluster"]["deconvolution_threads"] == "0"
     assert parser["cluster"]["parallel_gridding_tasks"] == "0"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "False"

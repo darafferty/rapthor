@@ -544,7 +544,7 @@ def write_benchmark_parset(
         cpus_per_task=0,
         max_cores=0,
         max_threads=0,
-        filter_skymodel_ncores=0,
+        filter_skymodel_ncores=15,
         deconvolution_threads=0,
         parallel_gridding_tasks=0,
         publish_fits_previews=False,

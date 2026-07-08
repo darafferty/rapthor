@@ -82,6 +82,10 @@ Completed:
   time improves from `213.347 s` to `183.968 s` (`13.77%`) and median
   `filter_skymodel` command time improves from `89.540 s` to `69.881 s` while
   the Dask task count remains `20`.
+- `filter_skymodel_ncores=15` has been promoted to the proposed production
+  default in the packaged parset defaults and regenerated benchmark parsets.
+  Explicit user overrides are preserved: setting the value to `0` still uses
+  `max_threads`.
 
 Keep these caveats visible:
 
@@ -102,8 +106,8 @@ Keep these caveats visible:
 
 Use this section as the active queue.
 
-1. **Promote `filter_skymodel_ncores=15` to the proposed production default and
-   run one confirmation benchmark.**
+1. **Run one confirmation benchmark for the promoted
+   `filter_skymodel_ncores=15` default.**
    Keep the global `2x30`, `max_threads=30` worker/thread shape and preserve
    explicit user overrides. The confirmation run should show that the default
    profile matches the previous `ci-benchmark-filter-only-15` behavior and does
