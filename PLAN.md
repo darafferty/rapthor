@@ -75,6 +75,10 @@ Completed:
   running `filter_skymodel` with `15` cores. It improves median wall time by
   `10.836 s` (`3.48%`) in `runs/benchmark-20260708-073531/`, but should be
   confirmed after the filter task boundary lands before changing defaults.
+- `filter_skymodel` is now its own image-sector Prefect task named
+  `filter_skymodel`. The image-sector graph is
+  `image_sector_prepare -> filter_skymodel -> image_sector_finalize`, with
+  sector-specific detail carried by `task_run_name`.
 
 Keep these caveats visible:
 
@@ -95,28 +99,20 @@ Keep these caveats visible:
 
 Use this section as the active queue.
 
-1. **Split `filter_skymodel` into its own image-sector Prefect task for
-   observability and focused benchmarking.**
-   `filter-only-15` is now a positive signal rather than just a hypothesis:
-   the July 8 run improves median wall time from `311.315 s` to `300.479 s`.
-   Keep the existing scientific output contract and command behavior unchanged.
-   The new task should be named `filter_skymodel`, with operation/sector
-   detail carried by `task_run_name`, not by a long redundant task name.
-
-2. **Rerun the post-split filter-only benchmark before changing defaults.**
+1. **Rerun the post-split filter-only benchmark before changing defaults.**
    Compare `ci-benchmark-baseline-2x30` and `ci-benchmark-filter-only-15` after
    the task split. If the improvement repeats without increasing failures,
    memory pressure, dashboard noise, or science-product differences, promote
    `filter_skymodel_ncores=15` from benchmark profile to proposed default.
 
-3. **Keep the first scalability split for now, but treat it as an observability
+2. **Keep the first scalability split for now, but treat it as an observability
    improvement rather than a proven speedup.**
    The July 7 split increases Dask task count from `12` to `16` and exposes
    `image_sector_prepare_task` and `image_sector_finalize_task`, while wall
    time remains close to the July 6 run. Revisit this if dashboard noise,
    focused tests, or product checks show a downside.
 
-4. **Use an explicit task-boundary policy before splitting more flow steps.**
+3. **Use an explicit task-boundary policy before splitting more flow steps.**
    A step should become a Prefect task when it is slow, optional,
    scientifically meaningful, externally resource-hungry, independently
    benchmarkable, or likely to fail in a way users need to identify quickly.
@@ -135,22 +131,22 @@ Use this section as the active queue.
    `predict_model_data`, and `make_mosaic`. Avoid redundant names such as
    `image_sector_filter_skymodel` inside the `image` flow unless two tasks in
    the same flow would otherwise collide. Use `task_run_name` for per-operation
-   and per-sector specificity, for example `image_dd_3/sector_1/filter_skymodel`.
+   and per-sector specificity, for example `image_dd_3_sector_1_filter_skymodel`.
 
-5. **Add a scalability/performance equivalence gate next to the science gate.**
+4. **Add a scalability/performance equivalence gate next to the science gate.**
    The branch-vs-master decision should have explicit performance evidence, not
    just successful science-product comparison. Build this as an advisory gate
    first, then promote it to a required release/merge gate once the scenarios
    and variance are stable. See "Scalability and Performance Equivalence Gate"
    below for the task list.
 
-6. **Guard the accepted science-equivalence contract.**
+5. **Guard the accepted science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-7. **Resume maintainability and runtime-UX cleanup after the next scalability
+6. **Resume maintainability and runtime-UX cleanup after the next scalability
    decision.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned as the test and runtime surfaces settle.

@@ -38,6 +38,7 @@ from rapthor.execution.image.commands import (
 )
 from rapthor.execution.image.flow import (
     image_flow,
+    image_sector_filter_skymodel_task,
     image_sector_finalize_task,
     image_sector_prepare_task,
     image_sector_task,
@@ -2554,6 +2555,7 @@ def test_image_sector_prepare_and_finalize_tasks_split_post_wsclean_work(
     config = ExecutionConfig(task_runner="sync")
 
     prepare_fn = getattr(image_sector_prepare_task, "fn", image_sector_prepare_task)
+    filter_fn = getattr(image_sector_filter_skymodel_task, "fn", image_sector_filter_skymodel_task)
     finalize_fn = getattr(image_sector_finalize_task, "fn", image_sector_finalize_task)
 
     prepared = prepare_fn(
@@ -2562,9 +2564,17 @@ def test_image_sector_prepare_and_finalize_tasks_split_post_wsclean_work(
         execution_config=config,
         shell_operation_cls=fake_image_shell_operation_cls,
     )
+    filtered = filter_fn(
+        sector,
+        prepared,
+        str(tmp_path),
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
     output = finalize_fn(
         sector,
         prepared,
+        filtered,
         str(tmp_path),
         execution_config=config,
         shell_operation_cls=fake_image_shell_operation_cls,
@@ -2572,6 +2582,8 @@ def test_image_sector_prepare_and_finalize_tasks_split_post_wsclean_work(
 
     validate_output_record(prepared["sector_images"])
     validate_output_record(prepared["prepared_records"])
+    validate_output_record(filtered["filtered_true_sky"])
+    validate_output_record(filtered["filtered_apparent_sky"])
     assert prepared["wsclean_ran"] is True
     assert output["sector_I_images"] == _sector_i_image_records(tmp_path)
     assert output["visibilities"] == [

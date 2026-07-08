@@ -52,20 +52,45 @@ def image_sector_prepare_task(
     return prepared
 
 
-@task(name="image_sector_finalize")
-def image_sector_finalize_task(
+@task(name="filter_skymodel")
+def image_sector_filter_skymodel_task(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
+    """Prefect task wrapper for one sector skymodel-filtering step."""
+    assert_serializable_payload(prepared)
+    with publish_python_logs_to_prefect():
+        filtered = image_sector.filter_image_sector_skymodel(
+            sector,
+            prepared,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(filtered)
+    return filtered
+
+
+@task(name="image_sector_finalize")
+def image_sector_finalize_task(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    filtered: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
     """Prefect task wrapper for post-WSClean sector finalization."""
     assert_serializable_payload(prepared)
+    assert_serializable_payload(filtered)
     with publish_python_logs_to_prefect():
         return image_sector.finalize_image_sector(
             sector,
             prepared,
+            filtered,
             pipeline_working_dir,
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
@@ -143,11 +168,11 @@ def _submit_split_image_sector_tasks(
         )
         for index, sector in enumerate(payload["sectors"])
     ]
-    finalized_sector_futures = [
-        image_sector_finalize_task.with_options(
+    filtered_sector_futures = [
+        image_sector_filter_skymodel_task.with_options(
             task_run_name=task_run_name(
                 operation_name,
-                f"{sector.get('image_name') or f'sector_{index + 1}'}_finalize",
+                f"{sector.get('image_name') or f'sector_{index + 1}'}_filter_skymodel",
             )
         ).submit(
             sector,
@@ -157,15 +182,36 @@ def _submit_split_image_sector_tasks(
         )
         for index, sector in enumerate(payload["sectors"])
     ]
-    return prepared_sector_futures, finalized_sector_futures
+    finalized_sector_futures = [
+        image_sector_finalize_task.with_options(
+            task_run_name=task_run_name(
+                operation_name,
+                f"{sector.get('image_name') or f'sector_{index + 1}'}_finalize",
+            )
+        ).submit(
+            sector,
+            prepared_sector_futures[index],
+            filtered_sector_futures[index],
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(payload["sectors"])
+    ]
+    return prepared_sector_futures, filtered_sector_futures, finalized_sector_futures
 
 
-def _collect_image_sector_results(prepared_sector_futures, finalized_sector_futures) -> list[dict]:
+def _collect_image_sector_results(
+    prepared_sector_futures,
+    filtered_sector_futures,
+    finalized_sector_futures,
+) -> list[dict]:
     try:
         return [output.result() for output in finalized_sector_futures]
     except UnfinishedRun:
         for prepared_sector in prepared_sector_futures:
             prepared_sector.result()
+        for filtered_sector in filtered_sector_futures:
+            filtered_sector.result()
         raise
 
 
@@ -177,11 +223,14 @@ def _run_image_prefect_tasks(
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_image_payload(payload)
     operation_name = operation_run_name(payload, "image")
-    prepared_sector_futures, finalized_sector_futures = _submit_split_image_sector_tasks(
-        payload, operation_name, config
-    )
+    (
+        prepared_sector_futures,
+        filtered_sector_futures,
+        finalized_sector_futures,
+    ) = _submit_split_image_sector_tasks(payload, operation_name, config)
     sector_outputs = _collect_image_sector_results(
         prepared_sector_futures,
+        filtered_sector_futures,
         finalized_sector_futures,
     )
     return _result_from_sector_records(sector_outputs)

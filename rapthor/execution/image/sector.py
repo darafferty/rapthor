@@ -123,9 +123,50 @@ def prepare_image_sector(
     }
 
 
+def filter_image_sector_skymodel(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Filter one sector skymodel and return diagnostics inputs."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    image_name = str(sector["image_name"])
+    (
+        filtered_true_sky,
+        filtered_apparent_sky,
+        diagnostics,
+        flat_noise_rms,
+        true_sky_rms,
+        source_catalog,
+        source_filtering_mask,
+    ) = filter_skymodel_products(
+        sector,
+        image_name,
+        prepared["nonpb_image"],
+        prepared["pb_image"],
+        prepared["skymodel_nonpb"],
+        prepared["skymodel_pb"],
+        pipeline_working_dir,
+        execution_config=config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return {
+        "filtered_true_sky": filtered_true_sky,
+        "filtered_apparent_sky": filtered_apparent_sky,
+        "diagnostics": diagnostics,
+        "flat_noise_rms": flat_noise_rms,
+        "true_sky_rms": true_sky_rms,
+        "source_catalog": source_catalog,
+        "source_filtering_mask": source_filtering_mask,
+    }
+
+
 def finalize_image_sector(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
+    filtered: Mapping[str, object],
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -146,26 +187,13 @@ def finalize_image_sector(
     image_cube_frequencies = list(prepared["image_cube_frequencies"])
     skymodel_nonpb = prepared["skymodel_nonpb"]
     skymodel_pb = prepared["skymodel_pb"]
-
-    (
-        filtered_true_sky,
-        filtered_apparent_sky,
-        diagnostics,
-        flat_noise_rms,
-        true_sky_rms,
-        source_catalog,
-        source_filtering_mask,
-    ) = filter_skymodel_products(
-        sector,
-        image_name,
-        nonpb_image,
-        pb_image,
-        skymodel_nonpb,
-        skymodel_pb,
-        pipeline_working_dir,
-        execution_config=config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    filtered_true_sky = filtered["filtered_true_sky"]
+    filtered_apparent_sky = filtered["filtered_apparent_sky"]
+    diagnostics = filtered["diagnostics"]
+    flat_noise_rms = filtered["flat_noise_rms"]
+    true_sky_rms = filtered["true_sky_rms"]
+    source_catalog = filtered["source_catalog"]
+    source_filtering_mask = filtered["source_filtering_mask"]
 
     skymodel_image = make_filtered_model_image(
         sector,
@@ -283,6 +311,13 @@ def run_image_sector(
     return finalize_image_sector(
         sector,
         prepared,
+        filter_image_sector_skymodel(
+            sector,
+            prepared,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        ),
         pipeline_working_dir,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,
