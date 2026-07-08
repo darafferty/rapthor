@@ -125,12 +125,44 @@ Use this section as the active queue.
    scientifically meaningful, externally resource-hungry, independently
    benchmarkable, or likely to fail in a way users need to identify quickly.
    Keep small validation, payload construction, output-record assembly, and
-   path-discovery helpers as plain Python functions. Candidate future
-   boundaries are `image_sector_diagnostics`,
-   `image_sector_normalize_flux_scale`, calibrate h5parm collection,
-   slow-gain processing, h5parm combination, and plotting; predict, mosaic, and
-   concatenate should only be split further when profiling shows real work or
-   real failure modes hidden inside the current task.
+   path-discovery helpers as plain Python functions. Rank the next splits as
+   follows:
+
+   - **Split next when profiling confirms the default benchmark is stable:**
+     `calculate_image_diagnostics` as a separate image-sector task after
+     `filter_skymodel`. It loads FITS/catalog/skymodel products, writes JSON
+     and plot artifacts, and is scientifically meaningful enough to deserve
+     dashboard visibility even if the CI benchmark currently shows only a
+     small finalization cost.
+   - **Split when the option is enabled in a benchmark or manual profile:**
+     `normalize_flux_scale` / `make_catalog_from_image_cube`. This path is
+     optional, uses FITS/catalog/MS/h5parm data, and should be independently
+     observable when flux-scale normalization is exercised.
+   - **Measure before splitting:** calibration post-processing
+     (`collect_h5parms`, `process_slow_gains`, full-Jones normalization,
+     `combine_h5parms`, `plot_solutions`). The CI-sized benchmark shows
+     h5parm collection itself is small, but plotting and Python helper time can
+     matter in richer real runs and failures here are useful to isolate.
+   - **Split only for WSClean-predict scenarios:** calibration
+     `prepare_image_based_predict` / `wsclean_predict` loops. These can contain
+     independent copied-MS, frequency-chunk, and patch prediction work, but the
+     path is optional and should be benchmarked with a scenario that enables it.
+   - **Defer unless profiling says otherwise:** mosaic regridding per sector
+     image. Current CI mosaic time is small, but many sectors/image types could
+     make per-regrid tasks useful later.
+   - **Do not split for Dask alone:** validation, payload construction,
+     deterministic command builders, output-record assembly, path discovery,
+     and tiny helper functions. They should stay plain Python unless they hide
+     a measured failure mode.
+
+   NumPy operations are not automatically distributed or accelerated by Dask.
+   A NumPy call inside a Prefect task runs in that worker process exactly as
+   NumPy normally would. Dask helps when Rapthor submits independent tasks that
+   can run concurrently, when external commands are given the right thread/core
+   limits, or when code is explicitly rewritten to use Dask-aware collections
+   such as `dask.array` or carefully chunked delayed work. Avoid adding task
+   boundaries that only add scheduler overhead or oversubscribe external tools.
+
    Task names should be short step names because the enclosing flow/subflow
    already provides context. Prefer the established legacy CWL/workflow
    vocabulary when it is still scientifically accurate: use names such as
