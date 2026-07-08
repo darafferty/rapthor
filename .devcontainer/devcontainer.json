@@ -5,10 +5,12 @@
     "dockerfile": "Dockerfile",
     "target": "dev"
   },
-  "runArgs": ["--shm-size=4g"],
+  "runArgs": [
+    "--shm-size=4g"
+  ],
   "workspaceFolder": "/app",
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-  "postCreateCommand": "pip install --upgrade pip && pip install --no-binary=bdsf bdsf && pip install -e . && pip install --group=dev",
+  "postCreateCommand": "python3 -m pip install --upgrade pip && python3 -m pip install --no-binary=bdsf bdsf && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install -e . && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install --group=dev",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -18,6 +20,8 @@
     }
   },
   "remoteEnv": {
-    "PYTHONPATH": "/app:${PYTHONPATH}"
+    "PYTHONPATH": "/app:${PYTHONPATH}",
+    "RAPTHOR_CONTAINER_WORKSPACE": "/app",
+    "RAPTHOR_HOST_WORKSPACE": "${localWorkspaceFolder}"
   }
 }
