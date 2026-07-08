@@ -285,9 +285,11 @@ class Image(Operation):
 
         return min(
             directions_with_positions,
-            key=lambda direction: misc.angular_separation(
-                (sector.ra, sector.dec), (direction["ra"], direction["dec"])
-            ).degree,
+            key=lambda direction: (
+                misc.angular_separation(
+                    (sector.ra, sector.dec), (direction["ra"], direction["dec"])
+                ).degree
+            ),
         )["name"]
 
     def _build_applycal_steps(self):
@@ -339,9 +341,7 @@ class Image(Operation):
                 self._selected_fulljones_h5parm = fulljones_filename
                 steps.append("fulljones")
         else:
-            dd_strategy_has_scalar = any(
-                solve != "full_jones" for solve in strategy.get("dd", [])
-            )
+            dd_strategy_has_scalar = any(solve != "full_jones" for solve in strategy.get("dd", []))
             preapply_dd_scalar = (
                 dd_h5parm is not None and not use_dd_during_imaging and dd_strategy_has_scalar
             )
