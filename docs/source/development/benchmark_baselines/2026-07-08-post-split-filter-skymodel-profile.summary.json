@@ -1,0 +1,41 @@
+{
+  "source_run": "runs/benchmark-20260708-121853",
+  "commit": "9f5ea4885b76b6b2b8da03bd283e93dd687d39c2",
+  "ci_job": "1833289",
+  "pipeline": "201075",
+  "runner": "astron-docker-1",
+  "decision": "Promote filter_skymodel_ncores=15 from benchmark profile to proposed production default for the CI-sized 2x30 configuration, then run one confirmation benchmark.",
+  "caveat": "Compare paired profiles within this run. Absolute wall times are not directly comparable with earlier benchmark runs on different runners.",
+  "profiles": {
+    "baseline-2x30": {
+      "wall_median_seconds": 213.347,
+      "wall_min_seconds": 194.119,
+      "wall_max_seconds": 233.012,
+      "command_median_seconds": 157.881,
+      "dask_duration_median_seconds": 204.85,
+      "dask_compute_median_seconds": 154.93,
+      "dask_gap_median_seconds": 46.55,
+      "task_count": 20,
+      "filter_skymodel_command_median_seconds": 89.54,
+      "filter_skymodel_task_group_median_seconds": 89.881,
+      "wsclean_median_seconds": 53.592
+    },
+    "filter-only-15": {
+      "wall_median_seconds": 183.968,
+      "wall_min_seconds": 183.907,
+      "wall_max_seconds": 210.826,
+      "wall_delta_seconds": -29.379,
+      "wall_delta_percent": -13.77,
+      "command_median_seconds": 135.576,
+      "command_delta_seconds": -22.305,
+      "dask_duration_median_seconds": 175.89,
+      "dask_compute_median_seconds": 130.04,
+      "dask_gap_median_seconds": 45.99,
+      "task_count": 20,
+      "filter_skymodel_command_median_seconds": 69.881,
+      "filter_skymodel_task_group_median_seconds": 70.154,
+      "wsclean_median_seconds": 50.381
+    }
+  },
+  "next_step": "Change the default filter_skymodel_ncores to 15 while preserving explicit user overrides, then rerun the CI benchmark once to confirm the default matches the filter-only profile."
+}

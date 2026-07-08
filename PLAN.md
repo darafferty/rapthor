@@ -17,13 +17,12 @@ production architecture over unreleased compatibility shims.
 ## Current Position
 
 The architecture and science-equivalence work has moved from active migration
-to guarded scalability work. The latest targeted filter-skymodel benchmark in
-`runs/benchmark-20260708-073531/` has been analysed. It supports keeping the
-global `2x30`, `max_threads=30` resource shape while treating
-`filter_skymodel_ncores=15` as a promising filter-only optimization. Do not
-change production defaults yet: first split `filter_skymodel` into its own
-Prefect task so the dashboard, Dask report, and benchmark evidence can isolate
-the filter step directly.
+to guarded scalability work. The latest post-split filter-skymodel benchmark in
+`runs/benchmark-20260708-121853/` has been analysed. It supports keeping the
+global `2x30`, `max_threads=30` resource shape and promoting
+`filter_skymodel_ncores=15` from benchmark profile to proposed production
+default for the CI-sized configuration. Absolute wall times should be compared
+within the paired run only because the July 8 runs used different CI runners.
 
 Completed:
 
@@ -79,6 +78,10 @@ Completed:
   `filter_skymodel`. The image-sector graph is
   `image_sector_prepare -> filter_skymodel -> image_sector_finalize`, with
   sector-specific detail carried by `task_run_name`.
+- The post-split benchmark confirms the filter-only optimization: median wall
+  time improves from `213.347 s` to `183.968 s` (`13.77%`) and median
+  `filter_skymodel` command time improves from `89.540 s` to `69.881 s` while
+  the Dask task count remains `20`.
 
 Keep these caveats visible:
 
@@ -99,11 +102,12 @@ Keep these caveats visible:
 
 Use this section as the active queue.
 
-1. **Rerun the post-split filter-only benchmark before changing defaults.**
-   Compare `ci-benchmark-baseline-2x30` and `ci-benchmark-filter-only-15` after
-   the task split. If the improvement repeats without increasing failures,
-   memory pressure, dashboard noise, or science-product differences, promote
-   `filter_skymodel_ncores=15` from benchmark profile to proposed default.
+1. **Promote `filter_skymodel_ncores=15` to the proposed production default and
+   run one confirmation benchmark.**
+   Keep the global `2x30`, `max_threads=30` worker/thread shape and preserve
+   explicit user overrides. The confirmation run should show that the default
+   profile matches the previous `ci-benchmark-filter-only-15` behavior and does
+   not change the raw/scientific product contract.
 
 2. **Keep the first scalability split for now, but treat it as an observability
    improvement rather than a proven speedup.**
@@ -161,6 +165,8 @@ Compact analysis:
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.summary.json`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-only-profile.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-only-profile.summary.json`
+- `docs/source/development/benchmark_baselines/2026-07-08-post-split-filter-skymodel-profile.md`
+- `docs/source/development/benchmark_baselines/2026-07-08-post-split-filter-skymodel-profile.summary.json`
 
 Latest raw artifacts:
 
@@ -189,6 +195,11 @@ Latest raw artifacts:
 - `runs/benchmark-20260708-073531/benchmark-results.json`
 - `runs/benchmark-20260708-073531/ci-benchmark-*/rep-*/benchmark-result.json`
 - `runs/benchmark-20260708-073531/ci-benchmark-*/rep-*/dask-performance-report.html`
+- `runs/benchmark-20260708-121853/benchmark-report.md`
+- `runs/benchmark-20260708-121853/benchmark-summary.json`
+- `runs/benchmark-20260708-121853/benchmark-results.json`
+- `runs/benchmark-20260708-121853/ci-benchmark-*/rep-*/benchmark-result.json`
+- `runs/benchmark-20260708-121853/ci-benchmark-*/rep-*/dask-performance-report.html`
 
 Headline comparison:
 
@@ -199,6 +210,7 @@ Headline comparison:
 | `20260707-153316` | `eb0a4033` | `308.563` | `72.570` | `16` | `image_sector_prepare_task` x4 plus `image_sector_finalize_task` x4 | First visible split in Dask task groups; wall time remains close to 2026-07-06. |
 | `20260707-191141` | `32e64149` | `306.507` | `72.450` | `16` | Same split as July 7 baseline | Resource-profile baseline; still the best tested worker/thread shape. |
 | `20260708-073531` | `2a86f8ac` | `311.315` baseline / `300.479` filter-only | `73.030` baseline / `71.410` filter-only | `16` | Same split as July 7 baseline | `filter_skymodel_ncores=15` is promising; rerun after the filter task boundary before changing defaults. |
+| `20260708-121853` | `9f5ea488` | `213.347` baseline / `183.968` filter-only | `46.550` baseline / `45.990` filter-only | `20` | Adds `image_sector_filter_skymodel_task` x4 | Post-split result confirms `filter_skymodel_ncores=15`; promote to proposed default and rerun once. |
 
 Resource-profile result from `20260707-191141`:
 
@@ -216,6 +228,13 @@ Filter-only result from `20260708-073531`:
 | `baseline-2x30` | `311.315` | `0.000` | `230.657` | `109.771` | `89.082` | Keep the global `2x30`, `max_threads=30` baseline. |
 | `filter-only-15` | `300.479` | `-3.48%` | `224.181` | `105.399` | `87.170` | Promising; rerun after the `filter_skymodel` task split before changing defaults. |
 
+Post-split filter-only result from `20260708-121853`:
+
+| Profile | Wall Median (s) | Delta vs Baseline | Command Median (s) | `filter_skymodel` (s) | WSClean (s) | Decision |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `baseline-2x30` | `213.347` | `0.000` | `157.881` | `89.540` | `53.592` | Keep the global `2x30`, `max_threads=30` baseline. |
+| `filter-only-15` | `183.968` | `-13.77%` | `135.576` | `69.881` | `50.381` | Promote `filter_skymodel_ncores=15` to proposed default and rerun once. |
+
 Common benchmark shape:
 
 - Scenario: `ci-benchmark`
@@ -223,7 +242,8 @@ Common benchmark shape:
 - Return codes: `0, 0, 0`
 - Historical baseline worker/thread shape: `2` workers, `60` total Dask
   threads, with `max_threads=30`
-- Command timing remains stable at about `230 s` median for the baseline runs
+- Absolute timings vary with CI runner. Use paired comparisons within the same
+  timestamped benchmark run for decisions.
 
 Latest command timing by name:
 
@@ -237,6 +257,10 @@ Latest command timing by name:
 | `20260708-073531` baseline | `wsclean` | `89.082` | `4` | Stable relative to the July 6/7 baselines. |
 | `20260708-073531` filter-only | `filter_skymodel` | `105.399` | `4` | Positive signal from lowering only `filter_skymodel_ncores` to `15`. |
 | `20260708-073531` filter-only | `wsclean` | `87.170` | `4` | No WSClean slowdown in the targeted profile. |
+| `20260708-121853` baseline | `filter_skymodel` | `89.540` | `4` | Post-split baseline on a different runner; compare only with the paired filter-only row. |
+| `20260708-121853` baseline | `wsclean` | `53.592` | `4` | No evidence that the split itself harms WSClean. |
+| `20260708-121853` filter-only | `filter_skymodel` | `69.881` | `4` | Dedicated filter task group confirms the `15`-core improvement. |
+| `20260708-121853` filter-only | `wsclean` | `50.381` | `4` | No WSClean regression in the paired profile. |
 
 Resolved finding:
 
@@ -251,16 +275,20 @@ Resolved finding:
   `10.836 s` (`3.48%`), median command time improves by `6.476 s`, and WSClean
   does not regress. Confirm this after the `filter_skymodel` task split before
   promoting it from benchmark profile to default.
+- The post-split July 8 run confirms the filter-only setting with better
+  observability: `filter_skymodel` is now visible as four Dask tasks, median
+  wall time improves by `29.379 s` (`13.77%`), and median filter command time
+  improves by `19.659 s`. Promote `filter_skymodel_ncores=15` as the proposed
+  default, but run one confirmation benchmark after the default change.
 
 Remaining questions:
 
-- After `filter_skymodel` becomes its own task boundary, does the benchmark
-  isolate enough timing/resource evidence to choose a safe default for
-  `filter_skymodel_ncores`?
-- Does the `filter-only-15` improvement repeat after the task boundary, or was
-  the July 8 gain mostly run-to-run variance?
-- Is wall time stable across the three repetitions, or is scheduler/runtime
-  variance larger than the expected effect size?
+- After the default changes, does the confirmation benchmark match the
+  `filter-only-15` behavior?
+- Can the benchmark runner interleave or randomize scenario order in a future
+  pass to reduce cache/warm-up bias?
+- Is wall time stable enough across repetitions for a hard performance gate, or
+  should the gate remain advisory while variance is characterized?
 - Is the `duration-minus-compute` gap dominated by Prefect/Dask orchestration,
   external-command blocking, task dependencies, or idle workers?
 - Are image operation-minus-command gaps reduced after the split, or do they
