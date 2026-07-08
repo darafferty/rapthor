@@ -106,20 +106,53 @@ Use this section as the active queue.
    time remains close to the July 6 run. Revisit this if dashboard noise,
    focused tests, or product checks show a downside.
 
-3. **Add a scalability/performance equivalence gate next to the science gate.**
+3. **Split `filter_skymodel` into its own image-sector Prefect task for
+   observability and focused benchmarking.**
+   Do this even if the filter-only resource benchmark is wall-time neutral:
+   `filter_skymodel` is expensive, optional, scientifically meaningful,
+   resource-sensitive, and has its own `filter_skymodel_ncores` control. The
+   task boundary should make the dashboard and benchmark reports distinguish
+   source/skymodel filtering from diagnostics, astrometry correction,
+   compression, normalization, preview publishing, and final output assembly.
+   Keep payloads serializable and the output contract explicit. Treat the first
+   split as an observability/debugging improvement; only change resource
+   defaults after benchmark evidence supports it.
+
+4. **Use an explicit task-boundary policy before splitting more flow steps.**
+   A step should become a Prefect task when it is slow, optional,
+   scientifically meaningful, externally resource-hungry, independently
+   benchmarkable, or likely to fail in a way users need to identify quickly.
+   Keep small validation, payload construction, output-record assembly, and
+   path-discovery helpers as plain Python functions. Candidate future
+   boundaries are `image_sector_diagnostics`,
+   `image_sector_normalize_flux_scale`, calibrate h5parm collection,
+   slow-gain processing, h5parm combination, and plotting; predict, mosaic, and
+   concatenate should only be split further when profiling shows real work or
+   real failure modes hidden inside the current task.
+   Task names should be short step names because the enclosing flow/subflow
+   already provides context. Prefer the established legacy CWL/workflow
+   vocabulary when it is still scientifically accurate: use names such as
+   `filter_skymodel`, `calculate_image_diagnostics`, `combine_h5parms`,
+   `collect_h5parms`, `process_slow_gains`, `plot_solutions`,
+   `predict_model_data`, and `make_mosaic`. Avoid redundant names such as
+   `image_sector_filter_skymodel` inside the `image` flow unless two tasks in
+   the same flow would otherwise collide. Use `task_run_name` for per-operation
+   and per-sector specificity, for example `image_dd_3/sector_1/filter_skymodel`.
+
+5. **Add a scalability/performance equivalence gate next to the science gate.**
    The branch-vs-master decision should have explicit performance evidence, not
    just successful science-product comparison. Build this as an advisory gate
    first, then promote it to a required release/merge gate once the scenarios
    and variance are stable. See "Scalability and Performance Equivalence Gate"
    below for the task list.
 
-4. **Guard the accepted science-equivalence contract.**
+6. **Guard the accepted science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-5. **Resume maintainability and runtime-UX cleanup after the next scalability
+7. **Resume maintainability and runtime-UX cleanup after the next scalability
    decision.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned as the test and runtime surfaces settle.
@@ -205,8 +238,9 @@ Remaining questions:
 
 - Does a dedicated `filter_skymodel` `ncores` limit improve wall time when
   WSClean, DP3, and Dask stay on the current `2x30` baseline?
-- Should `filter_skymodel` remain an isolated subprocess, become its own
-  explicitly named task boundary, or receive explicit resource annotations?
+- After `filter_skymodel` becomes its own task boundary, does the benchmark
+  isolate enough timing/resource evidence to choose a safe default for
+  `filter_skymodel_ncores`?
 - Is wall time stable across the three repetitions, or is scheduler/runtime
   variance larger than the expected effect size?
 - Is the `duration-minus-compute` gap dominated by Prefect/Dask orchestration,
