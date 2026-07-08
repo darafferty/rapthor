@@ -300,14 +300,14 @@ class Image(Operation):
         field by the calibration strategy. For image-only runs, they are
         determined from the H5parm files scanned during field setup.
         """
-        if self.apply_none:
-            return None, None, None
-
         fulljones_h5parm = None
         input_normalize_h5parm = None
         self._selected_applycal_h5parm = None
         self._selected_imaging_h5parm = None
         self._selected_fulljones_h5parm = None
+
+        if self.apply_none:
+            return None, None, None
 
         strategy = getattr(self.field, "calibration_strategy", None) or {}
         dd_h5parm, di_h5parm = self._scalar_h5parms()

@@ -160,6 +160,7 @@ def test_check_and_adjust_parameters_raises_error_for_missing_primary_parameters
     ("primary_parameter", "missing_parameter"),
     [
         ("do_calibrate", "do_slowgain_solve"),
+        ("do_calibrate", "do_fulljones_solve"),
         ("do_calibrate", "max_normalization_delta"),
         ("do_calibrate", "solve_min_uv_lambda"),
         ("do_calibrate", "fast_timestep_sec"),
@@ -197,7 +198,6 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
 @pytest.mark.parametrize(
     ("primary_parameter", "missing_parameter"),
     [
-        ("do_calibrate", "do_fulljones_solve"),
         ("do_calibrate", "target_flux"),
         ("do_calibrate", "max_directions"),
         ("do_calibrate", "regroup_model"),
