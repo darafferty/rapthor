@@ -47,8 +47,8 @@ Completed and accepted:
 - Image-sector execution has the current low-risk task split:
   `image_sector_prepare -> filter_skymodel -> image_sector_finalize`.
 - Post-split benchmarks support `filter_skymodel_ncores=15` while keeping the
-  global `2x30`, `max_threads=30` resource shape. The proposed default has been
-  promoted in packaged defaults and regenerated benchmark parsets. Explicit
+  global `2x30`, `max_threads=30` resource shape. The default has been promoted
+  and confirmed against the explicit `filter-only-15` profile. Explicit
   `filter_skymodel_ncores = 0` still means "use `max_threads`".
 
 Keep in mind:
@@ -67,36 +67,21 @@ Keep in mind:
 
 Do these in order unless a regression blocks progress.
 
-1. **Run the confirmation benchmark for the promoted
-   `filter_skymodel_ncores=15` default.**
-   Use the existing CI benchmark shape: `2` local Dask workers,
-   `max_threads=30`, command profiling enabled, preview artifacts disabled.
-   Confirm that the default profile now matches the previous
-   `ci-benchmark-filter-only-15` behavior and does not change raw/scientific
-   products. Add a compact report under
-   `docs/source/development/benchmark_baselines/`.
-
-2. **Decide whether the current image-sector split is the stable baseline.**
-   Keep the split if the confirmation benchmark and focused tests remain green.
-   Treat `filter_skymodel` as both an observability win and a real resource
-   tuning win. If product drift appears, fix or revert before adding new task
-   boundaries.
-
-3. **Split `calculate_image_diagnostics` into its own image-sector task.**
-   This is the next best observability split after the confirmation benchmark.
+1. **Split `calculate_image_diagnostics` into its own image-sector task.**
+   This is the next best observability split after stabilizing `filter_skymodel`.
    It is scientifically meaningful, reads FITS/catalog/skymodel products, and
    writes diagnostics plus plots. Add task-boundary tests for payload shape,
    serializability, task names, and output records. Then rerun focused image
    tests and the benchmark.
 
-4. **Add benchmark scenarios for currently hidden scaling paths.**
+2. **Add benchmark scenarios for currently hidden scaling paths.**
    Add or enable small repeatable profiles before changing those paths:
    flux-scale normalization / image cubes, WSClean-predict calibration,
    many-sector imaging, mosaic-heavy runs, and larger/multi-node runs. Keep
    preview artifacts disabled unless the scenario explicitly measures report
    overhead.
 
-5. **Measure before splitting the next candidates.**
+3. **Measure before splitting the next candidates.**
    Candidates are:
    `normalize_flux_scale` / `make_catalog_from_image_cube`,
    calibration post-processing (`collect_h5parms`, `process_slow_gains`,
@@ -104,20 +89,20 @@ Do these in order unless a regression blocks progress.
    WSClean-predict loops, and mosaic per-sector regridding. Split only when a
    benchmark, dashboard trace, or failure mode shows the boundary is useful.
 
-6. **Build the scalability/performance equivalence gate.**
+4. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-7. **Guard the science-equivalence contract.**
+5. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-8. **Polish runtime UX and contributor docs after the next scalability result.**
+6. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -197,6 +182,7 @@ Use these as the historical record instead of expanding this plan:
 
 Most relevant benchmark reports:
 
+- `docs/source/development/benchmark_baselines/2026-07-08-default-filter-skymodel-confirmation.md`
 - `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-only-profile.md`

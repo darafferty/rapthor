@@ -1,0 +1,42 @@
+{
+  "source_run": "runs/benchmark-20260708-191446",
+  "commit": "bdea140c003c729a844b7d698fe45b0fe90c7e1a",
+  "ci_job": "1833982",
+  "pipeline": "201143",
+  "runner": "Shared Runner on lcs126",
+  "decision": "Confirmation passed: the packaged default filter_skymodel_ncores=15 matches the explicit filter-only-15 profile within CI variance. Treat the current image-sector split as the stable baseline for the next scalability slice.",
+  "profiles": {
+    "baseline-2x30": {
+      "shape": "2 workers x 30 threads, max_threads=30, filter_skymodel_ncores=15 by default",
+      "wall_median_seconds": 319.8,
+      "wall_min_seconds": 319.084,
+      "wall_max_seconds": 319.983,
+      "command_median_seconds": 239.036,
+      "dask_duration_median_seconds": 305.15,
+      "dask_compute_median_seconds": 231.04,
+      "dask_gap_median_seconds": 73.75,
+      "task_count": 20,
+      "filter_skymodel_command_median_seconds": 110.814,
+      "filter_skymodel_task_group_median_seconds": 111.409,
+      "wsclean_median_seconds": 94.928
+    },
+    "filter-only-15": {
+      "shape": "2 workers x 30 threads, max_threads=30, filter_skymodel_ncores=15 explicitly",
+      "wall_median_seconds": 314.896,
+      "wall_min_seconds": 311.505,
+      "wall_max_seconds": 320.07,
+      "wall_delta_seconds": -4.904,
+      "wall_delta_percent": -1.53,
+      "command_median_seconds": 233.976,
+      "command_delta_seconds": -5.06,
+      "dask_duration_median_seconds": 300.1,
+      "dask_compute_median_seconds": 225.37,
+      "dask_gap_median_seconds": 73.33,
+      "task_count": 20,
+      "filter_skymodel_command_median_seconds": 109.095,
+      "filter_skymodel_task_group_median_seconds": 109.677,
+      "wsclean_median_seconds": 92.004
+    }
+  },
+  "next_step": "Split calculate_image_diagnostics into its own image-sector task, add focused task-boundary tests, then rerun focused image tests and the CI-sized benchmark."
+}
