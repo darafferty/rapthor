@@ -209,7 +209,7 @@ commands = [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "--durations=0",
+        "--durations-path", "{env:CI_PROJECT_DIR:}/tests/integration/.test_durations",
         "--splits", "{env:CI_NODE_TOTAL:1}",
         "--group", "{env:CI_NODE_INDEX:1}",
         "tests",
