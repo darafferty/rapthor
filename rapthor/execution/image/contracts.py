@@ -119,6 +119,7 @@ class ImageSectorPayload(TypedDict):
     source_finder: str
     apply_time_frequency_smearing: bool
     max_threads: int
+    filter_skymodel_ncores: int
     deconvolution_threads: int
     mpi_nnodes: Optional[int]
     mpi_cpus_per_task: Optional[int]

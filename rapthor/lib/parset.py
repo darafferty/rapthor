@@ -434,6 +434,10 @@ class Parset:
             options["max_threads"] = cpu_count
 
         max_threads = options["max_threads"]
+        if not options["filter_skymodel_ncores"]:
+            options["filter_skymodel_ncores"] = max_threads
+        if options["filter_skymodel_ncores"] < 1:
+            raise ValueError("The option 'filter_skymodel_ncores' must be greater than 0")
         if not options["deconvolution_threads"]:
             options["deconvolution_threads"] = max(1, min(14, max_threads * 2 // 5))
         if not options["parallel_gridding_tasks"]:

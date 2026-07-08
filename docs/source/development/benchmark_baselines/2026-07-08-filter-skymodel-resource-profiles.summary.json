@@ -1,0 +1,77 @@
+{
+  "decision": {
+    "do_not_adopt_profiles": [
+      "filter-wide-1x60",
+      "filter-workers-4x15"
+    ],
+    "do_not_change_global_max_threads": true,
+    "keep_profile": "baseline-2x30",
+    "next_hypothesis": "Run the filter-only-15 benchmark profile while keeping WSClean and DP3 at the baseline resource shape."
+  },
+  "metadata": {
+    "gitlab_commit_sha": "32e64149cd948dc12e21fec8b7533166858edae1",
+    "gitlab_job_id": "1832616",
+    "gitlab_pipeline_id": "201009",
+    "runner_description": "Shared Runner on lcs126",
+    "source_artifacts": "runs/benchmark-20260707-191141"
+  },
+  "profiles": {
+    "baseline-2x30": {
+      "command_median_seconds": 228.392,
+      "dask_gap_median_seconds": 72.45,
+      "dp3_median_seconds": 8.23,
+      "filter_skymodel_median_seconds": 109.566,
+      "shape": "2 workers x 30 threads, max_threads=30",
+      "task_count": 16,
+      "wall_delta_percent_vs_baseline": 0.0,
+      "wall_delta_seconds_vs_baseline": 0.0,
+      "wall_median_seconds": 306.507,
+      "wsclean_median_seconds": 87.066
+    },
+    "filter-threads-15": {
+      "command_median_seconds": 227.387,
+      "dask_gap_median_seconds": 72.47,
+      "dp3_delta_seconds_vs_baseline": -2.857,
+      "dp3_median_seconds": 5.372,
+      "filter_skymodel_delta_seconds_vs_baseline": -4.378,
+      "filter_skymodel_median_seconds": 105.187,
+      "shape": "2 workers x 30 threads, max_threads=15",
+      "task_count": 16,
+      "wall_delta_percent_vs_baseline": -0.32,
+      "wall_delta_seconds_vs_baseline": -0.977,
+      "wall_median_seconds": 305.529,
+      "wsclean_delta_seconds_vs_baseline": 6.223,
+      "wsclean_median_seconds": 93.289
+    },
+    "filter-wide-1x60": {
+      "command_median_seconds": 271.584,
+      "dask_gap_median_seconds": 71.08,
+      "dp3_delta_seconds_vs_baseline": 6.434,
+      "dp3_median_seconds": 14.664,
+      "filter_skymodel_delta_seconds_vs_baseline": 10.245,
+      "filter_skymodel_median_seconds": 119.811,
+      "shape": "1 worker x 60 threads, max_threads=60",
+      "task_count": 16,
+      "wall_delta_percent_vs_baseline": 13.3,
+      "wall_delta_seconds_vs_baseline": 40.772,
+      "wall_median_seconds": 347.278,
+      "wsclean_delta_seconds_vs_baseline": 26.438,
+      "wsclean_median_seconds": 113.504
+    },
+    "filter-workers-4x15": {
+      "command_median_seconds": 240.928,
+      "dask_gap_median_seconds": 75.6,
+      "dp3_delta_seconds_vs_baseline": -2.866,
+      "dp3_median_seconds": 5.364,
+      "filter_skymodel_delta_seconds_vs_baseline": -1.75,
+      "filter_skymodel_median_seconds": 107.816,
+      "shape": "4 workers x 15 threads, max_threads=15",
+      "task_count": 16,
+      "wall_delta_percent_vs_baseline": 5.1,
+      "wall_delta_seconds_vs_baseline": 15.622,
+      "wall_median_seconds": 322.129,
+      "wsclean_delta_seconds_vs_baseline": 17.183,
+      "wsclean_median_seconds": 104.249
+    }
+  }
+}

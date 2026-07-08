@@ -274,6 +274,8 @@ def _cluster_parset_overrides_from_args(args: argparse.Namespace) -> dict[str, o
     overrides = {}
     if args.max_threads is not None:
         overrides["max_threads"] = args.max_threads
+    if args.filter_skymodel_ncores is not None:
+        overrides["filter_skymodel_ncores"] = args.filter_skymodel_ncores
     return overrides
 
 
@@ -410,6 +412,14 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         "--max-threads",
         type=int,
         help="Override cluster.max_threads for external tool thread counts.",
+    )
+    parser.add_argument(
+        "--filter-skymodel-ncores",
+        type=int,
+        help=(
+            "Override cluster.filter_skymodel_ncores for PyBDSF/LSMTool "
+            "sky-model filtering. Defaults to the effective max_threads."
+        ),
     )
     parser.add_argument(
         "--command-profile",

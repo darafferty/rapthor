@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-07.
+Status snapshot: 2026-07-08.
 
 ## Goal
 
@@ -17,10 +17,11 @@ production architecture over unreleased compatibility shims.
 ## Current Position
 
 The architecture and science-equivalence work has moved from active migration
-to guarded scalability work. The next decision should be evidence-led: analyse
-the CI benchmark artifacts in `runs/benchmark-20260704-122100/`,
-`runs/benchmark-20260706-203026/`, and `runs/benchmark-20260707-153316/`
-before adding, reverting, or reshaping any more task boundaries.
+to guarded scalability work. The latest resource-profile benchmark in
+`runs/benchmark-20260707-191141/` has been analysed. It does not support
+changing the global worker/thread defaults: the current `2x30` resource shape
+remains the baseline, while the next measurable optimization is a targeted
+filter-skymodel-only resource control.
 
 Completed:
 
@@ -63,6 +64,10 @@ Completed:
 - Benchmark preview overhead is explained and guarded: generated CI benchmark
   parsets keep FITS and postage-stamp preview artifacts disabled, while demo
   parsets keep them enabled for visual dashboard inspection.
+- A non-default `filter_skymodel_ncores` resource control is wired through the
+  cluster parset, image operation payload, image execution payload, demo
+  runner, and benchmark profile runner. Its default preserves previous
+  behavior by resolving to `max_threads`.
 
 Keep these caveats visible:
 
@@ -83,31 +88,16 @@ Keep these caveats visible:
 
 Use this section as the active queue.
 
-1. **Benchmark and optimize the `filter_skymodel` image leaf command.**
-   The compact benchmark comparison is recorded in
-   `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`.
-   With preview overhead accounted for, the command logs show
-   `filter_skymodel` as the dominant image leaf command: about `110 s` total
-   across four image operations, compared with about `89 s` for WSClean. The
-   benchmark runner now has named resource profiles for this comparison. Run
-   the same `ci-benchmark` scenario with:
-
-   ```bash
-   scripts/dev/run_benchmark_baseline.py \
-     --scenario ci-benchmark \
-     --resource-profile baseline-2x30 \
-     --resource-profile filter-threads-15 \
-     --resource-profile filter-workers-4x15 \
-     --resource-profile filter-wide-1x60 \
-     --repetitions 3 \
-     --prepare-inputs
-   ```
-
-   The GitLab benchmark job is configured to run these profiles by default, so
-   trigger the manual benchmark job on the next pipeline or use a scheduled
-   benchmark run. Compare `filter_skymodel` command totals, wall time, Dask
-   gap, and WSClean timing before changing task boundaries or adding a
-   dedicated filter-skymodel thread option.
+1. **Run the targeted filter-skymodel-only benchmark profile.**
+   The profile benchmark is recorded in
+   `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.md`.
+   Keep the current `baseline-2x30` resource shape as the default. Do not adopt
+   `filter-wide-1x60`, `filter-workers-4x15`, or a global
+   `max_threads=15` change. The benchmark runner now includes
+   `filter-only-15`, which keeps WSClean, DP3, and the Dask worker shape at the
+   `2x30`, `max_threads=30` baseline while running `filter_skymodel` with
+   `filter_skymodel_ncores=15`. Trigger the manual CI benchmark job and compare
+   it against `baseline-2x30` before changing any defaults.
 
 2. **Keep the first scalability split for now, but treat it as an observability
    improvement rather than a proven speedup.**
@@ -140,6 +130,8 @@ Compact analysis:
 
 - `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`
 - `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.summary.json`
+- `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.md`
+- `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.summary.json`
 
 Latest raw artifacts:
 
@@ -158,6 +150,11 @@ Latest raw artifacts:
 - `runs/benchmark-20260707-153316/benchmark-results.json`
 - `runs/benchmark-20260707-153316/ci-benchmark/rep-*/benchmark-result.json`
 - `runs/benchmark-20260707-153316/ci-benchmark/rep-*/dask-performance-report.html`
+- `runs/benchmark-20260707-191141/benchmark-report.md`
+- `runs/benchmark-20260707-191141/benchmark-summary.json`
+- `runs/benchmark-20260707-191141/benchmark-results.json`
+- `runs/benchmark-20260707-191141/ci-benchmark-*/rep-*/benchmark-result.json`
+- `runs/benchmark-20260707-191141/ci-benchmark-*/rep-*/dask-performance-report.html`
 
 Headline comparison:
 
@@ -166,14 +163,25 @@ Headline comparison:
 | `20260704-122100` | unavailable in report | `482.894` | `220.940` | `12` | `image_sector_task` x4 | Original compact baseline in this plan. |
 | `20260706-203026` | `df67648f` | `305.320` | `70.480` | `12` | `image_sector_task` x4 | Large wall-time and scheduler-gap improvement with similar command time. |
 | `20260707-153316` | `eb0a4033` | `308.563` | `72.570` | `16` | `image_sector_prepare_task` x4 plus `image_sector_finalize_task` x4 | First visible split in Dask task groups; wall time remains close to 2026-07-06. |
+| `20260707-191141` | `32e64149` | `306.507` | `72.450` | `16` | Same split as July 7 baseline | Resource-profile baseline; still the best tested worker/thread shape. |
+
+Resource-profile result from `20260707-191141`:
+
+| Profile | Wall Median (s) | Delta vs Baseline | Command Median (s) | `filter_skymodel` (s) | WSClean (s) | Decision |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `baseline-2x30` | `306.507` | `0.000` | `228.392` | `109.566` | `87.066` | Keep as baseline. |
+| `filter-threads-15` | `305.529` | `-0.32%` | `227.387` | `105.187` | `93.289` | Wall-time neutral; do not globally lower `max_threads`. |
+| `filter-wide-1x60` | `347.278` | `+13.30%` | `271.584` | `119.811` | `113.504` | Reject. |
+| `filter-workers-4x15` | `322.129` | `+5.10%` | `240.928` | `107.816` | `104.249` | Reject. |
 
 Common benchmark shape:
 
 - Scenario: `ci-benchmark`
 - Repetitions: `3`
 - Return codes: `0, 0, 0`
-- Worker/thread shape: `2` workers, `60` threads
-- Command timing remains stable at about `230 s` median across runs
+- Historical baseline worker/thread shape: `2` workers, `60` total Dask
+  threads, with `max_threads=30`
+- Command timing remains stable at about `230 s` median for the baseline runs
 
 Latest command timing by name:
 
@@ -195,8 +203,8 @@ Resolved finding:
 
 Remaining questions:
 
-- What `filter_skymodel` `ncores` / Dask worker shape gives the best wall time
-  without over-subscribing CPU or memory?
+- Does a dedicated `filter_skymodel` `ncores` limit improve wall time when
+  WSClean, DP3, and Dask stay on the current `2x30` baseline?
 - Should `filter_skymodel` remain an isolated subprocess, become its own
   explicitly named task boundary, or receive explicit resource annotations?
 - Is wall time stable across the three repetitions, or is scheduler/runtime
@@ -206,9 +214,9 @@ Remaining questions:
 - Are image operation-minus-command gaps reduced after the split, or do they
   point to another boundary such as diagnostics, filtering, compression, cube
   generation, catalog extraction, or h5parm/product collection?
-- Does the 2-worker / 60-thread shape leave meaningful work idle, suggesting
-  better task granularity, or are the external tools already saturating the
-  available resources?
+- Does the `2x30` baseline leave meaningful work idle after the filter-only
+  resource hypothesis is tested, or are the external tools already saturating
+  the available resources?
 
 Benchmark before and after any task-boundary, scheduler, dependency, or
 performance-sensitive execution change.

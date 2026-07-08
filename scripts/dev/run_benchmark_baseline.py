@@ -12,7 +12,7 @@ import sys
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Sequence
+from typing import Optional, Sequence
 
 from rapthor.execution.benchmark_inputs import ensure_test_ms
 from rapthor.execution.benchmarking import (
@@ -59,6 +59,7 @@ class ResourceProfile:
     local_dask_workers: int
     cpus_per_task: int
     max_threads: int
+    filter_skymodel_ncores: Optional[int] = None
 
 
 RESOURCE_PROFILES = {
@@ -75,6 +76,16 @@ RESOURCE_PROFILES = {
         local_dask_workers=2,
         cpus_per_task=30,
         max_threads=15,
+    ),
+    "filter-only-15": ResourceProfile(
+        profile_id="filter-only-15",
+        description=(
+            "keep the current Dask and external-tool shape but run filter_skymodel with 15 cores"
+        ),
+        local_dask_workers=2,
+        cpus_per_task=30,
+        max_threads=30,
+        filter_skymodel_ncores=15,
     ),
     "filter-workers-4x15": ResourceProfile(
         profile_id="filter-workers-4x15",
@@ -139,6 +150,14 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Override cluster.max_threads for external tools in every selected scenario.",
     )
     parser.add_argument(
+        "--filter-skymodel-ncores",
+        type=int,
+        help=(
+            "Override cluster.filter_skymodel_ncores for every selected scenario. "
+            "Defaults to the effective cluster.max_threads."
+        ),
+    )
+    parser.add_argument(
         "--resource-profile",
         action="append",
         choices=sorted(RESOURCE_PROFILES),
@@ -193,6 +212,8 @@ def _scenario_with_runtime_overrides(scenario, args: argparse.Namespace):
         overrides["cpus_per_task"] = args.cpus_per_task
     if args.max_threads is not None:
         overrides["max_threads"] = args.max_threads
+    if args.filter_skymodel_ncores is not None:
+        overrides["filter_skymodel_ncores"] = args.filter_skymodel_ncores
     return replace(scenario, **overrides) if overrides else scenario
 
 
@@ -204,6 +225,7 @@ def _scenario_with_resource_profile(scenario, profile: ResourceProfile):
         local_dask_workers=profile.local_dask_workers,
         cpus_per_task=profile.cpus_per_task,
         max_threads=profile.max_threads,
+        filter_skymodel_ncores=profile.filter_skymodel_ncores,
     )
 
 
@@ -336,7 +358,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(
                 f"{profile.profile_id}: {profile.description} "
                 f"({profile.local_dask_workers} {worker_label}, "
-                f"{profile.cpus_per_task} threads/worker, max_threads={profile.max_threads})"
+                f"{profile.cpus_per_task} threads/worker, max_threads={profile.max_threads}, "
+                f"filter_skymodel_ncores={profile.filter_skymodel_ncores or 'default'})"
             )
         return 0
 

@@ -38,6 +38,7 @@ class BenchmarkScenario:
     local_dask_workers: int
     cpus_per_task: int
     max_threads: int
+    filter_skymodel_ncores: Optional[int] = None
     command_profile: str = "time"
 
     def command(self, repo_root: Path, run_dir: Path) -> list[str]:
@@ -56,6 +57,11 @@ class BenchmarkScenario:
             str(self.cpus_per_task),
             "--max-threads",
             str(self.max_threads),
+            *(
+                []
+                if self.filter_skymodel_ncores is None
+                else ["--filter-skymodel-ncores", str(self.filter_skymodel_ncores)]
+            ),
             "--command-profile",
             self.command_profile,
             "--dask-performance-report",

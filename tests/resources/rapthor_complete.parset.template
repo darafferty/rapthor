@@ -117,6 +117,7 @@ cpus_per_task = 40
 mem_per_node_gb = 256
 max_cores = 32
 max_threads = 64
+filter_skymodel_ncores = 20
 deconvolution_threads = 16
 parallel_gridding_tasks = 16
 dir_local = /tmp

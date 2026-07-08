@@ -174,6 +174,8 @@ def test_execution_config_from_args_overrides_local_dask_resources(tmp_path):
             "30",
             "--max-threads",
             "30",
+            "--filter-skymodel-ncores",
+            "15",
             "--command-profile",
             "time",
             str(parset_path),
@@ -187,7 +189,10 @@ def test_execution_config_from_args_overrides_local_dask_resources(tmp_path):
     assert config.local_dask_worker_count == 3
     assert config.cpus_per_task == 30
     assert config.command_profile == "time"
-    assert module._cluster_parset_overrides_from_args(args) == {"max_threads": 30}
+    assert module._cluster_parset_overrides_from_args(args) == {
+        "filter_skymodel_ncores": 15,
+        "max_threads": 30,
+    }
 
 
 def test_demo_main_passes_benchmark_resources_to_dask_and_runtime_parset(monkeypatch, tmp_path):
@@ -207,6 +212,7 @@ def test_demo_main_passes_benchmark_resources_to_dask_and_runtime_parset(monkeyp
                 "local_dask_workers = 0",
                 "cpus_per_task = 0",
                 "max_threads = 0",
+                "filter_skymodel_ncores = 0",
                 "prefect_command_profile = auto",
             ]
         ),
@@ -252,6 +258,8 @@ def test_demo_main_passes_benchmark_resources_to_dask_and_runtime_parset(monkeyp
             "30",
             "--max-threads",
             "30",
+            "--filter-skymodel-ncores",
+            "15",
             "--command-profile",
             "time",
             "--no-keep-server",
@@ -286,6 +294,7 @@ def test_demo_main_passes_benchmark_resources_to_dask_and_runtime_parset(monkeyp
     assert runtime_cluster["local_dask_workers"] == "2"
     assert runtime_cluster["cpus_per_task"] == "30"
     assert runtime_cluster["max_threads"] == "30"
+    assert runtime_cluster["filter_skymodel_ncores"] == "15"
     assert runtime_cluster["prefect_command_profile"] == "time"
 
 

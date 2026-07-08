@@ -387,6 +387,7 @@ mem_per_node_gb = 0
 # = all)
 max_cores = 0
 max_threads = 0
+filter_skymodel_ncores = 0
 
 # Number of threads to use by WSClean during deconvolution (default = 0 = 2/5
 # of max_threads, but not more than 14). Higher values will speed up imaging at

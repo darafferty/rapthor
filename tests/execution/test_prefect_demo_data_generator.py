@@ -82,6 +82,7 @@ def test_generated_benchmark_parset_uses_runtime_sized_thread_defaults(tmp_path)
     assert parser["cluster"]["cpus_per_task"] == "0"
     assert parser["cluster"]["max_cores"] == "0"
     assert parser["cluster"]["max_threads"] == "0"
+    assert parser["cluster"]["filter_skymodel_ncores"] == "0"
     assert parser["cluster"]["deconvolution_threads"] == "0"
     assert parser["cluster"]["parallel_gridding_tasks"] == "0"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "False"

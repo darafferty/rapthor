@@ -154,6 +154,19 @@ def test_invalid_idg_mode(parset_scenario):
         parset_read(str(parset_scenario.parset))
 
 
+def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
+    _append_to_parset(
+        parset_scenario.parset,
+        "\n[cluster]\nfilter_skymodel_ncores = -1\n",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="filter_skymodel_ncores.*greater than 0",
+    ):
+        parset_read(str(parset_scenario.parset))
+
+
 def test_unequal_sector_list_lengths(parset_scenario):
     _append_to_parset(parset_scenario.parset, "\n[imaging]\nsector_center_ra_list = [1]\n")
 

@@ -425,6 +425,9 @@ def image_payload_from_inputs(
                 "source_finder": str(input_parms["source_finder"]),
                 "apply_time_frequency_smearing": bool(input_parms["apply_time_frequency_smearing"]),
                 "max_threads": int(input_parms["max_threads"]),
+                "filter_skymodel_ncores": int(
+                    input_parms.get("filter_skymodel_ncores", input_parms["max_threads"])
+                ),
                 "deconvolution_threads": int(input_parms["deconvolution_threads"]),
                 "mpi_nnodes": (
                     None if not use_mpi else int(input_parms["mpi_nnodes"][sector_index])

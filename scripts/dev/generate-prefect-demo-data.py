@@ -412,6 +412,7 @@ def write_parset(
     cpus_per_task: int = 4,
     max_cores: int = 4,
     max_threads: int = 4,
+    filter_skymodel_ncores: int = 0,
     deconvolution_threads: int = 2,
     parallel_gridding_tasks: int = 1,
     publish_fits_previews: bool = True,
@@ -501,6 +502,7 @@ def write_parset(
             mem_per_node_gb = 0
             max_cores = {max_cores}
             max_threads = {max_threads}
+            filter_skymodel_ncores = {filter_skymodel_ncores}
             deconvolution_threads = {deconvolution_threads}
             parallel_gridding_tasks = {parallel_gridding_tasks}
             local_scratch_dir =
@@ -542,6 +544,7 @@ def write_benchmark_parset(
         cpus_per_task=0,
         max_cores=0,
         max_threads=0,
+        filter_skymodel_ncores=0,
         deconvolution_threads=0,
         parallel_gridding_tasks=0,
         publish_fits_previews=False,

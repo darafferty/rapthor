@@ -105,7 +105,7 @@ def test_benchmark_runner_expands_resource_profiles_after_runtime_overrides():
             "--max-threads",
             "30",
             "--resource-profile",
-            "filter-threads-15",
+            "filter-only-15",
             "--resource-profile",
             "filter-workers-4x15",
         ]
@@ -114,19 +114,28 @@ def test_benchmark_runner_expands_resource_profiles_after_runtime_overrides():
     scenarios = module._selected_scenarios(benchmark_scenarios_by_id(), args)
 
     assert [scenario.scenario_id for scenario in scenarios] == [
-        "ci-benchmark-filter-threads-15",
+        "ci-benchmark-filter-only-15",
         "ci-benchmark-filter-workers-4x15",
     ]
     assert [
-        (scenario.local_dask_workers, scenario.cpus_per_task, scenario.max_threads)
+        (
+            scenario.local_dask_workers,
+            scenario.cpus_per_task,
+            scenario.max_threads,
+            scenario.filter_skymodel_ncores,
+        )
         for scenario in scenarios
-    ] == [(2, 30, 15), (4, 15, 15)]
+    ] == [(2, 30, 30, 15), (4, 15, 15, None)]
+
+    command = scenarios[0].command(Path("/repo"), Path("/runs/benchmark"))
+    assert command[command.index("--max-threads") + 1] == "30"
+    assert command[command.index("--filter-skymodel-ncores") + 1] == "15"
 
 
 def test_benchmark_resource_profile_scenarios_still_use_generated_inputs():
     module = load_benchmark_script()
     args = module._parse_args(
-        ["--scenario", "ci-benchmark", "--resource-profile", "filter-threads-15"]
+        ["--scenario", "ci-benchmark", "--resource-profile", "filter-only-15"]
     )
     scenario = module._selected_scenarios(benchmark_scenarios_by_id(), args)[0]
 

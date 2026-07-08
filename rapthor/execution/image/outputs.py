@@ -227,7 +227,7 @@ def filter_skymodel_products(
     threshpix = float(sector["threshpix"])
     filter_by_mask = bool(sector["filter_by_mask"])
     source_finder = str(sector["source_finder"])
-    ncores = int(sector["max_threads"])
+    ncores = int(sector.get("filter_skymodel_ncores", sector["max_threads"]))
 
     if _filter_skymodel_needs_subprocess(source_finder, ncores):
         config = execution_config or ExecutionConfig(task_runner="sync")

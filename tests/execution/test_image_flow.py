@@ -663,6 +663,7 @@ def _image_input_parms():
         "apply_time_frequency_smearing": False,
         "interval": [0, 10],
         "max_threads": 4,
+        "filter_skymodel_ncores": 4,
         "deconvolution_threads": 2,
         "parallel_gridding_tasks": [3],
         "save_filtered_model_image": False,
@@ -1365,6 +1366,7 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
     assert sector["residual_path"] is None
     assert sector["mask_path"] == str(tmp_path / "sector_1_mask.fits")
     assert sector["max_threads"] == 4
+    assert sector["filter_skymodel_ncores"] == 4
     assert sector["deconvolution_threads"] == 2
     assert sector["prepare_tasks"][0] == {
         "msin": "/data/obs_0.ms",
@@ -1885,10 +1887,12 @@ def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
     tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(image_outputs_module, "_current_process_is_daemon", lambda: True)
+    input_parms = _image_input_parms()
+    input_parms["filter_skymodel_ncores"] = 2
 
     outputs = run_flow_for_test(
         image_flow,
-        image_payload_from_inputs(_image_input_parms(), tmp_path),
+        image_payload_from_inputs(input_parms, tmp_path),
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
@@ -1916,7 +1920,7 @@ def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
         str(tmp_path / "sector_1"),
         "/data/sector_1.vertices",
     ]
-    assert "--ncores=4" in filter_command
+    assert "--ncores=2" in filter_command
     assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
 
@@ -1964,6 +1968,7 @@ def test_run_image_flow_allows_missing_source_filtering_mask(
 
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
     payload["sectors"][0]["max_threads"] = 1
+    payload["sectors"][0]["filter_skymodel_ncores"] = 1
 
     outputs = run_flow_for_test(
         image_flow,
