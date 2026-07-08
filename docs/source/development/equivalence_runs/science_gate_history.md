@@ -98,7 +98,16 @@ Known target-environment or reference caveats:
 Possible master bugs or legacy limitations to investigate separately:
 
 - slow-gain h5parm combination logs a broadcasting error but the master run
-  still returns success and leaves final field solutions without amplitude
+  still returns success and leaves final field solutions without amplitude.
+  This appears to be product-shape dependent rather than universal: the
+  historical ICAL benchmark run in `runs/2026-07-02-ical-1node/` used legacy
+  Rapthor `2.2.dev117+g01a81e1`, ran `combine_h5parms.py ... p1p2a2_diagonal`
+  for cycles 3-7, and completed successfully because the slow-gain h5parms had
+  a full frequency axis, for example `2 times, 26 freqs, 68 ants, 16 dirs, 2
+  pols` in `calibrate_3`. The failing saved-reference case instead hit a
+  singleton-axis broadcast from `(24,1,8,5,2)` into `(24,8,5,2)`. Reproduce and
+  classify the exact trigger, likely tied to dataset/solve grid/frequency-step
+  shape, before treating all master slow-gain runs as affected.
 - previous DD fast-phase seeds are reused across changed facet/direction sets
   without a direction-compatibility guard
 - previous DI full-Jones products can be applied in later DD-only imaging after

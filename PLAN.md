@@ -465,7 +465,12 @@ Possible bugs on the master branch to investigate:
   `field-solutions.h5` lacked `sol000/amplitude000`, while the current branch
   preserved it. Verify whether master should fail loudly, whether
   `p1p2a2_diagonal` should handle the product shapes, or whether this should
-  remain a documented master reference limitation.
+  remain a documented master reference limitation. The historical ICAL
+  benchmark in `runs/2026-07-02-ical-1node/` used legacy Rapthor
+  `2.2.dev117+g01a81e1`, ran the same `p1p2a2_diagonal` combine step for
+  cycles 3-7, and completed successfully because its slow-gain h5parms had a
+  full frequency axis. Treat the issue as shape/configuration-triggered rather
+  than universal to every master slow-gain run.
 - Previous-cycle DD initial-solution h5parms are carried across calibration
   patch/facet changes without direction compatibility checks. In the 2026-07-05
   phase-only master reference run, cycle 1 used `[Patch_rich_*]`, cycle 2 used
