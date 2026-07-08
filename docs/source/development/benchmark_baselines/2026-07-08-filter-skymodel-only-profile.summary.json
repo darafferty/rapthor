@@ -1,0 +1,32 @@
+{
+  "source_run": "runs/benchmark-20260708-073531",
+  "commit": "2a86f8ac0293e016f3fcd59e618e4452bc57532f",
+  "ci_job": "1833030",
+  "pipeline": "201045",
+  "decision": "Keep the global 2x30 max_threads=30 baseline. Treat filter_skymodel_ncores=15 as promising but re-run after splitting filter_skymodel into its own Prefect task before changing defaults.",
+  "profiles": {
+    "baseline-2x30": {
+      "wall_median_seconds": 311.315,
+      "wall_min_seconds": 307.44,
+      "wall_max_seconds": 359.387,
+      "command_median_seconds": 230.657,
+      "dask_gap_median_seconds": 73.03,
+      "task_count": 16,
+      "filter_skymodel_median_seconds": 109.771,
+      "wsclean_median_seconds": 89.082
+    },
+    "filter-only-15": {
+      "wall_median_seconds": 300.479,
+      "wall_min_seconds": 299.678,
+      "wall_max_seconds": 303.515,
+      "wall_delta_seconds": -10.836,
+      "wall_delta_percent": -3.48,
+      "command_median_seconds": 224.181,
+      "dask_gap_median_seconds": 71.41,
+      "task_count": 16,
+      "filter_skymodel_median_seconds": 105.399,
+      "wsclean_median_seconds": 87.17
+    }
+  },
+  "next_step": "Split filter_skymodel into its own image-sector Prefect task and rerun baseline-2x30 versus filter-only-15."
+}
