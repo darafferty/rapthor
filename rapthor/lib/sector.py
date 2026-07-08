@@ -1,6 +1,7 @@
 """
 Definition of the Sector class that holds parameters for an image or predict sector
 """
+
 import copy
 import logging
 import os
@@ -9,13 +10,13 @@ import astropy.units as u
 import lsmtool
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
+from lsmtool import facet
+from lsmtool.operations_lib import normalize_ra_dec
 from matplotlib import patches
 from shapely.geometry import Polygon
 
 from rapthor.lib import cluster
 from rapthor.lib import miscellaneous as misc
-from lsmtool.operations_lib import normalize_ra_dec
-from lsmtool import facet
 
 
 class Sector(object):
@@ -38,23 +39,23 @@ class Sector(object):
     field : Field object
         Field object
     """
+
     def __init__(self, name, ra, dec, width_ra, width_dec, field):
         self.name = name
-        self.log = logging.getLogger(f'rapthor:{self.name}')
+        self.log = logging.getLogger(f"rapthor:{self.name}")
         if type(ra) is str:
-            ra = Angle(ra).to('deg').value
+            ra = Angle(ra).to("deg").value
         if type(dec) is str:
-            dec = Angle(dec).to('deg').value
+            dec = Angle(dec).to("deg").value
         self.ra, self.dec = normalize_ra_dec(ra, dec)
         self.width_ra = width_ra
         self.width_dec = width_dec
         self.field = field
-        self.vertices_file = os.path.join(field.working_dir, 'regions',
-                                          f'{self.name}_vertices.npy')
+        self.vertices_file = os.path.join(field.working_dir, "regions", f"{self.name}_vertices.npy")
         self.region_file = None
         self.I_image_file_true_sky = None  # set by the Image operation
         self.I_image_file_apparent_sky = None  # set by the Image operation
-        self.I_mask_file = None   # set by the Image operation
+        self.I_mask_file = None  # set by the Image operation
         self.image_skymodel_file_apparent_sky = None  # set by the Image operation
         self.image_skymodel_file_true_sky = None  # set by the Image operation
         self.max_wsclean_nchannels = None  # set by the Image operation
@@ -74,8 +75,8 @@ class Sector(object):
         for obs in field.observations:
             obs.log = None  # deepcopy cannot copy the log object
             cobs = copy.deepcopy(obs)
-            obs.log = logging.getLogger(f'rapthor:{obs.name}')
-            cobs.log = logging.getLogger(f'rapthor:{cobs.name}')
+            obs.log = logging.getLogger(f"rapthor:{obs.name}")
+            cobs.log = logging.getLogger(f"rapthor:{cobs.name}")
             self.observations.append(cobs)
 
         # Define the initial sector polygon vertices
@@ -88,8 +89,13 @@ class Sector(object):
         for obs in self.observations:
             obs.set_prediction_parameters(self.name, self.patches)
 
-    def set_imaging_parameters(self, do_multiscale=False, recalculate_imsize=False,
-                               imaging_parameters=None, preapply_dde_solutions=False):
+    def set_imaging_parameters(
+        self,
+        do_multiscale=False,
+        recalculate_imsize=False,
+        imaging_parameters=None,
+        preapply_dde_solutions=False,
+    ):
         """
         Sets the parameters needed for the imaging operation
 
@@ -121,20 +127,20 @@ class Sector(object):
             solutions are preapplied before imaging is done
         """
         if imaging_parameters is None:
-            imaging_parameters = self.field.parset['imaging_specific']
-        self.cellsize_arcsec = imaging_parameters['cellsize_arcsec']
+            imaging_parameters = self.field.parset["imaging_specific"]
+        self.cellsize_arcsec = imaging_parameters["cellsize_arcsec"]
         self.cellsize_deg = self.cellsize_arcsec / 3600.0
-        self.robust = imaging_parameters['robust']
-        self.taper_arcsec = imaging_parameters['taper_arcsec']
-        self.local_rms_strength = imaging_parameters['local_rms_strength']
-        self.local_rms_window = imaging_parameters['local_rms_window']
-        self.local_rms_method = imaging_parameters['local_rms_method']
-        self.min_uv_lambda = imaging_parameters['min_uv_lambda']
-        self.max_uv_lambda = imaging_parameters['max_uv_lambda']
-        self.mgain = imaging_parameters['mgain']
-        self.idg_mode = imaging_parameters['idg_mode']
-        self.mem_limit_gb = imaging_parameters['mem_gb']
-        slurm_limit_gb = self.field.parset['cluster_specific']['mem_per_node_gb']
+        self.robust = imaging_parameters["robust"]
+        self.taper_arcsec = imaging_parameters["taper_arcsec"]
+        self.local_rms_strength = imaging_parameters["local_rms_strength"]
+        self.local_rms_window = imaging_parameters["local_rms_window"]
+        self.local_rms_method = imaging_parameters["local_rms_method"]
+        self.min_uv_lambda = imaging_parameters["min_uv_lambda"]
+        self.max_uv_lambda = imaging_parameters["max_uv_lambda"]
+        self.mgain = imaging_parameters["mgain"]
+        self.idg_mode = imaging_parameters["idg_mode"]
+        self.mem_limit_gb = imaging_parameters["mem_gb"]
+        slurm_limit_gb = self.field.parset["cluster_specific"]["mem_per_node_gb"]
         if slurm_limit_gb > 0:
             # Obey the Slurm limit if it's set and is more restrictive than the
             # WSClean-specific limit
@@ -148,10 +154,10 @@ class Sector(object):
         if self.mem_limit_gb == 0:
             # If no limit is set at this point, use the memory of the current machine
             self.mem_limit_gb = cluster.get_available_memory()
-        self.reweight = imaging_parameters['reweight']
+        self.reweight = imaging_parameters["reweight"]
         self.target_fast_timestep = self.field.fast_timestep_sec
         self.target_slow_timstep = self.field.slow_timestep_sec
-        self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
+        self.target_slow_freqstep = self.field.parset["calibration_specific"]["slow_freqstep_hz"]
         self.apply_screens = self.field.apply_screens
 
         # Set image size based on current sector polygon
@@ -159,8 +165,10 @@ class Sector(object):
             xmin, ymin, xmax, ymax = self.poly.bounds
             self.width_ra = (xmax - xmin) * self.field.wcs_pixel_scale  # deg
             self.width_dec = (ymax - ymin) * self.field.wcs_pixel_scale  # deg
-            self.imsize = [int(self.width_ra / self.cellsize_deg),
-                           int(self.width_dec / self.cellsize_deg)]
+            self.imsize = [
+                int(self.width_ra / self.cellsize_deg),
+                int(self.width_dec / self.cellsize_deg),
+            ]
 
             if self.apply_screens:
                 # IDG does not yet support rectangular images, so ensure image
@@ -185,18 +193,20 @@ class Sector(object):
                 self.imsize[1] += 1
 
         self.wsclean_imsize = f"'{self.imsize[0]} {self.imsize[1]}'"
-        self.log.debug('Image size is %s x %s pixels', *self.imsize)
+        self.log.debug("Image size is %s x %s pixels", *self.imsize)
 
         # Set the direction-dependent PSF grid (defined as [# in RA, # in Dec]):
         #   [0, 0] => scale automatically with image size
         #   [1, 1] => direction-independent
         #   [X, Y] => user-defined
-        self.dd_psf_grid = imaging_parameters['dd_psf_grid']
+        self.dd_psf_grid = imaging_parameters["dd_psf_grid"]
         if self.dd_psf_grid == [0, 0]:
             # Set the grid based on the image size, with ~ 1 PSF per square deg
             # of imaged area
-            self.dd_psf_grid = [max(1, int(np.round(self.width_ra))),
-                                max(1, int(np.round(self.width_dec)))]
+            self.dd_psf_grid = [
+                max(1, int(np.round(self.width_ra))),
+                max(1, int(np.round(self.width_dec))),
+            ]
 
         # Set number of output channels to get the requested bandwidth per channel
         target_bandwidth = self.channel_width_hz
@@ -208,7 +218,9 @@ class Sector(object):
             obs_bandwidth = obs.numchannels * obs.channelwidth
             if obs_bandwidth > tot_bandwidth:
                 tot_bandwidth = obs_bandwidth
-        self.wsclean_nchannels = max(min_nchannels, min(max_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth))))
+        self.wsclean_nchannels = max(
+            min_nchannels, min(max_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth)))
+        )
         if self.max_wsclean_nchannels is not None:
             self.wsclean_nchannels = min(self.wsclean_nchannels, self.max_wsclean_nchannels)
 
@@ -216,7 +228,7 @@ class Sector(object):
         # number of channels, up to a maximum of 4 (and the fit spectral order to
         # one less)
         self.wsclean_deconvolution_channels = min(4, self.wsclean_nchannels)
-        self.wsclean_spectral_poly_order = max(1, self.wsclean_deconvolution_channels-1)
+        self.wsclean_spectral_poly_order = max(1, self.wsclean_deconvolution_channels - 1)
 
         # Set number of iterations. We scale the number of iterations depending on the
         # integration time and the distance of the sector center to the phase center, to
@@ -228,9 +240,11 @@ class Sector(object):
             total_time_hr += (obs.endtime - obs.starttime) / 3600.0
         scaling_factor = np.sqrt(float(tot_bandwidth / 2e6) * total_time_hr / 16.0)
         min_dist_deg, max_dist_deg = self.get_distance_to_obs_center()
-        sens_factor = np.e**(-4.0 * np.log(2.0) * min_dist_deg**2 / self.field.fwhm_deg**2)
+        sens_factor = np.e ** (-4.0 * np.log(2.0) * min_dist_deg**2 / self.field.fwhm_deg**2)
         self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
-        self.wsclean_nmiter = min(self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor))))
+        self.wsclean_nmiter = min(
+            self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor)))
+        )
         if self.field.peel_bright_sources:
             # If bright sources are peeled, reduce nmiter by 25% (since they no longer
             # need to be cleaned)
@@ -240,25 +254,33 @@ class Sector(object):
         # Set multiscale clean
         self.multiscale = do_multiscale
         if self.multiscale:
-            self.wsclean_niter = int(self.wsclean_niter/1.5)  # fewer iterations are needed
+            self.wsclean_niter = int(self.wsclean_niter / 1.5)  # fewer iterations are needed
             self.log.debug("Will do multiscale cleaning.")
 
         # Set the observation-specific parameters
-        max_peak_smearing = imaging_parameters['max_peak_smearing']
+        max_peak_smearing = imaging_parameters["max_peak_smearing"]
         for obs in self.observations:
             # Set imaging parameters
-            obs.set_imaging_parameters(self.name, self.cellsize_arcsec, max_peak_smearing,
-                                       self.width_ra, self.width_dec,
-                                       self.target_fast_timestep, self.target_slow_timstep,
-                                       self.target_slow_freqstep, preapply_dde_solutions)
+            obs.set_imaging_parameters(
+                self.name,
+                self.cellsize_arcsec,
+                max_peak_smearing,
+                self.width_ra,
+                self.width_dec,
+                self.target_fast_timestep,
+                self.target_slow_timstep,
+                self.target_slow_freqstep,
+                preapply_dde_solutions,
+            )
 
         # Set BL-dependent averaging parameters
         do_bl_averaging = False  # does not yet work with IDG
         if do_bl_averaging:
-            timestep_sec = (self.observations[0].timepersample *
-                            self.observations[0].parameters['image_timestep'])
-            self.wsclean_nwavelengths = self.get_nwavelengths(self.cellsize_deg,
-                                                              timestep_sec)
+            timestep_sec = (
+                self.observations[0].timepersample
+                * self.observations[0].parameters["image_timestep"]
+            )
+            self.wsclean_nwavelengths = self.get_nwavelengths(self.cellsize_deg, timestep_sec)
         else:
             self.wsclean_nwavelengths = 0
 
@@ -282,8 +304,9 @@ class Sector(object):
 
         """
         max_baseline = 1 / (3 * cellsize_deg * np.pi / 180)
-        wsclean_nwavelengths_time = int(max_baseline * 2*np.pi * timestep_sec /
-                                        (24 * 60 * 60) / 4)
+        wsclean_nwavelengths_time = int(
+            max_baseline * 2 * np.pi * timestep_sec / (24 * 60 * 60) / 4
+        )
         return wsclean_nwavelengths_time
 
     def make_skymodel(self, index):
@@ -297,9 +320,9 @@ class Sector(object):
         """
         # First check whether sky model already exists due to a previous run and attempt
         # to load it if so
-        dst_dir = os.path.join(self.field.working_dir, 'skymodels', f'predict_{index}')
+        dst_dir = os.path.join(self.field.working_dir, "skymodels", f"predict_{index}")
         os.makedirs(dst_dir, exist_ok=True)
-        self.predict_skymodel_file = os.path.join(dst_dir, f'{self.name}_predict_skymodel.txt')
+        self.predict_skymodel_file = os.path.join(dst_dir, f"{self.name}_predict_skymodel.txt")
         if os.path.exists(self.predict_skymodel_file):
             skymodel = lsmtool.load(str(self.predict_skymodel_file))
         else:
@@ -316,12 +339,14 @@ class Sector(object):
 
             # Remove the bright sources from the sky model if they will be predicted and
             # subtracted separately (so that they aren't subtracted twice)
-            if (self.field.peel_bright_sources and
-                    not self.is_outlier and
-                    not self.is_bright_source and
-                    not self.is_predict):
-                source_names = skymodel.getColValues('Name')
-                bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
+            if (
+                self.field.peel_bright_sources
+                and not self.is_outlier
+                and not self.is_bright_source
+                and not self.is_predict
+            ):
+                source_names = skymodel.getColValues("Name")
+                bright_source_names = self.field.bright_source_skymodel.getColValues("Name")
                 matching_ind = []
                 for i, sn in enumerate(source_names):
                     if sn in bright_source_names:
@@ -335,42 +360,48 @@ class Sector(object):
             else:
                 # No sources, so just make a dummy sky model with single,
                 # very faint source at center
-                dummylines = ["Format = Name, Type, Patch, Ra, Dec, I, SpectralIndex, LogarithmicSI, "
-                              "ReferenceFrequency='100000000.0', MajorAxis, MinorAxis, Orientation\n"]
+                dummylines = [
+                    "Format = Name, Type, Patch, Ra, Dec, I, SpectralIndex, LogarithmicSI, "
+                    "ReferenceFrequency='100000000.0', MajorAxis, MinorAxis, Orientation\n"
+                ]
                 coord_strings = lsmtool.utils.format_coordinates(self.ra, self.dec, precision=6)
                 patch = self.calibration_skymodel.getPatchNames()[0]
-                dummylines.append(f',,{patch},{coord_strings[0]},{coord_strings[1]}\n')
-                dummylines.append(f's0c0,POINT,{patch},{coord_strings[0]},{coord_strings[1]},0.00000001,'
-                                  '[0.0,0.0],false,100000000.0,,,\n')
-                with open(self.predict_skymodel_file, 'w') as f:
+                dummylines.append(f",,{patch},{coord_strings[0]},{coord_strings[1]}\n")
+                dummylines.append(
+                    f"s0c0,POINT,{patch},{coord_strings[0]},{coord_strings[1]},0.00000001,"
+                    "[0.0,0.0],false,100000000.0,,,\n"
+                )
+                with open(self.predict_skymodel_file, "w") as f:
                     f.writelines(dummylines)
                 skymodel = lsmtool.load(str(self.predict_skymodel_file))
 
         # Save list of patches (directions) in the format written by DDECal in the h5parm
-        self.patches = [f'[{p}]' for p in skymodel.getPatchNames()]
+        self.patches = [f"[{p}]" for p in skymodel.getPatchNames()]
 
         # Find nearest patch to flux-weighted center of the sector sky model
         if not self.is_outlier and not self.is_bright_source and not self.is_predict:
             tmp_skymodel = skymodel.copy()
-            tmp_skymodel.group('single')
-            ra, dec = tmp_skymodel.getPatchPositions(method='wmean', asArray=True)
+            tmp_skymodel.group("single")
+            ra, dec = tmp_skymodel.getPatchPositions(method="wmean", asArray=True)
             patch_dist = skymodel.getDistance(ra[0], dec[0], byPatch=True).tolist()
             patch_names = skymodel.getPatchNames()
             self.central_patch = patch_names[patch_dist.index(min(patch_dist))]
 
             # Filter the field source sky model and store source sizes
-            all_source_names = self.field.source_skymodel.getColValues('Name').tolist()
-            source_names = skymodel.getColValues('Name')
+            all_source_names = self.field.source_skymodel.getColValues("Name").tolist()
+            source_names = skymodel.getColValues("Name")
             if len(source_names) == 1 and source_names[0] not in all_source_names:
                 # This occurs when a dummy sky model was made above, so skip the size
                 # determination below
                 source_skymodel = []
             else:
-                in_sector = np.array([all_source_names.index(sn) for sn in source_names if sn in all_source_names])
+                in_sector = np.array(
+                    [all_source_names.index(sn) for sn in source_names if sn in all_source_names]
+                )
                 source_skymodel = self.field.source_skymodel.copy()
                 source_skymodel.select(in_sector)
             if len(source_skymodel) > 0:
-                self.source_sizes = source_skymodel.getPatchSizes(units='degree')
+                self.source_sizes = source_skymodel.getPatchSizes(units="degree")
             else:
                 self.source_sizes = [0.0]
 
@@ -424,9 +455,13 @@ class Sector(object):
         dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
         x0 = x_sector_pixels - ra_width_pix / 2.0
         y0 = y_sector_pixels - dec_width_pix / 2.0
-        poly_verts = [(x0, y0), (x0, y0+dec_width_pix),
-                      (x0+ra_width_pix, y0+dec_width_pix),
-                      (x0+ra_width_pix, y0), (x0, y0)]
+        poly_verts = [
+            (x0, y0),
+            (x0, y0 + dec_width_pix),
+            (x0 + ra_width_pix, y0 + dec_width_pix),
+            (x0 + ra_width_pix, y0),
+            (x0, y0),
+        ]
         poly = Polygon(poly_verts)
 
         # Save initial polygon, copy of initial polygon (which potentially will be
@@ -434,16 +469,16 @@ class Sector(object):
         # (which includes the padding done by WSClean)
         self.initial_poly = poly
         self.poly = Polygon(poly)
-        padding_pix = dec_width_pix*(self.wsclean_image_padding - 1.0)
+        padding_pix = dec_width_pix * (self.wsclean_image_padding - 1.0)
         self.poly_padded = self.poly.buffer(padding_pix)
 
     def get_vertices_radec(self):
         """
         Return the vertices as RA, Dec for the sector boundary
         """
-        return self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
-                                            self.poly.exterior.coords.xy[1],
-                                            misc.WCS_ORIGIN)
+        return self.field.wcs.wcs_pix2world(
+            self.poly.exterior.coords.xy[0], self.poly.exterior.coords.xy[1], misc.WCS_ORIGIN
+        )
 
     def make_vertices_file(self):
         """
@@ -452,7 +487,7 @@ class Sector(object):
         vertices = self.get_vertices_radec()
         np.save(self.vertices_file, np.transpose(vertices), allow_pickle=False)
 
-    def make_region_file(self, outputfile, region_format='ds9'):
+    def make_region_file(self, outputfile, region_format="ds9"):
         """
         Make a ds9 or CASA region file for the sector boundary
 
@@ -465,34 +500,38 @@ class Sector(object):
         """
         vertices = self.get_vertices_radec()
 
-        if region_format == 'casa':
-            lines = ['#CRTFv0\n\n']
+        if region_format == "casa":
+            lines = ["#CRTFv0\n\n"]
             xylist = []
             RAs = vertices[0][0:-1]  # trim last point, as it is a repeat of the first
             Decs = vertices[1][0:-1]
             for x, y in zip(RAs, Decs):
-                xylist.append(f'[{x}deg, {y}deg]')
-            lines.append(f'poly[{", ".join(xylist)}]\n')
+                xylist.append(f"[{x}deg, {y}deg]")
+            lines.append(f"poly[{', '.join(xylist)}]\n")
 
-            with open(outputfile, 'w') as f:
+            with open(outputfile, "w") as f:
                 f.writelines(lines)
-        elif region_format == 'ds9':
+        elif region_format == "ds9":
             lines = []
-            lines.append('# Region file format: DS9 version 4.0\nglobal color=green '
-                         'font="helvetica 10 normal" select=1 highlite=1 edit=1 '
-                         'move=1 delete=1 include=1 fixed=0 source=1\nfk5\n')
+            lines.append(
+                "# Region file format: DS9 version 4.0\nglobal color=green "
+                'font="helvetica 10 normal" select=1 highlite=1 edit=1 '
+                "move=1 delete=1 include=1 fixed=0 source=1\nfk5\n"
+            )
             xylist = []
             RAs = vertices[0]
             Decs = vertices[1]
             for x, y in zip(RAs, Decs):
-                xylist.append(f'{x}, {y}')
-            lines.append(f'polygon({", ".join(xylist)})\n')
-            lines.append(f'point({self.ra}, {self.dec}) # point=cross width=2 text={{{self.name}}}\n')
+                xylist.append(f"{x}, {y}")
+            lines.append(f"polygon({', '.join(xylist)})\n")
+            lines.append(
+                f"point({self.ra}, {self.dec}) # point=cross width=2 text={{{self.name}}}\n"
+            )
 
-            with open(outputfile, 'w') as f:
+            with open(outputfile, "w") as f:
                 f.writelines(lines)
         else:
-            self.log.error('Region format not understood.')
+            self.log.error("Region format not understood.")
 
     def get_matplotlib_patch(self, wcs=None):
         """
@@ -510,16 +549,17 @@ class Sector(object):
             The patch for the sector polygon
         """
         if wcs is not None:
-            vertices = self.field.wcs.wcs_pix2world(self.poly.exterior.coords.xy[0],
-                                                    self.poly.exterior.coords.xy[1],
-                                                    misc.WCS_ORIGIN)
+            vertices = self.field.wcs.wcs_pix2world(
+                self.poly.exterior.coords.xy[0], self.poly.exterior.coords.xy[1], misc.WCS_ORIGIN
+            )
             x, y = wcs.wcs_world2pix(vertices[0], vertices[1], misc.WCS_ORIGIN)
         else:
             x, y = self.poly.exterior.coords.xy
 
         xy = np.vstack([x, y]).transpose()
-        patch = patches.Polygon(xy=xy, label=self.name, edgecolor='k', facecolor='none',
-                                linewidth=2)
+        patch = patches.Polygon(
+            xy=xy, label=self.name, edgecolor="k", facecolor="none", linewidth=2
+        )
 
         return patch
 
@@ -533,8 +573,12 @@ class Sector(object):
         min_dist, max_dist : float, float
             Minimum and maximum distance in degrees
         """
-        obs_coord = SkyCoord(self.observations[0].ra, self.observations[0].dec,
-                             unit=(u.degree, u.degree), frame='fk5')
+        obs_coord = SkyCoord(
+            self.observations[0].ra,
+            self.observations[0].dec,
+            unit=(u.degree, u.degree),
+            frame="fk5",
+        )
 
         # Calculate the distance from each vertex to the observation phase center
         vertices = self.get_vertices_radec()
@@ -543,11 +587,11 @@ class Sector(object):
         distances = []
         for ra, dec in zip(RAs, Decs):
             ra_norm, dec_norm = normalize_ra_dec(ra, dec)
-            coord = SkyCoord(ra_norm, dec_norm, unit=(u.degree, u.degree), frame='fk5')
+            coord = SkyCoord(ra_norm, dec_norm, unit=(u.degree, u.degree), frame="fk5")
             distances.append(obs_coord.separation(coord).value)
 
         # Also calculate the distance to the sector center
-        coord = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame='fk5')
+        coord = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame="fk5")
         distances.append(obs_coord.separation(coord).value)
 
         return np.min(distances), np.max(distances)
