@@ -150,13 +150,13 @@ def test_image_flow_submits_plain_prepare_filter_and_finalize_payloads_per_secto
         "pybdsf_catalog",
     ]
     assert [submission["options"]["task_run_name"] for submission in prepare_task.submissions] == [
-        "image_1_sector_1_prepare",
+        "sector_1_prepare",
     ]
     assert [submission["options"]["task_run_name"] for submission in filter_task.submissions] == [
-        "image_1_sector_1_filter_skymodel",
+        "sector_1_filter_skymodel",
     ]
     assert [submission["options"]["task_run_name"] for submission in finalize_task.submissions] == [
-        "image_1_sector_1_finalize",
+        "sector_1_finalize",
     ]
     _assert_worker_submission_is_serializable(prepare_task.submissions[0], config)
     _assert_worker_submission_is_serializable(filter_task.submissions[0], config)
@@ -199,7 +199,7 @@ def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypa
     assert [
         submission["options"]["task_run_name"] for submission in calibrate_task.submissions
     ] == [
-        "calibrate_dd_1_chunk_1",
+        "chunk_1",
     ]
     _assert_worker_submission_is_serializable(calibrate_task.submissions[0], config)
 
@@ -220,12 +220,12 @@ def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypa
 
     assert result == {"msfiles_di_cal": [[directory_record("/work/predict_1/postprocess_1.ms")]]}
     assert [submission["options"]["task_run_name"] for submission in model_task.submissions] == [
-        "predict_di_1_model_1",
+        "model_1",
     ]
     assert [
         submission["options"]["task_run_name"] for submission in postprocess_task.submissions
     ] == [
-        "predict_di_1_postprocess_1",
+        "postprocess_1",
     ]
     _assert_worker_submission_is_serializable(model_task.submissions[0], config)
     _assert_worker_submission_is_serializable(postprocess_task.submissions[0], config)
@@ -243,7 +243,7 @@ def test_mosaic_flow_submits_plain_payloads_with_image_type_names(monkeypatch):
 
     assert result == {"mosaic_image": [file_record("/work/mosaic_1/mosaic_1-I-image.fits")]}
     assert [submission["options"]["task_run_name"] for submission in mosaic_task.submissions] == [
-        "mosaic_1_image_type_1",
+        "image_type_I",
     ]
     _assert_worker_submission_is_serializable(mosaic_task.submissions[0], config)
 
@@ -264,6 +264,6 @@ def test_concatenate_flow_submits_plain_payloads_with_epoch_names(monkeypatch):
     assert [
         submission["options"]["task_run_name"] for submission in concatenate_task.submissions
     ] == [
-        "concatenate_1_epoch_1",
+        "epoch_1",
     ]
     _assert_worker_submission_is_serializable(concatenate_task.submissions[0], config)

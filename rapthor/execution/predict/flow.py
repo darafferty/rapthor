@@ -166,7 +166,7 @@ def predict_model_data_task(
         )
 
 
-@task(name="predict_postprocess")
+@task(name="postprocess")
 def predict_postprocess_task(
     mode: str,
     postprocess_task: PredictPostprocessPayload,
@@ -197,10 +197,9 @@ def _run_predict_prefect_tasks(
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_predict_payload(payload)
-    operation_name = operation_run_name(payload, "predict", mode=payload["mode"])
     model_outputs = [
         predict_model_data_task.with_options(
-            task_run_name=task_run_name(operation_name, "model", index + 1)
+            task_run_name=task_run_name("model", index + 1)
         ).submit(
             predict_task,
             payload["pipeline_working_dir"],
@@ -211,7 +210,7 @@ def _run_predict_prefect_tasks(
     model_outputs = [output.result() for output in model_outputs]
     postprocess_outputs = [
         predict_postprocess_task.with_options(
-            task_run_name=task_run_name(operation_name, "postprocess", index + 1)
+            task_run_name=task_run_name("postprocess", index + 1)
         ).submit(
             payload["mode"],
             postprocess_task,

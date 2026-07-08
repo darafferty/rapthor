@@ -47,8 +47,7 @@ def operation_run_name(
     return _safe_run_name_part(operation_basename(payload)) or operation
 
 
-def task_run_name(operation_name: str, *parts: object) -> str:
-    """Build a readable Prefect task run name below an operation flow."""
-    name_parts = [_safe_run_name_part(operation_name)]
-    name_parts.extend(_safe_run_name_part(part) for part in parts if part not in (None, ""))
+def task_run_name(*parts: object) -> str:
+    """Build a readable local Prefect task run name below an operation flow."""
+    name_parts = [_safe_run_name_part(part) for part in parts if part not in (None, "")]
     return "_".join(part for part in name_parts if part)

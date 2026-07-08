@@ -22,7 +22,7 @@ from rapthor.execution.run_names import operation_run_name, task_run_name
 from rapthor.execution.task_runner import run_flow_with_task_runner
 
 
-@task(name="calibrate_chunk")
+@task(name="chunk")
 def calibrate_chunk_task(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
@@ -39,7 +39,7 @@ def calibrate_chunk_task(
         )
 
 
-@task(name="calibrate_screen_chunk")
+@task(name="screen_chunk")
 def calibrate_screen_chunk_task(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
@@ -63,12 +63,11 @@ def _run_calibrate_prefect_tasks(
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_calibrate_payload(payload)
-    operation_name = operation_run_name(payload, "calibrate", mode=payload["mode"])
     payload = prepare_image_based_predict(payload, config)
     if payload["calibration_kind"] == "dd_screen":
         screen_records = [
             calibrate_screen_chunk_task.with_options(
-                task_run_name=task_run_name(operation_name, "screen", index + 1)
+                task_run_name=task_run_name("screen", index + 1)
             ).submit(payload, chunk, execution_config=config)
             for index, chunk in enumerate(payload["chunks"])
         ]
@@ -76,9 +75,9 @@ def _run_calibrate_prefect_tasks(
         return collect_screen_solutions(payload, screen_records)
 
     solve_records = [
-        calibrate_chunk_task.with_options(
-            task_run_name=task_run_name(operation_name, "chunk", index + 1)
-        ).submit(payload, chunk, execution_config=config)
+        calibrate_chunk_task.with_options(task_run_name=task_run_name("chunk", index + 1)).submit(
+            payload, chunk, execution_config=config
+        )
         for index, chunk in enumerate(payload["chunks"])
     ]
     solve_records = [record.result() for record in solve_records]

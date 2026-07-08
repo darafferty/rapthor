@@ -36,5 +36,5 @@ def test_operation_cycle_returns_none_when_missing():
 
 
 def test_task_run_name_appends_clean_suffixes():
-    assert task_run_name("calibrate_dd_2", "chunk", 1) == "calibrate_dd_2_chunk_1"
-    assert task_run_name("image_3", "sector 1") == "image_3_sector_1"
+    assert task_run_name("chunk", 1) == "chunk_1"
+    assert task_run_name("sector 1", "filter skymodel") == "sector_1_filter_skymodel"

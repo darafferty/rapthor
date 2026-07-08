@@ -170,14 +170,20 @@ helpers.
 
 Task naming:
 
-- Use short step names because the enclosing flow/subflow already provides
-  context.
+- Use flow run names for operation context such as operation type, mode, and
+  cycle: `calibrate_dd_4`, `predict_di_1`, `image_3`.
+- Use short task definition names and task run names because the enclosing
+  flow/subflow already provides context. Do not prefix task run names with the
+  parent flow name.
 - Prefer established legacy workflow vocabulary when still scientifically
   accurate: `filter_skymodel`, `calculate_image_diagnostics`,
   `combine_h5parms`, `collect_h5parms`, `process_slow_gains`,
   `plot_solutions`, `predict_model_data`, `make_mosaic`.
-- Put operation/sector/cycle detail in `task_run_name`, for example
-  `image_dd_3_sector_1_filter_skymodel`.
+- Add only the smallest useful discriminator when several sibling tasks of the
+  same kind can run in the same flow: `sector_1_filter_skymodel`,
+  `chunk_1`, `screen_1`, `model_1`, `postprocess_1`.
+- Prefer scientific labels over numerical suffixes when they are stable and
+  meaningful, for example `image_type_I` instead of `image_type_1`.
 
 ## Benchmark And Equivalence Evidence
 

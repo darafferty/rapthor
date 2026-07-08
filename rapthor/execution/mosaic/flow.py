@@ -1,6 +1,7 @@
 """Prefect flow for the Mosaic operation."""
 
 import os
+import re
 from typing import Mapping, Optional
 
 from prefect import flow, task
@@ -17,6 +18,8 @@ from rapthor.execution.run_names import operation_run_name, task_run_name
 from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
+
+_MOSAIC_IMAGE_TYPE_LABEL = re.compile(r"-(?P<label>[A-Za-z0-9]+)-image(?:\.fits(?:\.fz)?)?$")
 
 
 def _run_command_and_require_file(
@@ -109,7 +112,7 @@ def run_mosaic_image_type(
     return output_record
 
 
-@task(name="mosaic_image_type")
+@task(name="image_type")
 def mosaic_image_type_task(
     image_type: MosaicImageTypePayload,
     compress_images: bool,
@@ -132,6 +135,14 @@ def _result_from_mosaic_records(outputs: list[dict]) -> dict:
     return result
 
 
+def _mosaic_image_type_run_name(image_type: MosaicImageTypePayload, index: int) -> str:
+    """Return a compact task-run label for one mosaic image type."""
+    match = _MOSAIC_IMAGE_TYPE_LABEL.search(image_type["mosaic_filename"])
+    if match is not None:
+        return task_run_name("image_type", match.group("label"))
+    return task_run_name("image_type", index + 1)
+
+
 def _run_mosaic_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
@@ -142,10 +153,9 @@ def _run_mosaic_prefect_tasks(
         return {}
 
     config = execution_config or ExecutionConfig(task_runner="sync")
-    operation_name = operation_run_name(payload, "mosaic")
     outputs = [
         mosaic_image_type_task.with_options(
-            task_run_name=task_run_name(operation_name, "image_type", index + 1)
+            task_run_name=_mosaic_image_type_run_name(image_type, index)
         ).submit(
             image_type,
             payload["compress_images"],

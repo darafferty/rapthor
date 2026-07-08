@@ -16,7 +16,7 @@ from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
 
 
-@task(name="image_sector")
+@task(name="sector")
 def image_sector_task(
     sector: ImageSectorPayload,
     pipeline_working_dir: str,
@@ -33,7 +33,7 @@ def image_sector_task(
         )
 
 
-@task(name="image_sector_prepare")
+@task(name="prepare")
 def image_sector_prepare_task(
     sector: ImageSectorPayload,
     pipeline_working_dir: str,
@@ -74,7 +74,7 @@ def image_sector_filter_skymodel_task(
     return filtered
 
 
-@task(name="image_sector_finalize")
+@task(name="finalize")
 def image_sector_finalize_task(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
@@ -152,13 +152,11 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
 
 def _submit_split_image_sector_tasks(
     payload: Mapping[str, object],
-    operation_name: str,
     config: ExecutionConfig,
 ):
     prepared_sector_futures = [
         image_sector_prepare_task.with_options(
             task_run_name=task_run_name(
-                operation_name,
                 f"{sector.get('image_name') or f'sector_{index + 1}'}_prepare",
             )
         ).submit(
@@ -171,7 +169,6 @@ def _submit_split_image_sector_tasks(
     filtered_sector_futures = [
         image_sector_filter_skymodel_task.with_options(
             task_run_name=task_run_name(
-                operation_name,
                 f"{sector.get('image_name') or f'sector_{index + 1}'}_filter_skymodel",
             )
         ).submit(
@@ -185,7 +182,6 @@ def _submit_split_image_sector_tasks(
     finalized_sector_futures = [
         image_sector_finalize_task.with_options(
             task_run_name=task_run_name(
-                operation_name,
                 f"{sector.get('image_name') or f'sector_{index + 1}'}_finalize",
             )
         ).submit(
@@ -222,12 +218,11 @@ def _run_image_prefect_tasks(
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_image_payload(payload)
-    operation_name = operation_run_name(payload, "image")
     (
         prepared_sector_futures,
         filtered_sector_futures,
         finalized_sector_futures,
-    ) = _submit_split_image_sector_tasks(payload, operation_name, config)
+    ) = _submit_split_image_sector_tasks(payload, config)
     sector_outputs = _collect_image_sector_results(
         prepared_sector_futures,
         filtered_sector_futures,

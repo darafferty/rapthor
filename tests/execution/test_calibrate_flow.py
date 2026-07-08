@@ -3793,9 +3793,9 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
 
     assert outputs == {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
     assert events == [
-        "task-name-calibrate_di_chunk_1",
+        "task-name-chunk_1",
         "submit-fulljones_gain_0.h5parm",
-        "task-name-calibrate_di_chunk_2",
+        "task-name-chunk_2",
         "submit-fulljones_gain_1.h5parm",
         "result-0",
         "result-1",

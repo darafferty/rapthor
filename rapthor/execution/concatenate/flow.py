@@ -41,7 +41,7 @@ def run_concatenate_epoch(
     return require_directory(output_path, "Concatenate output")
 
 
-@task(name="concatenate_epoch")
+@task(name="epoch")
 def concatenate_epoch_task(
     epoch: ConcatenateEpochPayload,
     data_colname: str,
@@ -73,11 +73,8 @@ def _run_concatenate_prefect_tasks(
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_concatenate_payload(payload)
-    operation_name = operation_run_name(payload, "concatenate")
     outputs = [
-        concatenate_epoch_task.with_options(
-            task_run_name=task_run_name(operation_name, "epoch", index + 1)
-        ).submit(
+        concatenate_epoch_task.with_options(task_run_name=task_run_name("epoch", index + 1)).submit(
             epoch,
             payload["data_colname"],
             payload["pipeline_working_dir"],
