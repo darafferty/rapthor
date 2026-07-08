@@ -8,6 +8,10 @@ doc: |
 requirements:
   InlineJavascriptRequirement: {}
 
+  ResourceRequirement:
+    coresMin: $(inputs.numthreads)
+    coresMax: $(inputs.numthreads)
+
 inputs:
   - id: region_file
     label: DS9 region file
@@ -70,7 +74,7 @@ inputs:
   - id: numthreads
     label: Number of threads
     doc: |
-      The number of threads to use.
+      The number of threads to use (will ask this value, but use what is allocated).
     type: int
     inputBinding:
       prefix: --threads
