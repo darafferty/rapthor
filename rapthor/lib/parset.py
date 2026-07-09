@@ -6,6 +6,7 @@ import ast
 import configparser
 import glob
 import logging
+import math
 import os
 from collections.abc import Sequence
 from importlib import resources
@@ -676,6 +677,25 @@ def check_and_adjust_skymodel_settings(parset_dict):
             raise ValueError(
                 "Reference frequencies for normalization sky models must be an ordered list of the"
                 "same length as the list of normalization sky models."
+            )
+        try:
+            reference_frequencies = [
+                float(frequency) for frequency in normalization_reference_frequencies
+            ]
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "Reference frequencies for normalization sky models must be numeric."
+            ) from error
+        if any(
+            frequency <= 0 or not math.isfinite(frequency) for frequency in reference_frequencies
+        ):
+            raise ValueError(
+                "Reference frequencies for normalization sky models must be positive finite values."
+            )
+        if len(set(reference_frequencies)) < 2:
+            raise ValueError(
+                "Reference frequencies for normalization sky models must include at least two "
+                "distinct frequencies for spectral-index fitting."
             )
 
     # Check if we need to access the internet to get any skymodels and if we

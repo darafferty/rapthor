@@ -21,6 +21,11 @@ DEFAULT_OUTPUT_DIR = Path("examples/generated/prefect_demo_rich")
 DEFAULT_TEMPLATE_MS = Path("tests/resources/test.ms")
 PHASE_CENTRE = SkyCoord("1h37m41.299s", "+33d09m35.132s", frame="icrs")
 REFERENCE_FREQUENCY_HZ = 134375000.0
+NORMALIZATION_REFERENCE_FREQUENCIES_HZ = (120000000.0, 160000000.0)
+NORMALIZATION_REFERENCE_FILENAMES = (
+    "prefect_demo_rich_reference_120mhz.txt",
+    "prefect_demo_rich_reference_160mhz.txt",
+)
 CHANNEL_WIDTH_HZ = 24414.0625
 BENCHMARK_PARSET_FILENAME = "prefect_demo_benchmark.parset"
 MULTI_SECTOR_BENCHMARK_PARSET_FILENAME = "prefect_demo_multisector_benchmark.parset"
@@ -249,11 +254,14 @@ def write_sky_model(
     *,
     patches: Sequence[PatchSpec] = PATCHES,
     sources: Sequence[SourceSpec] = SOURCES,
+    reference_frequency_hz: float = REFERENCE_FREQUENCY_HZ,
+    flux_frequency_hz: float | None = None,
 ) -> None:
+    flux_frequency_hz = flux_frequency_hz or reference_frequency_hz
     lines = [
         (
             "FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', "
-            "LogarithmicSI, ReferenceFrequency='134375000.0', MajorAxis, "
+            f"LogarithmicSI, ReferenceFrequency='{reference_frequency_hz:.1f}', MajorAxis, "
             "MinorAxis, Orientation"
         ),
         "",
@@ -264,10 +272,11 @@ def write_sky_model(
     for source in sources:
         coord = offset_coord(source.delta_ra_deg, source.delta_dec_deg)
         flux = source.apparent_flux_jy if apparent else source.true_flux_jy
+        flux *= (flux_frequency_hz / REFERENCE_FREQUENCY_HZ) ** source.spectral_index
         lines.append(
             f"{source.name}, POINT, {source.patch}, {format_ra(coord)}, {format_dec(coord)}, "
             f"{flux:.6g}, [{source.spectral_index:.2f}], false, "
-            f"{REFERENCE_FREQUENCY_HZ:.1f}, 0, 0, 0"
+            f"{reference_frequency_hz:.1f}, 0, 0, 0"
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -677,6 +686,9 @@ def main() -> None:
     multi_sector_ms_path = output_dir / "prefect_demo_multisector.ms"
     multi_sector_true_sky_path = output_dir / "prefect_demo_multisector_true_sky.txt"
     multi_sector_apparent_sky_path = output_dir / "prefect_demo_multisector_apparent_sky.txt"
+    normalization_reference_paths = [
+        output_dir / filename for filename in NORMALIZATION_REFERENCE_FILENAMES
+    ]
     parset_path = output_dir / "prefect_demo_rich.parset"
     benchmark_parset_path = output_dir / BENCHMARK_PARSET_FILENAME
     multi_sector_benchmark_parset_path = output_dir / MULTI_SECTOR_BENCHMARK_PARSET_FILENAME
@@ -689,6 +701,17 @@ def main() -> None:
     print(f"Writing sky models with {len(PATCHES)} bright patches")
     write_sky_model(true_sky_path, apparent=False)
     write_sky_model(apparent_sky_path, apparent=True)
+    print("Writing normalization reference sky models")
+    for path, frequency_hz in zip(
+        normalization_reference_paths,
+        NORMALIZATION_REFERENCE_FREQUENCIES_HZ,
+    ):
+        write_sky_model(
+            path,
+            apparent=False,
+            reference_frequency_hz=frequency_hz,
+            flux_frequency_hz=frequency_hz,
+        )
     if args.include_multi_sector:
         print(f"Writing multi-sector sky models with {len(MULTI_SECTOR_PATCHES)} bright patches")
         write_sky_model(

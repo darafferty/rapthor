@@ -524,6 +524,21 @@ def test_normalization_reference_frequencies_wrong_length_raises_error(tmp_path)
         check_and_adjust_skymodel_settings(parset_dict)
 
 
+def test_normalization_reference_frequencies_must_be_distinct(tmp_path):
+    skymodel = tmp_path / "normalization.skymodel"
+    skymodel.write_text("", encoding="utf-8")
+    parset_dict = _make_skymodel_settings(
+        cluster_specific={"allow_internet_access": False},
+        imaging_specific={
+            "normalization_skymodels": [str(skymodel), str(skymodel)],
+            "normalization_reference_frequencies": [134375000.0, 134375000.0],
+        },
+    )
+
+    with pytest.raises(ValueError, match="at least two distinct frequencies"):
+        check_and_adjust_skymodel_settings(parset_dict)
+
+
 def test_normalization_parameters_tuple(tmp_path):
     skymodel = tmp_path / "normalization.skymodel"
     skymodel.write_text("", encoding="utf-8")

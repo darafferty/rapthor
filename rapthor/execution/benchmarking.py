@@ -216,14 +216,16 @@ def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
                     "imaging",
                     "normalization_skymodels",
                     "["
-                    "examples/generated/prefect_demo_rich/prefect_demo_rich_apparent_sky.txt, "
-                    "examples/generated/prefect_demo_rich/prefect_demo_rich_true_sky.txt"
+                    "examples/generated/prefect_demo_rich/"
+                    "prefect_demo_rich_reference_120mhz.txt, "
+                    "examples/generated/prefect_demo_rich/"
+                    "prefect_demo_rich_reference_160mhz.txt"
                     "]",
                 ),
                 ParsetOverride(
                     "imaging",
                     "normalization_reference_frequencies",
-                    "[134375000.0, 134375000.0]",
+                    "[120000000.0, 160000000.0]",
                 ),
                 ParsetOverride("imaging", "make_quv_images", "True"),
                 ParsetOverride("imaging", "disable_iquv_clean", "True"),

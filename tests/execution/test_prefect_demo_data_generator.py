@@ -100,6 +100,49 @@ def test_generated_benchmark_parset_uses_runtime_sized_threads_and_filter_defaul
     assert parser["cluster"]["prefect_fits_preview_clip_percentile"] == "99.9"
 
 
+def test_generated_normalization_reference_skymodels_use_distinct_frequencies(tmp_path):
+    module = load_generator_script()
+    output_dir = tmp_path / "generated" / "prefect_demo_rich"
+    output_dir.mkdir(parents=True)
+    low_path = output_dir / "reference_low.txt"
+    high_path = output_dir / "reference_high.txt"
+    source = module.SOURCES[0]
+
+    module.write_sky_model(
+        low_path,
+        apparent=False,
+        reference_frequency_hz=120000000.0,
+        flux_frequency_hz=120000000.0,
+    )
+    module.write_sky_model(
+        high_path,
+        apparent=False,
+        reference_frequency_hz=160000000.0,
+        flux_frequency_hz=160000000.0,
+    )
+
+    low_text = low_path.read_text(encoding="utf-8")
+    high_text = high_path.read_text(encoding="utf-8")
+    low_source_line = next(line for line in low_text.splitlines() if line.startswith(source.name))
+    high_source_line = next(line for line in high_text.splitlines() if line.startswith(source.name))
+    low_flux = float(low_source_line.split(",")[5])
+    high_flux = float(high_source_line.split(",")[5])
+
+    assert "ReferenceFrequency='120000000.0'" in low_text
+    assert "ReferenceFrequency='160000000.0'" in high_text
+    assert low_flux == pytest.approx(
+        source.true_flux_jy
+        * (120000000.0 / module.REFERENCE_FREQUENCY_HZ) ** source.spectral_index,
+        rel=1e-5,
+    )
+    assert high_flux == pytest.approx(
+        source.true_flux_jy
+        * (160000000.0 / module.REFERENCE_FREQUENCY_HZ) ** source.spectral_index,
+        rel=1e-5,
+    )
+    assert low_flux != pytest.approx(high_flux)
+
+
 def test_multi_sector_layout_places_bright_patches_inside_all_quadrants():
     module = load_generator_script()
 
