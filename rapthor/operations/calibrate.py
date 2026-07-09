@@ -189,6 +189,8 @@ class Calibrate(Operation):
                 "facet_region_file": "field_facets_ds9.reg",
                 # Separate region file for wsclean_predict.cwl step
                 "predict_facet_region_file": "predict_field_facets_ds9.reg",
+                # Bandwidth for separate model image creation
+                "wsclean_predict_bw": field.wsclean_predict_bw,
                 # Smoothness / regularisation constraints
                 **smoothness_dd_factors,
                 **smoothness_constraints,

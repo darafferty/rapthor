@@ -157,6 +157,12 @@ inputs:
     doc: |
       The filename of the output ds9 facet region file (length = 1).
     type: string
+
+  - id: wsclean_predict_bw
+    label: Bandwidth (Hz) to create model images
+    doc: |
+      For wideband data, use many model images for prediction, each having the above bandwidth.
+    type: float
 {% endif %}
 
 
@@ -846,6 +852,8 @@ steps:
         source: model_image_ra_dec
       - id: frequency_bandwidth
         source: model_image_frequency_bandwidth
+      - id: predict_bandwidth
+        source: wsclean_predict_bw
       - id: cellsize_deg
         source: model_image_cellsize
       - id: imsize

@@ -33,6 +33,7 @@ fast_smoothnessconstraint = 6.0e6
 slow_smoothnessconstraint = 4.0e6
 propagatesolutions = True
 use_wsclean_predict = False
+wsclean_predict_bw = 2e6
 maxiter = 50
 stepsize = 0.2
 tolerance = 0.001

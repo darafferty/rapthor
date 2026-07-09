@@ -87,7 +87,7 @@ def predict(
     cellsize_deg,
     time_freq_smearing,
     storage_manager,
-    predict_bandwidth=2.0e6,
+    predict_bandwidth,
 ):
     """
     Predict model image to msfile
@@ -194,6 +194,8 @@ def predict(
             ]
             if time_freq_smearing is not None:
                 cmd.append("-apply-time-frequency-smearing")
+            # disable reordering of data
+            cmd.append("-no-reorder")
             cmd.append(msfile)
             try:
                 subprocess.run(cmd, check=True).returncode
@@ -244,6 +246,9 @@ def main():
         type=str,
         nargs=2,
         default=[],
+    )
+    parser.add_argument(
+        "--predict_bandwidth", help="Model image bandwidth (Hz)", type=float, default=2e6
     )
     parser.add_argument("--cellsize", help="Model image cell size (deg)", type=float, default=1)
     parser.add_argument(
@@ -313,6 +318,7 @@ def main():
         args.cellsize,
         args.time_freq_smearing,
         args.storage_manager,
+        args.predict_bandwidth,
     )
 
 

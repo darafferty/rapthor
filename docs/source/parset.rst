@@ -206,6 +206,9 @@ The available options are described below under their respective sections.
     use_wsclean_predict
         Use image-based prediction using WSClean (default = ``False``)? Usage similar to ``use_image_based_predict`` above (but mutually exclusive).
 
+    wsclean_predict_bw
+        Bandwidth (Hz) to create separate images for prediction. The full bandwidth of the data will be divided into chunks of channels whose frequency width given by this value. If the division if not an integer, an approximate (not uniform) division will be made.
+
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
         default = ``qr``).
