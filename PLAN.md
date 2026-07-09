@@ -60,6 +60,10 @@ Completed and accepted:
   depending on source-boundary edge cases. It uses `dde_method = single` so
   each sector applies the nearest DD solution during imaging; the single-sector
   benchmark keeps the full-DD facet-imaging coverage.
+- The pre-split hidden-path benchmark baseline is captured and accepted in
+  `docs/source/development/benchmark_baselines/2026-07-09-hidden-path-pre-split-baseline.md`.
+  It covers image-products, WSClean-predict, and many-sector mosaic paths with
+  three successful repeats each on the CI-sized `2x30` resource profile.
 
 Keep in mind:
 
@@ -77,28 +81,7 @@ Keep in mind:
 
 Do these in order unless a regression blocks progress.
 
-1. **Run the pre-split hidden-path benchmark baseline.**
-   The scenario definitions, generated-input coverage, and CI wiring are in
-   place. Run the benchmark once with the current task structure and preserve a
-   compact "pre-split hidden-path baseline" report.
-
-   Scenario coverage:
-
-   - image post-processing: `normalize_flux_scale`, image-cube creation,
-     `make_catalog_from_image_cube`, restoration/compression steps
-   - calibration post-processing: `collect_h5parms`, `process_slow_gains`,
-     full-Jones normalization, `combine_h5parms`, `plot_solutions`
-   - prediction-heavy calibration: WSClean-predict loops and sector-model
-     post-processing
-   - mosaic-heavy imaging: quadrant-balanced four-sector imaging, per-sector
-     regridding, mosaic assembly, and compression
-   - larger scalability shapes: many-sector imaging and larger/multi-node runs
-
-   Keep preview artifacts disabled unless the scenario explicitly measures
-   report overhead. Use `ci-benchmark-baseline-2x30` as the default CI-sized
-   resource profile.
-
-2. **Keep targeted mosaic science coverage explicit.**
+1. **Keep targeted mosaic science coverage explicit.**
    The `multi-sector-mosaic` option-matrix scenario is defined under
    `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`.
    It uses the generated quadrant-balanced multi-sector demo data, DD
@@ -151,14 +134,14 @@ Do these in order unless a regression blocks progress.
    checks finite masks, nonzero-pixel growth, and absence of stripe-like
    artifacts for a sparse multi-sector `MFS-model-pb` mosaic.
 
-3. **Systematically split large opaque work units into Prefect tasks.**
+2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
    meaningful task boundaries improve observability without harming this
    CI-sized performance shape. Split large steps by owner package, keeping each
    new task scientifically meaningful, restartable, serializable, and easy to
-   identify in the dashboard. Compare each batch against the pre-split
-   hidden-path baseline from step 1 and keep the mosaic science-equivalence
-   scenario from step 2 green when changing mosaic behavior.
+   identify in the dashboard. Compare each batch against the accepted
+   pre-split hidden-path baseline and keep the mosaic science coverage from
+   step 1 green when changing mosaic behavior.
 
    Priority order:
 
@@ -169,26 +152,26 @@ Do these in order unless a regression blocks progress.
    - prediction: WSClean-predict loops and sector-model post-processing
    - mosaic: per-sector regridding, mosaic assembly, and compression
 
-4. **Benchmark after each owner-package split batch.**
+3. **Benchmark after each owner-package split batch.**
    Rerun the relevant hidden-path scenarios after each batch. Keep the split
    when task count, scheduler gap, wall time, command totals, restart behavior,
    and raw/scientific outputs remain acceptable. Add compact reports under
    `docs/source/development/benchmark_baselines/`.
 
-5. **Build the scalability/performance equivalence gate.**
+4. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-6. **Guard the science-equivalence contract.**
+5. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-7. **Polish runtime UX and contributor docs after the next scalability result.**
+6. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the

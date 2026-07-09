@@ -1,0 +1,102 @@
+{
+  "source_run": "runs/benchmark-20260709-171403",
+  "commit": "5a6b86202c900ad65f6fc7feca0cfb8fb807aea0",
+  "ci_job": "1835525",
+  "pipeline": "201315",
+  "runner": "Shared Runner on lcs126",
+  "decision": "Accepted: pre-split hidden-path benchmark baseline captured for image-products, WSClean-predict, and many-sector mosaic paths.",
+  "resource_shape": {
+    "local_dask_workers": 2,
+    "cpus_per_task": 30,
+    "max_threads": 30,
+    "filter_skymodel_ncores": 15,
+    "prefect_publish_fits_previews": false
+  },
+  "profiles": {
+    "baseline-2x30": {
+      "wall_median_seconds": 305.36,
+      "wall_min_seconds": 304.486,
+      "wall_max_seconds": 310.879,
+      "command_median_seconds": 226.839,
+      "command_count": 44,
+      "dask_duration_median_seconds": 292.05,
+      "dask_compute_median_seconds": 219.47,
+      "dask_gap_median_seconds": 72.48,
+      "task_count": 24,
+      "dominant_commands": {
+        "filter_skymodel_seconds": 105.778,
+        "wsclean_seconds": 89.149,
+        "python3_seconds": 17.867,
+        "dp3_seconds": 8.219,
+        "fpack_seconds": 4.172
+      }
+    },
+    "image-products-baseline-2x30": {
+      "wall_median_seconds": 343.803,
+      "wall_min_seconds": 343.643,
+      "wall_max_seconds": 345.578,
+      "command_median_seconds": 256.737,
+      "command_count": 51,
+      "dask_duration_median_seconds": 330.45,
+      "dask_compute_median_seconds": 253.28,
+      "dask_gap_median_seconds": 77.21,
+      "task_count": 28,
+      "dominant_commands": {
+        "filter_skymodel_seconds": 114.274,
+        "wsclean_seconds": 101.246,
+        "python3_seconds": 17.818,
+        "dp3_seconds": 8.498,
+        "fpack_seconds": 7.184,
+        "make_catalog_from_image_cube_seconds": 6.16
+      }
+    },
+    "wsclean-predict-baseline-2x30": {
+      "wall_median_seconds": 288.767,
+      "wall_min_seconds": 287.805,
+      "wall_max_seconds": 290.586,
+      "command_median_seconds": 209.787,
+      "command_count": 56,
+      "dask_duration_median_seconds": 275.47,
+      "dask_compute_median_seconds": 197.7,
+      "dask_gap_median_seconds": 78.17,
+      "task_count": 24,
+      "dominant_commands": {
+        "wsclean_seconds": 91.709,
+        "filter_skymodel_seconds": 86.675,
+        "python3_seconds": 17.79,
+        "dp3_seconds": 7.694,
+        "fpack_seconds": 4.142
+      }
+    },
+    "many-sector-mosaic-baseline-2x30": {
+      "wall_median_seconds": 412.91,
+      "wall_min_seconds": 411.132,
+      "wall_max_seconds": 418.849,
+      "command_median_seconds": 784.321,
+      "command_count": 135,
+      "dask_duration_median_seconds": 399.21,
+      "dask_compute_median_seconds": null,
+      "dask_gap_median_seconds": null,
+      "task_count": 120,
+      "dominant_commands": {
+        "filter_skymodel_seconds": 330.306,
+        "wsclean_seconds": 307.048,
+        "dp3_seconds": 106.825,
+        "fpack_seconds": 19.032,
+        "python3_seconds": 17.61
+      },
+      "task_groups": {
+        "image_sector_prepare_task": 16,
+        "image_sector_filter_skymodel_task": 16,
+        "image_sector_diagnostics_task": 16,
+        "image_sector_finalize_task": 16,
+        "mosaic_task": 24,
+        "mosaic_template_task": 4,
+        "predict_model_data_task": 18,
+        "predict_postprocess_task": 6,
+        "calibrate_chunk_task": 4
+      }
+    }
+  },
+  "next_step": "Use this as the comparison baseline for batch task splitting; fix and guard sparse MFS-model-pb mosaic behavior before changing mosaic execution."
+}
