@@ -1,16 +1,27 @@
 """FITS image helpers used by mosaic execution scripts."""
 
 import os
+import re
 import shutil
 from typing import Sequence
 
 import numpy as np
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
+from lsmtool.io import read_vertices_x_y
 from reproject import reproject_interp
+from shapely import contains_xy as polygon_contains_xy
+from shapely.geometry import Polygon
 
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.fitsimage import FITSImage
+
+_SPARSE_MODEL_PRODUCT = re.compile(r"(^|[-_])(?:filtered[-_])?model([-_.]|$)")
+
+
+def is_sparse_model_product(filename: str) -> bool:
+    """Return true for sparse WSClean model-image mosaic products."""
+    return bool(_SPARSE_MODEL_PRODUCT.search(os.path.basename(filename).lower()))
 
 
 def make_mosaic_template(
@@ -140,6 +151,69 @@ def regrid_image(
     image.write(output_image)
 
 
+def regrid_sparse_model_image(
+    input_image: str,
+    template_image: str,
+    vertices_file: str,
+    output_image: str,
+    *,
+    skip: bool = False,
+) -> None:
+    """
+    Regrid a sparse model image without interpolating clean components.
+
+    Model images contain sparse clean-component pixels, not a continuous sky
+    brightness image. Interpolating them can spread flux into artificial
+    stripe-like structures, so nonzero finite pixels are mapped to the nearest
+    output pixel while the valid sector footprint stays zero-valued.
+    """
+    if skip:
+        _copy_file(input_image, output_image)
+        return
+
+    with pyfits.open(template_image) as hdul:
+        regrid_header = hdul[0].header.copy()
+        output_data = np.full_like(hdul[0].data, np.nan, dtype=float)
+
+    wcs_out = pywcs(regrid_header)
+    output_polygon = _sector_polygon(vertices_file, wcs_out)
+    _fill_polygon_footprint(output_data, output_polygon)
+
+    image = FITSImage(input_image)
+    source_polygon = _sector_polygon(vertices_file, image.get_wcs())
+    source_mask = np.isfinite(image.img_data) & (image.img_data != 0)
+    if np.any(source_mask):
+        source_y, source_x = np.nonzero(source_mask)
+        in_source_footprint = polygon_contains_xy(source_polygon, source_x, source_y)
+        source_x = source_x[in_source_footprint]
+        source_y = source_y[in_source_footprint]
+        target_x_float, target_y_float = wcs_out.world_to_pixel(
+            image.get_wcs().pixel_to_world(source_x, source_y)
+        )
+        valid_projection = np.isfinite(target_x_float) & np.isfinite(target_y_float)
+        target_x = np.rint(target_x_float[valid_projection]).astype(int)
+        target_y = np.rint(target_y_float[valid_projection]).astype(int)
+        source_values = image.img_data[source_y[valid_projection], source_x[valid_projection]]
+
+        in_bounds = (
+            (target_x >= 0)
+            & (target_y >= 0)
+            & (target_y < output_data.shape[0])
+            & (target_x < output_data.shape[1])
+        )
+        target_x = target_x[in_bounds]
+        target_y = target_y[in_bounds]
+        source_values = source_values[in_bounds]
+        in_footprint = np.isfinite(output_data[target_y, target_x])
+        np.add.at(
+            output_data,
+            (target_y[in_footprint], target_x[in_footprint]),
+            source_values[in_footprint],
+        )
+
+    pyfits.PrimaryHDU(header=regrid_header, data=output_data).writeto(output_image, overwrite=True)
+
+
 def make_mosaic(
     input_image_filenames: Sequence[str],
     template_image: str,
@@ -195,3 +269,26 @@ def _copy_file(input_file: str, output_file: str) -> None:
     if os.path.exists(output_file):
         os.remove(output_file)
     shutil.copyfile(input_file, output_file)
+
+
+def _sector_polygon(vertices_file: str, wcs: pywcs) -> Polygon:
+    """Return the padded sector polygon in pixel coordinates for ``wcs``."""
+    vertices = read_vertices_x_y(vertices_file, wcs)
+    return Polygon(vertices).buffer(2)
+
+
+def _fill_polygon_footprint(data: np.ndarray, polygon: Polygon) -> None:
+    """Set pixels inside ``polygon`` to zero, leaving all other pixels as NaN."""
+    min_x, min_y, max_x, max_y = polygon.bounds
+    x_0 = max(0, int(np.floor(min_x)))
+    y_0 = max(0, int(np.floor(min_y)))
+    x_1 = min(data.shape[1], int(np.ceil(max_x)) + 1)
+    y_1 = min(data.shape[0], int(np.ceil(max_y)) + 1)
+    if x_1 <= x_0 or y_1 <= y_0:
+        return
+    yy, xx = np.indices((y_1 - y_0, x_1 - x_0))
+    yy += y_0
+    xx += x_0
+    inside = polygon_contains_xy(polygon, xx.ravel(), yy.ravel()).reshape(xx.shape)
+    footprint = data[y_0:y_1, x_0:x_1]
+    footprint[inside] = 0.0

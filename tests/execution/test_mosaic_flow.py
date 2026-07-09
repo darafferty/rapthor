@@ -24,6 +24,7 @@ def fake_direct_mosaic_helpers(monkeypatch):
     calls = {
         "make_mosaic_template": [],
         "regrid_image": [],
+        "regrid_sparse_model_image": [],
         "make_mosaic": [],
     }
 
@@ -52,6 +53,19 @@ def fake_direct_mosaic_helpers(monkeypatch):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("regridded")
 
+    def fake_regrid_sparse_model_image(input_image, template_image, vertices_file, output_image):
+        calls["regrid_sparse_model_image"].append(
+            {
+                "input_image": input_image,
+                "template_image": template_image,
+                "vertices_file": vertices_file,
+                "output_image": output_image,
+            }
+        )
+        output_path = Path(output_image)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("regridded model")
+
     def fake_make_mosaic(input_image_filenames, template_image, output_image):
         calls["make_mosaic"].append(
             {
@@ -66,6 +80,7 @@ def fake_direct_mosaic_helpers(monkeypatch):
 
     monkeypatch.setattr(mosaic_module, "make_mosaic_template", fake_make_mosaic_template)
     monkeypatch.setattr(mosaic_module, "regrid_image", fake_regrid_image)
+    monkeypatch.setattr(mosaic_module, "regrid_sparse_model_image", fake_regrid_sparse_model_image)
     monkeypatch.setattr(mosaic_module, "make_mosaic", fake_make_mosaic)
     return calls
 
@@ -392,6 +407,61 @@ def test_run_mosaic_flow_builds_shared_template_once_for_multiple_mosaic_product
     assert {call["template_image"] for call in fake_direct_mosaic_helpers["regrid_image"]} == {
         str(tmp_path / "mosaic_1_template.fits")
     }
+    assert fake_direct_mosaic_helpers["regrid_sparse_model_image"] == []
+
+
+def test_run_mosaic_flow_uses_sparse_regrid_for_model_products(
+    tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+):
+    payload = _mosaic_payload(tmp_path)
+    payload["mosaic_products"][0].update(
+        {
+            "sector_image_filenames": [
+                "sector_1-MFS-model-pb.fits",
+                "sector_2-MFS-model-pb.fits",
+            ],
+            "regridded_image_filenames": [
+                "sector_1-MFS-model-pb.fits.regridded",
+                "sector_2-MFS-model-pb.fits.regridded",
+            ],
+            "mosaic_filename": "mosaic_1-MFS-model-pb.fits",
+            "mosaic_path": str(tmp_path / "mosaic_1-MFS-model-pb.fits"),
+        }
+    )
+
+    outputs = run_flow_for_test(
+        mosaic_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_mosaic_shell_operation_cls,
+    )
+
+    assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-MFS-model-pb.fits")]}
+    assert fake_direct_mosaic_helpers["regrid_image"] == []
+    assert fake_direct_mosaic_helpers["regrid_sparse_model_image"] == [
+        {
+            "input_image": str(tmp_path / "sector_1-MFS-model-pb.fits"),
+            "template_image": str(tmp_path / "mosaic_1_template.fits"),
+            "vertices_file": str(tmp_path / "sector_1.vertices"),
+            "output_image": str(tmp_path / "sector_1-MFS-model-pb.fits.regridded"),
+        },
+        {
+            "input_image": str(tmp_path / "sector_2-MFS-model-pb.fits"),
+            "template_image": str(tmp_path / "mosaic_1_template.fits"),
+            "vertices_file": str(tmp_path / "sector_2.vertices"),
+            "output_image": str(tmp_path / "sector_2-MFS-model-pb.fits.regridded"),
+        },
+    ]
+    assert fake_direct_mosaic_helpers["make_mosaic"] == [
+        {
+            "input_image_filenames": [
+                str(tmp_path / "sector_1-MFS-model-pb.fits.regridded"),
+                str(tmp_path / "sector_2-MFS-model-pb.fits.regridded"),
+            ],
+            "template_image": str(tmp_path / "mosaic_1_template.fits"),
+            "output_image": str(tmp_path / "mosaic_1-MFS-model-pb.fits"),
+        }
+    ]
 
 
 def test_run_mosaic_flow_can_skip_fits_preview_artifacts(
@@ -473,6 +543,7 @@ def test_run_mosaic_flow_handles_skip_processing_without_commands(
     assert fake_direct_mosaic_helpers == {
         "make_mosaic_template": [],
         "regrid_image": [],
+        "regrid_sparse_model_image": [],
         "make_mosaic": [],
     }
 
@@ -575,6 +646,7 @@ def test_mosaic_operation_run_uses_prefect_flow(
     assert fake_mosaic_shell_operation_cls.instances == []
     assert len(fake_direct_mosaic_helpers["make_mosaic_template"]) == 1
     assert len(fake_direct_mosaic_helpers["regrid_image"]) == 4
+    assert fake_direct_mosaic_helpers["regrid_sparse_model_image"] == []
     assert len(fake_direct_mosaic_helpers["make_mosaic"]) == 2
 
 

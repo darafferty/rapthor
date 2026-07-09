@@ -64,6 +64,10 @@ Completed and accepted:
   `docs/source/development/benchmark_baselines/2026-07-09-hidden-path-pre-split-baseline.md`.
   It covers image-products, WSClean-predict, and many-sector mosaic paths with
   three successful repeats each on the CI-sized `2x30` resource profile.
+- Sparse model mosaic execution now has focused guards: model-like mosaic
+  products use sparse pixel mapping rather than continuous-image
+  interpolation, preserving zero-valued background inside valid sector
+  footprints and avoiding artificial nonzero-pixel growth.
 
 Keep in mind:
 
@@ -122,17 +126,11 @@ Do these in order unless a regression blocks progress.
    `MFS-image-pb-ast`, `MFS-model-pb`, `MFS-residual`, and `MFS-dirty`, because
    these products share the mosaic template/regridding path.
 
-   Also fix and guard sparse model mosaics. The multi-sector demo currently
-   shows `MFS-model-pb` previews with mostly missing values and thin stripe-like
-   artifacts: sector model images are sparse WSClean clean-component images,
-   `FITSImage.blank()` turns their zero-valued background outside the retained
-   components into NaNs, and `reproject_interp()` can spread a few nonzero model
-   pixels into long row-like artifacts. Treat model images as sparse products
-   rather than continuous restored images when regridding/mosaicking: preserve
-   zero-valued background inside valid sector footprints, avoid interpolation
-   that creates artificial model flux, and add a focused regression test that
-   checks finite masks, nonzero-pixel growth, and absence of stripe-like
-   artifacts for a sparse multi-sector `MFS-model-pb` mosaic.
+   Sparse model mosaics have focused unit and flow guards, but still need a
+   real multi-sector rerun before this queue item is closed. Rerun the
+   multi-sector demo and/or option-matrix scenario, then preserve a compact
+   report showing that `MFS-model-pb` finite masks, nonzero-pixel counts,
+   background zeros, and preview artifacts look scientifically sensible.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that

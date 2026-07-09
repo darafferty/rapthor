@@ -4,7 +4,13 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from rapthor.execution.mosaic.images import make_mosaic, make_mosaic_template, regrid_image
+from rapthor.execution.mosaic.images import (
+    is_sparse_model_product,
+    make_mosaic,
+    make_mosaic_template,
+    regrid_image,
+    regrid_sparse_model_image,
+)
 
 
 def _header(shape=(4, 4), crval1=12.0):
@@ -97,6 +103,36 @@ def test_regrid_image_reprojects_image_to_template(tmp_path):
         assert hdul[0].header["CRVAL2"] == header["CRVAL2"]
 
 
+def test_regrid_sparse_model_image_maps_components_without_interpolation(tmp_path):
+    input_image = tmp_path / "model.fits"
+    template_image = tmp_path / "template.fits"
+    vertices_file = tmp_path / "vertices.npy"
+    output_image = tmp_path / "regridded-model.fits"
+    input_header = _header(shape=(6, 6), crval1=12.0)
+    template_header = _header(shape=(6, 6), crval1=12.005)
+    model_data = np.zeros((6, 6), dtype=np.float32)
+    model_data[2, 2] = 1.0
+    model_data[4, 3] = 2.0
+    _write_image(input_image, model_data, input_header)
+    _write_image(template_image, np.zeros((6, 6), dtype=np.float32), template_header)
+    _write_vertices(vertices_file, input_header)
+
+    regrid_sparse_model_image(
+        str(input_image),
+        str(template_image),
+        str(vertices_file),
+        str(output_image),
+    )
+
+    with fits.open(output_image) as hdul:
+        data = hdul[0].data
+    finite_data = np.nan_to_num(data, nan=0.0)
+    assert np.isclose(finite_data.sum(), 3.0)
+    assert np.count_nonzero(finite_data) <= 2
+    assert np.count_nonzero(finite_data, axis=1).max() <= 2
+    assert np.any(np.isfinite(data) & (finite_data == 0.0))
+
+
 def test_regrid_image_skip_copies_input_image(tmp_path):
     input_image = tmp_path / "input.fits"
     template_image = tmp_path / "template.fits"
@@ -114,6 +150,13 @@ def test_regrid_image_skip_copies_input_image(tmp_path):
 
     with fits.open(output_image) as hdul:
         assert np.allclose(hdul[0].data, 5.0)
+
+
+def test_sparse_model_product_detection_uses_mosaic_product_filenames():
+    assert is_sparse_model_product("mosaic_1-MFS-model-pb.fits")
+    assert is_sparse_model_product("mosaic_1-filtered-model.fits.fz")
+    assert not is_sparse_model_product("mosaic_1-MFS-image-pb.fits")
+    assert not is_sparse_model_product("mosaic_1-MFS-residual.fits")
 
 
 def test_make_mosaic_averages_finite_regridded_images(tmp_path):

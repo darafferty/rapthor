@@ -10,7 +10,13 @@ from prefect import flow, task
 from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.mosaic.commands import build_compress_mosaic_command
-from rapthor.execution.mosaic.images import make_mosaic, make_mosaic_template, regrid_image
+from rapthor.execution.mosaic.images import (
+    is_sparse_model_product,
+    make_mosaic,
+    make_mosaic_template,
+    regrid_image,
+    regrid_sparse_model_image,
+)
 from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mosaic_payload
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import assert_serializable_payload
@@ -86,10 +92,11 @@ def run_mosaic_product(
         ", ".join(os.path.basename(image) for image in resolved_sector_images),
     )
     require_file(template_path, "Mosaic output")
+    regrid = regrid_sparse_model_image if is_sparse_model_product(mosaic_filename) else regrid_image
     for sector_image, vertices_file, regridded_image in zip(
         resolved_sector_images, resolved_sector_vertices, resolved_regridded_images
     ):
-        regrid_image(
+        regrid(
             sector_image,
             template_path,
             vertices_file,
