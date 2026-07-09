@@ -394,14 +394,45 @@ def test_build_predict_model_data_command_adds_h5parm_applycal_options():
         normalize_h5parm="norm.h5",
     )
 
+    assert "steps=[predict,applycal]" in command
     assert "predict.applycal.correction=phase000" in command
-    assert "predict.applycal.normalization.solset=sol000" in command
     assert "predict.type=h5parmpredict" in command
-    assert "predict.applycal.steps=[fastphase,normalization]" in command
+    assert "predict.applycal.steps=[fastphase]" in command
     assert "predict.applycal.parmdb=solutions.h5" in command
-    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "applycal.type=applycal" in command
+    assert "applycal.steps=[normalization]" in command
+    assert "applycal.normalization.parmdb=norm.h5" in command
+    assert "applycal.normalization.usemodeldata=True" in command
+    assert "applycal.normalization.invert=False" in command
     assert "predict.correctfreqsmearing=True" in command
     assert "predict.correcttimesmearing=True" in command
+
+
+def test_build_predict_model_data_command_applies_normalization_to_model_data():
+    command = build_predict_model_data_command(
+        "obs_0.ms",
+        "DATA",
+        "obs_0.ms.sector_1_modeldata",
+        "50000.0",
+        10,
+        onebeamperpatch=False,
+        correctfreqsmearing=False,
+        correcttimesmearing=False,
+        sagecalpredict=False,
+        sourcedb="sector_1.skymodel",
+        directions=["patch1"],
+        numthreads=8,
+        applycal_steps="[normalization]",
+        normalize_h5parm="norm.h5",
+    )
+
+    assert "steps=[predict,applycal]" in command
+    assert "predict.type=predict" in command
+    assert "predict.applycal.steps=[normalization]" not in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" not in command
+    assert "applycal.steps=[normalization]" in command
+    assert "applycal.normalization.parmdb=norm.h5" in command
+    assert "applycal.normalization.usemodeldata=True" in command
 
 
 def test_build_predict_model_data_command_omits_zero_ntimes():
