@@ -48,12 +48,20 @@ inputs:
       prefix: --ra_dec
 
   - id: frequency_bandwidth
-    label: Frequency and bandwidth of image
+    label: Frequency and full bandwidth of data
     doc: |
-      The central frequency and bandwidth in Hz of the output images.
+      The central frequency and bandwidth in Hz of the data.
     type: float[]
     inputBinding:
       prefix: --frequency_bandwidth
+
+  - id: predict_bandwidth
+    label: Bandwidth of model images
+    doc: |
+      The bandwidth in Hz to create separate model images.
+    type: float
+    inputBinding:
+      prefix: --predict_bandwidth
 
   - id: cellsize_deg
     label: Pixel size

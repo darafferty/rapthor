@@ -87,7 +87,7 @@ def predict(
     cellsize_deg,
     time_freq_smearing,
     storage_manager,
-    predict_bandwidth=2.0e6,
+    predict_bandwidth,
 ):
     """
     Predict model image to msfile
@@ -247,6 +247,9 @@ def main():
         nargs=2,
         default=[],
     )
+    parser.add_argument(
+        "--predict_bandwidth", help="Model image bandwidth (Hz)", type=float, default=2e6
+    )
     parser.add_argument("--cellsize", help="Model image cell size (deg)", type=float, default=1)
     parser.add_argument(
         "--imsize", help="Model image size n_x x n_y (pixels)", type=int, nargs=2, default=[]
@@ -315,6 +318,7 @@ def main():
         args.cellsize,
         args.time_freq_smearing,
         args.storage_manager,
+        args.predict_bandwidth,
     )
 
 
