@@ -42,6 +42,28 @@ def _load_matrix(path: Path) -> dict[str, Any]:
     return matrix
 
 
+def _selected_scenarios(
+    matrix: dict[str, Any],
+    selected_ids: Sequence[str] | None,
+) -> list[dict[str, Any]]:
+    scenarios = matrix["scenarios"]
+    if not selected_ids:
+        return scenarios
+
+    requested = set(selected_ids)
+    selected: list[dict[str, Any]] = []
+    for index, scenario in enumerate(scenarios, start=1):
+        scenario_id = _scenario_id(scenario, index)
+        if scenario_id in requested:
+            selected.append(scenario)
+            requested.remove(scenario_id)
+
+    if requested:
+        missing = ", ".join(sorted(requested))
+        raise ValueError(f"requested scenario id(s) not found in matrix: {missing}")
+    return selected
+
+
 def _scenario_id(scenario: dict[str, Any], index: int) -> str:
     return str(scenario.get("id") or f"scenario-{index:02d}")
 
@@ -262,12 +284,13 @@ def run(args: argparse.Namespace) -> int:
     matrix_path = args.matrix.resolve(strict=True)
     matrix_dir = matrix_path.parent
     matrix = _load_matrix(matrix_path)
+    scenarios = _selected_scenarios(matrix, args.scenario)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     run_root = Path(args.run_root or Path("runs") / f"branch-option-matrix-{stamp}").resolve()
     run_root.mkdir(parents=True, exist_ok=True)
 
     rows: list[dict[str, Any]] = []
-    for index, scenario in enumerate(matrix["scenarios"], start=1):
+    for index, scenario in enumerate(scenarios, start=1):
         scenario_id = _scenario_id(scenario, index)
         scenario_run_root = run_root / scenario_id
         scenario_run_root.mkdir(parents=True, exist_ok=True)
@@ -328,6 +351,11 @@ def run(args: argparse.Namespace) -> int:
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matrix", type=Path, required=True)
+    parser.add_argument(
+        "--scenario",
+        action="append",
+        help="Run only this scenario id. May be passed more than once.",
+    )
     parser.add_argument("--run-root", type=Path)
     parser.add_argument("--base-ref", default="master")
     parser.add_argument("--base-checkout", type=Path)

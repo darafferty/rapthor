@@ -26,6 +26,12 @@
       "notes": "DD fast+medium phase calibration with calibration BDA and imaging averaging/BDA enabled on the generated rich demo data."
     },
     {
+      "id": "multi-sector-mosaic",
+      "base_parset": "inputs/base/multi_sector_mosaic.parset",
+      "current_parset": "inputs/current/multi_sector_mosaic.parset",
+      "notes": "Image-only 2x2 sector grid on quadrant-balanced generated demo data to protect sector regridding and mosaic assembly."
+    },
+    {
       "id": "screens",
       "skip_reason": "requires reliable IDGCal/screen support in the target environment",
       "notes": "Record as skipped until the target environment can run screen workflows reproducibly."

@@ -98,16 +98,37 @@ Do these in order unless a regression blocks progress.
    report overhead. Use `ci-benchmark-baseline-2x30` as the default CI-sized
    resource profile.
 
-2. **Add a targeted mosaic science-equivalence scenario.**
-   Protect the multi-sector mosaic path before more task-boundary refactors.
-   Use a small generated multi-sector dataset, or saved sector image products
-   for a cheaper mosaic-only variant, and compare the final mosaics against an
-   accepted baseline. The check should verify that all expected mosaic image
-   types are present, image arrays match within tolerance, WCS/header geometry
-   is stable, finite/NaN masks are equivalent, and beam/axis metadata remains
-   scientifically acceptable. Cover at least `MFS-image`, `MFS-image-pb`,
-   `MFS-image-pb-ast`, `MFS-model-pb`, `MFS-residual`, and `MFS-dirty`, because
-   these products share the mosaic template/regridding path.
+2. **Run the targeted mosaic science-equivalence scenario.**
+   The `multi-sector-mosaic` option-matrix scenario is defined under
+   `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`.
+   It uses the generated quadrant-balanced multi-sector demo data, an
+   image-only strategy, a 2x2 sector grid, and `dde_method = single` so it
+   protects sector imaging, regridding, and mosaic assembly before more
+   task-boundary refactors.
+
+   Before running it, regenerate the demo data if the multi-sector files are
+   missing:
+
+   ```bash
+   scripts/dev/generate-prefect-demo-data.py --force --include-multi-sector
+   ```
+
+   Then run only this scenario from the option matrix:
+
+   ```bash
+   scripts/dev/run_branch_option_matrix.py \
+     --matrix docs/source/development/equivalence_runs/2026-07-06-option-matrix/option-matrix.json \
+     --scenario multi-sector-mosaic \
+     --run-root runs/branch-option-matrix-multi-sector-mosaic
+   ```
+
+   Preserve a compact report if it passes. The evidence should show that the
+   expected mosaic image types are present, image arrays match within tolerance,
+   WCS/header geometry is stable, finite/NaN masks are equivalent, and
+   beam/axis metadata remains scientifically acceptable. Cover at least
+   `MFS-image`, `MFS-image-pb`, `MFS-image-pb-ast`, `MFS-model-pb`,
+   `MFS-residual`, and `MFS-dirty`, because these products share the mosaic
+   template/regridding path.
 
 3. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
