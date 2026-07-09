@@ -24,7 +24,13 @@ from rapthor.execution.benchmarking import (
 )
 
 GENERATED_DEMO_PARSETS = frozenset(
-    {"examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset"}
+    {
+        "examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
+        "examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset",
+    }
+)
+MULTI_SECTOR_DEMO_PARSETS = frozenset(
+    {"examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset"}
 )
 TEST_RESOURCE_DIR = Path("tests/resources")
 BENCHMARK_PARSET_PATH_OPTIONS = (
@@ -35,6 +41,7 @@ BENCHMARK_PARSET_PATH_OPTIONS = (
     "input_h5parm",
     "input_fulljones_h5parm",
     "facet_layout",
+    "normalization_skymodels",
 )
 CI_METADATA_ENV_VARS = {
     "container_image": "FULL_IMAGE",
@@ -249,6 +256,10 @@ def _scenario_uses_generated_demo_inputs(scenario) -> bool:
     return Path(scenario.parset).as_posix() in GENERATED_DEMO_PARSETS
 
 
+def _scenario_uses_multi_sector_demo_inputs(scenario) -> bool:
+    return Path(scenario.parset).as_posix() in MULTI_SECTOR_DEMO_PARSETS
+
+
 def _prepare_benchmark_inputs(repo_root: Path, selected_scenarios) -> None:
     """Create ignored benchmark inputs that are not present in a fresh checkout."""
     test_ms = _ensure_test_ms(repo_root)
@@ -258,17 +269,18 @@ def _prepare_benchmark_inputs(repo_root: Path, selected_scenarios) -> None:
         if _scenario_uses_generated_demo_inputs(scenario)
     ]
     if generated_scenarios and _missing_scenario_inputs(repo_root, generated_scenarios):
-        subprocess.run(
-            [
-                sys.executable,
-                str(repo_root / "scripts" / "dev" / "generate-prefect-demo-data.py"),
-                "--template-ms",
-                str(test_ms),
-                "--force",
-            ],
-            cwd=repo_root,
-            check=True,
-        )
+        command = [
+            sys.executable,
+            str(repo_root / "scripts" / "dev" / "generate-prefect-demo-data.py"),
+            "--template-ms",
+            str(test_ms),
+            "--force",
+        ]
+        if any(
+            _scenario_uses_multi_sector_demo_inputs(scenario) for scenario in generated_scenarios
+        ):
+            command.append("--include-multi-sector")
+        subprocess.run(command, cwd=repo_root, check=True)
 
 
 def _ensure_test_ms(repo_root: Path) -> Path:
@@ -292,7 +304,7 @@ def _missing_scenario_inputs(repo_root: Path, selected_scenarios) -> list[str]:
             missing.append(f"{scenario.scenario_id}: parset does not exist: {parset_path}")
             continue
 
-        for option, path_value in _parset_path_values(parset_path):
+        for option, path_value in _scenario_parset_path_values(parset_path, scenario):
             if not _path_value_exists(repo_root, path_value):
                 missing.append(
                     f"{scenario.scenario_id}: [{parset_path.relative_to(repo_root)}] "
@@ -302,18 +314,25 @@ def _missing_scenario_inputs(repo_root: Path, selected_scenarios) -> list[str]:
     return missing
 
 
-def _parset_path_values(parset_path: Path) -> list[tuple[str, str]]:
+def _scenario_parset_path_values(parset_path: Path, scenario) -> list[tuple[str, str]]:
     parser = configparser.ConfigParser(interpolation=None)
-    parser.read(parset_path)
-    if not parser.has_section("global"):
-        return []
+    with parset_path.open(encoding="utf-8") as handle:
+        parser.read_file(handle)
+    for override in getattr(scenario, "parset_overrides", ()):
+        if not parser.has_section(override.section):
+            parser.add_section(override.section)
+        parser.set(override.section, override.option, override.value)
+    return _parset_path_values(parser)
 
+
+def _parset_path_values(parser: configparser.ConfigParser) -> list[tuple[str, str]]:
     values = []
-    for option in BENCHMARK_PARSET_PATH_OPTIONS:
-        if not parser.has_option("global", option):
-            continue
-        for path_value in _split_parset_path_value(parser.get("global", option)):
-            values.append((option, path_value))
+    for section in parser.sections():
+        for option in BENCHMARK_PARSET_PATH_OPTIONS:
+            if not parser.has_option(section, option):
+                continue
+            for path_value in _split_parset_path_value(parser.get(section, option)):
+                values.append((option, path_value))
     return values
 
 

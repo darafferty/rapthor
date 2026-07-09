@@ -8,6 +8,7 @@ import math
 import shutil
 import subprocess
 import textwrap
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,7 +23,9 @@ PHASE_CENTRE = SkyCoord("1h37m41.299s", "+33d09m35.132s", frame="icrs")
 REFERENCE_FREQUENCY_HZ = 134375000.0
 CHANNEL_WIDTH_HZ = 24414.0625
 BENCHMARK_PARSET_FILENAME = "prefect_demo_benchmark.parset"
+MULTI_SECTOR_BENCHMARK_PARSET_FILENAME = "prefect_demo_multisector_benchmark.parset"
 BENCHMARK_STRATEGY_FILENAME = "prefect_demo_benchmark_strategy.py"
+BENCHMARK_NORMALIZE_STRATEGY_FILENAME = "prefect_demo_benchmark_normalize_strategy.py"
 BENCHMARK_STRATEGY_TEXT = """\
 \"\"\"Shared demo and CI benchmark strategy for the generated dataset.\"\"\"
 
@@ -84,6 +87,13 @@ strategy_steps = [
     ),
 ]
 """
+BENCHMARK_NORMALIZE_STRATEGY_TEXT = (
+    BENCHMARK_STRATEGY_TEXT
+    + """
+# Exercise the image normalization operation for hidden-path benchmarking.
+strategy_steps[0]["do_normalize"] = True
+"""
+)
 
 
 @dataclass(frozen=True)
@@ -123,6 +133,24 @@ SOURCES = [
     SourceSpec("rich_north_b", "Patch_rich_north", 0.032, 0.405, 0.35, 0.27, -0.72),
     SourceSpec("rich_south_a", "Patch_rich_south", -0.100, -0.400, 2.2, 1.75, -0.84),
     SourceSpec("rich_south_b", "Patch_rich_south", -0.132, -0.424, 0.30, 0.23, -0.68),
+]
+
+MULTI_SECTOR_PATCHES = [
+    PatchSpec("Patch_multisector_ne", 0.30, 0.30),
+    PatchSpec("Patch_multisector_nw", -0.30, 0.30),
+    PatchSpec("Patch_multisector_se", 0.30, -0.30),
+    PatchSpec("Patch_multisector_sw", -0.30, -0.30),
+]
+
+MULTI_SECTOR_SOURCES = [
+    SourceSpec("multisector_ne_a", "Patch_multisector_ne", 0.300, 0.300, 3.4, 2.78, -0.78),
+    SourceSpec("multisector_ne_b", "Patch_multisector_ne", 0.326, 0.276, 0.48, 0.38, -0.70),
+    SourceSpec("multisector_nw_a", "Patch_multisector_nw", -0.300, 0.300, 3.2, 2.62, -0.82),
+    SourceSpec("multisector_nw_b", "Patch_multisector_nw", -0.328, 0.326, 0.44, 0.34, -0.68),
+    SourceSpec("multisector_se_a", "Patch_multisector_se", 0.300, -0.300, 3.0, 2.45, -0.80),
+    SourceSpec("multisector_se_b", "Patch_multisector_se", 0.328, -0.326, 0.42, 0.33, -0.66),
+    SourceSpec("multisector_sw_a", "Patch_multisector_sw", -0.300, -0.300, 2.9, 2.35, -0.84),
+    SourceSpec("multisector_sw_b", "Patch_multisector_sw", -0.326, -0.276, 0.40, 0.31, -0.72),
 ]
 
 
@@ -178,6 +206,14 @@ def parse_args() -> argparse.Namespace:
         help="Skip DP3 prediction and leave the MS with only synthetic noise/corruptions.",
     )
     parser.add_argument(
+        "--include-multi-sector",
+        action="store_true",
+        help=(
+            "Also generate a quadrant-balanced multi-sector benchmark MS, sky models, "
+            "and parset for exercising sectorized imaging and mosaicking."
+        ),
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Replace an existing output directory.",
@@ -207,7 +243,13 @@ def path_for_parset(path: Path, repo_root: Path) -> str:
         return resolved_path.as_posix()
 
 
-def write_sky_model(path: Path, apparent: bool) -> None:
+def write_sky_model(
+    path: Path,
+    apparent: bool,
+    *,
+    patches: Sequence[PatchSpec] = PATCHES,
+    sources: Sequence[SourceSpec] = SOURCES,
+) -> None:
     lines = [
         (
             "FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', "
@@ -216,10 +258,10 @@ def write_sky_model(path: Path, apparent: bool) -> None:
         ),
         "",
     ]
-    for patch in PATCHES:
+    for patch in patches:
         coord = offset_coord(patch.delta_ra_deg, patch.delta_dec_deg)
         lines.append(f" , , {patch.name}, {format_ra(coord)}, {format_dec(coord)}")
-    for source in SOURCES:
+    for source in sources:
         coord = offset_coord(source.delta_ra_deg, source.delta_dec_deg)
         flux = source.apparent_flux_jy if apparent else source.true_flux_jy
         lines.append(
@@ -232,6 +274,10 @@ def write_sky_model(path: Path, apparent: bool) -> None:
 
 def write_benchmark_strategy(path: Path) -> None:
     path.write_text(BENCHMARK_STRATEGY_TEXT, encoding="utf-8")
+
+
+def write_benchmark_normalize_strategy(path: Path) -> None:
+    path.write_text(BENCHMARK_NORMALIZE_STRATEGY_TEXT, encoding="utf-8")
 
 
 def extend_ms_times(ms_path: Path, n_time_slots: int) -> int:
@@ -399,6 +445,32 @@ def corrupt_data(ms_path: Path, seed: int, noise_jy: float) -> None:
         table.putcol("DATA", data + noise)
 
 
+def prepare_synthetic_ms(
+    template_ms: Path,
+    ms_path: Path,
+    *,
+    n_time_slots: int,
+    skymodel_path: Path,
+    seed: int,
+    noise_jy: float,
+    skip_predict: bool,
+) -> int:
+    print(f"Copying template MS to {ms_path}")
+    shutil.copytree(template_ms, ms_path)
+    total_time_slots = extend_ms_times(ms_path, n_time_slots)
+    set_synthetic_uvw_geometry(ms_path)
+
+    if skip_predict:
+        print(f"Skipping DP3 prediction for {ms_path}; generated MS will contain noise only")
+    else:
+        print(f"Running DP3 predict for {ms_path}")
+        run_dp3_predict(ms_path, skymodel_path)
+
+    print(f"Adding synthetic time/frequency antenna phases and thermal noise to {ms_path}")
+    corrupt_data(ms_path, seed=seed, noise_jy=noise_jy)
+    return total_time_slots
+
+
 def write_parset(
     output_dir: Path,
     path: Path,
@@ -408,6 +480,10 @@ def write_parset(
     title: str = "rich demo",
     work_dir_name: str = "work",
     grid_width_deg: float = 1.25,
+    grid_nsectors_ra: int = 1,
+    ms_filename: str = "prefect_demo_rich.ms",
+    true_sky_filename: str = "prefect_demo_rich_true_sky.txt",
+    apparent_sky_filename: str = "prefect_demo_rich_apparent_sky.txt",
     local_dask_workers: int = 2,
     cpus_per_task: int = 4,
     max_cores: int = 4,
@@ -421,9 +497,9 @@ def write_parset(
     postage_stamp_preview_size_px: int = 96,
     fits_preview_clip_percentile: float = 99.9,
 ) -> None:
-    ms_path = output_dir / "prefect_demo_rich.ms"
-    true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
-    apparent_sky_path = output_dir / "prefect_demo_rich_apparent_sky.txt"
+    ms_path = output_dir / ms_filename
+    true_sky_path = output_dir / true_sky_filename
+    apparent_sky_path = output_dir / apparent_sky_filename
     work_dir = output_dir / work_dir_name
 
     path.write_text(
@@ -480,7 +556,8 @@ def write_parset(
             grid_width_dec_deg = {grid_width_deg}
             grid_center_ra = 1h37m41.299s
             grid_center_dec = +33d09m35.132s
-            grid_nsectors_ra = 1
+            grid_nsectors_ra = {grid_nsectors_ra}
+            skip_corner_sectors = False
             idg_mode = cpu
             reweight = False
             average_visibilities = False
@@ -552,6 +629,33 @@ def write_benchmark_parset(
     )
 
 
+def write_multi_sector_benchmark_parset(
+    output_dir: Path, path: Path, repo_root: Path, strategy_path: Path
+) -> None:
+    write_parset(
+        output_dir,
+        path,
+        repo_root,
+        strategy_path,
+        title="CI multi-sector benchmark",
+        work_dir_name="multisector-benchmark-work",
+        grid_width_deg=1.5,
+        grid_nsectors_ra=2,
+        ms_filename="prefect_demo_multisector.ms",
+        true_sky_filename="prefect_demo_multisector_true_sky.txt",
+        apparent_sky_filename="prefect_demo_multisector_apparent_sky.txt",
+        local_dask_workers=2,
+        cpus_per_task=0,
+        max_cores=0,
+        max_threads=0,
+        filter_skymodel_ncores=15,
+        deconvolution_threads=0,
+        parallel_gridding_tasks=0,
+        publish_fits_previews=False,
+        publish_postage_stamp_previews=False,
+    )
+
+
 def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
@@ -567,34 +671,68 @@ def main() -> None:
     ms_path = output_dir / "prefect_demo_rich.ms"
     true_sky_path = output_dir / "prefect_demo_rich_true_sky.txt"
     apparent_sky_path = output_dir / "prefect_demo_rich_apparent_sky.txt"
+    multi_sector_ms_path = output_dir / "prefect_demo_multisector.ms"
+    multi_sector_true_sky_path = output_dir / "prefect_demo_multisector_true_sky.txt"
+    multi_sector_apparent_sky_path = output_dir / "prefect_demo_multisector_apparent_sky.txt"
     parset_path = output_dir / "prefect_demo_rich.parset"
     benchmark_parset_path = output_dir / BENCHMARK_PARSET_FILENAME
+    multi_sector_benchmark_parset_path = output_dir / MULTI_SECTOR_BENCHMARK_PARSET_FILENAME
     benchmark_strategy_path = output_dir / BENCHMARK_STRATEGY_FILENAME
+    benchmark_normalize_strategy_path = output_dir / BENCHMARK_NORMALIZE_STRATEGY_FILENAME
     demo_strategy_path = args.strategy or benchmark_strategy_path
     if args.strategy is not None and not args.strategy.exists():
         raise SystemExit(f"Strategy file does not exist: {args.strategy}")
 
-    print(f"Copying template MS to {ms_path}")
-    shutil.copytree(args.template_ms, ms_path)
-    n_time_slots = extend_ms_times(ms_path, args.n_time_slots)
-    set_synthetic_uvw_geometry(ms_path)
-
     print(f"Writing sky models with {len(PATCHES)} bright patches")
     write_sky_model(true_sky_path, apparent=False)
     write_sky_model(apparent_sky_path, apparent=True)
+    if args.include_multi_sector:
+        print(f"Writing multi-sector sky models with {len(MULTI_SECTOR_PATCHES)} bright patches")
+        write_sky_model(
+            multi_sector_true_sky_path,
+            apparent=False,
+            patches=MULTI_SECTOR_PATCHES,
+            sources=MULTI_SECTOR_SOURCES,
+        )
+        write_sky_model(
+            multi_sector_apparent_sky_path,
+            apparent=True,
+            patches=MULTI_SECTOR_PATCHES,
+            sources=MULTI_SECTOR_SOURCES,
+        )
     print(f"Writing demo/benchmark strategy to {benchmark_strategy_path}")
     write_benchmark_strategy(benchmark_strategy_path)
+    print(f"Writing normalization benchmark strategy to {benchmark_normalize_strategy_path}")
+    write_benchmark_normalize_strategy(benchmark_normalize_strategy_path)
 
-    if args.skip_predict:
-        print("Skipping DP3 prediction; generated MS will contain synthetic noise only")
-    else:
-        print("Running DP3 predict to populate model visibilities")
-        run_dp3_predict(ms_path, true_sky_path)
-
-    print("Adding synthetic time/frequency antenna phases and thermal noise")
-    corrupt_data(ms_path, seed=args.seed, noise_jy=args.noise_jy)
+    n_time_slots = prepare_synthetic_ms(
+        args.template_ms,
+        ms_path,
+        n_time_slots=args.n_time_slots,
+        skymodel_path=true_sky_path,
+        seed=args.seed,
+        noise_jy=args.noise_jy,
+        skip_predict=args.skip_predict,
+    )
+    if args.include_multi_sector:
+        prepare_synthetic_ms(
+            args.template_ms,
+            multi_sector_ms_path,
+            n_time_slots=args.n_time_slots,
+            skymodel_path=multi_sector_true_sky_path,
+            seed=args.seed + 1000,
+            noise_jy=args.noise_jy,
+            skip_predict=args.skip_predict,
+        )
     write_parset(output_dir, parset_path, repo_root, demo_strategy_path)
     write_benchmark_parset(output_dir, benchmark_parset_path, repo_root, benchmark_strategy_path)
+    if args.include_multi_sector:
+        write_multi_sector_benchmark_parset(
+            output_dir,
+            multi_sector_benchmark_parset_path,
+            repo_root,
+            benchmark_strategy_path,
+        )
 
     print()
     print(f"Generated {n_time_slots} time slots in {ms_path}")
@@ -602,6 +740,9 @@ def main() -> None:
     print(f"Demo strategy: {demo_strategy_path}")
     print(f"Benchmark parset: {benchmark_parset_path}")
     print(f"Benchmark strategy: {benchmark_strategy_path}")
+    print(f"Benchmark normalization strategy: {benchmark_normalize_strategy_path}")
+    if args.include_multi_sector:
+        print(f"Multi-sector benchmark parset: {multi_sector_benchmark_parset_path}")
     print("Run with:")
     print(f"  scripts/dev/run-rapthor-prefect-demo.py {path_for_parset(parset_path, repo_root)}")
     print(

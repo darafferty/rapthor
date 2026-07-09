@@ -53,6 +53,11 @@ Completed and accepted:
 - The `calculate_image_diagnostics` task split has been benchmarked and
   accepted. It added the expected four Dask tasks, kept scheduler gap flat, and
   preserved successful command execution.
+- Hidden-path benchmark scenario definitions are in place for image products,
+  WSClean-predict calibration, and many-sector mosaic work. The many-sector
+  scenario uses a dedicated quadrant-balanced generated dataset and a
+  four-sector grid so it exercises sectorized imaging and mosaicking without
+  depending on source-boundary edge cases.
 
 Keep in mind:
 
@@ -70,10 +75,10 @@ Keep in mind:
 
 Do these in order unless a regression blocks progress.
 
-1. **Add benchmark scenarios for currently hidden scaling paths.**
-   Before splitting more tasks, add or enable small repeatable scenarios that
-   exercise the work we plan to expose. Run them once with the current task
-   structure and preserve a compact "pre-split hidden-path baseline" report.
+1. **Run the pre-split hidden-path benchmark baseline.**
+   The scenario definitions, generated-input coverage, and CI wiring are in
+   place. Run the benchmark once with the current task structure and preserve a
+   compact "pre-split hidden-path baseline" report.
 
    Scenario coverage:
 
@@ -83,8 +88,8 @@ Do these in order unless a regression blocks progress.
      full-Jones normalization, `combine_h5parms`, `plot_solutions`
    - prediction-heavy calibration: WSClean-predict loops and sector-model
      post-processing
-   - mosaic-heavy imaging: per-sector regridding, mosaic assembly, and
-     compression
+   - mosaic-heavy imaging: quadrant-balanced four-sector imaging, per-sector
+     regridding, mosaic assembly, and compression
    - larger scalability shapes: many-sector imaging and larger/multi-node runs
 
    Keep preview artifacts disabled unless the scenario explicitly measures

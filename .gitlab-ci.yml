@@ -284,15 +284,19 @@ run_benchmark_baseline:
     RAPTHOR_BENCHMARK_REPETITIONS: "3"
     RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
       --resource-profile baseline-2x30
-    RAPTHOR_BENCHMARK_SCENARIO_ARGS: "--scenario ci-benchmark"
+    RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
+      --scenario ci-benchmark
+      --scenario ci-benchmark-image-products
+      --scenario ci-benchmark-wsclean-predict
+      --scenario ci-benchmark-many-sector-mosaic
     VECLIB_MAXIMUM_THREADS: "1"
   script:
     - export RAPTHOR_BENCHMARK_RUN_STAMP="$(date -u +%Y%m%d-%H%M%S)"
     - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
-    # Run the baseline and filter-skymodel-only profile on the 60-core runner
-    # so the next benchmark artifact can test the targeted resource hypothesis.
+    # Run the baseline plus hidden-path scenarios on the 60-core runner so the
+    # next benchmark artifact can capture the pre-split task-boundary baseline.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS

@@ -6,8 +6,10 @@ from pathlib import Path
 
 from rapthor.execution.benchmarking import (
     BenchmarkRunResult,
+    BenchmarkScenario,
     CommandMetric,
     OperationTimingMetric,
+    ParsetOverride,
     benchmark_run_result,
     benchmark_scenarios_by_id,
     failed_benchmark_runs,
@@ -53,10 +55,17 @@ def load_benchmark_script():
 def test_default_benchmark_scenarios_build_demo_commands():
     scenarios = benchmark_scenarios_by_id()
     scenario = scenarios["ci-benchmark"]
+    many_sector_scenario = scenarios["ci-benchmark-many-sector-mosaic"]
 
     command = scenario.command(Path("/repo"), Path("/runs/benchmark"))
+    many_sector_command = many_sector_scenario.command(Path("/repo"), Path("/runs/benchmark"))
 
-    assert set(scenarios) == {"ci-benchmark"}
+    assert set(scenarios) == {
+        "ci-benchmark",
+        "ci-benchmark-image-products",
+        "ci-benchmark-many-sector-mosaic",
+        "ci-benchmark-wsclean-predict",
+    }
     assert command[1] == "/repo/scripts/dev/run-rapthor-prefect-demo.py"
     assert "/repo/examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset" in command
     assert "--dask-performance-report" in command
@@ -65,6 +74,51 @@ def test_default_benchmark_scenarios_build_demo_commands():
     assert command[command.index("--cpus-per-task") + 1] == "30"
     assert command[command.index("--max-threads") + 1] == "30"
     assert "--no-keep-server" in command
+    assert (
+        "/repo/examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset"
+        in many_sector_command
+    )
+    assert many_sector_scenario.parset_overrides == ()
+
+
+def test_hidden_path_benchmark_scenarios_materialize_parset_overrides(tmp_path):
+    scenario = benchmark_scenarios_by_id()["ci-benchmark-image-products"]
+    repo_root = tmp_path / "repo"
+    parset_path = repo_root / "examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset"
+    parset_path.parent.mkdir(parents=True)
+    parset_path.write_text(
+        """
+[global]
+strategy = examples/generated/prefect_demo_rich/prefect_demo_benchmark_strategy.py
+
+[imaging]
+save_image_cube = False
+normalization_skymodels =
+
+[cluster]
+prefect_task_runner = local_dask
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    command = scenario.command(repo_root, tmp_path / "run")
+    scenario_parset = Path(command[2])
+
+    assert scenario_parset.name == ("prefect_demo_benchmark.ci-benchmark-image-products.parset")
+    text = scenario_parset.read_text(encoding="utf-8")
+    assert "prefect_demo_benchmark_normalize_strategy.py" in text
+    assert "save_image_cube = True" in text
+    assert "make_quv_images = True" in text
+    assert "compress_final_images = True" in text
+
+
+def test_benchmark_scenario_without_overrides_uses_base_parset():
+    scenario = benchmark_scenarios_by_id()["ci-benchmark"]
+
+    assert scenario.parset_path_for_run(Path("/repo"), Path("/run")) == Path(
+        "/repo/examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset"
+    )
 
 
 def test_benchmark_runner_applies_runtime_overrides():
@@ -140,6 +194,91 @@ def test_benchmark_resource_profile_scenarios_still_use_generated_inputs():
     scenario = module._selected_scenarios(benchmark_scenarios_by_id(), args)[0]
 
     assert module._scenario_uses_generated_demo_inputs(scenario) is True
+
+
+def test_benchmark_runner_recognizes_many_sector_generated_inputs():
+    module = load_benchmark_script()
+    scenario = benchmark_scenarios_by_id()["ci-benchmark-many-sector-mosaic"]
+
+    assert module._scenario_uses_generated_demo_inputs(scenario) is True
+    assert module._scenario_uses_multi_sector_demo_inputs(scenario) is True
+
+
+def test_benchmark_prepare_inputs_generates_many_sector_dataset(monkeypatch, tmp_path):
+    module = load_benchmark_script()
+    scenario = benchmark_scenarios_by_id()["ci-benchmark-many-sector-mosaic"]
+    calls = []
+
+    monkeypatch.setattr(module, "_ensure_test_ms", lambda repo_root: Path("/repo/test.ms"))
+    monkeypatch.setattr(
+        module, "_missing_scenario_inputs", lambda repo_root, scenarios: ["missing"]
+    )
+
+    def fake_run(command, cwd, check):
+        calls.append({"command": command, "cwd": cwd, "check": check})
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    module._prepare_benchmark_inputs(tmp_path, [scenario])
+
+    assert calls == [
+        {
+            "command": [
+                sys.executable,
+                str(tmp_path / "scripts" / "dev" / "generate-prefect-demo-data.py"),
+                "--template-ms",
+                "/repo/test.ms",
+                "--force",
+                "--include-multi-sector",
+            ],
+            "cwd": tmp_path,
+            "check": True,
+        }
+    ]
+
+
+def test_benchmark_input_validation_includes_scenario_override_paths(tmp_path):
+    module = load_benchmark_script()
+    parset_path = tmp_path / "examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset"
+    parset_path.parent.mkdir(parents=True)
+    parset_path.write_text(
+        """
+[global]
+strategy = examples/generated/prefect_demo_rich/prefect_demo_benchmark_strategy.py
+
+[imaging]
+normalization_skymodels =
+normalization_reference_frequencies =
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    scenario = BenchmarkScenario(
+        scenario_id="override-paths",
+        description="override paths",
+        parset="examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
+        local_dask_workers=1,
+        cpus_per_task=1,
+        max_threads=1,
+        parset_overrides=(
+            ParsetOverride(
+                "global",
+                "strategy",
+                "examples/generated/prefect_demo_rich/missing_strategy.py",
+            ),
+            ParsetOverride(
+                "imaging",
+                "normalization_skymodels",
+                "[examples/generated/prefect_demo_rich/missing_a.txt, "
+                "examples/generated/prefect_demo_rich/missing_b.txt]",
+            ),
+        ),
+    )
+
+    missing = module._missing_scenario_inputs(tmp_path, [scenario])
+
+    assert any("strategy does not exist" in item for item in missing)
+    assert any("normalization_skymodels does not exist" in item for item in missing)
 
 
 def test_parse_command_log_extracts_timing_records(tmp_path):

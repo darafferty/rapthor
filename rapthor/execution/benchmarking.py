@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import configparser
 import json
 import re
 import statistics
@@ -29,6 +30,15 @@ METADATA_LABELS = {
 
 
 @dataclass(frozen=True)
+class ParsetOverride:
+    """One scenario-specific parset option override."""
+
+    section: str
+    option: str
+    value: str
+
+
+@dataclass(frozen=True)
 class BenchmarkScenario:
     """A reproducible Rapthor benchmark scenario."""
 
@@ -40,13 +50,15 @@ class BenchmarkScenario:
     max_threads: int
     filter_skymodel_ncores: Optional[int] = None
     command_profile: str = "time"
+    parset_overrides: tuple[ParsetOverride, ...] = ()
 
     def command(self, repo_root: Path, run_dir: Path) -> list[str]:
         """Return the command used to run this scenario."""
+        parset_path = self.parset_path_for_run(repo_root, run_dir)
         return [
             sys.executable,
             str(repo_root / "scripts" / "dev" / "run-rapthor-prefect-demo.py"),
-            str(repo_root / self.parset),
+            str(parset_path),
             "--run-dir",
             str(run_dir),
             "--task-runner",
@@ -70,6 +82,26 @@ class BenchmarkScenario:
             "--no-keep-server",
             "--no-keep-server-on-failure",
         ]
+
+    def parset_path_for_run(self, repo_root: Path, run_dir: Path) -> Path:
+        """Return a scenario parset, materializing overrides when needed."""
+        base_parset = repo_root / self.parset
+        if not self.parset_overrides:
+            return base_parset
+
+        parser = configparser.ConfigParser(interpolation=None)
+        with base_parset.open(encoding="utf-8") as handle:
+            parser.read_file(handle)
+        for override in self.parset_overrides:
+            if not parser.has_section(override.section):
+                parser.add_section(override.section)
+            parser.set(override.section, override.option, override.value)
+
+        scenario_parset = run_dir / f"{Path(self.parset).stem}.{self.scenario_id}.parset"
+        scenario_parset.parent.mkdir(parents=True, exist_ok=True)
+        with scenario_parset.open("w", encoding="utf-8") as handle:
+            parser.write(handle)
+        return scenario_parset
 
 
 @dataclass(frozen=True)
@@ -158,6 +190,70 @@ def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
                 "and source filtering."
             ),
             parset="examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
+            local_dask_workers=2,
+            cpus_per_task=30,
+            max_threads=30,
+        ),
+        BenchmarkScenario(
+            scenario_id="ci-benchmark-image-products",
+            description=(
+                "Generated CI benchmark variant exercising image post-processing: "
+                "flux-scale normalization, final full-Stokes image cubes, cube "
+                "catalog creation, restoration, and final-image compression."
+            ),
+            parset="examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
+            local_dask_workers=2,
+            cpus_per_task=30,
+            max_threads=30,
+            parset_overrides=(
+                ParsetOverride(
+                    "global",
+                    "strategy",
+                    "examples/generated/prefect_demo_rich/"
+                    "prefect_demo_benchmark_normalize_strategy.py",
+                ),
+                ParsetOverride(
+                    "imaging",
+                    "normalization_skymodels",
+                    "["
+                    "examples/generated/prefect_demo_rich/prefect_demo_rich_apparent_sky.txt, "
+                    "examples/generated/prefect_demo_rich/prefect_demo_rich_true_sky.txt"
+                    "]",
+                ),
+                ParsetOverride(
+                    "imaging",
+                    "normalization_reference_frequencies",
+                    "[134375000.0, 134375000.0]",
+                ),
+                ParsetOverride("imaging", "make_quv_images", "True"),
+                ParsetOverride("imaging", "disable_iquv_clean", "True"),
+                ParsetOverride("imaging", "save_image_cube", "True"),
+                ParsetOverride("imaging", "image_cube_stokes_list", "[I, Q, U, V]"),
+                ParsetOverride("imaging", "compress_final_images", "True"),
+            ),
+        ),
+        BenchmarkScenario(
+            scenario_id="ci-benchmark-wsclean-predict",
+            description=(
+                "Generated CI benchmark variant exercising the WSClean-predict "
+                "calibration path and its prediction post-processing."
+            ),
+            parset="examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
+            local_dask_workers=2,
+            cpus_per_task=30,
+            max_threads=30,
+            parset_overrides=(ParsetOverride("calibration", "use_wsclean_predict", "True"),),
+        ),
+        BenchmarkScenario(
+            scenario_id="ci-benchmark-many-sector-mosaic",
+            description=(
+                "Generated CI benchmark variant using quadrant-balanced sky "
+                "directions to exercise multiple image sectors and heavier "
+                "mosaic regridding/assembly work."
+            ),
+            parset=(
+                "examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset"
+            ),
             local_dask_workers=2,
             cpus_per_task=30,
             max_threads=30,
