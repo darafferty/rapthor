@@ -1,7 +1,7 @@
 """Master-compatible multi-sector mosaic science-equivalence scenario."""
 
 COMMON_SETTINGS = {
-    "do_calibrate": False,
+    "do_calibrate": True,
     "do_image": True,
     "do_normalize": False,
     "do_check": False,

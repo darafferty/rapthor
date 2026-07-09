@@ -98,13 +98,21 @@ Do these in order unless a regression blocks progress.
    report overhead. Use `ci-benchmark-baseline-2x30` as the default CI-sized
    resource profile.
 
-2. **Run the targeted mosaic science-equivalence scenario.**
+2. **Keep targeted mosaic science coverage explicit.**
    The `multi-sector-mosaic` option-matrix scenario is defined under
    `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`.
-   It uses the generated quadrant-balanced multi-sector demo data, an
-   image-only strategy, a 2x2 sector grid, and `dde_method = single` so it
-   protects sector imaging, regridding, and mosaic assembly before more
-   task-boundary refactors.
+   It uses the generated quadrant-balanced multi-sector demo data, DD
+   calibration, a 2x2 sector grid, and `dde_method = single` so it protects
+   sector imaging, regridding, and mosaic assembly before more task-boundary
+   refactors.
+
+   Branch-vs-master equivalence for this exact scenario is currently skipped:
+   `master` fails before imaging commands run because the generated CWL image
+   scatter receives a single `parallel_gridding_tasks` value alongside
+   per-sector lists. The Prefect/Dask branch runs this scenario successfully.
+   Keep the current-branch integration/benchmark coverage active and promote
+   this to a stored-reference mosaic science gate once a stable reference run is
+   captured.
 
    Before running it, regenerate the demo data if the multi-sector files are
    missing:
@@ -113,7 +121,8 @@ Do these in order unless a regression blocks progress.
    scripts/dev/generate-prefect-demo-data.py --force --include-multi-sector
    ```
 
-   Then run only this scenario from the option matrix:
+   To re-check the current scenario setup manually, run only this scenario from
+   the option matrix:
 
    ```bash
    scripts/dev/run_branch_option_matrix.py \
@@ -122,13 +131,25 @@ Do these in order unless a regression blocks progress.
      --run-root runs/branch-option-matrix-multi-sector-mosaic
    ```
 
-   Preserve a compact report if it passes. The evidence should show that the
-   expected mosaic image types are present, image arrays match within tolerance,
-   WCS/header geometry is stable, finite/NaN masks are equivalent, and
-   beam/axis metadata remains scientifically acceptable. Cover at least
-   `MFS-image`, `MFS-image-pb`, `MFS-image-pb-ast`, `MFS-model-pb`,
-   `MFS-residual`, and `MFS-dirty`, because these products share the mosaic
-   template/regridding path.
+   Preserve compact reports from current-branch and future stored-reference
+   runs. The evidence should show that the expected mosaic image types are
+   present, image arrays match within tolerance, WCS/header geometry is stable,
+   finite/NaN masks are equivalent, and beam/axis metadata remains
+   scientifically acceptable. Cover at least `MFS-image`, `MFS-image-pb`,
+   `MFS-image-pb-ast`, `MFS-model-pb`, `MFS-residual`, and `MFS-dirty`, because
+   these products share the mosaic template/regridding path.
+
+   Also fix and guard sparse model mosaics. The multi-sector demo currently
+   shows `MFS-model-pb` previews with mostly missing values and thin stripe-like
+   artifacts: sector model images are sparse WSClean clean-component images,
+   `FITSImage.blank()` turns their zero-valued background outside the retained
+   components into NaNs, and `reproject_interp()` can spread a few nonzero model
+   pixels into long row-like artifacts. Treat model images as sparse products
+   rather than continuous restored images when regridding/mosaicking: preserve
+   zero-valued background inside valid sector footprints, avoid interpolation
+   that creates artificial model flux, and add a focused regression test that
+   checks finite masks, nonzero-pixel growth, and absence of stripe-like
+   artifacts for a sparse multi-sector `MFS-model-pb` mosaic.
 
 3. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
@@ -184,9 +205,10 @@ not just a final check.
 - Keep science-regression coverage explicit for calibration strategy behavior,
   image-only cycles, DI pre-apply, DD on-the-fly apply, previous-cycle solution
   handling, and master feature catch-up cases.
-- Add targeted multi-sector mosaic science-equivalence coverage so
-  orchestration changes cannot silently alter shared-template, regridding, or
-  mosaic assembly outputs.
+- Keep targeted multi-sector mosaic coverage visible. Branch-vs-master
+  equivalence is blocked by the master CWL scatter issue, so use
+  current-branch integration/benchmark coverage now and add a stored-reference
+  mosaic science gate when a stable reference is available.
 - Add architecture tests only for contracts that should not drift silently:
   owner-package boundaries, thin operation adapters, runtime payload
   serializability, and benchmarkable task structure.

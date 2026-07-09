@@ -33,6 +33,7 @@ from astropy.io import fits
 REFERENCE_ROOT = Path(".pytest_cache/cwl-reference-artifacts")
 EQUIVALENCE_INPUTS = Path(".pytest_cache/equivalence-inputs")
 RESOURCE_ROOT = Path("tests/resources")
+SAVED_NORMALIZATION_REFERENCE_FREQUENCIES = (142000000.0, 142001000.0)
 # The small image-cube equivalence fixture can produce sub-percent WSClean beam-fit
 # jitter in one channel while image data and catalog contracts remain equivalent.
 BEAM_TABLE_RTOL = 1e-2
@@ -243,6 +244,16 @@ def _prepare_normalization_ms(output_root: Path) -> Path:
     return ms_path
 
 
+def _set_saved_normalization_reference_frequencies(
+    config: configparser.ConfigParser,
+) -> None:
+    """Use a valid two-frequency contract for the saved normalization scenario."""
+    frequencies = ", ".join(
+        str(frequency) for frequency in SAVED_NORMALIZATION_REFERENCE_FREQUENCIES
+    )
+    config["imaging"]["normalization_reference_frequencies"] = f"[{frequencies}]"
+
+
 def _strategy_path_for(saved_path: str, scenario: str, input_root: Path) -> Path:
     basename = Path(saved_path).name
     if scenario == "dd_slow_gain_calibration":
@@ -297,6 +308,7 @@ def _prepare_parset(reference_dir: Path, run_root: Path, input_root: Path) -> Pa
 
     if scenario == "normalization":
         config["global"]["input_ms"] = str(_prepare_normalization_ms(input_root / "normalization"))
+        _set_saved_normalization_reference_frequencies(config)
 
     parset_path = scenario_root / f"{scenario}.parset"
     with parset_path.open("w", encoding="utf-8") as handle:

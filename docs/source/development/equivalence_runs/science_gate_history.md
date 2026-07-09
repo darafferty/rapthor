@@ -8,7 +8,7 @@ Generated: 2026-06-11
 
 Archived for post-cutover cleanup: 2026-06-12
 
-Latest on-disk report scan: 2026-07-06
+Latest on-disk report scan: 2026-07-09
 
 Method contract: `docs/source/development/science_equivalence_contract.rst`
 
@@ -31,7 +31,7 @@ active CWL equivalence harness, CWL workflow/parset files, and `cwltool`
 validation tests have since been removed as part of post-cutover cleanup. This
 file is now the historical parity record.
 
-Current gate verdict as of 2026-07-06: the saved-reference matrix, focused
+Current gate verdict as of 2026-07-09: the saved-reference matrix, focused
 DD-plus-DI full-Jones branch-vs-master rerun, three-repeat normalized
 branch-repeatability envelope, and full integration suite support accepting the
 current branch for the covered scientific contract. Remaining cross-branch
@@ -41,7 +41,12 @@ differences are within the same-branch repeatability envelope. The next
 scientific checks should continue as risk-based option scenarios rather than
 broader default-like reruns. The first option-matrix scenarios now pass for
 provided sky-model flux-scale normalization, DP3 image-based predict, WSClean
-predict, and BDA/averaging on the rich demo data.
+predict, and BDA/averaging on the rich demo data. The latest 2026-07-09
+saved-reference rerun also passes all active saved scenarios after correcting
+the saved normalization fixture to use valid distinct reference frequencies.
+The multi-sector mosaic option-matrix row is documented as a current-branch
+coverage/stored-reference target rather than a branch-vs-master gate because
+legacy `master` fails before comparison in the CWL multi-sector image scatter.
 
 ## Science Equivalence Gate Decision
 
@@ -142,6 +147,72 @@ the development container. It compared backend-neutral summaries of:
 Product summaries included FITS shape/dtype/statistics, h5parm
 solset/soltab/dataset/axis structure, sky-model source and patch counts,
 region-file content, and generic product basenames.
+
+## 2026-07-09 Science Gate Rerun
+
+The saved-reference gate was rerun on 2026-07-09 after the current normalization
+contract required distinct reference frequencies. The first rerun exposed that
+the historical saved normalization fixture still used duplicate reference
+frequencies. The fixture-preparation helper now rewrites the saved
+normalization scenario to use:
+
+```text
+[142000000.0, 142001000.0]
+```
+
+The final saved-reference rerun is:
+
+```text
+runs/science-gate-20260709-saved-reference-rerun/equivalence-report.json
+runs/science-gate-20260709-saved-reference-rerun/equivalence-report.md
+```
+
+All active saved-reference scenarios passed. Remaining warnings are optional
+output-record artifact basename differences only.
+
+| Scenario | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `dd_only_calibration` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
+| `di_only_calibration` | pass | 5 | 5 | 6 | 5 | 1 | 2 | 9 |
+| `full_stokes_clean_disabled` | pass | 4 | 4 | 9 | 8 | 1 | 3 | 8 |
+| `image_cube` | pass | 4 | 4 | 7 | 6 | 1 | 3 | 12 |
+| `normalization` | pass | 5 | 5 | 7 | 6 | 1 | 4 | 12 |
+| `peeling` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 11 |
+| `restart` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
+
+The risk-based option matrix was rerun from:
+
+```text
+runs/science-gate-20260709-option-matrix-final/option-matrix-summary.json
+runs/science-gate-20260709-option-matrix-final/option-matrix-summary.md
+```
+
+The four active branch-vs-master option rows passed again. Each row has one
+classified auxiliary output-record warning and no failures.
+
+| Scenario | Result | Pairs | Passed Pairs | Failures | Warnings | FITS | H5 | Text | Diagnostics |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `normalization-rich-demo` | pass | 1 | 1 | 0 | 1 | 8 | 3 | 12 | 1 |
+| `prediction-path-image-based` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `prediction-path-wsclean` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `bda-averaging` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `multi-sector-mosaic` | skipped | 0 | 0 | 0 | 0 | - | - | - | - |
+| `screens` | skipped | 0 | 0 | 0 | 0 | - | - | - | - |
+
+The skipped multi-sector mosaic row was also run directly to establish the
+failure mode:
+
+```text
+runs/science-gate-20260709-option-matrix-mosaic-recheck/
+```
+
+The current Prefect/Dask branch completed the multi-sector mosaic scenario, but
+legacy `master` exited during `image_1` before products could be compared. The
+failure occurs in the generated CWL image scatter for the 2x2 sector grid, where
+one scatter input is not per-sector. This is a legacy orchestration limitation,
+not evidence of a current-branch scientific mismatch. Keep multi-sector mosaic
+covered by current-branch integration/benchmark runs for now, and promote it to
+a stored-reference science gate once a stable reference run is captured.
 
 ## Current Strengthened Saved-Reference Run
 

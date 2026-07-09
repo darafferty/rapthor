@@ -1,3 +1,4 @@
+import configparser
 import importlib.util
 import json
 import sys
@@ -37,6 +38,20 @@ def _header(**overrides):
 def _write_fits(path, data, header=None):
     fits.PrimaryHDU(data=np.asarray(data, dtype=np.float32), header=header or _header()).writeto(
         path, overwrite=True
+    )
+
+
+def test_saved_normalization_reference_frequencies_are_valid_for_current_contract():
+    module = load_equivalence_script()
+    parser = configparser.ConfigParser()
+    parser["imaging"] = {
+        "normalization_reference_frequencies": "[150000000.0, 150000000.0]",
+    }
+
+    module._set_saved_normalization_reference_frequencies(parser)
+
+    assert parser["imaging"]["normalization_reference_frequencies"] == (
+        "[142000000.0, 142001000.0]"
     )
 
 

@@ -27,9 +27,10 @@
     },
     {
       "id": "multi-sector-mosaic",
+      "skip_reason": "master CWL image scatter fails for multi-sector imaging because one generated scatter input is not per-sector; keep this covered by current-branch integration/benchmark runs until a stored mosaic reference is available",
       "base_parset": "inputs/base/multi_sector_mosaic.parset",
       "current_parset": "inputs/current/multi_sector_mosaic.parset",
-      "notes": "Image-only 2x2 sector grid on quadrant-balanced generated demo data to protect sector regridding and mosaic assembly."
+      "notes": "DD calibration, imaging, and mosaic assembly on a 2x2 sector grid using quadrant-balanced generated demo data."
     },
     {
       "id": "screens",
