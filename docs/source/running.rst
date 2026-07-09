@@ -283,6 +283,68 @@ the runtime resources:
       --max-threads 4 \
       examples/generated/prefect_demo_rich/prefect_demo_rich.parset
 
+To exercise the multiple-sector imaging and mosaicking path, generate the
+additional quadrant-balanced benchmark dataset:
+
+.. code-block:: console
+
+    $ scripts/dev/generate-prefect-demo-data.py --force --include-multi-sector
+
+This also writes ``prefect_demo_multisector.ms``, matching apparent/true sky
+models, and ``prefect_demo_multisector_benchmark.parset``. The multi-sector sky
+model places bright source groups well inside the four quadrants of a
+``2 x 2`` sector grid, so the run exercises sectorized imaging and mosaic
+assembly without relying on sources that sit close to sector boundaries.
+
+For a modest local dashboard test, run:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset \
+      --run-dir runs/prefect-demo-multisector \
+      --local-dask-workers 2 \
+      --cpus-per-task 4 \
+      --max-threads 4 \
+      --filter-skymodel-ncores 4 \
+      --dask-performance-report
+
+For a CI-like 60-core resource shape, use:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset \
+      --run-dir runs/prefect-demo-multisector-ci-shape \
+      --local-dask-workers 2 \
+      --cpus-per-task 30 \
+      --max-threads 30 \
+      --filter-skymodel-ncores 15 \
+      --dask-performance-report
+
+If a Prefect server is already running, pass its API URL explicitly:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset \
+      --api-url http://127.0.0.1:4200/api \
+      --no-start-server \
+      --run-dir runs/prefect-demo-multisector \
+      --local-dask-workers 2 \
+      --cpus-per-task 4 \
+      --max-threads 4 \
+      --filter-skymodel-ncores 4 \
+      --dask-performance-report
+
+After the run starts, the log should confirm that Rapthor built four imaging
+sectors and scheduled the mosaic operation:
+
+.. code-block:: console
+
+    $ rg "Using 4 imaging sectors|Operation mosaic" \
+      runs/prefect-demo-multisector/rapthor-work/logs/rapthor.log
+
 Pass ``--strategy /path/to/strategy.py`` to
 ``generate-prefect-demo-data.py`` when the local demo parset should reference a
 different strategy. The benchmark parset always references the generated
