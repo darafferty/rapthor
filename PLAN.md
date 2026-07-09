@@ -96,13 +96,25 @@ Do these in order unless a regression blocks progress.
    report overhead. Use `ci-benchmark-baseline-2x30` as the default CI-sized
    resource profile.
 
-2. **Systematically split large opaque work units into Prefect tasks.**
+2. **Add a targeted mosaic science-equivalence scenario.**
+   Protect the multi-sector mosaic path before more task-boundary refactors.
+   Use a small generated multi-sector dataset, or saved sector image products
+   for a cheaper mosaic-only variant, and compare the final mosaics against an
+   accepted baseline. The check should verify that all expected mosaic image
+   types are present, image arrays match within tolerance, WCS/header geometry
+   is stable, finite/NaN masks are equivalent, and beam/axis metadata remains
+   scientifically acceptable. Cover at least `MFS-image`, `MFS-image-pb`,
+   `MFS-image-pb-ast`, `MFS-model-pb`, `MFS-residual`, and `MFS-dirty`, because
+   these products share the mosaic template/regridding path.
+
+3. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
    meaningful task boundaries improve observability without harming this
    CI-sized performance shape. Split large steps by owner package, keeping each
    new task scientifically meaningful, restartable, serializable, and easy to
    identify in the dashboard. Compare each batch against the pre-split
-   hidden-path baseline from step 1.
+   hidden-path baseline from step 1 and keep the mosaic science-equivalence
+   scenario from step 2 green when changing mosaic behavior.
 
    Priority order:
 
@@ -113,26 +125,26 @@ Do these in order unless a regression blocks progress.
    - prediction: WSClean-predict loops and sector-model post-processing
    - mosaic: per-sector regridding, mosaic assembly, and compression
 
-3. **Benchmark after each owner-package split batch.**
+4. **Benchmark after each owner-package split batch.**
    Rerun the relevant hidden-path scenarios after each batch. Keep the split
    when task count, scheduler gap, wall time, command totals, restart behavior,
    and raw/scientific outputs remain acceptable. Add compact reports under
    `docs/source/development/benchmark_baselines/`.
 
-4. **Build the scalability/performance equivalence gate.**
+5. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-5. **Guard the science-equivalence contract.**
+6. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-6. **Polish runtime UX and contributor docs after the next scalability result.**
+7. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -149,6 +161,9 @@ not just a final check.
 - Keep science-regression coverage explicit for calibration strategy behavior,
   image-only cycles, DI pre-apply, DD on-the-fly apply, previous-cycle solution
   handling, and master feature catch-up cases.
+- Add targeted multi-sector mosaic science-equivalence coverage so
+  orchestration changes cannot silently alter shared-template, regridding, or
+  mosaic assembly outputs.
 - Add architecture tests only for contracts that should not drift silently:
   owner-package boundaries, thin operation adapters, runtime payload
   serializability, and benchmarkable task structure.
