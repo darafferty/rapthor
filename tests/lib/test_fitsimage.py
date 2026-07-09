@@ -2,11 +2,13 @@
 Tests for the `rapthor.lib.fitsimage` module.
 """
 
+import warnings
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 from astropy.io import fits as pyfits
+from astropy.wcs import FITSFixedWarning
 
 import rapthor.lib.fitsimage as fitsimage
 from rapthor.lib.fitsimage import FITSCube, FITSImage
@@ -57,6 +59,30 @@ def test_fits_image_flattens_higher_dimensional_image(tmp_path):
     assert image.img_hdr["NAXIS"] == 2
     assert image.img_data.shape == (2, 4)
     assert image.img_hdr["RESTFREQ"] == 150e6
+
+
+def test_fits_image_hides_benign_wcs_header_fix_warnings(tmp_path):
+    data = np.arange(4, dtype=float).reshape(1, 2, 2)
+    image_path = _write_fits_image(tmp_path / "cube-like-image.fits", data=data)
+    with pyfits.open(image_path, mode="update") as hdul:
+        header = hdul[0].header
+        header["DATE-OBS"] = "2013-03-29T13:59:53.000"
+        header["CTYPE3"] = "FREQ"
+        header["CRPIX3"] = 1.0
+        header["CDELT3"] = 1.0
+        header["CRVAL3"] = 150e6
+        header["CUNIT3"] = "HZ"
+
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always", FITSFixedWarning)
+        FITSImage(image_path)
+
+    wcs_fix_warnings = [
+        str(warning.message)
+        for warning in captured
+        if issubclass(warning.category, FITSFixedWarning)
+    ]
+    assert not any("'datfix'" in message or "'unitfix'" in message for message in wcs_fix_warnings)
 
 
 def test_fits_image_write_get_beam_and_get_wcs(tmp_path):

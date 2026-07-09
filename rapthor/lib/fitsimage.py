@@ -4,15 +4,32 @@ Definition of classes for handling of FITS images
 
 import logging
 import re
+import warnings
 from pathlib import Path
 
 import numpy as np
 from astropy.io import fits as pyfits
-from astropy.wcs import WCS
+from astropy.wcs import WCS, FITSFixedWarning
 from lsmtool.io import read_vertices_x_y
 from lsmtool.utils import rasterize
 from shapely import contains_xy as polygon_contains_xy
 from shapely.geometry import Polygon
+
+
+def _wcs_from_header(header):
+    """Build a WCS while hiding known benign FITS header normalizations."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"(?s).*'datfix'.*Set MJD-OBS.*DATE-OBS.*",
+            category=FITSFixedWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message=r"(?s).*'unitfix'.*'HZ' -> 'Hz'.*",
+            category=FITSFixedWarning,
+        )
+        return WCS(header)
 
 
 class FITSImage(object):
@@ -114,7 +131,7 @@ class FITSImage(object):
                 self.img_hdr = self.header
                 self.img_data = hdu.data
             else:
-                w = WCS(self.header)
+                w = _wcs_from_header(self.header)
                 wn = WCS(naxis=2)
                 wn.wcs.crpix[0] = w.wcs.crpix[0]
                 wn.wcs.crpix[1] = w.wcs.crpix[1]
@@ -177,7 +194,7 @@ class FITSImage(object):
         """
         Return the WCS object for the image
         """
-        return WCS(self.img_hdr)
+        return _wcs_from_header(self.img_hdr)
 
     def blank(self, vertices_file=None):
         """
@@ -186,7 +203,7 @@ class FITSImage(object):
         # Construct polygon
         if vertices_file is None:
             vertices_file = self.vertices_file
-        vertices = read_vertices_x_y(vertices_file, WCS(self.header))
+        vertices = read_vertices_x_y(vertices_file, _wcs_from_header(self.header))
         poly = Polygon(vertices)
         poly_padded = poly.buffer(2)
         vertices = list(
