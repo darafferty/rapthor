@@ -71,34 +71,63 @@ Keep in mind:
 Do these in order unless a regression blocks progress.
 
 1. **Add benchmark scenarios for currently hidden scaling paths.**
-   Add or enable small repeatable profiles before changing those paths:
-   flux-scale normalization / image cubes, WSClean-predict calibration,
-   many-sector imaging, mosaic-heavy runs, and larger/multi-node runs. Keep
-   preview artifacts disabled unless the scenario explicitly measures report
-   overhead.
+   Before splitting more tasks, add or enable small repeatable scenarios that
+   exercise the work we plan to expose. Run them once with the current task
+   structure and preserve a compact "pre-split hidden-path baseline" report.
 
-2. **Measure before splitting the next candidates.**
-   Candidates are:
-   `normalize_flux_scale` / `make_catalog_from_image_cube`,
-   calibration post-processing (`collect_h5parms`, `process_slow_gains`,
-   full-Jones normalization, `combine_h5parms`, `plot_solutions`),
-   WSClean-predict loops, and mosaic per-sector regridding. Split only when a
-   benchmark, dashboard trace, or failure mode shows the boundary is useful.
+   Scenario coverage:
 
-3. **Build the scalability/performance equivalence gate.**
+   - image post-processing: `normalize_flux_scale`, image-cube creation,
+     `make_catalog_from_image_cube`, restoration/compression steps
+   - calibration post-processing: `collect_h5parms`, `process_slow_gains`,
+     full-Jones normalization, `combine_h5parms`, `plot_solutions`
+   - prediction-heavy calibration: WSClean-predict loops and sector-model
+     post-processing
+   - mosaic-heavy imaging: per-sector regridding, mosaic assembly, and
+     compression
+   - larger scalability shapes: many-sector imaging and larger/multi-node runs
+
+   Keep preview artifacts disabled unless the scenario explicitly measures
+   report overhead. Use `ci-benchmark-baseline-2x30` as the default CI-sized
+   resource profile.
+
+2. **Systematically split large opaque work units into Prefect tasks.**
+   The filter-skymodel and diagnostics benchmarks give enough evidence that
+   meaningful task boundaries improve observability without harming this
+   CI-sized performance shape. Split large steps by owner package, keeping each
+   new task scientifically meaningful, restartable, serializable, and easy to
+   identify in the dashboard. Compare each batch against the pre-split
+   hidden-path baseline from step 1.
+
+   Priority order:
+
+   - image post-processing: `normalize_flux_scale`, image-cube creation,
+     `make_catalog_from_image_cube`, restoration/compression steps
+   - calibration post-processing: `collect_h5parms`, `process_slow_gains`,
+     full-Jones normalization, `combine_h5parms`, `plot_solutions`
+   - prediction: WSClean-predict loops and sector-model post-processing
+   - mosaic: per-sector regridding, mosaic assembly, and compression
+
+3. **Benchmark after each owner-package split batch.**
+   Rerun the relevant hidden-path scenarios after each batch. Keep the split
+   when task count, scheduler gap, wall time, command totals, restart behavior,
+   and raw/scientific outputs remain acceptable. Add compact reports under
+   `docs/source/development/benchmark_baselines/`.
+
+4. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-4. **Guard the science-equivalence contract.**
+5. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-5. **Polish runtime UX and contributor docs after the next scalability result.**
+6. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -128,9 +157,11 @@ not just a final check.
 
 ## Task-Boundary Policy
 
-Make a step a Prefect task when it is slow, optional, scientifically meaningful,
-externally resource-hungry, independently benchmarkable, or likely to fail in a
-way users need to identify quickly.
+Make large opaque work units Prefect tasks when they are slow, optional,
+scientifically meaningful, externally resource-hungry, independently
+benchmarkable, or likely to fail in a way users need to identify quickly. The
+default posture is now to split these large units for observability, then use
+focused tests and batch benchmarks as the guardrail.
 
 Keep these as plain Python:
 
@@ -141,13 +172,13 @@ Keep these as plain Python:
 - path discovery
 - tiny helper functions
 
-Do not split for Dask alone. A NumPy call inside a Prefect task runs as normal
-NumPy in that worker process. Dask helps when Rapthor submits independent tasks
-that can run concurrently, when external tools are given the right thread/core
-limits, or when code is explicitly rewritten around Dask-aware collections such
-as `dask.array` or carefully chunked delayed work. Avoid adding scheduler
-overhead or oversubscribing DP3, WSClean, IDG/IDGCal, PyBDSF, or plotting
-helpers.
+Do not split tiny helpers or split for Dask alone. A NumPy call inside a
+Prefect task runs as normal NumPy in that worker process. Dask helps when
+Rapthor submits independent tasks that can run concurrently, when external
+tools are given the right thread/core limits, or when code is explicitly
+rewritten around Dask-aware collections such as `dask.array` or carefully
+chunked delayed work. Avoid adding noisy microtasks or oversubscribing DP3,
+WSClean, IDG/IDGCal, PyBDSF, or plotting helpers.
 
 Task naming:
 
@@ -192,6 +223,9 @@ Benchmark decision rules:
 - Track wall time, command totals, operation-minus-command gap,
   Dask duration-minus-compute gap, task count, task groups, worker/thread
   shape, and return codes.
+- For hidden scaling paths, capture a pre-split baseline before changing task
+  granularity, then compare each split batch against that baseline on the same
+  scenario shape.
 - Do not use wall-clock thresholds as unit or architecture tests. Tests should
   protect benchmarkable runtime shape, not elapsed seconds.
 
