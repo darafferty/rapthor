@@ -284,7 +284,6 @@ run_benchmark_baseline:
     RAPTHOR_BENCHMARK_REPETITIONS: "3"
     RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
       --resource-profile baseline-2x30
-      --resource-profile filter-only-15
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: "--scenario ci-benchmark"
     VECLIB_MAXIMUM_THREADS: "1"
   script:

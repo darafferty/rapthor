@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-08.
+Status snapshot: 2026-07-09.
 
 ## Goal
 
@@ -44,12 +44,15 @@ Completed and accepted:
 - Benchmark scaffolding exists for CI-sized profiling, Dask report parsing,
   command timing, operation-boundary timing, JSON summaries, and Markdown
   reports.
-- Image-sector execution has the current task split:
+- Image-sector execution has the accepted task split:
   `prepare -> filter_skymodel -> calculate_image_diagnostics -> finalize`.
 - Post-split benchmarks support `filter_skymodel_ncores=15` while keeping the
   global `2x30`, `max_threads=30` resource shape. The default has been promoted
   and confirmed against the explicit `filter-only-15` profile. Explicit
   `filter_skymodel_ncores = 0` still means "use `max_threads`".
+- The `calculate_image_diagnostics` task split has been benchmarked and
+  accepted. It added the expected four Dask tasks, kept scheduler gap flat, and
+  preserved successful command execution.
 
 Keep in mind:
 
@@ -67,22 +70,14 @@ Keep in mind:
 
 Do these in order unless a regression blocks progress.
 
-1. **Benchmark and accept the `calculate_image_diagnostics` task split.**
-   The implementation and focused tests are in place. Run the same CI-sized
-   benchmark shape used for the `filter_skymodel` confirmation, compare against
-   `2026-07-08-default-filter-skymodel-confirmation`, and keep the split only
-   if task count, scheduler gap, wall time, command totals, and raw/scientific
-   outputs remain acceptable. Add a compact report under
-   `docs/source/development/benchmark_baselines/`.
-
-2. **Add benchmark scenarios for currently hidden scaling paths.**
+1. **Add benchmark scenarios for currently hidden scaling paths.**
    Add or enable small repeatable profiles before changing those paths:
    flux-scale normalization / image cubes, WSClean-predict calibration,
    many-sector imaging, mosaic-heavy runs, and larger/multi-node runs. Keep
    preview artifacts disabled unless the scenario explicitly measures report
    overhead.
 
-3. **Measure before splitting the next candidates.**
+2. **Measure before splitting the next candidates.**
    Candidates are:
    `normalize_flux_scale` / `make_catalog_from_image_cube`,
    calibration post-processing (`collect_h5parms`, `process_slow_gains`,
@@ -90,20 +85,20 @@ Do these in order unless a regression blocks progress.
    WSClean-predict loops, and mosaic per-sector regridding. Split only when a
    benchmark, dashboard trace, or failure mode shows the boundary is useful.
 
-4. **Build the scalability/performance equivalence gate.**
+3. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-5. **Guard the science-equivalence contract.**
+4. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-6. **Polish runtime UX and contributor docs after the next scalability result.**
+5. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -184,6 +179,7 @@ Use these as the historical record instead of expanding this plan:
 Most relevant benchmark reports:
 
 - `docs/source/development/benchmark_baselines/2026-07-08-default-filter-skymodel-confirmation.md`
+- `docs/source/development/benchmark_baselines/2026-07-09-diagnostics-task-split.md`
 - `docs/source/development/benchmark_baselines/2026-07-07-ci-benchmark-comparison.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-only-profile.md`

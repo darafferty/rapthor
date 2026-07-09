@@ -1,0 +1,44 @@
+{
+  "source_run": "runs/benchmark-20260709-065455",
+  "commit": "5659abdacf66b954684a56645190ee70337c67c4",
+  "ci_job": "1834483",
+  "pipeline": "201181",
+  "runner": "Shared Runner on lcs126",
+  "decision": "Accepted: splitting calculate_image_diagnostics into its own image-sector task improves observability without measurable scheduler overhead in the CI-sized benchmark.",
+  "previous_reference": "docs/source/development/benchmark_baselines/2026-07-08-default-filter-skymodel-confirmation.md",
+  "profiles": {
+    "baseline-2x30": {
+      "shape": "2 workers x 30 threads, max_threads=30, filter_skymodel_ncores=15 by default",
+      "wall_median_seconds": 307.153,
+      "wall_delta_seconds": -12.647,
+      "wall_delta_percent": -3.95,
+      "command_median_seconds": 228.222,
+      "command_delta_seconds": -10.814,
+      "dask_duration_median_seconds": 292.43,
+      "dask_compute_median_seconds": 220.84,
+      "dask_gap_median_seconds": 73.41,
+      "task_count": 24,
+      "filter_skymodel_command_median_seconds": 105.303,
+      "filter_skymodel_task_group_median_seconds": 105.872,
+      "diagnostics_task_group_median_seconds": 7.633,
+      "finalize_task_group_median_seconds": 4.833
+    },
+    "filter-only-15": {
+      "shape": "2 workers x 30 threads, max_threads=30, filter_skymodel_ncores=15 explicitly",
+      "wall_median_seconds": 317.159,
+      "wall_delta_seconds": 2.263,
+      "wall_delta_percent": 0.72,
+      "command_median_seconds": 238.526,
+      "command_delta_seconds": 4.55,
+      "dask_duration_median_seconds": 304.11,
+      "dask_compute_median_seconds": 231.27,
+      "dask_gap_median_seconds": 73.5,
+      "task_count": 24,
+      "filter_skymodel_command_median_seconds": 106.39,
+      "filter_skymodel_task_group_median_seconds": 106.953,
+      "diagnostics_task_group_median_seconds": 7.819,
+      "finalize_task_group_median_seconds": 4.876
+    }
+  },
+  "next_step": "Use only baseline-2x30 for default CI benchmarking and add targeted scenarios for currently hidden scaling paths before splitting more tasks."
+}
