@@ -194,6 +194,8 @@ def predict(
             ]
             if time_freq_smearing is not None:
                 cmd.append("-apply-time-frequency-smearing")
+            # disable reordering of data
+            cmd.append("-no-reorder")
             cmd.append(msfile)
             try:
                 subprocess.run(cmd, check=True).returncode
