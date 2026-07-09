@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -131,6 +133,27 @@ def test_make_mosaic_averages_finite_regridded_images(tmp_path):
         assert hdul[0].data.shape == (4, 4)
         assert hdul[0].data[0, 0] == 2.0
         assert np.allclose(hdul[0].data[1:, :], 3.0)
+
+
+def test_make_mosaic_leaves_uncovered_pixels_nan_without_divide_warning(tmp_path):
+    template = tmp_path / "template.fits"
+    sector = tmp_path / "sector.fits"
+    output = tmp_path / "mosaic.fits"
+    sector_data = np.full((4, 4), np.nan, dtype=np.float32)
+    sector_data[:2, :2] = 2.0
+    _write_image(template, np.zeros((4, 4), dtype=np.float32))
+    _write_image(sector, sector_data)
+
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always", RuntimeWarning)
+        make_mosaic([str(sector)], str(template), str(output))
+
+    assert not any(
+        "invalid value encountered in divide" in str(warning.message) for warning in captured
+    )
+    with fits.open(output) as hdul:
+        assert hdul[0].data[0, 0] == 2.0
+        assert np.isnan(hdul[0].data[3, 3])
 
 
 def test_make_mosaic_skip_copies_first_input_image(tmp_path):

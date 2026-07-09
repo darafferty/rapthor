@@ -228,6 +228,13 @@ rewritten around Dask-aware collections such as `dask.array` or carefully
 chunked delayed work. Avoid adding noisy microtasks or oversubscribing DP3,
 WSClean, IDG/IDGCal, PyBDSF, or plotting helpers.
 
+Keep memory efficiency explicit when changing FITS/MS/image-heavy paths.
+Rapthor must scale to large datasets and large mosaics, so prefer chunked or
+sliced processing, memmap-friendly reads, in-place NumPy operations where they
+remain readable, and bounded temporary arrays. Avoid full-image copies unless
+they are required for correctness, and use benchmarks or focused profiling to
+justify memory-expensive changes.
+
 Task naming:
 
 - Use flow run names for operation context such as operation type, mode, and

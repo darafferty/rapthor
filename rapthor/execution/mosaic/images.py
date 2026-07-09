@@ -181,7 +181,10 @@ def make_mosaic(
                 sector_data[~np.isfinite(sector_data)] = 0
                 mosaic_data[output_slice] += sector_data
                 weights += sector_weights
-            mosaic_data[output_slice] /= weights
+            mosaic_slice = mosaic_data[output_slice]
+            covered = weights > 0
+            np.divide(mosaic_slice, weights, out=mosaic_slice, where=covered)
+            mosaic_slice[~covered] = np.nan
 
     mosaic_data[~np.isfinite(mosaic_data)] = np.nan
     pyfits.PrimaryHDU(header=mosaic_header, data=mosaic_data).writeto(output_image, overwrite=True)
