@@ -139,13 +139,13 @@ def representative_mosaic_payload(
     *,
     compress_images: bool = False,
 ) -> dict:
-    """Return a minimal mosaic payload with one image type."""
+    """Return a minimal mosaic payload with one product."""
     work_dir = str(work_dir)
     return {
         "pipeline_working_dir": work_dir,
         "compress_images": compress_images,
         "skip_processing": False,
-        "image_types": [
+        "mosaic_products": [
             {
                 "sector_image_filenames": [
                     "sector_1-I-image.fits",

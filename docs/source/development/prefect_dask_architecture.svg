@@ -87,7 +87,7 @@
 <rect x="632" y="626" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
 <text x="646" y="652.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">image_sector</text>
 <rect x="632" y="673" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
-<text x="646" y="699.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">mosaic_image_type</text>
+<text x="646" y="699.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">mosaic</text>
 <rect x="632" y="720" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />
 <text x="646" y="746.0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="400" fill="#1f2933" text-anchor="start">collect / combine</text>
 <rect x="632" y="767" width="285" height="38" rx="10" ry="10" fill="#fbfffd" stroke="#2f855a" stroke-width="1.2" />

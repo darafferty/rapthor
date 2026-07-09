@@ -45,6 +45,7 @@ def test_generated_demo_parset_uses_prefect_settings_only(tmp_path):
     assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
     assert parser["cluster"]["prefect_postage_stamp_preview_size_px"] == "96"
     assert parser["cluster"]["prefect_fits_preview_clip_percentile"] == "99.9"
+    assert parser["imaging"]["dde_method"] == "full"
     assert "cwl_runner" not in parser["cluster"]
 
 
@@ -83,6 +84,7 @@ def test_generated_benchmark_parset_uses_runtime_sized_threads_and_filter_defaul
     assert parser["global"]["dir_working"].endswith("benchmark-work")
     assert parser["imaging"]["grid_width_ra_deg"] == "1.0"
     assert parser["imaging"]["grid_width_dec_deg"] == "1.0"
+    assert parser["imaging"]["dde_method"] == "full"
     assert parser["cluster"]["prefect_task_runner"] == "local_dask"
     assert parser["cluster"]["local_dask_workers"] == "2"
     assert parser["cluster"]["cpus_per_task"] == "0"
@@ -138,6 +140,7 @@ def test_generated_multi_sector_benchmark_parset_uses_quadrant_dataset_and_grid(
     assert parser["imaging"]["grid_width_ra_deg"] == "1.5"
     assert parser["imaging"]["grid_width_dec_deg"] == "1.5"
     assert parser["imaging"]["grid_nsectors_ra"] == "2"
+    assert parser["imaging"]["dde_method"] == "single"
     assert parser["imaging"]["skip_corner_sectors"] == "False"
     assert parser["cluster"]["filter_skymodel_ncores"] == "15"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "False"

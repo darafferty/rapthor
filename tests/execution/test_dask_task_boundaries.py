@@ -291,20 +291,28 @@ def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypa
     _assert_worker_submission_is_serializable(postprocess_task.submissions[0], config)
 
 
-def test_mosaic_flow_submits_plain_payloads_with_image_type_names(monkeypatch):
+def test_mosaic_flow_submits_plain_payloads_with_mosaic_product_names(monkeypatch):
     config = ExecutionConfig(task_runner="sync")
     payload = representative_mosaic_payload()
+    template_task = _CapturedTask(
+        lambda index: file_record("/work/mosaic_1/mosaic_1_template.fits")
+    )
     mosaic_task = _CapturedTask(
         lambda index: file_record(f"/work/mosaic_1/mosaic_{index + 1}-I-image.fits")
     )
-    monkeypatch.setattr(mosaic_module, "mosaic_image_type_task", mosaic_task)
+    monkeypatch.setattr(mosaic_module, "mosaic_template_task", template_task)
+    monkeypatch.setattr(mosaic_module, "mosaic_task", mosaic_task)
 
     result = mosaic_module._run_mosaic_prefect_tasks(payload, execution_config=config)
 
     assert result == {"mosaic_image": [file_record("/work/mosaic_1/mosaic_1-I-image.fits")]}
-    assert [submission["options"]["task_run_name"] for submission in mosaic_task.submissions] == [
-        "image_type_I",
+    assert [submission["options"]["task_run_name"] for submission in template_task.submissions] == [
+        "make_mosaic_template",
     ]
+    assert [submission["options"]["task_run_name"] for submission in mosaic_task.submissions] == [
+        "mosaic_I_image",
+    ]
+    _assert_worker_submission_is_serializable(template_task.submissions[0], config)
     _assert_worker_submission_is_serializable(mosaic_task.submissions[0], config)
 
 

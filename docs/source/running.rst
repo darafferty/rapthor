@@ -294,15 +294,19 @@ This also writes ``prefect_demo_multisector.ms``, matching apparent/true sky
 models, and ``prefect_demo_multisector_benchmark.parset``. The multi-sector sky
 model places bright source groups well inside the four quadrants of a
 ``2 x 2`` sector grid, so the run exercises sectorized imaging and mosaic
-assembly without relying on sources that sit close to sector boundaries.
+assembly without relying on sources that sit close to sector boundaries. The
+multi-sector parset uses ``dde_method = single`` so each sector applies the
+nearest DD solution during imaging; the single-sector benchmark remains the
+full-DD facet-imaging coverage.
 
 For a modest local dashboard test, run:
 
 .. code-block:: console
 
+    $ MULTISECTOR_RUN_DIR="runs/prefect-demo-multisector-$(date +%Y%m%d-%H%M%S)"
     $ scripts/dev/run-rapthor-prefect-demo.py \
       examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset \
-      --run-dir runs/prefect-demo-multisector \
+      --run-dir "$MULTISECTOR_RUN_DIR" \
       --local-dask-workers 2 \
       --cpus-per-task 4 \
       --max-threads 4 \
@@ -313,9 +317,10 @@ For a CI-like 60-core resource shape, use:
 
 .. code-block:: console
 
+    $ MULTISECTOR_RUN_DIR="runs/prefect-demo-multisector-ci-shape-$(date +%Y%m%d-%H%M%S)"
     $ scripts/dev/run-rapthor-prefect-demo.py \
       examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset \
-      --run-dir runs/prefect-demo-multisector-ci-shape \
+      --run-dir "$MULTISECTOR_RUN_DIR" \
       --local-dask-workers 2 \
       --cpus-per-task 30 \
       --max-threads 30 \
@@ -326,11 +331,12 @@ If a Prefect server is already running, pass its API URL explicitly:
 
 .. code-block:: console
 
+    $ MULTISECTOR_RUN_DIR="runs/prefect-demo-multisector-$(date +%Y%m%d-%H%M%S)"
     $ scripts/dev/run-rapthor-prefect-demo.py \
       examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset \
       --api-url http://127.0.0.1:4200/api \
       --no-start-server \
-      --run-dir runs/prefect-demo-multisector \
+      --run-dir "$MULTISECTOR_RUN_DIR" \
       --local-dask-workers 2 \
       --cpus-per-task 4 \
       --max-threads 4 \
@@ -343,7 +349,7 @@ sectors and scheduled the mosaic operation:
 .. code-block:: console
 
     $ rg "Using 4 imaging sectors|Operation mosaic" \
-      runs/prefect-demo-multisector/rapthor-work/logs/rapthor.log
+      "$MULTISECTOR_RUN_DIR/rapthor-work/logs/rapthor.log"
 
 Pass ``--strategy /path/to/strategy.py`` to
 ``generate-prefect-demo-data.py`` when the local demo parset should reference a

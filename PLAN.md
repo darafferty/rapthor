@@ -57,7 +57,9 @@ Completed and accepted:
   WSClean-predict calibration, and many-sector mosaic work. The many-sector
   scenario uses a dedicated quadrant-balanced generated dataset and a
   four-sector grid so it exercises sectorized imaging and mosaicking without
-  depending on source-boundary edge cases.
+  depending on source-boundary edge cases. It uses `dde_method = single` so
+  each sector applies the nearest DD solution during imaging; the single-sector
+  benchmark keeps the full-DD facet-imaging coverage.
 
 Keep in mind:
 
@@ -215,7 +217,7 @@ Task naming:
   same kind can run in the same flow: `sector_1_filter_skymodel`,
   `chunk_1`, `screen_1`, `model_1`, `postprocess_1`.
 - Prefer scientific labels over numerical suffixes when they are stable and
-  meaningful, for example `image_type_I` instead of `image_type_1`.
+  meaningful, for example `mosaic_I_image` instead of `mosaic_1`.
 
 ## Benchmark And Equivalence Evidence
 

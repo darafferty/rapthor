@@ -1,5 +1,6 @@
 """Prefect flow for the Mosaic operation."""
 
+import logging
 import os
 import re
 from typing import Mapping, Optional
@@ -10,16 +11,20 @@ from rapthor.execution.artifacts import publish_fits_image_artifacts
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.mosaic.commands import build_compress_mosaic_command
 from rapthor.execution.mosaic.images import make_mosaic, make_mosaic_template, regrid_image
-from rapthor.execution.mosaic.payloads import MosaicImageTypePayload, validate_mosaic_payload
+from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mosaic_payload
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name
 from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_runner import run_flow_with_task_runner
-from rapthor.lib.records import validate_output_record
+from rapthor.lib.records import file_record_path, validate_output_record
 
-_MOSAIC_IMAGE_TYPE_LABEL = re.compile(r"-(?P<label>[A-Za-z0-9]+)-image(?:\.fits(?:\.fz)?)?$")
+log = logging.getLogger("rapthor:mosaic")
+
+_FITS_SUFFIX = re.compile(r"\.fits(?:\.fz)?$")
+_MOSAIC_OUTPUT_PREFIX = re.compile(r"^mosaic_\d+-")
+_MOSAIC_PRODUCT_LABEL_SEPARATOR = re.compile(r"[^A-Za-z0-9]+")
 
 
 def _run_command_and_require_file(
@@ -45,21 +50,22 @@ def _work_path(pipeline_working_dir: str, filename: str) -> str:
     return os.path.join(pipeline_working_dir, filename)
 
 
-def run_mosaic_image_type(
-    image_type: MosaicImageTypePayload,
+def run_mosaic_product(
+    mosaic_product: MosaicProductPayload,
     compress_images: bool,
     pipeline_working_dir: str,
+    template_record: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run mosaicking for one image type and return a file output record."""
+    """Run mosaicking for one output product and return a file output record."""
     config = execution_config or ExecutionConfig(task_runner="sync")
-    sector_images = image_type["sector_image_filenames"]
-    sector_vertices = image_type["sector_vertices_filenames"]
-    regridded_images = image_type["regridded_image_filenames"]
-    template_path = image_type["template_image_path"]
-    mosaic_filename = image_type["mosaic_filename"]
-    mosaic_path = image_type["mosaic_path"]
+    sector_images = mosaic_product["sector_image_filenames"]
+    sector_vertices = mosaic_product["sector_vertices_filenames"]
+    regridded_images = mosaic_product["regridded_image_filenames"]
+    template_path = file_record_path(template_record)
+    mosaic_filename = mosaic_product["mosaic_filename"]
+    mosaic_path = mosaic_product["mosaic_path"]
 
     resolved_sector_images = [_work_path(pipeline_working_dir, image) for image in sector_images]
     resolved_sector_vertices = [
@@ -69,10 +75,15 @@ def run_mosaic_image_type(
         _work_path(pipeline_working_dir, image) for image in regridded_images
     ]
 
-    make_mosaic_template(
-        resolved_sector_images,
-        resolved_sector_vertices,
-        template_path,
+    log.info(
+        "Mosaicking %s from %d sector image(s)",
+        mosaic_filename,
+        len(resolved_sector_images),
+    )
+    log.info(
+        "Mosaic sector inputs for %s: %s",
+        mosaic_filename,
+        ", ".join(os.path.basename(image) for image in resolved_sector_images),
     )
     require_file(template_path, "Mosaic output")
     for sector_image, vertices_file, regridded_image in zip(
@@ -112,19 +123,57 @@ def run_mosaic_image_type(
     return output_record
 
 
-@task(name="image_type")
-def mosaic_image_type_task(
-    image_type: MosaicImageTypePayload,
+def run_mosaic_template(
+    mosaic_product: MosaicProductPayload,
+    pipeline_working_dir: str,
+) -> dict:
+    """Build the shared mosaic template once for all mosaic products."""
+    sector_images = mosaic_product["sector_image_filenames"]
+    sector_vertices = mosaic_product["sector_vertices_filenames"]
+    template_path = mosaic_product["template_image_path"]
+    resolved_sector_images = [_work_path(pipeline_working_dir, image) for image in sector_images]
+    resolved_sector_vertices = [
+        _work_path(pipeline_working_dir, vertices) for vertices in sector_vertices
+    ]
+
+    log.info(
+        "Building mosaic template %s from %d sector image(s)",
+        os.path.basename(template_path),
+        len(resolved_sector_images),
+    )
+    make_mosaic_template(
+        resolved_sector_images,
+        resolved_sector_vertices,
+        template_path,
+    )
+    return require_file(template_path, "Mosaic output")
+
+
+@task(name="make_mosaic_template")
+def mosaic_template_task(
+    mosaic_product: MosaicProductPayload,
+    pipeline_working_dir: str,
+) -> dict:
+    """Prefect task wrapper for the shared mosaic template."""
+    with publish_python_logs_to_prefect():
+        return run_mosaic_template(mosaic_product, pipeline_working_dir)
+
+
+@task(name="mosaic")
+def mosaic_task(
+    mosaic_product: MosaicProductPayload,
     compress_images: bool,
     pipeline_working_dir: str,
+    template_record: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
-    """Prefect task wrapper for one image type."""
+    """Prefect task wrapper for one mosaic product."""
     with publish_python_logs_to_prefect():
-        return run_mosaic_image_type(
-            image_type,
+        return run_mosaic_product(
+            mosaic_product,
             compress_images,
             pipeline_working_dir,
+            template_record,
             execution_config=execution_config,
         )
 
@@ -135,12 +184,18 @@ def _result_from_mosaic_records(outputs: list[dict]) -> dict:
     return result
 
 
-def _mosaic_image_type_run_name(image_type: MosaicImageTypePayload, index: int) -> str:
-    """Return a compact task-run label for one mosaic image type."""
-    match = _MOSAIC_IMAGE_TYPE_LABEL.search(image_type["mosaic_filename"])
-    if match is not None:
-        return task_run_name("image_type", match.group("label"))
-    return task_run_name("image_type", index + 1)
+def _mosaic_product_label(mosaic_filename: str) -> str:
+    """Return a stable task-label from a mosaic output filename."""
+    label = os.path.basename(mosaic_filename)
+    label = _FITS_SUFFIX.sub("", label)
+    label = _MOSAIC_OUTPUT_PREFIX.sub("", label)
+    return _MOSAIC_PRODUCT_LABEL_SEPARATOR.sub("_", label).strip("_")
+
+
+def _mosaic_task_run_name(mosaic_product: MosaicProductPayload, index: int) -> str:
+    """Return a compact task-run label for one mosaic product."""
+    label = _mosaic_product_label(mosaic_product["mosaic_filename"])
+    return task_run_name("mosaic", label or index + 1)
 
 
 def _run_mosaic_prefect_tasks(
@@ -153,16 +208,21 @@ def _run_mosaic_prefect_tasks(
         return {}
 
     config = execution_config or ExecutionConfig(task_runner="sync")
+    template_record = mosaic_template_task.with_options(
+        task_run_name="make_mosaic_template"
+    ).submit(
+        payload["mosaic_products"][0],
+        payload["pipeline_working_dir"],
+    )
     outputs = [
-        mosaic_image_type_task.with_options(
-            task_run_name=_mosaic_image_type_run_name(image_type, index)
-        ).submit(
-            image_type,
+        mosaic_task.with_options(task_run_name=_mosaic_task_run_name(mosaic_product, index)).submit(
+            mosaic_product,
             payload["compress_images"],
             payload["pipeline_working_dir"],
+            template_record,
             execution_config=config,
         )
-        for index, image_type in enumerate(payload["image_types"])
+        for index, mosaic_product in enumerate(payload["mosaic_products"])
     ]
     outputs = [output.result() for output in outputs]
     return _result_from_mosaic_records(outputs)

@@ -135,25 +135,44 @@ class FieldStub:
         self.field_image_filename_prev = None
 
 
-def _mosaic_payload(tmp_path, compress_images=False):
-    return {
-        "pipeline_working_dir": str(tmp_path),
-        "compress_images": compress_images,
-        "skip_processing": False,
-        "image_types": [
+def _mosaic_payload(tmp_path, compress_images=False, mosaic_product_count=1):
+    mosaic_products = [
+        {
+            "sector_image_filenames": ["sector_1-I-image.fits", "sector_2-I-image.fits"],
+            "sector_vertices_filenames": ["sector_1.vertices", "sector_2.vertices"],
+            "template_image_filename": "mosaic_1_template.fits",
+            "template_image_path": str(tmp_path / "mosaic_1_template.fits"),
+            "regridded_image_filenames": [
+                "sector_1-I-image.fits.regridded",
+                "sector_2-I-image.fits.regridded",
+            ],
+            "mosaic_filename": "mosaic_1-I-image.fits",
+            "mosaic_path": str(tmp_path / "mosaic_1-I-image.fits"),
+        }
+    ]
+    if mosaic_product_count > 1:
+        mosaic_products.append(
             {
-                "sector_image_filenames": ["sector_1-I-image.fits", "sector_2-I-image.fits"],
+                "sector_image_filenames": [
+                    "sector_1-I-apparent.fits",
+                    "sector_2-I-apparent.fits",
+                ],
                 "sector_vertices_filenames": ["sector_1.vertices", "sector_2.vertices"],
                 "template_image_filename": "mosaic_1_template.fits",
                 "template_image_path": str(tmp_path / "mosaic_1_template.fits"),
                 "regridded_image_filenames": [
-                    "sector_1-I-image.fits.regridded",
-                    "sector_2-I-image.fits.regridded",
+                    "sector_1-I-apparent.fits.regridded",
+                    "sector_2-I-apparent.fits.regridded",
                 ],
-                "mosaic_filename": "mosaic_1-I-image.fits",
-                "mosaic_path": str(tmp_path / "mosaic_1-I-image.fits"),
+                "mosaic_filename": "mosaic_1-I-apparent.fits",
+                "mosaic_path": str(tmp_path / "mosaic_1-I-apparent.fits"),
             }
-        ],
+        )
+    return {
+        "pipeline_working_dir": str(tmp_path),
+        "compress_images": compress_images,
+        "skip_processing": False,
+        "mosaic_products": mosaic_products,
     }
 
 
@@ -193,7 +212,7 @@ def test_mosaic_payload_from_inputs_is_serializable(tmp_path):
         "pipeline_working_dir": str(tmp_path),
         "compress_images": True,
         "skip_processing": False,
-        "image_types": [
+        "mosaic_products": [
             {
                 "sector_image_filenames": [
                     "/data/sector_1-I-image.fits",
@@ -227,17 +246,17 @@ def test_mosaic_payload_handles_skip_processing(tmp_path):
         "pipeline_working_dir": str(tmp_path),
         "compress_images": False,
         "skip_processing": True,
-        "image_types": [],
+        "mosaic_products": [],
     }
 
 
-def test_validate_mosaic_payload_validates_image_type_contract(tmp_path):
+def test_validate_mosaic_payload_validates_mosaic_product_contract(tmp_path):
     payload = _mosaic_payload(tmp_path)
 
     validated = validate_mosaic_payload(payload)
 
-    assert validated["image_types"][0]["mosaic_filename"] == "mosaic_1-I-image.fits"
-    assert validated["image_types"][0]["regridded_image_filenames"] == [
+    assert validated["mosaic_products"][0]["mosaic_filename"] == "mosaic_1-I-image.fits"
+    assert validated["mosaic_products"][0]["regridded_image_filenames"] == [
         "sector_1-I-image.fits.regridded",
         "sector_2-I-image.fits.regridded",
     ]
@@ -245,13 +264,39 @@ def test_validate_mosaic_payload_validates_image_type_contract(tmp_path):
 
 def test_validate_mosaic_payload_rejects_duplicate_outputs(tmp_path):
     payload = _mosaic_payload(tmp_path)
-    duplicate = dict(payload["image_types"][0])
+    duplicate = dict(payload["mosaic_products"][0])
     duplicate["template_image_filename"] = "mosaic_2_template.fits"
     duplicate["template_image_path"] = str(tmp_path / "mosaic_2_template.fits")
-    payload["image_types"].append(duplicate)
+    payload["mosaic_products"].append(duplicate)
 
     with pytest.raises(ValueError, match="mosaic paths must be unique"):
         validate_mosaic_payload(payload)
+
+
+def test_validate_mosaic_payload_rejects_multiple_template_paths(tmp_path):
+    payload = _mosaic_payload(tmp_path, mosaic_product_count=2)
+    payload["mosaic_products"][1]["template_image_filename"] = "mosaic_2_template.fits"
+    payload["mosaic_products"][1]["template_image_path"] = str(tmp_path / "mosaic_2_template.fits")
+
+    with pytest.raises(ValueError, match="must share one template path"):
+        validate_mosaic_payload(payload)
+
+
+@pytest.mark.parametrize(
+    ("mosaic_filename", "expected_run_name"),
+    [
+        ("mosaic_1-I-image.fits", "mosaic_I_image"),
+        ("mosaic_1-MFS-image-pb.fits.fz", "mosaic_MFS_image_pb"),
+        ("mosaic_1-MFS-image-pb-ast.fits.fz", "mosaic_MFS_image_pb_ast"),
+        ("mosaic_1-MFS-model-pb.fits.fz", "mosaic_MFS_model_pb"),
+        ("mosaic_1-MFS-residual.fits.fz", "mosaic_MFS_residual"),
+        ("mosaic_1-MFS-dirty.fits.fz", "mosaic_MFS_dirty"),
+    ],
+)
+def test_mosaic_task_run_name_uses_output_product_label(mosaic_filename, expected_run_name):
+    mosaic_product = {"mosaic_filename": mosaic_filename}
+
+    assert mosaic_module._mosaic_task_run_name(mosaic_product, index=0) == expected_run_name
 
 
 def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
@@ -325,6 +370,30 @@ def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
     ]
 
 
+def test_run_mosaic_flow_builds_shared_template_once_for_multiple_mosaic_products(
+    tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+):
+    outputs = run_flow_for_test(
+        mosaic_flow,
+        _mosaic_payload(tmp_path, mosaic_product_count=2),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_mosaic_shell_operation_cls,
+    )
+
+    assert outputs == {
+        "mosaic_image": [
+            file_record(tmp_path / "mosaic_1-I-image.fits"),
+            file_record(tmp_path / "mosaic_1-I-apparent.fits"),
+        ]
+    }
+    assert len(fake_direct_mosaic_helpers["make_mosaic_template"]) == 1
+    assert len(fake_direct_mosaic_helpers["regrid_image"]) == 4
+    assert len(fake_direct_mosaic_helpers["make_mosaic"]) == 2
+    assert {call["template_image"] for call in fake_direct_mosaic_helpers["regrid_image"]} == {
+        str(tmp_path / "mosaic_1_template.fits")
+    }
+
+
 def test_run_mosaic_flow_can_skip_fits_preview_artifacts(
     tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
 ):
@@ -351,11 +420,11 @@ def test_run_mosaic_flow_can_skip_fits_preview_artifacts(
     assert published == []
 
 
-def test_run_mosaic_flow_rejects_invalid_image_type_lists(
+def test_run_mosaic_flow_rejects_invalid_mosaic_product_lists(
     tmp_path, fake_mosaic_shell_operation_cls
 ):
     payload = _mosaic_payload(tmp_path)
-    payload["image_types"][0]["sector_image_filenames"] = ["sector_1-I-image.fits", 7]
+    payload["mosaic_products"][0]["sector_image_filenames"] = ["sector_1-I-image.fits", 7]
 
     with pytest.raises(ValueError, match="sector_image_filenames"):
         run_flow_for_test(
@@ -393,7 +462,7 @@ def test_run_mosaic_flow_handles_skip_processing_without_commands(
             "pipeline_working_dir": str(tmp_path),
             "compress_images": False,
             "skip_processing": True,
-            "image_types": [],
+            "mosaic_products": [],
         },
         execution_config=ExecutionConfig(task_runner="sync"),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
@@ -504,7 +573,7 @@ def test_mosaic_operation_run_uses_prefect_flow(
     assert field.field_image_filename_prev is None
     assert expected_field_image.is_file()
     assert fake_mosaic_shell_operation_cls.instances == []
-    assert len(fake_direct_mosaic_helpers["make_mosaic_template"]) == 2
+    assert len(fake_direct_mosaic_helpers["make_mosaic_template"]) == 1
     assert len(fake_direct_mosaic_helpers["regrid_image"]) == 4
     assert len(fake_direct_mosaic_helpers["make_mosaic"]) == 2
 

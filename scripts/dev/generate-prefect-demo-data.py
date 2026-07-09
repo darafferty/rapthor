@@ -481,6 +481,7 @@ def write_parset(
     work_dir_name: str = "work",
     grid_width_deg: float = 1.25,
     grid_nsectors_ra: int = 1,
+    dde_method: str = "full",
     ms_filename: str = "prefect_demo_rich.ms",
     true_sky_filename: str = "prefect_demo_rich_true_sky.txt",
     apparent_sky_filename: str = "prefect_demo_rich_apparent_sky.txt",
@@ -557,6 +558,7 @@ def write_parset(
             grid_center_ra = 1h37m41.299s
             grid_center_dec = +33d09m35.132s
             grid_nsectors_ra = {grid_nsectors_ra}
+            dde_method = {dde_method}
             skip_corner_sectors = False
             idg_mode = cpu
             reweight = False
@@ -641,6 +643,7 @@ def write_multi_sector_benchmark_parset(
         work_dir_name="multisector-benchmark-work",
         grid_width_deg=1.5,
         grid_nsectors_ra=2,
+        dde_method="single",
         ms_filename="prefect_demo_multisector.ms",
         true_sky_filename="prefect_demo_multisector_true_sky.txt",
         apparent_sky_filename="prefect_demo_multisector_apparent_sky.txt",
