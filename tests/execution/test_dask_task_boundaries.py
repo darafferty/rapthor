@@ -129,17 +129,26 @@ def _image_sector_filter_result(index: int) -> dict:
     }
 
 
+def _image_sector_diagnostics_result(index: int) -> dict:
+    root = f"/work/image_1/sector_{index + 1}"
+    return {
+        "diagnostics": file_record(f"{root}.image_diagnostics.json"),
+        "offsets": file_record(f"{root}.astrometry_offsets.json"),
+        "diagnostic_plots": [file_record(f"{root}.photometry.pdf")],
+    }
+
+
 @pytest.mark.parametrize("task_runner", ["sync", "local_dask", "external_dask"])
-def test_image_flow_submits_plain_prepare_filter_and_finalize_payloads_per_sector(
-    monkeypatch, task_runner
-):
+def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner):
     config = ExecutionConfig(task_runner=task_runner)
     payload = representative_image_payload()
     prepare_task = _CapturedTask(_image_sector_preparation_result)
     filter_task = _CapturedTask(_image_sector_filter_result)
+    diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     finalize_task = _CapturedTask(_image_sector_result)
     monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
+    monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_finalize_task", finalize_task)
 
     result = image_module._run_image_prefect_tasks(payload, execution_config=config)
@@ -150,23 +159,74 @@ def test_image_flow_submits_plain_prepare_filter_and_finalize_payloads_per_secto
         "pybdsf_catalog",
     ]
     assert [submission["options"]["task_run_name"] for submission in prepare_task.submissions] == [
-        "sector_1_prepare",
+        "prepare",
     ]
     assert [submission["options"]["task_run_name"] for submission in filter_task.submissions] == [
-        "sector_1_filter_skymodel",
+        "filter_skymodel",
+    ]
+    assert [
+        submission["options"]["task_run_name"] for submission in diagnostics_task.submissions
+    ] == [
+        "calculate_image_diagnostics",
     ]
     assert [submission["options"]["task_run_name"] for submission in finalize_task.submissions] == [
-        "sector_1_finalize",
+        "finalize",
     ]
     _assert_worker_submission_is_serializable(prepare_task.submissions[0], config)
     _assert_worker_submission_is_serializable(filter_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(diagnostics_task.submissions[0], config)
     _assert_worker_submission_is_serializable(finalize_task.submissions[0], config)
     assert filter_task.submissions[0]["args"][1] is prepare_task.futures[0]
     assert filter_task.submissions[0]["args"][1].result() == _image_sector_preparation_result(0)
+    assert diagnostics_task.submissions[0]["args"][1] is prepare_task.futures[0]
+    assert diagnostics_task.submissions[0]["args"][1].result() == _image_sector_preparation_result(
+        0
+    )
+    assert diagnostics_task.submissions[0]["args"][2] is filter_task.futures[0]
+    assert diagnostics_task.submissions[0]["args"][2].result() == _image_sector_filter_result(0)
     assert finalize_task.submissions[0]["args"][1] is prepare_task.futures[0]
     assert finalize_task.submissions[0]["args"][1].result() == _image_sector_preparation_result(0)
     assert finalize_task.submissions[0]["args"][2] is filter_task.futures[0]
     assert finalize_task.submissions[0]["args"][2].result() == _image_sector_filter_result(0)
+    assert finalize_task.submissions[0]["args"][3] is diagnostics_task.futures[0]
+    assert finalize_task.submissions[0]["args"][3].result() == _image_sector_diagnostics_result(0)
+
+
+def test_image_flow_disambiguates_sector_task_names_for_multiple_sectors(monkeypatch):
+    config = ExecutionConfig(task_runner="sync")
+    payload = representative_image_payload()
+    second_sector = deepcopy(payload["sectors"][0])
+    second_sector["image_name"] = "sector_2"
+    payload["sectors"].append(second_sector)
+    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    filter_task = _CapturedTask(_image_sector_filter_result)
+    diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
+    finalize_task = _CapturedTask(_image_sector_result)
+    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
+    monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
+    monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
+    monkeypatch.setattr(image_module, "image_sector_finalize_task", finalize_task)
+
+    image_module._run_image_prefect_tasks(payload, execution_config=config)
+
+    assert [submission["options"]["task_run_name"] for submission in prepare_task.submissions] == [
+        "sector_1_prepare",
+        "sector_2_prepare",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in filter_task.submissions] == [
+        "sector_1_filter_skymodel",
+        "sector_2_filter_skymodel",
+    ]
+    assert [
+        submission["options"]["task_run_name"] for submission in diagnostics_task.submissions
+    ] == [
+        "sector_1_calculate_image_diagnostics",
+        "sector_2_calculate_image_diagnostics",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in finalize_task.submissions] == [
+        "sector_1_finalize",
+        "sector_2_finalize",
+    ]
 
 
 def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypatch):

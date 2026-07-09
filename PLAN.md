@@ -44,8 +44,8 @@ Completed and accepted:
 - Benchmark scaffolding exists for CI-sized profiling, Dask report parsing,
   command timing, operation-boundary timing, JSON summaries, and Markdown
   reports.
-- Image-sector execution has the current low-risk task split:
-  `image_sector_prepare -> filter_skymodel -> image_sector_finalize`.
+- Image-sector execution has the current task split:
+  `prepare -> filter_skymodel -> calculate_image_diagnostics -> finalize`.
 - Post-split benchmarks support `filter_skymodel_ncores=15` while keeping the
   global `2x30`, `max_threads=30` resource shape. The default has been promoted
   and confirmed against the explicit `filter-only-15` profile. Explicit
@@ -67,12 +67,13 @@ Keep in mind:
 
 Do these in order unless a regression blocks progress.
 
-1. **Split `calculate_image_diagnostics` into its own image-sector task.**
-   This is the next best observability split after stabilizing `filter_skymodel`.
-   It is scientifically meaningful, reads FITS/catalog/skymodel products, and
-   writes diagnostics plus plots. Add task-boundary tests for payload shape,
-   serializability, task names, and output records. Then rerun focused image
-   tests and the benchmark.
+1. **Benchmark and accept the `calculate_image_diagnostics` task split.**
+   The implementation and focused tests are in place. Run the same CI-sized
+   benchmark shape used for the `filter_skymodel` confirmation, compare against
+   `2026-07-08-default-filter-skymodel-confirmation`, and keep the split only
+   if task count, scheduler gap, wall time, command totals, and raw/scientific
+   outputs remain acceptable. Add a compact report under
+   `docs/source/development/benchmark_baselines/`.
 
 2. **Add benchmark scenarios for currently hidden scaling paths.**
    Add or enable small repeatable profiles before changing those paths:

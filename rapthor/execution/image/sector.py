@@ -163,10 +163,38 @@ def filter_image_sector_skymodel(
     }
 
 
+def calculate_image_sector_diagnostics(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    filtered: Mapping[str, object],
+    pipeline_working_dir: str,
+) -> dict:
+    """Calculate image diagnostics for one sector and return output records."""
+    image_name = str(sector["image_name"])
+    diagnostics, offsets, diagnostic_plots = run_image_diagnostics(
+        sector,
+        image_name,
+        prepared["nonpb_image"],
+        prepared["pb_image"],
+        filtered["flat_noise_rms"],
+        filtered["true_sky_rms"],
+        filtered["source_catalog"],
+        filtered["diagnostics"],
+        prepared["region_record"],
+        pipeline_working_dir,
+    )
+    return {
+        "diagnostics": diagnostics,
+        "offsets": offsets,
+        "diagnostic_plots": diagnostic_plots,
+    }
+
+
 def finalize_image_sector(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
     filtered: Mapping[str, object],
+    diagnostics_result: Mapping[str, object],
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -177,7 +205,6 @@ def finalize_image_sector(
     prepared_records = list(prepared["prepared_records"])
     concat_record = prepared["concat_record"]
     region_record = prepared["region_record"]
-    nonpb_image = prepared["nonpb_image"]
     pb_image = prepared["pb_image"]
     extra_images = list(prepared["extra_images"])
     residual_visibilities = prepared["residual_visibilities"]
@@ -189,11 +216,13 @@ def finalize_image_sector(
     skymodel_pb = prepared["skymodel_pb"]
     filtered_true_sky = filtered["filtered_true_sky"]
     filtered_apparent_sky = filtered["filtered_apparent_sky"]
-    diagnostics = filtered["diagnostics"]
     flat_noise_rms = filtered["flat_noise_rms"]
     true_sky_rms = filtered["true_sky_rms"]
     source_catalog = filtered["source_catalog"]
     source_filtering_mask = filtered["source_filtering_mask"]
+    diagnostics = diagnostics_result["diagnostics"]
+    offsets = diagnostics_result["offsets"]
+    diagnostic_plots = list(diagnostics_result["diagnostic_plots"])
 
     skymodel_image = make_filtered_model_image(
         sector,
@@ -201,18 +230,6 @@ def finalize_image_sector(
         pb_image,
     )
 
-    diagnostics, offsets, diagnostic_plots = run_image_diagnostics(
-        sector,
-        image_name,
-        nonpb_image,
-        pb_image,
-        flat_noise_rms,
-        true_sky_rms,
-        source_catalog,
-        diagnostics,
-        region_record,
-        pipeline_working_dir,
-    )
     if "I" in str(sector["pol"]).upper():
         sector_images.append(
             make_astrometry_corrected_image_record(pb_image, region_record, offsets)
@@ -308,16 +325,24 @@ def run_image_sector(
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,
     )
+    filtered = filter_image_sector_skymodel(
+        sector,
+        prepared,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    diagnostics_result = calculate_image_sector_diagnostics(
+        sector,
+        prepared,
+        filtered,
+        pipeline_working_dir,
+    )
     return finalize_image_sector(
         sector,
         prepared,
-        filter_image_sector_skymodel(
-            sector,
-            prepared,
-            pipeline_working_dir,
-            execution_config=execution_config,
-            shell_operation_cls=shell_operation_cls,
-        ),
+        filtered,
+        diagnostics_result,
         pipeline_working_dir,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,
