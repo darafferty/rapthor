@@ -108,6 +108,9 @@ prefect_task_runner = local_dask
     assert scenario_parset.name == ("prefect_demo_benchmark.ci-benchmark-image-products.parset")
     text = scenario_parset.read_text(encoding="utf-8")
     assert "prefect_demo_benchmark_normalize_strategy.py" in text
+    assert "prefect_demo_rich_reference_120mhz.txt" in text
+    assert "prefect_demo_rich_reference_160mhz.txt" in text
+    assert "normalization_reference_frequencies = [120000000.0, 160000000.0]" in text
     assert "save_image_cube = True" in text
     assert "make_quv_images = True" in text
     assert "compress_final_images = True" in text

@@ -126,7 +126,7 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
             "allow_internet_access": "False",
             "strategy": str(single_loop_do_normalize_strategy_path),
             "normalization_skymodels": "[tests/resources/integration_apparent_sky.txt, tests/resources/integration_true_sky.txt]",
-            "normalization_reference_frequencies": "[150000000.0, 150000000.0]",
+            "normalization_reference_frequencies": "[142000000.0, 142001000.0]",
         },
     )
 
