@@ -348,13 +348,15 @@ run_benchmark_worker_profile:
     - when: manual
       allow_failure: true
 
-run_benchmark_sparse_fallback:
+run_benchmark_mosaic_method_comparison:
   extends: .benchmark
   variables:
+    RAPTHOR_BENCHMARK_EXTRA_ARGS: "--allow-failures"
     RAPTHOR_BENCHMARK_REPETITIONS: "1"
     RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
       --resource-profile baseline-2x30
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
+      --scenario ci-benchmark-many-sector-mosaic
       --scenario ci-benchmark-many-sector-mosaic-sparse-fallback
   rules:
     - when: manual

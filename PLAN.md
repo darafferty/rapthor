@@ -190,10 +190,12 @@ Do these in order unless a regression blocks progress.
    with code 137 in one repetition). The CI benchmark jobs are therefore split:
    scheduled/default runs cover the stable `baseline-2x30` scenarios with three
    repetitions; manual exploratory jobs cover the `filter-workers-4x15` profile
-   and the sparse fallback scenario with one repetition each. Use these smaller
-   artifacts to decide whether the extra wall time is caused by
-   WSClean-rendered model mosaics or by the broader many-sector
-   scheduling/runtime shape.
+   and a paired mosaic-method comparison with one repetition each. The
+   mosaic-method job must run both `ci-benchmark-many-sector-mosaic` and
+   `ci-benchmark-many-sector-mosaic-sparse-fallback` in the same CI job so
+   both paths use the same runner. Use these smaller artifacts to decide
+   whether the extra wall time is caused by WSClean-rendered model mosaics or
+   by the broader many-sector scheduling/runtime shape.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
