@@ -179,6 +179,7 @@ class FieldStub:
         self.compress_images = False
         self.image_pol = ["I"]
         self.disable_clean = True
+        self.model_mosaic_method = "wsclean"
         self.save_supplementary_images = False
         self.field_image_filename = None
         self.field_image_filename_prev = None
