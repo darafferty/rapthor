@@ -90,6 +90,12 @@ Completed and accepted:
   It accepts the worker-thread runtime fix for the default and image-products
   profiles, keeps the WSClean-predict slowdown as a monitored variance item,
   and flags the many-sector mosaic wall-time increase for targeted follow-up.
+- The follow-up worker-shape and mosaic-method benchmark is captured in
+  `docs/source/development/benchmark_baselines/2026-07-10-worker-shape-mosaic-method-comparison.md`.
+  All six paired scenarios completed successfully. The `4x15` profile is
+  neutral for the default single-sector benchmark and about 30% faster for
+  many-sector mosaics; WSClean-rendered model mosaics are faster than the
+  sparse FITS fallback in both worker shapes.
 
 Keep in mind:
 
@@ -173,31 +179,14 @@ Do these in order unless a regression blocks progress.
    stored-reference scenario when clean sector model products are needed for
    manual inspection.
 
-   Before treating WSClean-rendered model mosaics as the accepted performance
-   baseline, run a targeted many-sector comparison that isolates sparse FITS
-   model-mosaic fallback vs WSClean-rendered model mosaics, model products vs
-   non-model mosaic products, and the worker-thread runtime shape. The latest
-   CI benchmark shows reliable completion but a `+53.5%` many-sector wall-time
-   increase despite lower aggregate command time, so the next question is
-   scheduling/concurrency rather than basic correctness. The benchmark matrix
-   now includes `ci-benchmark-many-sector-mosaic-sparse-fallback`, which uses
-   the same generated multi-sector inputs as `ci-benchmark-many-sector-mosaic`
-   but overrides `model_mosaic_method = sparse_fits`. The 2026-07-10 CI run
-   timed out before writing the final benchmark summary. The useful completed
-   data showed that `ci-benchmark` is stable for both `baseline-2x30` and
-   `filter-workers-4x15`, while `ci-benchmark-many-sector-mosaic` is stable for
-   `baseline-2x30` but unstable for `filter-workers-4x15` (`wsclean` exited
-   with code 137 in one repetition). CI now has a single automatic benchmark
-   comparison job that runs before the test stages. It runs `ci-benchmark`,
-   `ci-benchmark-many-sector-mosaic`, and
-   `ci-benchmark-many-sector-mosaic-sparse-fallback` under both
-   `baseline-2x30` and `filter-workers-4x15`, with one repetition each, so the
-   worker-shape and mosaic-method comparisons use the same runner and arrive
-   before the longer test suite. The job uses `--allow-failures` so exploratory
-   scenario failures are preserved in the benchmark report instead of losing
-   the artifact. Use these smaller artifacts to decide whether the extra wall
-   time is caused by WSClean-rendered model mosaics, the worker shape, or the
-   broader many-sector scheduling/runtime shape.
+   The targeted many-sector comparison has now completed successfully under
+   both `baseline-2x30` and `filter-workers-4x15`. WSClean-rendered model
+   mosaics are faster than the sparse FITS fallback in both worker shapes.
+   `filter-workers-4x15` is neutral for the default single-sector benchmark
+   and about 30% faster for many-sector mosaics because it exposes more
+   independent sector and mosaic work to Dask. Use WSClean as the preferred
+   model-mosaic path, keep sparse FITS mapping as a fallback, and use `4x15` as
+   the preferred many-sector comparison shape for future split batches.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
@@ -350,6 +339,8 @@ Most relevant benchmark reports:
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-only-profile.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-post-split-filter-skymodel-profile.md`
+- `docs/source/development/benchmark_baselines/2026-07-10-worker-thread-wsclean-model-benchmark.md`
+- `docs/source/development/benchmark_baselines/2026-07-10-worker-shape-mosaic-method-comparison.md`
 
 Benchmark decision rules:
 

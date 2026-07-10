@@ -1,0 +1,71 @@
+{
+  "source_run": "runs/benchmark-20260710-185040",
+  "commit": "82c2390d0d212f50ba37fdd75a2da249594e902c",
+  "ci_job": "1836574",
+  "pipeline": "201409",
+  "runner": "Shared Runner on lcs126",
+  "repetitions": 1,
+  "decision": "Use WSClean-rendered model mosaics as the preferred path and use 4x15 as the preferred many-sector comparison shape; continue to keep sparse FITS mapping as a fallback.",
+  "profiles": {
+    "ci-benchmark": {
+      "baseline_2x30": {
+        "wall_seconds": 312.153,
+        "command_seconds": 227.536,
+        "task_count": 24,
+        "command_count": 47,
+        "returncode": 0
+      },
+      "filter_workers_4x15": {
+        "wall_seconds": 310.356,
+        "command_seconds": 229.581,
+        "task_count": 24,
+        "command_count": 47,
+        "returncode": 0
+      },
+      "wall_delta_percent_4x15_vs_2x30": -0.6,
+      "decision": "neutral"
+    },
+    "ci-benchmark-many-sector-mosaic": {
+      "baseline_2x30": {
+        "wall_seconds": 543.793,
+        "command_seconds": 578.655,
+        "task_count": 120,
+        "command_count": 151,
+        "returncode": 0
+      },
+      "filter_workers_4x15": {
+        "wall_seconds": 372.806,
+        "command_seconds": 632.163,
+        "task_count": 120,
+        "command_count": 151,
+        "returncode": 0
+      },
+      "wall_delta_percent_4x15_vs_2x30": -31.4,
+      "decision": "prefer_4x15_for_many_sector"
+    },
+    "ci-benchmark-many-sector-mosaic-sparse-fallback": {
+      "baseline_2x30": {
+        "wall_seconds": 615.05,
+        "command_seconds": 707.348,
+        "task_count": 120,
+        "command_count": 147,
+        "returncode": 0
+      },
+      "filter_workers_4x15": {
+        "wall_seconds": 428.808,
+        "command_seconds": 797.318,
+        "task_count": 120,
+        "command_count": 147,
+        "returncode": 0
+      },
+      "wall_delta_percent_4x15_vs_2x30": -30.3,
+      "decision": "prefer_4x15_for_many_sector"
+    }
+  },
+  "method_comparison": {
+    "wsclean_vs_sparse_2x30_wall_delta_percent": -11.6,
+    "wsclean_vs_sparse_4x15_wall_delta_percent": -13.1,
+    "decision": "prefer_wsclean_model_mosaics"
+  },
+  "next_step": "Proceed with the next calibration task split and benchmark the relevant hidden-path calibration scenarios after the batch."
+}
