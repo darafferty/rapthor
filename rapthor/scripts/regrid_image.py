@@ -2,15 +2,18 @@
 """
 Script to regrid a FITS image
 """
-from argparse import ArgumentParser, RawTextHelpFormatter
-from rapthor.lib import miscellaneous as misc
-from rapthor.lib.fitsimage import FITSImage
-from reproject import reproject_interp
-from astropy.io import fits as pyfits
-from astropy.wcs import WCS as pywcs
-import numpy as np
+
 import os
 import shutil
+from argparse import ArgumentParser, RawTextHelpFormatter
+
+import numpy as np
+from astropy.io import fits as pyfits
+from astropy.wcs import WCS as pywcs
+from reproject import reproject_interp
+
+from rapthor.lib import miscellaneous as misc
+from rapthor.lib.fitsimage import FITSImage
 
 
 def main(input_image, template_image, vertices_file, output_image, skip=False):
@@ -69,22 +72,27 @@ def main(input_image, template_image, vertices_file, output_image, skip=False):
 
     # Reproject, place into output image, and write out final FITS file
     ind = slice(jmin, jmax), slice(imin, imax)
-    isum[ind] = reproject_interp((d.img_data, wcs_in), output_projection=wcs_out_indiv,
-                                 shape_out=shape_out_indiv, return_footprint=False)
+    isum[ind] = reproject_interp(
+        (d.img_data, wcs_in),
+        output_projection=wcs_out_indiv,
+        shape_out=shape_out_indiv,
+        return_footprint=False,
+    )
     d.img_data = isum
     d.img_hdr = regrid_hdr
     d.write(output_image)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     descriptiontext = "Regrid an image to match a template image.\n"
 
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('input_image', help='Filenames of input image')
-    parser.add_argument('template_image', help='Filenames of input template image')
-    parser.add_argument('vertices_file', help='Filename of input vertices files')
-    parser.add_argument('output_image', help='Filename of output regridded image')
-    parser.add_argument('--skip', help='Skip processing', type=str, default='False')
+    parser.add_argument("input_image", help="Filenames of input image")
+    parser.add_argument("template_image", help="Filenames of input template image")
+    parser.add_argument("vertices_file", help="Filename of input vertices files")
+    parser.add_argument("output_image", help="Filename of output regridded image")
+    parser.add_argument("--skip", help="Skip processing", type=str, default="False")
     args = parser.parse_args()
-    main(args.input_image, args.template_image, args.vertices_file, args.output_image,
-         skip=args.skip)
+    main(
+        args.input_image, args.template_image, args.vertices_file, args.output_image, skip=args.skip
+    )
