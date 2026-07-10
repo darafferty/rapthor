@@ -1,0 +1,64 @@
+{
+  "source_run": "runs/benchmark-20260710-072456",
+  "commit": "0b4db147ff2f67257c991c790d31b9eb30385842",
+  "ci_job": "1835926",
+  "pipeline": "201347",
+  "runner": "Shared Runner on lcs126",
+  "decision": "Accepted for default and image-products runtime-thread behavior; WSClean-predict slowdown is monitored; many-sector mosaic wall-time regression requires targeted follow-up before becoming the accepted performance baseline.",
+  "compared_to": "docs/source/development/benchmark_baselines/2026-07-09-hidden-path-pre-split-baseline.summary.json",
+  "notes": [
+    "This benchmark includes the one-thread-per-Dask-worker runtime fix and WSClean-rendered model mosaics.",
+    "This benchmark does not include the later lossless fpack sector model-image compression fix from commit 3fb5d91c."
+  ],
+  "resource_shape": {
+    "local_dask_workers": 2,
+    "cpus_per_task": 30,
+    "max_threads": 30,
+    "filter_skymodel_ncores": 15,
+    "prefect_publish_fits_previews": false
+  },
+  "profiles": {
+    "baseline-2x30": {
+      "wall_median_seconds": 306.21,
+      "wall_delta_percent": 0.3,
+      "command_median_seconds": 224.891,
+      "command_delta_percent": -0.9,
+      "command_count": 44,
+      "task_count": 24,
+      "decision": "accepted"
+    },
+    "image-products-baseline-2x30": {
+      "wall_median_seconds": 343.648,
+      "wall_delta_percent": 0.0,
+      "command_median_seconds": 257.043,
+      "command_delta_percent": 0.1,
+      "command_count": 51,
+      "task_count": 28,
+      "decision": "accepted"
+    },
+    "wsclean-predict-baseline-2x30": {
+      "wall_median_seconds": 305.434,
+      "wall_delta_percent": 5.8,
+      "command_median_seconds": 227.347,
+      "command_delta_percent": 8.4,
+      "command_count": 56,
+      "task_count": 24,
+      "decision": "monitor"
+    },
+    "many-sector-mosaic-baseline-2x30": {
+      "wall_median_seconds": 633.808,
+      "wall_delta_percent": 53.5,
+      "command_median_seconds": 720.884,
+      "command_delta_percent": -8.1,
+      "command_count": 139,
+      "task_count": 120,
+      "dominant_task_groups": {
+        "image_sector_prepare_task_seconds": 334.807,
+        "image_sector_filter_skymodel_task_seconds": 307.143,
+        "mosaic_task_seconds": 300.059
+      },
+      "decision": "follow_up_required"
+    }
+  },
+  "next_step": "Run a targeted many-sector comparison that separates WSClean-rendered model mosaics from the sparse FITS fallback and checks whether the wall-time increase is scheduling/concurrency or model-rendering cost."
+}

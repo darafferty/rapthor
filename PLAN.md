@@ -85,6 +85,11 @@ Completed and accepted:
   repeated settings-cache `KeyError`, and successful WSClean model-mosaic
   rendering through all four cycles. The full multi-sector demo completed after
   old run artifacts were cleared.
+- The 2026-07-10 CI benchmark is captured in
+  `docs/source/development/benchmark_baselines/2026-07-10-worker-thread-wsclean-model-benchmark.md`.
+  It accepts the worker-thread runtime fix for the default and image-products
+  profiles, keeps the WSClean-predict slowdown as a monitored variance item,
+  and flags the many-sector mosaic wall-time increase for targeted follow-up.
 
 Keep in mind:
 
@@ -167,6 +172,14 @@ Do these in order unless a regression blocks progress.
    existing default compression. Rerun the multi-sector demo or the mosaic
    stored-reference scenario when clean sector model products are needed for
    manual inspection.
+
+   Before treating WSClean-rendered model mosaics as the accepted performance
+   baseline, run a targeted many-sector comparison that isolates sparse FITS
+   model-mosaic fallback vs WSClean-rendered model mosaics, model products vs
+   non-model mosaic products, and the worker-thread runtime shape. The latest
+   CI benchmark shows reliable completion but a `+53.5%` many-sector wall-time
+   increase despite lower aggregate command time, so the next question is
+   scheduling/concurrency rather than basic correctness.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
