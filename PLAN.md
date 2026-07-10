@@ -216,8 +216,12 @@ Do these in order unless a regression blocks progress.
      Prefect tasks that run after WSClean preparation and before `finalize`;
      next use the hidden-path benchmarks to decide whether any remaining image
      helpers are worth splitting before moving on to calibration
-   - calibration post-processing: `collect_h5parms`, `process_slow_gains`,
-     full-Jones normalization, `combine_h5parms`, `plot_solutions`
+   - calibration post-processing: `collect_h5parms` is now split into one
+     Prefect task per solve slot, followed by a named `finalize_solutions`
+     task that preserves the existing strategy-aware processing, plotting, and
+     combination logic; next split `process_slow_gains`, full-Jones
+     normalization, `combine_h5parms`, and `plot_solutions` out of
+     `finalize_solutions` in smaller batches
    - prediction: WSClean-predict loops and sector-model post-processing
    - mosaic: WSClean-rendered model mosaics, per-sector regridding, mosaic
      assembly, and compression

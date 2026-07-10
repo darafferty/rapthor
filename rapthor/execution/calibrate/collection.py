@@ -254,25 +254,72 @@ def _collect_strategy_solve_products(
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> dict:
+    solve_slots = list(payload["chunks"][0]["solve_slots"])
+    collected_products = [
+        collect_strategy_solve_h5parm(
+            payload,
+            solve_records,
+            solve_slot,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        for solve_slot in solve_slots
+    ]
+    return process_plot_and_combine_collected_products(
+        payload,
+        collected_products,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def collect_strategy_solve_h5parm(
+    payload: Mapping[str, object],
+    solve_records: list[dict],
+    solve_slot: Mapping[str, object],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    """Collect one solve slot's per-chunk h5parm outputs into one h5parm file."""
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    solve_key = _solve_key(solve_slot)
+    collected_h5parms = payload["collected_h5parms"]
+    collected_record = _run_collect_h5parm(
+        [record[solve_key] for record in solve_records],
+        collected_h5parms[solve_key],
+        pipeline_working_dir,
+        execution_config,
+        f"Collected {_mode_label(payload)} {solve_key} {_solve_type(solve_slot)} h5parm",
+        shell_operation_cls=shell_operation_cls,
+    )
+    return {
+        "solve_key": solve_key,
+        "solve_slot": dict(solve_slot),
+        "collected_record": collected_record,
+    }
+
+
+def process_plot_and_combine_collected_products(
+    payload: Mapping[str, object],
+    collected_products: list[Mapping[str, object]],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    """Process, plot, combine, and validate already collected solve h5parms."""
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     solve_slots = list(payload["chunks"][0]["solve_slots"])
-    collected_h5parms = payload["collected_h5parms"]
     plot_first_dir = _plot_first_direction(payload)
 
     result = {}
     combine_records = {}
+    collected_by_key = {
+        str(product["solve_key"]): product["collected_record"] for product in collected_products
+    }
 
     for solve_slot in solve_slots:
         solve_key = _solve_key(solve_slot)
         solve_type = _solve_type(solve_slot)
-        collected_record = _run_collect_h5parm(
-            [record[solve_key] for record in solve_records],
-            collected_h5parms[solve_key],
-            pipeline_working_dir,
-            execution_config,
-            f"Collected {_mode_label(payload)} {solve_key} {solve_type} h5parm",
-            shell_operation_cls=shell_operation_cls,
-        )
+        collected_record = collected_by_key[solve_key]
         result[_solution_output_key(solve_slot)] = collected_record
 
         if solve_type == "slow_gains":

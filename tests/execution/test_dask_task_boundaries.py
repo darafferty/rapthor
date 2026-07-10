@@ -59,16 +59,25 @@ def _assert_worker_submission_is_serializable(
     execution_config: ExecutionConfig,
 ) -> None:
     """Worker task inputs stay plain; runtime config travels as a separate object."""
+
+    def resolved(value):
+        if isinstance(value, _CapturedFuture):
+            return value.result()
+        if isinstance(value, list):
+            return [resolved(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(resolved(item) for item in value)
+        if isinstance(value, dict):
+            return {key: resolved(item) for key, item in value.items()}
+        return value
+
     for arg in submission["args"]:
-        if isinstance(arg, _CapturedFuture):
-            assert_serializable_payload(arg.result())
-        else:
-            assert_serializable_payload(arg)
+        assert_serializable_payload(resolved(arg))
     for name, value in submission["kwargs"].items():
         if name == "execution_config":
             assert value == execution_config
         else:
-            assert_serializable_payload(value)
+            assert_serializable_payload(resolved(value))
 
 
 def _image_sector_result(index: int) -> dict:
@@ -496,33 +505,51 @@ def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypa
     calibrate_task = _CapturedTask(
         lambda index: {"solve1": file_record(f"/work/calibrate_1/solve{index + 1}.h5")}
     )
-    collected = {}
-
-    def fake_collect(payload_arg, solve_records, execution_config, shell_operation_cls=None):
-        collected["payload"] = payload_arg
-        collected["solve_records"] = solve_records
-        collected["execution_config"] = execution_config
-        collected["shell_operation_cls"] = shell_operation_cls
-        return {"combined_solutions": file_record("/work/calibrate_1/combined.h5")}
+    collect_task = _CapturedTask(
+        lambda index: {
+            "solve_key": f"solve{index + 1}",
+            "solve_slot": payload["chunks"][0]["solve_slots"][index],
+            "collected_record": file_record(f"/work/calibrate_1/collected_solve{index + 1}.h5"),
+        }
+    )
+    finalize_task = _CapturedTask(
+        lambda index: {"combined_solutions": file_record("/work/calibrate_1/combined.h5")}
+    )
 
     monkeypatch.setattr(calibrate_module, "calibrate_chunk_task", calibrate_task)
-    monkeypatch.setattr(calibrate_module, "collect_plot_and_combine", fake_collect)
+    monkeypatch.setattr(calibrate_module, "collect_h5parms_task", collect_task)
+    monkeypatch.setattr(calibrate_module, "finalize_solutions_task", finalize_task)
 
     result = calibrate_module._run_calibrate_prefect_tasks(payload, execution_config=config)
 
     assert result == {"combined_solutions": file_record("/work/calibrate_1/combined.h5")}
-    assert collected == {
-        "payload": payload,
-        "solve_records": [{"solve1": file_record("/work/calibrate_1/solve1.h5")}],
-        "execution_config": config,
-        "shell_operation_cls": None,
-    }
     assert [
         submission["options"]["task_run_name"] for submission in calibrate_task.submissions
     ] == [
         "chunk_1",
     ]
+    assert [submission["options"]["task_run_name"] for submission in collect_task.submissions] == [
+        "collect_h5parms_1",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in finalize_task.submissions] == [
+        "finalize_solutions",
+    ]
     _assert_worker_submission_is_serializable(calibrate_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(collect_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(finalize_task.submissions[0], config)
+    assert collect_task.submissions[0]["args"][0] is payload
+    assert collect_task.submissions[0]["args"][1] == [
+        {"solve1": file_record("/work/calibrate_1/solve1.h5")}
+    ]
+    assert collect_task.submissions[0]["args"][2] is payload["chunks"][0]["solve_slots"][0]
+    assert finalize_task.submissions[0]["args"][0] is payload
+    assert finalize_task.submissions[0]["args"][1] == [
+        {
+            "solve_key": "solve1",
+            "solve_slot": payload["chunks"][0]["solve_slots"][0],
+            "collected_record": file_record("/work/calibrate_1/collected_solve1.h5"),
+        }
+    ]
 
 
 def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypatch):

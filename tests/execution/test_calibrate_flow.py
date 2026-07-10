@@ -67,6 +67,18 @@ def _command_names(commands: list[list[str]]) -> list[str]:
     return [_command_name(command) for command in commands]
 
 
+def _calibration_command_names_after_collect_split(
+    *plot_counts: int,
+    prefix=None,
+) -> list[str]:
+    """Return expected command names after solve-slot collection is task-split."""
+    names = list(prefix or []) + ["DP3", "DP3"]
+    names.extend(["H5parm_collector.py"] * len(plot_counts))
+    for plot_count in plot_counts:
+        names.extend([PLOT_SOLUTIONS_COMMAND_NAME] * plot_count)
+    return names
+
+
 def _add_explicit_solve_metadata(input_parms):
     """Add operation-style solve metadata to hand-built payload fixtures."""
     medium_count = 0
@@ -2341,20 +2353,13 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.mode=scalarphase" in commands[0]
     assert "solve2.mode=scalarphase" in commands[0]
     assert "solve2.modeldatacolumns=[MODEL_DATA]" not in commands[0]
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
-    assert "--first-dir" in commands[3]
+    assert "--first-dir" in commands[4]
     assert "--first-dir" in commands[5]
 
 
@@ -2436,25 +2441,15 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
     assert outputs["slow_amp_plots"] == [file_record(tmp_path / "slow_amplitude_solutions.png")]
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2)
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert "solve3.h5parm=slow_gains_di_0.h5parm" in commands[0]
     assert "solve2.modeldatacolumns=[MODEL_DATA]" in commands[0]
     assert "solve3.modeldatacolumns=[MODEL_DATA]" in commands[0]
     assert "solve2.reusemodel=[solve1.*]" not in commands[0]
     assert "solve3.reusemodel=[solve1.*]" not in commands[0]
-    assert "--first-dir" in commands[3]
     assert "--first-dir" in commands[5]
+    assert "--first-dir" in commands[6]
     assert "--first-dir" in commands[7]
     assert "--first-dir" in commands[8]
 
@@ -2485,19 +2480,7 @@ def test_run_calibrate_flow_supports_mixed_di_strategy(
     }
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2, 1)
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
     assert "solve4.h5parm=fulljones_gain_0.h5parm" in commands[0]
@@ -2628,15 +2611,7 @@ def test_run_calibrate_flow_supports_dd_slow_then_medium(
         validate_output_record(value)
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(2, 1)
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.mode=diagonal" in commands[0]
     assert "solve1.antennaconstraint=[]" in commands[0]
@@ -2669,14 +2644,7 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve2.h5parm=medium1_phase_0.h5parm" in commands[0]
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
@@ -2702,14 +2670,7 @@ def test_run_calibrate_flow_supports_custom_dd_solve_order(
         "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
     assert "steps=[solve1,solve2]" in commands[0]
     assert "solve1.h5parm=medium1_phase_0.h5parm" in commands[0]
     assert "solve1.mode=scalarphase" in commands[0]
@@ -2736,14 +2697,7 @@ def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
     assert "steps=[applycal,solve1,solve2]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
     assert "applycal.parmdb=/solutions/di_solutions.h5" in commands[0]
@@ -2773,15 +2727,9 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert _command_names(commands) == [
-        "wsclean",
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(
+        1, 1, prefix=["wsclean"]
+    )
     assert commands[0][1:] == [
         "-j",
         "4",
@@ -2843,20 +2791,11 @@ def test_run_calibrate_flow_supports_dd_wsclean_predict(
     ]
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert _command_names(commands) == [
-        "wsclean",
-        "wsclean",
-        "wsclean",
-        "wsclean",
-        "wsclean",
-        "wsclean",
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(
+        1,
+        1,
+        prefix=["wsclean", "wsclean", "wsclean", "wsclean", "wsclean", "wsclean"],
+    )
     assert "-draw-model" in commands[0]
     assert commands[1][1:] == [
         "-j",
@@ -3086,19 +3025,7 @@ def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2, 1)
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.initialsolutions.soltab=[phase000,amplitude000]" in commands[0]
     assert "solve3.keepmodel=true" in commands[0]
@@ -3135,17 +3062,7 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
         shlex.split(instance.kwargs["commands"][0])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2)
     assert "steps=[solve1,solve2,solve3]" in commands[0]
     assert all("solve4.h5parm" not in token for token in commands[0])
 
@@ -3541,14 +3458,7 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
     assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
     assert "steps=[applycal,solve1,solve2]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
     assert f"applycal.parmdb={di_h5parm}" in commands[0]
@@ -3722,19 +3632,7 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
     assert (plots_dir / "slow_amplitude_solutions.png").is_file()
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
-    assert _command_names(commands) == [
-        "DP3",
-        "DP3",
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        PLOT_SOLUTIONS_COMMAND_NAME,
-        "H5parm_collector.py",
-        PLOT_SOLUTIONS_COMMAND_NAME,
-    ]
+    assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2, 1)
     assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
     assert "solve3.h5parm=slow_gain_0.h5parm" in commands[0]
     assert field.scan_h5parms_calls == 1
@@ -3761,18 +3659,7 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         events.append(f"submit-{chunk['output_h5parm']}")
         return FakeFuture(future_index)
 
-    def fake_collect(payload_arg, solve_records, execution_config, shell_operation_cls=None):
-        _ = shell_operation_cls
-        events.append("collect")
-        assert payload_arg is payload
-        assert execution_config == ExecutionConfig(task_runner="sync")
-        assert solve_records == [
-            {"solve1": file_record(tmp_path / "fulljones_gain_0.h5parm")},
-            {"solve1": file_record(tmp_path / "fulljones_gain_1.h5parm")},
-        ]
-        return {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
-
-    class FakeTask:
+    class FakeChunkTask:
         def __init__(self, task_run_name):
             self.task_run_name = task_run_name
 
@@ -3780,11 +3667,78 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
             events.append(f"task-name-{self.task_run_name}")
             return fake_submit(payload_arg, chunk, execution_config=execution_config)
 
-    def fake_with_options(task_run_name):
-        return FakeTask(task_run_name)
+    class FakeCollectFuture:
+        def result(self):
+            events.append("collect-result")
+            return {
+                "solve_key": "solve1",
+                "solve_slot": payload["chunks"][0]["solve_slots"][0],
+                "collected_record": file_record(tmp_path / "fulljones_solutions.h5"),
+            }
 
-    monkeypatch.setattr(calibrate_module.calibrate_chunk_task, "with_options", fake_with_options)
-    monkeypatch.setattr(calibrate_module, "collect_plot_and_combine", fake_collect)
+    class FakeCollectTask:
+        def __init__(self, task_run_name):
+            self.task_run_name = task_run_name
+
+        def submit(self, payload_arg, solve_records, solve_slot, execution_config=None):
+            events.append(f"task-name-{self.task_run_name}")
+            assert payload_arg is payload
+            assert execution_config == ExecutionConfig(task_runner="sync")
+            assert solve_records == [
+                {"solve1": file_record(tmp_path / "fulljones_gain_0.h5parm")},
+                {"solve1": file_record(tmp_path / "fulljones_gain_1.h5parm")},
+            ]
+            assert solve_slot is payload["chunks"][0]["solve_slots"][0]
+            events.append("collect-submit")
+            return FakeCollectFuture()
+
+    class FakeFinalizeFuture:
+        def result(self):
+            events.append("finalize-result")
+            return {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
+
+    class FakeFinalizeTask:
+        def __init__(self, task_run_name):
+            self.task_run_name = task_run_name
+
+        def submit(self, payload_arg, collected_products, execution_config=None):
+            events.append(f"task-name-{self.task_run_name}")
+            assert payload_arg is payload
+            assert execution_config == ExecutionConfig(task_runner="sync")
+            assert collected_products == [
+                {
+                    "solve_key": "solve1",
+                    "solve_slot": payload["chunks"][0]["solve_slots"][0],
+                    "collected_record": file_record(tmp_path / "fulljones_solutions.h5"),
+                }
+            ]
+            events.append("finalize-submit")
+            return FakeFinalizeFuture()
+
+    def fake_chunk_with_options(task_run_name):
+        return FakeChunkTask(task_run_name)
+
+    def fake_collect_with_options(task_run_name):
+        return FakeCollectTask(task_run_name)
+
+    def fake_finalize_with_options(task_run_name):
+        return FakeFinalizeTask(task_run_name)
+
+    monkeypatch.setattr(
+        calibrate_module.calibrate_chunk_task,
+        "with_options",
+        fake_chunk_with_options,
+    )
+    monkeypatch.setattr(
+        calibrate_module.collect_h5parms_task,
+        "with_options",
+        fake_collect_with_options,
+    )
+    monkeypatch.setattr(
+        calibrate_module.finalize_solutions_task,
+        "with_options",
+        fake_finalize_with_options,
+    )
 
     outputs = calibrate_module._run_calibrate_prefect_tasks(
         payload,
@@ -3799,7 +3753,12 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         "submit-fulljones_gain_1.h5parm",
         "result-0",
         "result-1",
-        "collect",
+        "task-name-collect_h5parms_1",
+        "collect-submit",
+        "collect-result",
+        "task-name-finalize_solutions",
+        "finalize-submit",
+        "finalize-result",
     ]
 
 
