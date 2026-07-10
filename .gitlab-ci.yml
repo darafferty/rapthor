@@ -267,11 +267,10 @@ run_integration_tests:
     - tox -e test_integration
 
 
-### Stage: benchmark
-
-run_benchmark_baseline:
+.benchmark:
   stage: benchmark
   image: $FULL_IMAGE
+  resource_group: benchmark
   variables:
     BLIS_NUM_THREADS: "1"
     MKL_NUM_THREADS: "1"
@@ -279,28 +278,28 @@ run_benchmark_baseline:
     OMP_NUM_THREADS: "1"
     OPENBLAS_NUM_THREADS: "1"
     RAPTHOR_BENCHMARK_CPUS_PER_TASK: "30"
+    RAPTHOR_BENCHMARK_EXTRA_ARGS: ""
     RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS: "2"
     RAPTHOR_BENCHMARK_MAX_THREADS: "30"
     RAPTHOR_BENCHMARK_REPETITIONS: "3"
     RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
       --resource-profile baseline-2x30
-      --resource-profile filter-workers-4x15
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
       --scenario ci-benchmark
       --scenario ci-benchmark-many-sector-mosaic
-      --scenario ci-benchmark-many-sector-mosaic-sparse-fallback
     VECLIB_MAXIMUM_THREADS: "1"
   script:
     - export RAPTHOR_BENCHMARK_RUN_STAMP="$(date -u +%Y%m%d-%H%M%S)"
     - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
-    # Run the many-sector mosaic path on the 60-core runner with two resource
-    # shapes so the next artifact can isolate model-mosaic method vs scheduling.
+    # Keep each benchmark job narrow enough to finish before the GitLab timeout.
+    # Run exploratory resource profiles in their own manual jobs.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS
       $RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS
+      $RAPTHOR_BENCHMARK_EXTRA_ARGS
       --prepare-inputs
       --local-dask-workers "$RAPTHOR_BENCHMARK_LOCAL_DASK_WORKERS"
       --cpus-per-task "$RAPTHOR_BENCHMARK_CPUS_PER_TASK"
@@ -323,9 +322,41 @@ run_benchmark_baseline:
       - ci/benchmark-*/**/prefect-server.log
       - ci/benchmark-*/**/rapthor-work/logs/commands.jsonl
       - ci/benchmark-*/**/rapthor-work/logs/rapthor.log
+
+
+### Stage: benchmark
+
+run_benchmark_baseline:
+  extends: .benchmark
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: on_success
+    - when: manual
+      allow_failure: true
+
+run_benchmark_worker_profile:
+  extends: .benchmark
+  variables:
+    RAPTHOR_BENCHMARK_EXTRA_ARGS: "--allow-failures"
+    RAPTHOR_BENCHMARK_REPETITIONS: "1"
+    RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
+      --resource-profile filter-workers-4x15
+    RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
+      --scenario ci-benchmark
+      --scenario ci-benchmark-many-sector-mosaic
+  rules:
+    - when: manual
+      allow_failure: true
+
+run_benchmark_sparse_fallback:
+  extends: .benchmark
+  variables:
+    RAPTHOR_BENCHMARK_REPETITIONS: "1"
+    RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
+      --resource-profile baseline-2x30
+    RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
+      --scenario ci-benchmark-many-sector-mosaic-sparse-fallback
+  rules:
     - when: manual
       allow_failure: true
 

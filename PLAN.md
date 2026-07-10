@@ -182,12 +182,17 @@ Do these in order unless a regression blocks progress.
    scheduling/concurrency rather than basic correctness. The benchmark matrix
    now includes `ci-benchmark-many-sector-mosaic-sparse-fallback`, which uses
    the same generated multi-sector inputs as `ci-benchmark-many-sector-mosaic`
-   but overrides `model_mosaic_method = sparse_fits`. The next CI benchmark is
-   intentionally narrow: run `ci-benchmark` plus the two many-sector scenarios
-   with `baseline-2x30` and `filter-workers-4x15`. Use the default-path
-   comparison to check that `4x15` does not harm the normal pipeline, then use
-   the many-sector comparison to decide whether the extra wall time is caused
-   by WSClean-rendered model mosaics or by the broader many-sector
+   but overrides `model_mosaic_method = sparse_fits`. The 2026-07-10 CI run
+   timed out before writing the final benchmark summary. The useful completed
+   data showed that `ci-benchmark` is stable for both `baseline-2x30` and
+   `filter-workers-4x15`, while `ci-benchmark-many-sector-mosaic` is stable for
+   `baseline-2x30` but unstable for `filter-workers-4x15` (`wsclean` exited
+   with code 137 in one repetition). The CI benchmark jobs are therefore split:
+   scheduled/default runs cover the stable `baseline-2x30` scenarios with three
+   repetitions; manual exploratory jobs cover the `filter-workers-4x15` profile
+   and the sparse fallback scenario with one repetition each. Use these smaller
+   artifacts to decide whether the extra wall time is caused by
+   WSClean-rendered model mosaics or by the broader many-sector
    scheduling/runtime shape.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
