@@ -348,6 +348,7 @@ class Parset:
         for opt, valid_values in {
             "idg_mode": ("cpu", "gpu", "hybrid"),
             "dde_method": ("single", "full"),
+            "model_mosaic_method": ("wsclean", "sparse_fits"),
             "pol_combine_method": ("link", "join"),
         }.items():
             if options[opt] not in valid_values:

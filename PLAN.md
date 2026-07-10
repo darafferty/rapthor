@@ -179,7 +179,12 @@ Do these in order unless a regression blocks progress.
    non-model mosaic products, and the worker-thread runtime shape. The latest
    CI benchmark shows reliable completion but a `+53.5%` many-sector wall-time
    increase despite lower aggregate command time, so the next question is
-   scheduling/concurrency rather than basic correctness.
+   scheduling/concurrency rather than basic correctness. The benchmark matrix
+   now includes `ci-benchmark-many-sector-mosaic-sparse-fallback`, which uses
+   the same generated multi-sector inputs as `ci-benchmark-many-sector-mosaic`
+   but overrides `model_mosaic_method = sparse_fits`. Use the next benchmark
+   report to decide whether the extra wall time is caused by WSClean-rendered
+   model mosaics or by the broader many-sector scheduling/runtime shape.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that

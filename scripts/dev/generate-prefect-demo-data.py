@@ -578,6 +578,7 @@ def write_parset(
             disable_iquv_clean = False
             photometry_skymodel =
             astrometry_skymodel =
+            model_mosaic_method = wsclean
             shared_facet_rw = False
             normalization_skymodels =
             normalization_reference_frequencies =

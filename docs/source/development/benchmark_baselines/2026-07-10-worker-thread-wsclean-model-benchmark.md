@@ -117,6 +117,12 @@ Run a targeted many-sector comparison that separates:
   the Prefect settings-cache failure can be avoided in a controlled run
 - model-mosaic products vs non-model mosaic products
 
+The benchmark matrix now includes
+`ci-benchmark-many-sector-mosaic-sparse-fallback`, which uses the same generated
+multi-sector inputs and resource shape as `ci-benchmark-many-sector-mosaic` but
+sets `model_mosaic_method = sparse_fits`. Use the next CI run to compare that
+fallback against the default WSClean-rendered model-mosaic path directly.
+
 Keep the lossless sector-model compression fix in the next benchmark run, but
 interpret it separately: it protects intermediate `*-model-pb.fits.fz`
 correctness and should have small file-size impact for sparse model products.

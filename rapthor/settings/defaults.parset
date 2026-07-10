@@ -212,6 +212,12 @@ filter_skymodel = True
 source_finder = bdsf
 save_filtered_model_image = False
 
+# Method used to generate model mosaics from multiple imaging sectors. The
+# default, wsclean, renders the model from sector sky-model component lists onto
+# the mosaic grid. The sparse_fits fallback regrids sparse model FITS pixels and
+# is mainly intended for benchmarking and debugging.
+model_mosaic_method = wsclean
+
 # Save visibilities used for imaging (default = False). If True, the imaging MS
 # files will be saved, with the the direction-independent full-Jones solutions,
 # if available, applied. Note, however, that the direction-dependent solutions

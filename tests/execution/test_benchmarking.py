@@ -56,6 +56,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
     scenarios = benchmark_scenarios_by_id()
     scenario = scenarios["ci-benchmark"]
     many_sector_scenario = scenarios["ci-benchmark-many-sector-mosaic"]
+    sparse_fallback_scenario = scenarios["ci-benchmark-many-sector-mosaic-sparse-fallback"]
 
     command = scenario.command(Path("/repo"), Path("/runs/benchmark"))
     many_sector_command = many_sector_scenario.command(Path("/repo"), Path("/runs/benchmark"))
@@ -64,6 +65,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
         "ci-benchmark",
         "ci-benchmark-image-products",
         "ci-benchmark-many-sector-mosaic",
+        "ci-benchmark-many-sector-mosaic-sparse-fallback",
         "ci-benchmark-wsclean-predict",
     }
     assert command[1] == "/repo/scripts/dev/run-rapthor-prefect-demo.py"
@@ -79,31 +81,47 @@ def test_default_benchmark_scenarios_build_demo_commands():
         in many_sector_command
     )
     assert many_sector_scenario.parset_overrides == ()
+    assert sparse_fallback_scenario.parset_overrides == (
+        ParsetOverride("imaging", "model_mosaic_method", "sparse_fits"),
+    )
 
 
 def test_hidden_path_benchmark_scenarios_materialize_parset_overrides(tmp_path):
     scenario = benchmark_scenarios_by_id()["ci-benchmark-image-products"]
+    sparse_fallback_scenario = benchmark_scenarios_by_id()[
+        "ci-benchmark-many-sector-mosaic-sparse-fallback"
+    ]
     repo_root = tmp_path / "repo"
     parset_path = repo_root / "examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset"
+    multi_sector_parset_path = (
+        repo_root / "examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset"
+    )
     parset_path.parent.mkdir(parents=True)
-    parset_path.write_text(
+    base_parset = (
         """
 [global]
 strategy = examples/generated/prefect_demo_rich/prefect_demo_benchmark_strategy.py
 
 [imaging]
+model_mosaic_method = wsclean
 save_image_cube = False
 normalization_skymodels =
 
 [cluster]
 prefect_task_runner = local_dask
 """.strip()
-        + "\n",
+        + "\n"
+    )
+    parset_path.write_text(
+        base_parset,
         encoding="utf-8",
     )
+    multi_sector_parset_path.write_text(base_parset, encoding="utf-8")
 
     command = scenario.command(repo_root, tmp_path / "run")
+    sparse_fallback_command = sparse_fallback_scenario.command(repo_root, tmp_path / "run")
     scenario_parset = Path(command[2])
+    sparse_fallback_parset = Path(sparse_fallback_command[2])
 
     assert scenario_parset.name == ("prefect_demo_benchmark.ci-benchmark-image-products.parset")
     text = scenario_parset.read_text(encoding="utf-8")
@@ -114,6 +132,10 @@ prefect_task_runner = local_dask
     assert "save_image_cube = True" in text
     assert "make_quv_images = True" in text
     assert "compress_final_images = True" in text
+    assert sparse_fallback_parset.name == (
+        "prefect_demo_multisector_benchmark.ci-benchmark-many-sector-mosaic-sparse-fallback.parset"
+    )
+    assert "model_mosaic_method = sparse_fits" in sparse_fallback_parset.read_text(encoding="utf-8")
 
 
 def test_benchmark_scenario_without_overrides_uses_base_parset():
@@ -202,9 +224,14 @@ def test_benchmark_resource_profile_scenarios_still_use_generated_inputs():
 def test_benchmark_runner_recognizes_many_sector_generated_inputs():
     module = load_benchmark_script()
     scenario = benchmark_scenarios_by_id()["ci-benchmark-many-sector-mosaic"]
+    sparse_fallback_scenario = benchmark_scenarios_by_id()[
+        "ci-benchmark-many-sector-mosaic-sparse-fallback"
+    ]
 
     assert module._scenario_uses_generated_demo_inputs(scenario) is True
     assert module._scenario_uses_multi_sector_demo_inputs(scenario) is True
+    assert module._scenario_uses_generated_demo_inputs(sparse_fallback_scenario) is True
+    assert module._scenario_uses_multi_sector_demo_inputs(sparse_fallback_scenario) is True
 
 
 def test_benchmark_prepare_inputs_generates_many_sector_dataset(monkeypatch, tmp_path):

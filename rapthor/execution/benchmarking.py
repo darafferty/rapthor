@@ -260,6 +260,21 @@ def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
             cpus_per_task=30,
             max_threads=30,
         ),
+        BenchmarkScenario(
+            scenario_id="ci-benchmark-many-sector-mosaic-sparse-fallback",
+            description=(
+                "Generated CI benchmark variant using the same many-sector "
+                "mosaic inputs but forcing sparse FITS model-mosaic regridding "
+                "instead of WSClean-rendered model mosaics."
+            ),
+            parset=(
+                "examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset"
+            ),
+            local_dask_workers=2,
+            cpus_per_task=30,
+            max_threads=30,
+            parset_overrides=(ParsetOverride("imaging", "model_mosaic_method", "sparse_fits"),),
+        ),
     )
 
 

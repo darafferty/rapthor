@@ -538,6 +538,14 @@ The available options are described below under their respective sections.
         Save images of the filtered sky model made during each imaging cycle
         (default = ``False``).
 
+    model_mosaic_method
+        Method used to generate model mosaics from multiple imaging sectors
+        (default = ``wsclean``). ``wsclean`` renders the model from sector
+        sky-model component lists onto the mosaic grid, which is preferred for
+        sparse clean-component model products. ``sparse_fits`` regrids sparse
+        model FITS pixels and is mainly intended for benchmarking and debugging
+        the fallback path.
+
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
         ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_ 

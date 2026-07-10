@@ -78,6 +78,7 @@
         "filter_skymodel": true,
         "source_finder": "bdsf",
         "save_filtered_model_image": false,
+        "model_mosaic_method": "wsclean",
         "save_visibilities": false,
         "save_residual_visibilities": false,
         "average_visibilities": true,

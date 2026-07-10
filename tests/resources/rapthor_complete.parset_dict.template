@@ -105,6 +105,7 @@
                       'reweight': False,
                       'robust': -0.3,
                       'save_filtered_model_image': False,
+                      'model_mosaic_method': 'wsclean',
                       'save_visibilities': True,
                       'save_residual_visibilities': True,
                       'average_visibilities': True,

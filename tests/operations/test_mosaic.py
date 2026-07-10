@@ -89,6 +89,7 @@ class FieldStub:
         disable_clean=True,
         save_supplementary_images=False,
         save_filtered_model_image=False,
+        model_mosaic_method="wsclean",
     ):
         self.parset = {
             "dir_working": str(tmp_path / "working"),
@@ -107,6 +108,7 @@ class FieldStub:
         self.compress_images = compress_images
         self.image_pol = list(image_pol)
         self.disable_clean = disable_clean
+        self.model_mosaic_method = model_mosaic_method
         self.save_supplementary_images = save_supplementary_images
         self.field_image_filename = None
         self.field_image_filename_prev = None
@@ -265,6 +267,39 @@ def test_set_input_parameters_includes_clean_and_supplementary_products(tmp_path
                 field.imaging_sectors[1].image_skymodel_file_apparent_sky,
             ]
         ).to_json(),
+    ]
+
+
+def test_set_input_parameters_can_force_sparse_model_mosaic_fallback(tmp_path):
+    field = _field(
+        tmp_path,
+        sector_count=2,
+        image_pol=("I",),
+        disable_clean=False,
+        save_filtered_model_image=True,
+        model_mosaic_method="sparse_fits",
+    )
+    operation = Mosaic(field, index=1)
+
+    operation.set_input_parameters()
+
+    assert operation.image_names == [
+        "I_image_file_true_sky",
+        "I_image_file_true_sky_astcorr",
+        "I_image_file_apparent_sky",
+        "I_model_file_true_sky",
+        "I_residual_file_apparent_sky",
+        "I_dirty_file_apparent_sky",
+        "filtered_model_file_apparent_sky",
+    ]
+    assert operation.input_parms["sector_model_skymodel_filename"] == [
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
     ]
 
 

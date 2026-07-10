@@ -109,6 +109,7 @@ skip_corner_sectors = True
 use_clean_mask = False
 photometry_skymodel = None
 astrometry_skymodel = None
+model_mosaic_method = wsclean
 
 [cluster]
 batch_system = slurm

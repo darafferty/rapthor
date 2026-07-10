@@ -289,6 +289,7 @@ run_benchmark_baseline:
       --scenario ci-benchmark-image-products
       --scenario ci-benchmark-wsclean-predict
       --scenario ci-benchmark-many-sector-mosaic
+      --scenario ci-benchmark-many-sector-mosaic-sparse-fallback
     VECLIB_MAXIMUM_THREADS: "1"
   script:
     - export RAPTHOR_BENCHMARK_RUN_STAMP="$(date -u +%Y%m%d-%H%M%S)"

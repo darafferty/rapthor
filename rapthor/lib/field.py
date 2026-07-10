@@ -148,6 +148,7 @@ class Field(object):
         self.image_cube_stokes_list = self.parset["imaging_specific"]["image_cube_stokes_list"]
         self.pol_combine_method = self.parset["imaging_specific"]["pol_combine_method"]
         self.disable_iquv_clean = self.parset["imaging_specific"]["disable_iquv_clean"]
+        self.model_mosaic_method = self.parset["imaging_specific"]["model_mosaic_method"]
         self.photometry_skymodel = self.parset["imaging_specific"]["photometry_skymodel"]
         self.astrometry_skymodel = self.parset["imaging_specific"]["astrometry_skymodel"]
         self.normalization_skymodels = self.parset["imaging_specific"]["normalization_skymodels"]

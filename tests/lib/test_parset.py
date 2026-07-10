@@ -154,6 +154,15 @@ def test_invalid_idg_mode(parset_scenario):
         parset_read(str(parset_scenario.parset))
 
 
+def test_invalid_model_mosaic_method(parset_scenario):
+    option = "model_mosaic_method"
+    value = "invalid"
+    _append_to_parset(parset_scenario.parset, f"\n[imaging]\n{option} = {value}\n")
+
+    with pytest.raises(ValueError, match=f"The option '{option}' must be one of"):
+        parset_read(str(parset_scenario.parset))
+
+
 def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
     _append_to_parset(
         parset_scenario.parset,

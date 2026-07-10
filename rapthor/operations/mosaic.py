@@ -120,6 +120,8 @@ class Mosaic(Operation):
 
     def _model_skymodels_for_image_name(self, image_name):
         """Return sector sky-model paths when WSClean can render this model mosaic."""
+        if self.field.model_mosaic_method == "sparse_fits":
+            return None
         skymodel_attr_by_image_name = {
             "I_model_file_true_sky": "image_skymodel_file_true_sky",
             "filtered_model_file_apparent_sky": "image_skymodel_file_apparent_sky",
