@@ -95,6 +95,26 @@ def image_sector_diagnostics_task(
     return diagnostics
 
 
+@task(name="normalize_flux_scale")
+def image_sector_normalize_flux_scale_task(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for one sector flux-scale normalization step."""
+    assert_serializable_payload(prepared)
+    with publish_python_logs_to_prefect():
+        normalization = image_sector.normalize_image_sector_flux_scale(
+            sector,
+            prepared,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(normalization)
+    return normalization
+
+
 @task(name="finalize")
 def image_sector_finalize_task(
     sector: ImageSectorPayload,
@@ -102,6 +122,7 @@ def image_sector_finalize_task(
     filtered: Mapping[str, object],
     diagnostics: Mapping[str, object],
     pipeline_working_dir: str,
+    normalization: Optional[Mapping[str, object]] = None,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -109,6 +130,7 @@ def image_sector_finalize_task(
     assert_serializable_payload(prepared)
     assert_serializable_payload(filtered)
     assert_serializable_payload(diagnostics)
+    assert_serializable_payload(normalization)
     with publish_python_logs_to_prefect():
         return image_sector.finalize_image_sector(
             sector,
@@ -116,6 +138,7 @@ def image_sector_finalize_task(
             filtered,
             diagnostics,
             pipeline_working_dir,
+            normalization_result=normalization,
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
         )
@@ -218,6 +241,20 @@ def _submit_split_image_sector_tasks(
         )
         for index, sector in enumerate(sectors)
     ]
+    normalization_sector_futures = [
+        (
+            image_sector_normalize_flux_scale_task.with_options(
+                task_run_name=sector_step_name(index, "normalize_flux_scale")
+            ).submit(
+                sector,
+                prepared_sector_futures[index],
+                execution_config=config,
+            )
+            if bool(sector.get("normalize_flux_scale", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
     finalized_sector_futures = [
         image_sector_finalize_task.with_options(
             task_run_name=sector_step_name(index, "finalize")
@@ -227,6 +264,7 @@ def _submit_split_image_sector_tasks(
             filtered_sector_futures[index],
             diagnostics_sector_futures[index],
             payload["pipeline_working_dir"],
+            normalization_sector_futures[index],
             execution_config=config,
         )
         for index, sector in enumerate(sectors)
@@ -235,6 +273,7 @@ def _submit_split_image_sector_tasks(
         prepared_sector_futures,
         filtered_sector_futures,
         diagnostics_sector_futures,
+        normalization_sector_futures,
         finalized_sector_futures,
     )
 
@@ -243,6 +282,7 @@ def _collect_image_sector_results(
     prepared_sector_futures,
     filtered_sector_futures,
     diagnostics_sector_futures,
+    normalization_sector_futures,
     finalized_sector_futures,
 ) -> list[dict]:
     try:
@@ -254,6 +294,9 @@ def _collect_image_sector_results(
             filtered_sector.result()
         for diagnostics_sector in diagnostics_sector_futures:
             diagnostics_sector.result()
+        for normalization_sector in normalization_sector_futures:
+            if normalization_sector is not None:
+                normalization_sector.result()
         raise
 
 
@@ -268,12 +311,14 @@ def _run_image_prefect_tasks(
         prepared_sector_futures,
         filtered_sector_futures,
         diagnostics_sector_futures,
+        normalization_sector_futures,
         finalized_sector_futures,
     ) = _submit_split_image_sector_tasks(payload, config)
     sector_outputs = _collect_image_sector_results(
         prepared_sector_futures,
         filtered_sector_futures,
         diagnostics_sector_futures,
+        normalization_sector_futures,
         finalized_sector_futures,
     )
     return _result_from_sector_records(sector_outputs)

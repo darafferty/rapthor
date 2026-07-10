@@ -190,12 +190,45 @@ def calculate_image_sector_diagnostics(
     }
 
 
+def normalize_image_sector_flux_scale(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Build flux-scale normalization products for one sector when requested."""
+    if not sector["normalize_flux_scale"]:
+        return {"source_catalog": None, "normalize_h5parm": None}
+
+    image_cubes = list(prepared["image_cubes"])
+    image_cube_beams = list(prepared["image_cube_beams"])
+    image_cube_frequencies = list(prepared["image_cube_frequencies"])
+    if not image_cubes:
+        raise ValueError("normalize_flux_scale requires image cube outputs")
+
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    source_catalog, normalize_h5parm = make_normalization_records(
+        image_cubes[0],
+        image_cube_beams[0],
+        image_cube_frequencies[0],
+        prepared["concat_record"],
+        sector,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return {
+        "source_catalog": source_catalog,
+        "normalize_h5parm": normalize_h5parm,
+    }
+
+
 def finalize_image_sector(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
     filtered: Mapping[str, object],
     diagnostics_result: Mapping[str, object],
     pipeline_working_dir: str,
+    normalization_result: Optional[Mapping[str, object]] = None,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -203,7 +236,6 @@ def finalize_image_sector(
     config = execution_config or ExecutionConfig(task_runner="sync")
     image_name = str(sector["image_name"])
     prepared_records = list(prepared["prepared_records"])
-    concat_record = prepared["concat_record"]
     region_record = prepared["region_record"]
     pb_image = prepared["pb_image"]
     extra_images = list(prepared["extra_images"])
@@ -256,18 +288,14 @@ def finalize_image_sector(
             shell_operation_cls=shell_operation_cls,
         )
 
-    normalization_source_catalog = None
-    normalize_h5parm = None
     if sector["normalize_flux_scale"]:
-        normalization_source_catalog, normalize_h5parm = make_normalization_records(
-            image_cubes[0],
-            image_cube_beams[0],
-            image_cube_frequencies[0],
-            concat_record,
-            sector,
-            config,
-            shell_operation_cls=shell_operation_cls,
-        )
+        if normalization_result is None:
+            raise ValueError("normalize_flux_scale finalization requires normalization outputs")
+        normalization_source_catalog = normalization_result["source_catalog"]
+        normalize_h5parm = normalization_result["normalize_h5parm"]
+    else:
+        normalization_source_catalog = None
+        normalize_h5parm = None
 
     result = {
         "filtered_skymodel_true_sky": filtered_true_sky,
@@ -338,12 +366,19 @@ def run_image_sector(
         filtered,
         pipeline_working_dir,
     )
+    normalization_result = normalize_image_sector_flux_scale(
+        sector,
+        prepared,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
     return finalize_image_sector(
         sector,
         prepared,
         filtered,
         diagnostics_result,
         pipeline_working_dir,
+        normalization_result=normalization_result,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,
     )

@@ -138,6 +138,14 @@ def _image_sector_diagnostics_result(index: int) -> dict:
     }
 
 
+def _image_sector_normalization_result(index: int) -> dict:
+    root = f"/work/image_1/sector_{index + 1}"
+    return {
+        "source_catalog": file_record(f"{root}_source_catalog.fits"),
+        "normalize_h5parm": file_record(f"{root}_normalize.h5parm"),
+    }
+
+
 @pytest.mark.parametrize("task_runner", ["sync", "local_dask", "external_dask"])
 def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner):
     config = ExecutionConfig(task_runner=task_runner)
@@ -190,6 +198,54 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
     assert finalize_task.submissions[0]["args"][2].result() == _image_sector_filter_result(0)
     assert finalize_task.submissions[0]["args"][3] is diagnostics_task.futures[0]
     assert finalize_task.submissions[0]["args"][3].result() == _image_sector_diagnostics_result(0)
+    assert finalize_task.submissions[0]["args"][5] is None
+
+
+def test_image_flow_submits_normalization_task_when_requested(monkeypatch):
+    config = ExecutionConfig(task_runner="sync")
+    payload = representative_image_payload()
+    payload["sectors"][0]["normalize_flux_scale"] = True
+    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    filter_task = _CapturedTask(_image_sector_filter_result)
+    diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
+    normalization_task = _CapturedTask(_image_sector_normalization_result)
+    finalize_task = _CapturedTask(
+        lambda index: (
+            _image_sector_result(index)
+            | {
+                "sector_source_catalog": file_record(
+                    f"/work/image_1/sector_{index + 1}_source_catalog.fits"
+                ),
+                "sector_normalize_h5parm": file_record(
+                    f"/work/image_1/sector_{index + 1}_normalize.h5parm"
+                ),
+            }
+        )
+    )
+    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
+    monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
+    monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
+    monkeypatch.setattr(
+        image_module,
+        "image_sector_normalize_flux_scale_task",
+        normalization_task,
+    )
+    monkeypatch.setattr(image_module, "image_sector_finalize_task", finalize_task)
+
+    result = image_module._run_image_prefect_tasks(payload, execution_config=config)
+
+    assert [
+        submission["options"]["task_run_name"] for submission in normalization_task.submissions
+    ] == [
+        "normalize_flux_scale",
+    ]
+    assert result["sector_normalize_h5parm"] == [
+        file_record("/work/image_1/sector_1_normalize.h5parm")
+    ]
+    _assert_worker_submission_is_serializable(normalization_task.submissions[0], config)
+    assert normalization_task.submissions[0]["args"][1] is prepare_task.futures[0]
+    assert finalize_task.submissions[0]["args"][5] is normalization_task.futures[0]
+    assert finalize_task.submissions[0]["args"][5].result() == _image_sector_normalization_result(0)
 
 
 def test_image_flow_disambiguates_sector_task_names_for_multiple_sectors(monkeypatch):
