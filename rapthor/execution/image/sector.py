@@ -83,16 +83,6 @@ def prepare_image_sector(
     )
     sector_images = [nonpb_image, pb_image]
 
-    image_cubes = []
-    image_cube_beams = []
-    image_cube_frequencies = []
-    if sector["make_image_cube"]:
-        image_cubes, image_cube_beams, image_cube_frequencies = make_image_cube_records(
-            image_name,
-            list(sector["image_cube_specs"]),
-            pipeline_working_dir,
-        )
-
     skymodel_nonpb, skymodel_pb = source_list_records(
         sector,
         image_name,
@@ -115,9 +105,6 @@ def prepare_image_sector(
         "extra_images": extra_images,
         "residual_visibilities": residual_visibilities,
         "sector_images": sector_images,
-        "image_cubes": image_cubes,
-        "image_cube_beams": image_cube_beams,
-        "image_cube_frequencies": image_cube_frequencies,
         "skymodel_nonpb": skymodel_nonpb,
         "skymodel_pb": skymodel_pb,
     }
@@ -190,9 +177,34 @@ def calculate_image_sector_diagnostics(
     }
 
 
+def make_image_sector_cubes(
+    sector: ImageSectorPayload,
+    pipeline_working_dir: str,
+) -> dict:
+    """Build requested image cubes for one sector."""
+    if not sector["make_image_cube"]:
+        return {
+            "image_cubes": [],
+            "image_cube_beams": [],
+            "image_cube_frequencies": [],
+        }
+
+    image_cubes, image_cube_beams, image_cube_frequencies = make_image_cube_records(
+        str(sector["image_name"]),
+        list(sector["image_cube_specs"]),
+        pipeline_working_dir,
+    )
+    return {
+        "image_cubes": image_cubes,
+        "image_cube_beams": image_cube_beams,
+        "image_cube_frequencies": image_cube_frequencies,
+    }
+
+
 def normalize_image_sector_flux_scale(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
+    image_cube_result: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -200,9 +212,9 @@ def normalize_image_sector_flux_scale(
     if not sector["normalize_flux_scale"]:
         return {"source_catalog": None, "normalize_h5parm": None}
 
-    image_cubes = list(prepared["image_cubes"])
-    image_cube_beams = list(prepared["image_cube_beams"])
-    image_cube_frequencies = list(prepared["image_cube_frequencies"])
+    image_cubes = list(image_cube_result["image_cubes"])
+    image_cube_beams = list(image_cube_result["image_cube_beams"])
+    image_cube_frequencies = list(image_cube_result["image_cube_frequencies"])
     if not image_cubes:
         raise ValueError("normalize_flux_scale requires image cube outputs")
 
@@ -228,6 +240,7 @@ def finalize_image_sector(
     filtered: Mapping[str, object],
     diagnostics_result: Mapping[str, object],
     pipeline_working_dir: str,
+    image_cube_result: Optional[Mapping[str, object]] = None,
     normalization_result: Optional[Mapping[str, object]] = None,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -241,9 +254,13 @@ def finalize_image_sector(
     extra_images = list(prepared["extra_images"])
     residual_visibilities = prepared["residual_visibilities"]
     sector_images = list(prepared["sector_images"])
-    image_cubes = list(prepared["image_cubes"])
-    image_cube_beams = list(prepared["image_cube_beams"])
-    image_cube_frequencies = list(prepared["image_cube_frequencies"])
+    if image_cube_result is None:
+        if sector["make_image_cube"]:
+            raise ValueError("image-cube finalization requires image cube outputs")
+        image_cube_result = make_image_sector_cubes(sector, pipeline_working_dir)
+    image_cubes = list(image_cube_result["image_cubes"])
+    image_cube_beams = list(image_cube_result["image_cube_beams"])
+    image_cube_frequencies = list(image_cube_result["image_cube_frequencies"])
     skymodel_nonpb = prepared["skymodel_nonpb"]
     skymodel_pb = prepared["skymodel_pb"]
     filtered_true_sky = filtered["filtered_true_sky"]
@@ -366,9 +383,11 @@ def run_image_sector(
         filtered,
         pipeline_working_dir,
     )
+    image_cube_result = make_image_sector_cubes(sector, pipeline_working_dir)
     normalization_result = normalize_image_sector_flux_scale(
         sector,
         prepared,
+        image_cube_result,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,
     )
@@ -378,6 +397,7 @@ def run_image_sector(
         filtered,
         diagnostics_result,
         pipeline_working_dir,
+        image_cube_result=image_cube_result,
         normalization_result=normalization_result,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,

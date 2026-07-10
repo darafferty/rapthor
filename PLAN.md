@@ -210,10 +210,10 @@ Do these in order unless a regression blocks progress.
 
    Priority order:
 
-   - image post-processing: `normalize_flux_scale` is now an optional
-     per-sector Prefect task that runs after WSClean/cube preparation and
-     before `finalize`; next split image-cube creation, then
-     `make_catalog_from_image_cube`, then restoration/compression steps
+   - image post-processing: `make_image_cube` and `normalize_flux_scale` are
+     now optional per-sector Prefect tasks that run after WSClean preparation
+     and before `finalize`; next split `make_catalog_from_image_cube`, then
+     restoration/compression steps
    - calibration post-processing: `collect_h5parms`, `process_slow_gains`,
      full-Jones normalization, `combine_h5parms`, `plot_solutions`
    - prediction: WSClean-predict loops and sector-model post-processing
