@@ -391,7 +391,16 @@ def fake_image_shell_operation_cls():
                     for suffix in ["-sources.txt", "-sources-pb.txt"]:
                         (cwd / f"{image_name}{suffix}").write_text("skymodel")
             elif tokens[0] == "fpack":
+                skip_next = False
                 for image in tokens[1:]:
+                    if skip_next:
+                        skip_next = False
+                        continue
+                    if image in {"-O", "-R", "-q", "-s", "-n", "-t"}:
+                        skip_next = True
+                        continue
+                    if image.startswith("-"):
+                        continue
                     Path(f"{image}.fz").write_text("compressed")
             elif _is_filter_skymodel_command(tokens):
                 filter_args = _filter_skymodel_args(tokens)
@@ -1276,6 +1285,15 @@ def test_image_support_command_builders_create_expected_tokens():
         "fpack",
         "sector_1-MFS-I-image.fits",
         "sector_1-MFS-I-image-pb.fits",
+    ]
+    assert build_compress_sector_images_command(
+        ["sector_1-MFS-I-model-pb.fits"], lossless=True
+    ) == [
+        "fpack",
+        "-g",
+        "-q",
+        "0",
+        "sector_1-MFS-I-model-pb.fits",
     ]
     assert build_wsclean_restore_command(
         "sector_1-MFS-I-image-pb.fits",
@@ -2316,6 +2334,27 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         "wsclean",
         FILTER_SKYMODEL_COMMAND_NAME,
         "fpack",
+        "fpack",
+    ]
+    fpack_commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_image_shell_operation_cls.instances
+        if _command_name(shlex.split(instance.kwargs["commands"][0])) == "fpack"
+    ]
+    assert fpack_commands[0] == [
+        "fpack",
+        str(tmp_path / "sector_1-MFS-I-image.fits"),
+        str(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        str(tmp_path / "sector_1-MFS-I-image-pb-ast.fits"),
+        str(tmp_path / "sector_1-MFS-I-residual.fits"),
+        str(tmp_path / "sector_1-MFS-I-dirty.fits"),
+    ]
+    assert fpack_commands[1] == [
+        "fpack",
+        "-g",
+        "-q",
+        "0",
+        str(tmp_path / "sector_1-MFS-I-model-pb.fits"),
     ]
 
 

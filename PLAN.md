@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-09.
+Status snapshot: 2026-07-10.
 
 ## Goal
 
@@ -77,14 +77,14 @@ Completed and accepted:
   `docs/source/development/benchmark_baselines/2026-07-09-wsclean-model-mosaic-demo.md`.
   `mosaic_1`, `mosaic_2`, and `mosaic_3` rendered `MFS-model-pb` successfully
   with WSClean, but the full demo failed later in `image_4` with a Prefect/Dask
-  threaded settings-cache `KeyError`. Treat that runtime failure as the next
-  blocker before closing the mosaic gate.
+  threaded settings-cache `KeyError`.
 - The Prefect/Dask settings-cache runtime failure has a targeted fix: local and
   Slurm Dask workers now default to one Prefect task-engine thread per worker
   process, while `cpus_per_task` remains the external-command thread budget.
-  A rerun confirmed separate worker processes for parallel sector tasks and no
-  repeated settings-cache `KeyError`, but the run then stopped because the dev
-  container filesystem was full.
+  A rerun confirmed separate worker processes for parallel sector tasks, no
+  repeated settings-cache `KeyError`, and successful WSClean model-mosaic
+  rendering through all four cycles. The full multi-sector demo completed after
+  old run artifacts were cleared.
 
 Keep in mind:
 
@@ -143,25 +143,30 @@ Do these in order unless a regression blocks progress.
    `MFS-image-pb-ast`, `MFS-model-pb`, `MFS-residual`, and `MFS-dirty`, because
    these products share the mosaic template/regridding path.
 
-   Sparse model mosaics have focused unit and flow guards, but still need a
-   real multi-sector rerun before this queue item is closed. Rerun the
-   multi-sector demo and/or option-matrix scenario, then preserve a compact
-   report showing that `MFS-model-pb` finite masks, nonzero-pixel counts,
-   background zeros, and preview artifacts look scientifically sensible.
+   Sparse model mosaics have focused unit and flow guards plus a successful
+   full multi-sector demo using WSClean-rendered model mosaics. Preserve this
+   compact evidence and close the queue item only after the option-matrix or
+   stored-reference mosaic scenario confirms the same product contract outside
+   the ad hoc demo run.
 
    WSClean-rendered model mosaics are implemented for model products that carry
-   matching sector sky-model/component lists. The first multi-sector demo smoke
-   check proved successful WSClean rendering for three mosaic cycles. The
-   Prefect/Dask threaded settings-cache failure seen in the first full-demo
-   attempt has been addressed by making Dask workers single-threaded task
-   executors and keeping external-command threading separate.
+   matching sector sky-model/component lists. The full multi-sector demo now
+   renders `MFS-model-pb` with WSClean in all four mosaic cycles and completes
+   without the previous Prefect/Dask runtime failure.
 
-   Next, clear enough run/workspace disk space and rerun the full multi-sector
-   demo with model previews enabled. After the full demo is green, run the
-   option-matrix/current-branch mosaic scenario, compare the WSClean path
-   against the sparse fallback, and preserve compact evidence. Remove or demote
-   the custom sparse mapper only after the demo, science checks, and benchmark
-   comparison prove the WSClean path.
+   Next, run the option-matrix/current-branch mosaic scenario, compare the
+   WSClean path against the sparse fallback where useful, and preserve compact
+   evidence. Remove or demote the custom sparse mapper only after the demo,
+   science checks, and benchmark comparison prove the WSClean path.
+
+   Intermediate sector `*-MFS-model-pb.fits.fz` products showed horizontal
+   stripe artifacts in CARTA. This was a product-level compression issue, not a
+   preview stretch issue: default `fpack` quantizes/dithers sparse
+   floating-point model images. Sparse sector model products now use lossless
+   `fpack -g -q 0`, while regular image, residual, and dirty products keep the
+   existing default compression. Rerun the multi-sector demo or the mosaic
+   stored-reference scenario when clean sector model products are needed for
+   manual inspection.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
