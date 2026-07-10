@@ -61,6 +61,16 @@ class SectorStub:
             root / f"sector_{index}-filtered-model.fits",
             "filtered model",
         )
+        self._write_attr(
+            "image_skymodel_file_true_sky",
+            root / f"sector_{index}.true_sky.txt",
+            "true-sky source list",
+        )
+        self._write_attr(
+            "image_skymodel_file_apparent_sky",
+            root / f"sector_{index}.apparent_sky.txt",
+            "apparent-sky source list",
+        )
 
     def _write_attr(self, name, path, content):
         Path(path).write_text(content)
@@ -169,6 +179,7 @@ def test_set_input_parameters_builds_two_sector_mosaic_inputs(tmp_path):
             FileRecord(vertices_files).to_json(),
             FileRecord(vertices_files).to_json(),
         ],
+        "sector_model_skymodel_filename": [None, None, None],
         "template_image_filename": [
             "mosaic_1_template.fits",
             "mosaic_1_template.fits",
@@ -229,6 +240,31 @@ def test_set_input_parameters_includes_clean_and_supplementary_products(tmp_path
         "mosaic_1-Q-dirty.fits",
         "mosaic_1-filtering-mask.fits",
         "mosaic_1-filtered-model.fits",
+    ]
+    assert operation.input_parms["sector_model_skymodel_filename"] == [
+        None,
+        None,
+        None,
+        FileRecord(
+            [
+                field.imaging_sectors[0].image_skymodel_file_true_sky,
+                field.imaging_sectors[1].image_skymodel_file_true_sky,
+            ]
+        ).to_json(),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        FileRecord(
+            [
+                field.imaging_sectors[0].image_skymodel_file_apparent_sky,
+                field.imaging_sectors[1].image_skymodel_file_apparent_sky,
+            ]
+        ).to_json(),
     ]
 
 

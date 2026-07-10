@@ -13,7 +13,29 @@
         ]
     },
     "mosaic": {
-        "compress_mosaic_image": ["fpack", "mosaic_1-I-image.fits"]
+        "compress_mosaic_image": ["fpack", "mosaic_1-I-image.fits"],
+        "draw_model_mosaic": [
+            "wsclean",
+            "-j",
+            "4",
+            "-draw-model",
+            "mosaic_1-MFS-model-pb.skymodel",
+            "-draw-spectral-terms",
+            "1",
+            "-name",
+            "mosaic_1-MFS-model-pb",
+            "-draw-centre",
+            "12:00:00.0",
+            "+45.00.00.0",
+            "-draw-frequencies",
+            "150000000.0",
+            "1000000.0",
+            "-size",
+            "1024",
+            "1024",
+            "-scale",
+            "0.001"
+        ]
     },
     "calibrate": {
         "calibration_di_fulljones": [

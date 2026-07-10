@@ -68,6 +68,17 @@ Completed and accepted:
   products use sparse pixel mapping rather than continuous-image
   interpolation, preserving zero-valued background inside valid sector
   footprints and avoiding artificial nonzero-pixel growth.
+- WSClean-rendered model mosaics are now wired for model products that have
+  sector sky-model/component-list inputs. The sparse FITS model mapper remains
+  as a fallback for products without matching sky models until the real
+  multi-sector demo, science checks, and benchmark comparison prove the
+  WSClean path can replace it.
+- The first WSClean model-mosaic multi-sector demo smoke check is captured in
+  `docs/source/development/benchmark_baselines/2026-07-09-wsclean-model-mosaic-demo.md`.
+  `mosaic_1`, `mosaic_2`, and `mosaic_3` rendered `MFS-model-pb` successfully
+  with WSClean, but the full demo failed later in `image_4` with a Prefect/Dask
+  threaded settings-cache `KeyError`. Treat that runtime failure as the next
+  blocker before closing the mosaic gate.
 
 Keep in mind:
 
@@ -132,6 +143,20 @@ Do these in order unless a regression blocks progress.
    report showing that `MFS-model-pb` finite masks, nonzero-pixel counts,
    background zeros, and preview artifacts look scientifically sensible.
 
+   WSClean-rendered model mosaics are implemented for model products that carry
+   matching sector sky-model/component lists. The first multi-sector demo smoke
+   check proved successful WSClean rendering for three mosaic cycles, but the
+   run failed later in `image_4` with a Prefect/Dask threaded settings-cache
+   `KeyError`.
+
+   Next, fix or isolate that runtime failure without changing the scientific
+   mosaic behavior, then rerun the multi-sector demo with model previews
+   enabled. After the full demo is green, run the option-matrix/current-branch
+   mosaic scenario, compare the WSClean path against the sparse fallback, and
+   preserve compact evidence. Remove or demote the custom sparse mapper only
+   after the demo, science checks, and benchmark comparison prove the WSClean
+   path.
+
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
    meaningful task boundaries improve observability without harming this
@@ -148,7 +173,8 @@ Do these in order unless a regression blocks progress.
    - calibration post-processing: `collect_h5parms`, `process_slow_gains`,
      full-Jones normalization, `combine_h5parms`, `plot_solutions`
    - prediction: WSClean-predict loops and sector-model post-processing
-   - mosaic: per-sector regridding, mosaic assembly, and compression
+   - mosaic: WSClean-rendered model mosaics, per-sector regridding, mosaic
+     assembly, and compression
 
 3. **Benchmark after each owner-package split batch.**
    Rerun the relevant hidden-path scenarios after each batch. Keep the split

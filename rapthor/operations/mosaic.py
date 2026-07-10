@@ -40,6 +40,7 @@ class Mosaic(Operation):
         # Define various input and output filenames
         sector_image_filename = []
         sector_vertices_filename = []
+        sector_model_skymodel_filename = []
         regridded_image_filename = []
         template_image_filename = []
         self.image_names = []  # list of input image names
@@ -92,6 +93,10 @@ class Mosaic(Operation):
                     )
                 sector_image_filename.append(FileRecord(image_list).to_json())
                 sector_vertices_filename.append(FileRecord(vertices_list).to_json())
+                model_skymodels = self._model_skymodels_for_image_name(image_name)
+                sector_model_skymodel_filename.append(
+                    FileRecord(model_skymodels).to_json() if model_skymodels else None
+                )
                 regridded_image_filename.append(regridded_list)
                 template_image_filename.append(f"{self.name}_template.fits")
 
@@ -107,10 +112,25 @@ class Mosaic(Operation):
             "skip_processing": self.skip_processing,
             "sector_image_filename": sector_image_filename,
             "sector_vertices_filename": sector_vertices_filename,
+            "sector_model_skymodel_filename": sector_model_skymodel_filename,
             "template_image_filename": template_image_filename,
             "regridded_image_filename": regridded_image_filename,
             "mosaic_filename": self.mosaic_filename,
         }
+
+    def _model_skymodels_for_image_name(self, image_name):
+        """Return sector sky-model paths when WSClean can render this model mosaic."""
+        skymodel_attr_by_image_name = {
+            "I_model_file_true_sky": "image_skymodel_file_true_sky",
+            "filtered_model_file_apparent_sky": "image_skymodel_file_apparent_sky",
+        }
+        skymodel_attr = skymodel_attr_by_image_name.get(image_name)
+        if skymodel_attr is None:
+            return None
+        skymodels = [getattr(sector, skymodel_attr, None) for sector in self.field.imaging_sectors]
+        if any(skymodel is None for skymodel in skymodels):
+            return None
+        return skymodels
 
     def execute_workflow(self):
         """

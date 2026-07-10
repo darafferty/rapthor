@@ -1,7 +1,7 @@
 """Mosaic execution payload builders and validators."""
 
 import os
-from typing import Mapping, TypedDict
+from typing import Mapping, Optional, TypedDict
 
 from rapthor.execution.payloads import (
     assert_serializable_payload,
@@ -16,6 +16,7 @@ class MosaicProductPayload(TypedDict):
 
     sector_image_filenames: list[str]
     sector_vertices_filenames: list[str]
+    sector_model_skymodel_filenames: Optional[list[str]]
     template_image_filename: str
     template_image_path: str
     regridded_image_filenames: list[str]
@@ -80,6 +81,10 @@ def validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
             mosaic_product.get("sector_vertices_filenames"),
             f"mosaic_products[{index}].sector_vertices_filenames",
         )
+        sector_model_skymodels = _validate_optional_string_list(
+            mosaic_product.get("sector_model_skymodel_filenames"),
+            f"mosaic_products[{index}].sector_model_skymodel_filenames",
+        )
         regridded_images = validate_string_list(
             mosaic_product.get("regridded_image_filenames"),
             f"mosaic_products[{index}].regridded_image_filenames",
@@ -88,10 +93,16 @@ def validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
             regridded_images
         ):
             raise ValueError(f"mosaic_products[{index}] input and regridded lists must match")
+        if sector_model_skymodels is not None and len(sector_model_skymodels) != len(sector_images):
+            raise ValueError(
+                f"mosaic_products[{index}].sector_model_skymodel_filenames "
+                "must match sector_image_filenames"
+            )
         mosaic_products.append(
             {
                 "sector_image_filenames": sector_images,
                 "sector_vertices_filenames": sector_vertices,
+                "sector_model_skymodel_filenames": sector_model_skymodels,
                 "template_image_filename": template_filename,
                 "template_image_path": expected_template_path,
                 "regridded_image_filenames": [
@@ -135,6 +146,7 @@ def mosaic_payload_from_inputs(
 
     sector_image_filenames = input_parms.get("sector_image_filename", [])
     sector_vertices_filenames = input_parms.get("sector_vertices_filename", [])
+    sector_model_skymodel_filenames = input_parms.get("sector_model_skymodel_filename", [])
     template_image_filenames = input_parms.get("template_image_filename", [])
     regridded_image_filenames = input_parms.get("regridded_image_filename", [])
     mosaic_filenames = input_parms.get("mosaic_filename", [])
@@ -147,14 +159,24 @@ def mosaic_payload_from_inputs(
     ]
     if not all(isinstance(value, list) for value in mosaic_product_inputs):
         raise ValueError("Mosaic inputs must be lists")
+    if sector_model_skymodel_filenames and not isinstance(sector_model_skymodel_filenames, list):
+        raise ValueError("sector_model_skymodel_filename must be a list")
     mosaic_product_count = len(mosaic_filenames)
     if any(len(value) != mosaic_product_count for value in mosaic_product_inputs):
+        raise ValueError("Mosaic input lists must have the same length")
+    if (
+        sector_model_skymodel_filenames
+        and len(sector_model_skymodel_filenames) != mosaic_product_count
+    ):
         raise ValueError("Mosaic input lists must have the same length")
 
     mosaic_products: list[MosaicProductPayload] = []
     for index in range(mosaic_product_count):
         sector_images = sector_image_filenames[index]
         sector_vertices = sector_vertices_filenames[index]
+        sector_model_skymodels = (
+            sector_model_skymodel_filenames[index] if sector_model_skymodel_filenames else None
+        )
         regridded_images = regridded_image_filenames[index]
         if not isinstance(sector_images, list):
             raise ValueError(f"sector_image_filename[{index}] must be a list")
@@ -162,10 +184,16 @@ def mosaic_payload_from_inputs(
             raise ValueError(f"sector_vertices_filename[{index}] must be a list")
         if not isinstance(regridded_images, list):
             raise ValueError(f"regridded_image_filename[{index}] must be a list")
+        if sector_model_skymodels is not None and not isinstance(sector_model_skymodels, list):
+            raise ValueError(f"sector_model_skymodel_filename[{index}] must be a list or None")
         if len(sector_images) != len(sector_vertices) or len(sector_images) != len(
             regridded_images
         ):
             raise ValueError(f"Mosaic scatter lists at index {index} must have the same length")
+        if sector_model_skymodels is not None and len(sector_model_skymodels) != len(sector_images):
+            raise ValueError(
+                f"Mosaic model sky-model list at index {index} must match sector images"
+            )
 
         template_filename = validate_basename(
             template_image_filenames[index], f"template_image_filename[{index}]"
@@ -177,6 +205,11 @@ def mosaic_payload_from_inputs(
                 "sector_vertices_filenames": [
                     file_record_path(record) for record in sector_vertices
                 ],
+                "sector_model_skymodel_filenames": (
+                    [file_record_path(record) for record in sector_model_skymodels]
+                    if sector_model_skymodels is not None
+                    else None
+                ),
                 "template_image_filename": template_filename,
                 "template_image_path": os.path.join(pipeline_dir, template_filename),
                 "regridded_image_filenames": [
@@ -198,3 +231,10 @@ def mosaic_payload_from_inputs(
     _validate_shared_template_path(mosaic_products)
     assert_serializable_payload(payload)
     return payload
+
+
+def _validate_optional_string_list(values: object, name: str) -> Optional[list[str]]:
+    """Return an optional list of strings from a mosaic product payload."""
+    if values is None:
+        return None
+    return validate_string_list(values, name)

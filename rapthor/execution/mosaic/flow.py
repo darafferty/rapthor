@@ -17,6 +17,7 @@ from rapthor.execution.mosaic.images import (
     regrid_image,
     regrid_sparse_model_image,
 )
+from rapthor.execution.mosaic.model_rendering import render_model_mosaic_with_wsclean
 from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mosaic_payload
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import assert_serializable_payload
@@ -49,6 +50,34 @@ def _run_command_and_require_file(
     return require_file(output_path, "Mosaic output")
 
 
+def _finalize_mosaic_output(
+    output_record: dict,
+    mosaic_filename: str,
+    mosaic_path: str,
+    compress_images: bool,
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    """Compress and/or publish one mosaic output record."""
+    if compress_images:
+        compressed_path = f"{mosaic_path}.fz"
+        output_record = _run_command_and_require_file(
+            build_compress_mosaic_command(mosaic_filename),
+            compressed_path,
+            pipeline_working_dir,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    if execution_config.publish_fits_previews:
+        publish_fits_image_artifacts(
+            [output_record],
+            pipeline_working_dir,
+            clip_percentile=execution_config.fits_preview_clip_percentile,
+        )
+    return output_record
+
+
 def _work_path(pipeline_working_dir: str, filename: str) -> str:
     """Resolve relative mosaic filenames as the old script working directory did."""
     if os.path.isabs(filename):
@@ -68,6 +97,7 @@ def run_mosaic_product(
     config = execution_config or ExecutionConfig(task_runner="sync")
     sector_images = mosaic_product["sector_image_filenames"]
     sector_vertices = mosaic_product["sector_vertices_filenames"]
+    sector_model_skymodels = mosaic_product["sector_model_skymodel_filenames"]
     regridded_images = mosaic_product["regridded_image_filenames"]
     template_path = file_record_path(template_record)
     mosaic_filename = mosaic_product["mosaic_filename"]
@@ -92,6 +122,33 @@ def run_mosaic_product(
         ", ".join(os.path.basename(image) for image in resolved_sector_images),
     )
     require_file(template_path, "Mosaic output")
+    if sector_model_skymodels and is_sparse_model_product(mosaic_filename):
+        resolved_sector_skymodels = [
+            _work_path(pipeline_working_dir, skymodel) for skymodel in sector_model_skymodels
+        ]
+        log.info(
+            "Rendering model mosaic %s with WSClean from %d sector sky model(s)",
+            mosaic_filename,
+            len(resolved_sector_skymodels),
+        )
+        output_record = render_model_mosaic_with_wsclean(
+            resolved_sector_skymodels,
+            template_path,
+            mosaic_path,
+            pipeline_working_dir,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        return _finalize_mosaic_output(
+            output_record,
+            mosaic_filename,
+            mosaic_path,
+            compress_images,
+            pipeline_working_dir,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+
     regrid = regrid_sparse_model_image if is_sparse_model_product(mosaic_filename) else regrid_image
     for sector_image, vertices_file, regridded_image in zip(
         resolved_sector_images, resolved_sector_vertices, resolved_regridded_images
@@ -105,29 +162,15 @@ def run_mosaic_product(
         require_file(regridded_image, "Mosaic output")
     make_mosaic(resolved_regridded_images, template_path, mosaic_path)
     output_record = require_file(mosaic_path, "Mosaic output")
-    if compress_images:
-        compressed_path = f"{mosaic_path}.fz"
-        output_record = _run_command_and_require_file(
-            build_compress_mosaic_command(mosaic_filename),
-            compressed_path,
-            pipeline_working_dir,
-            config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        if config.publish_fits_previews:
-            publish_fits_image_artifacts(
-                [output_record],
-                pipeline_working_dir,
-                clip_percentile=config.fits_preview_clip_percentile,
-            )
-        return output_record
-    if config.publish_fits_previews:
-        publish_fits_image_artifacts(
-            [output_record],
-            pipeline_working_dir,
-            clip_percentile=config.fits_preview_clip_percentile,
-        )
-    return output_record
+    return _finalize_mosaic_output(
+        output_record,
+        mosaic_filename,
+        mosaic_path,
+        compress_images,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
 
 
 def run_mosaic_template(

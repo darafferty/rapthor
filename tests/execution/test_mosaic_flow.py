@@ -6,8 +6,13 @@ import pytest
 from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.mosaic.flow as mosaic_module
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.mosaic.commands import build_compress_mosaic_command
+from rapthor.execution.mosaic.commands import (
+    DrawModelMosaicOptions,
+    build_compress_mosaic_command,
+    build_draw_model_mosaic_command,
+)
 from rapthor.execution.mosaic.flow import (
     mosaic_flow,
 )
@@ -25,6 +30,7 @@ def fake_direct_mosaic_helpers(monkeypatch):
         "make_mosaic_template": [],
         "regrid_image": [],
         "regrid_sparse_model_image": [],
+        "render_model_mosaic_with_wsclean": [],
         "make_mosaic": [],
     }
 
@@ -78,9 +84,37 @@ def fake_direct_mosaic_helpers(monkeypatch):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("mosaic")
 
+    def fake_render_model_mosaic_with_wsclean(
+        sector_skymodels,
+        template_image,
+        output_image,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=None,
+    ):
+        calls["render_model_mosaic_with_wsclean"].append(
+            {
+                "sector_skymodels": list(sector_skymodels),
+                "template_image": template_image,
+                "output_image": output_image,
+                "pipeline_working_dir": pipeline_working_dir,
+                "task_runner": execution_config.task_runner,
+                "shell_operation_cls": shell_operation_cls,
+            }
+        )
+        output_path = Path(output_image)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("wsclean model mosaic")
+        return file_record(output_path)
+
     monkeypatch.setattr(mosaic_module, "make_mosaic_template", fake_make_mosaic_template)
     monkeypatch.setattr(mosaic_module, "regrid_image", fake_regrid_image)
     monkeypatch.setattr(mosaic_module, "regrid_sparse_model_image", fake_regrid_sparse_model_image)
+    monkeypatch.setattr(
+        mosaic_module,
+        "render_model_mosaic_with_wsclean",
+        fake_render_model_mosaic_with_wsclean,
+    )
     monkeypatch.setattr(mosaic_module, "make_mosaic", fake_make_mosaic)
     return calls
 
@@ -155,6 +189,7 @@ def _mosaic_payload(tmp_path, compress_images=False, mosaic_product_count=1):
         {
             "sector_image_filenames": ["sector_1-I-image.fits", "sector_2-I-image.fits"],
             "sector_vertices_filenames": ["sector_1.vertices", "sector_2.vertices"],
+            "sector_model_skymodel_filenames": None,
             "template_image_filename": "mosaic_1_template.fits",
             "template_image_path": str(tmp_path / "mosaic_1_template.fits"),
             "regridded_image_filenames": [
@@ -173,6 +208,7 @@ def _mosaic_payload(tmp_path, compress_images=False, mosaic_product_count=1):
                     "sector_2-I-apparent.fits",
                 ],
                 "sector_vertices_filenames": ["sector_1.vertices", "sector_2.vertices"],
+                "sector_model_skymodel_filenames": None,
                 "template_image_filename": "mosaic_1_template.fits",
                 "template_image_path": str(tmp_path / "mosaic_1_template.fits"),
                 "regridded_image_filenames": [
@@ -198,6 +234,22 @@ def test_mosaic_command_builders_match_reference_fixtures():
         build_compress_mosaic_command("mosaic_1-I-image.fits")
         == commands["mosaic"]["compress_mosaic_image"]
     )
+    assert (
+        normalize_command(
+            build_draw_model_mosaic_command(
+                DrawModelMosaicOptions(
+                    skymodel="mosaic_1-MFS-model-pb.skymodel",
+                    output_root="mosaic_1-MFS-model-pb",
+                    ra_dec=["12:00:00.0", "+45.00.00.0"],
+                    frequency_bandwidth=[150000000.0, 1000000.0],
+                    cellsize_deg=0.001,
+                    imsize=[1024, 1024],
+                    num_threads=4,
+                )
+            )
+        )
+        == commands["mosaic"]["draw_model_mosaic"]
+    )
 
 
 def test_mosaic_payload_from_inputs_is_serializable(tmp_path):
@@ -212,6 +264,12 @@ def test_mosaic_payload_from_inputs_is_serializable(tmp_path):
             ],
             "sector_vertices_filename": [
                 [file_record("/data/sector_1.vertices"), file_record("/data/sector_2.vertices")]
+            ],
+            "sector_model_skymodel_filename": [
+                [
+                    file_record("/data/sector_1.true_sky.txt"),
+                    file_record("/data/sector_2.true_sky.txt"),
+                ]
             ],
             "template_image_filename": ["mosaic_1_template.fits"],
             "regridded_image_filename": [
@@ -236,6 +294,10 @@ def test_mosaic_payload_from_inputs_is_serializable(tmp_path):
                 "sector_vertices_filenames": [
                     "/data/sector_1.vertices",
                     "/data/sector_2.vertices",
+                ],
+                "sector_model_skymodel_filenames": [
+                    "/data/sector_1.true_sky.txt",
+                    "/data/sector_2.true_sky.txt",
                 ],
                 "template_image_filename": "mosaic_1_template.fits",
                 "template_image_path": str(tmp_path / "mosaic_1_template.fits"),
@@ -294,6 +356,14 @@ def test_validate_mosaic_payload_rejects_multiple_template_paths(tmp_path):
     payload["mosaic_products"][1]["template_image_path"] = str(tmp_path / "mosaic_2_template.fits")
 
     with pytest.raises(ValueError, match="must share one template path"):
+        validate_mosaic_payload(payload)
+
+
+def test_validate_mosaic_payload_rejects_mismatched_model_skymodels(tmp_path):
+    payload = _mosaic_payload(tmp_path)
+    payload["mosaic_products"][0]["sector_model_skymodel_filenames"] = ["sector_1.true_sky.txt"]
+
+    with pytest.raises(ValueError, match="sector_model_skymodel_filenames"):
         validate_mosaic_payload(payload)
 
 
@@ -410,7 +480,56 @@ def test_run_mosaic_flow_builds_shared_template_once_for_multiple_mosaic_product
     assert fake_direct_mosaic_helpers["regrid_sparse_model_image"] == []
 
 
-def test_run_mosaic_flow_uses_sparse_regrid_for_model_products(
+def test_run_mosaic_flow_uses_wsclean_for_model_products_with_skymodels(
+    tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+):
+    payload = _mosaic_payload(tmp_path)
+    payload["mosaic_products"][0].update(
+        {
+            "sector_image_filenames": [
+                "sector_1-MFS-model-pb.fits",
+                "sector_2-MFS-model-pb.fits",
+            ],
+            "sector_model_skymodel_filenames": [
+                "sector_1.true_sky.txt",
+                "sector_2.true_sky.txt",
+            ],
+            "regridded_image_filenames": [
+                "sector_1-MFS-model-pb.fits.regridded",
+                "sector_2-MFS-model-pb.fits.regridded",
+            ],
+            "mosaic_filename": "mosaic_1-MFS-model-pb.fits",
+            "mosaic_path": str(tmp_path / "mosaic_1-MFS-model-pb.fits"),
+        }
+    )
+
+    outputs = run_flow_for_test(
+        mosaic_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_mosaic_shell_operation_cls,
+    )
+
+    assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-MFS-model-pb.fits")]}
+    assert fake_direct_mosaic_helpers["render_model_mosaic_with_wsclean"] == [
+        {
+            "sector_skymodels": [
+                str(tmp_path / "sector_1.true_sky.txt"),
+                str(tmp_path / "sector_2.true_sky.txt"),
+            ],
+            "template_image": str(tmp_path / "mosaic_1_template.fits"),
+            "output_image": str(tmp_path / "mosaic_1-MFS-model-pb.fits"),
+            "pipeline_working_dir": str(tmp_path),
+            "task_runner": "sync",
+            "shell_operation_cls": None,
+        }
+    ]
+    assert fake_direct_mosaic_helpers["regrid_image"] == []
+    assert fake_direct_mosaic_helpers["regrid_sparse_model_image"] == []
+    assert fake_direct_mosaic_helpers["make_mosaic"] == []
+
+
+def test_run_mosaic_flow_uses_sparse_regrid_for_model_products_without_skymodels(
     tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
 ):
     payload = _mosaic_payload(tmp_path)
@@ -437,6 +556,7 @@ def test_run_mosaic_flow_uses_sparse_regrid_for_model_products(
     )
 
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-MFS-model-pb.fits")]}
+    assert fake_direct_mosaic_helpers["render_model_mosaic_with_wsclean"] == []
     assert fake_direct_mosaic_helpers["regrid_image"] == []
     assert fake_direct_mosaic_helpers["regrid_sparse_model_image"] == [
         {
@@ -544,6 +664,7 @@ def test_run_mosaic_flow_handles_skip_processing_without_commands(
         "make_mosaic_template": [],
         "regrid_image": [],
         "regrid_sparse_model_image": [],
+        "render_model_mosaic_with_wsclean": [],
         "make_mosaic": [],
     }
 
