@@ -151,6 +151,50 @@ def image_sector_normalize_flux_scale_task(
     return normalization
 
 
+@task(name="restore_skymodel")
+def image_sector_restore_skymodel_task(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    filtered: Mapping[str, object],
+) -> dict:
+    """Prefect task wrapper for one sector filtered-skymodel restoration step."""
+    assert_serializable_payload(prepared)
+    assert_serializable_payload(filtered)
+    with publish_python_logs_to_prefect():
+        restored_model = image_sector.restore_image_sector_skymodel(
+            sector,
+            prepared,
+            filtered,
+        )
+    assert_serializable_payload(restored_model)
+    return restored_model
+
+
+@task(name="compress_images")
+def image_sector_compress_images_task(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    diagnostics: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for one sector image-compression step."""
+    assert_serializable_payload(prepared)
+    assert_serializable_payload(diagnostics)
+    with publish_python_logs_to_prefect():
+        compression = image_sector.compress_image_sector_products(
+            sector,
+            prepared,
+            diagnostics,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(compression)
+    return compression
+
+
 @task(name="finalize")
 def image_sector_finalize_task(
     sector: ImageSectorPayload,
@@ -161,6 +205,8 @@ def image_sector_finalize_task(
     image_cubes: Optional[Mapping[str, object]] = None,
     catalog: Optional[Mapping[str, object]] = None,
     normalization: Optional[Mapping[str, object]] = None,
+    restored_model: Optional[Mapping[str, object]] = None,
+    compression: Optional[Mapping[str, object]] = None,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -171,6 +217,8 @@ def image_sector_finalize_task(
     assert_serializable_payload(image_cubes)
     assert_serializable_payload(catalog)
     assert_serializable_payload(normalization)
+    assert_serializable_payload(restored_model)
+    assert_serializable_payload(compression)
     with publish_python_logs_to_prefect():
         return image_sector.finalize_image_sector(
             sector,
@@ -181,6 +229,8 @@ def image_sector_finalize_task(
             image_cube_result=image_cubes,
             catalog_result=catalog,
             normalization_result=normalization,
+            restored_model_result=restored_model,
+            compression_result=compression,
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
         )
@@ -325,6 +375,36 @@ def _submit_split_image_sector_tasks(
         )
         for index, sector in enumerate(sectors)
     ]
+    restored_model_sector_futures = [
+        (
+            image_sector_restore_skymodel_task.with_options(
+                task_run_name=sector_step_name(index, "restore_skymodel")
+            ).submit(
+                sector,
+                prepared_sector_futures[index],
+                filtered_sector_futures[index],
+            )
+            if bool(sector.get("save_filtered_model_image", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    compression_sector_futures = [
+        (
+            image_sector_compress_images_task.with_options(
+                task_run_name=sector_step_name(index, "compress_images")
+            ).submit(
+                sector,
+                prepared_sector_futures[index],
+                diagnostics_sector_futures[index],
+                payload["pipeline_working_dir"],
+                execution_config=config,
+            )
+            if bool(sector.get("compress_images", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
     finalized_sector_futures = [
         image_sector_finalize_task.with_options(
             task_run_name=sector_step_name(index, "finalize")
@@ -337,6 +417,8 @@ def _submit_split_image_sector_tasks(
             image_cube_sector_futures[index],
             catalog_sector_futures[index],
             normalization_sector_futures[index],
+            restored_model_sector_futures[index],
+            compression_sector_futures[index],
             execution_config=config,
         )
         for index, sector in enumerate(sectors)
@@ -348,6 +430,8 @@ def _submit_split_image_sector_tasks(
         image_cube_sector_futures,
         catalog_sector_futures,
         normalization_sector_futures,
+        restored_model_sector_futures,
+        compression_sector_futures,
         finalized_sector_futures,
     )
 
@@ -359,6 +443,8 @@ def _collect_image_sector_results(
     image_cube_sector_futures,
     catalog_sector_futures,
     normalization_sector_futures,
+    restored_model_sector_futures,
+    compression_sector_futures,
     finalized_sector_futures,
 ) -> list[dict]:
     try:
@@ -379,6 +465,12 @@ def _collect_image_sector_results(
         for normalization_sector in normalization_sector_futures:
             if normalization_sector is not None:
                 normalization_sector.result()
+        for restored_model_sector in restored_model_sector_futures:
+            if restored_model_sector is not None:
+                restored_model_sector.result()
+        for compression_sector in compression_sector_futures:
+            if compression_sector is not None:
+                compression_sector.result()
         raise
 
 
@@ -396,6 +488,8 @@ def _run_image_prefect_tasks(
         image_cube_sector_futures,
         catalog_sector_futures,
         normalization_sector_futures,
+        restored_model_sector_futures,
+        compression_sector_futures,
         finalized_sector_futures,
     ) = _submit_split_image_sector_tasks(payload, config)
     sector_outputs = _collect_image_sector_results(
@@ -405,6 +499,8 @@ def _run_image_prefect_tasks(
         image_cube_sector_futures,
         catalog_sector_futures,
         normalization_sector_futures,
+        restored_model_sector_futures,
+        compression_sector_futures,
         finalized_sector_futures,
     )
     return _result_from_sector_records(sector_outputs)

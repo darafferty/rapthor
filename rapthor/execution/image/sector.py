@@ -253,6 +253,71 @@ def normalize_image_sector_flux_scale(
     }
 
 
+def restore_image_sector_skymodel(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    filtered: Mapping[str, object],
+) -> dict:
+    """Build the filtered skymodel image for one sector when requested."""
+    return {
+        "skymodel_image": make_filtered_model_image(
+            sector,
+            filtered["filtered_apparent_sky"],
+            prepared["pb_image"],
+        )
+    }
+
+
+def _sector_image_records_with_astrometry(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    diagnostics_result: Mapping[str, object],
+) -> tuple[list[dict], list[dict]]:
+    """Return sector image records after adding astrometry-corrected images."""
+    sector_images = list(prepared["sector_images"])
+    if "I" in str(sector["pol"]).upper():
+        sector_images.append(
+            make_astrometry_corrected_image_record(
+                prepared["pb_image"],
+                prepared["region_record"],
+                diagnostics_result["offsets"],
+            )
+        )
+    return sector_images, list(prepared["extra_images"])
+
+
+def compress_image_sector_products(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    diagnostics_result: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Compress one sector's image products when requested."""
+    if not sector["compress_images"]:
+        return {"sector_images": None, "extra_images": None}
+
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    sector_images, extra_images = _sector_image_records_with_astrometry(
+        sector,
+        prepared,
+        diagnostics_result,
+    )
+    output_sector_images, output_extra_images = compress_image_records(
+        str(sector["image_name"]),
+        sector_images,
+        extra_images,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return {
+        "sector_images": output_sector_images,
+        "extra_images": output_extra_images,
+    }
+
+
 def finalize_image_sector(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
@@ -262,18 +327,17 @@ def finalize_image_sector(
     image_cube_result: Optional[Mapping[str, object]] = None,
     catalog_result: Optional[Mapping[str, object]] = None,
     normalization_result: Optional[Mapping[str, object]] = None,
+    restored_model_result: Optional[Mapping[str, object]] = None,
+    compression_result: Optional[Mapping[str, object]] = None,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
     """Build post-WSClean sector products and assemble the output record."""
     config = execution_config or ExecutionConfig(task_runner="sync")
-    image_name = str(sector["image_name"])
     prepared_records = list(prepared["prepared_records"])
-    region_record = prepared["region_record"]
     pb_image = prepared["pb_image"]
-    extra_images = list(prepared["extra_images"])
+    region_record = prepared["region_record"]
     residual_visibilities = prepared["residual_visibilities"]
-    sector_images = list(prepared["sector_images"])
     if image_cube_result is None:
         if sector["make_image_cube"]:
             raise ValueError("image-cube finalization requires image cube outputs")
@@ -293,16 +357,6 @@ def finalize_image_sector(
     offsets = diagnostics_result["offsets"]
     diagnostic_plots = list(diagnostics_result["diagnostic_plots"])
 
-    skymodel_image = make_filtered_model_image(
-        sector,
-        filtered_apparent_sky,
-        pb_image,
-    )
-
-    if "I" in str(sector["pol"]).upper():
-        sector_images.append(
-            make_astrometry_corrected_image_record(pb_image, region_record, offsets)
-        )
     if config.publish_postage_stamp_previews:
         publish_fits_postage_stamp_artifacts(
             pb_image,
@@ -313,16 +367,22 @@ def finalize_image_sector(
             clip_percentile=config.fits_preview_clip_percentile,
         )
 
-    output_sector_images = sector_images
-    output_extra_images = extra_images
+    if restored_model_result is None:
+        if sector["save_filtered_model_image"]:
+            raise ValueError("filtered-model finalization requires restored skymodel output")
+        restored_model_result = restore_image_sector_skymodel(sector, prepared, filtered)
+    skymodel_image = restored_model_result["skymodel_image"]
+
     if sector["compress_images"]:
-        output_sector_images, output_extra_images = compress_image_records(
-            image_name,
-            sector_images,
-            extra_images,
-            pipeline_working_dir,
-            config,
-            shell_operation_cls=shell_operation_cls,
+        if compression_result is None:
+            raise ValueError("compression finalization requires compressed image outputs")
+        output_sector_images = list(compression_result["sector_images"])
+        output_extra_images = list(compression_result["extra_images"])
+    else:
+        output_sector_images, output_extra_images = _sector_image_records_with_astrometry(
+            sector,
+            prepared,
+            diagnostics_result,
         )
 
     if sector["normalize_flux_scale"]:
@@ -417,6 +477,15 @@ def run_image_sector(
         prepared,
         catalog_result,
     )
+    restored_model_result = restore_image_sector_skymodel(sector, prepared, filtered)
+    compression_result = compress_image_sector_products(
+        sector,
+        prepared,
+        diagnostics_result,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
     return finalize_image_sector(
         sector,
         prepared,
@@ -426,6 +495,8 @@ def run_image_sector(
         image_cube_result=image_cube_result,
         catalog_result=catalog_result,
         normalization_result=normalization_result,
+        restored_model_result=restored_model_result,
+        compression_result=compression_result,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,
     )

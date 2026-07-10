@@ -211,9 +211,11 @@ Do these in order unless a regression blocks progress.
    Priority order:
 
    - image post-processing: `make_image_cube`,
-     `make_catalog_from_image_cube`, and `normalize_flux_scale` are now
-     optional per-sector Prefect tasks that run after WSClean preparation and
-     before `finalize`; next split restoration/compression steps
+     `make_catalog_from_image_cube`, `normalize_flux_scale`,
+     `restore_skymodel`, and `compress_images` are now optional per-sector
+     Prefect tasks that run after WSClean preparation and before `finalize`;
+     next use the hidden-path benchmarks to decide whether any remaining image
+     helpers are worth splitting before moving on to calibration
    - calibration post-processing: `collect_h5parms`, `process_slow_gains`,
      full-Jones normalization, `combine_h5parms`, `plot_solutions`
    - prediction: WSClean-predict loops and sector-model post-processing
