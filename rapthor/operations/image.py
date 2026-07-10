@@ -196,6 +196,7 @@ class Image(Operation):
         image_timestep = []
         image_bda_maxinterval = []
         image_bda_timebase = []
+        image_bda_frequencybase = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -248,6 +249,7 @@ class Image(Operation):
             image_timestep.append(sector.get_obs_parameters("image_timestep"))
             image_bda_maxinterval.append(sector.get_obs_parameters("image_bda_maxinterval"))
             image_bda_timebase.append(self.field.image_bda_timebase)
+            image_bda_frequencybase.append(self.field.image_bda_frequencybase)
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
@@ -319,7 +321,8 @@ class Image(Operation):
         if self.field.average_visibilities:
             # Average visibilities
             prepare_data_steps.append("avg")
-        if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
+        bda_requested = self.field.image_bda_timebase > 0 or self.field.image_bda_frequencybase > 0
+        if bda_requested and all_regular and not self.apply_screens:
             # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append("bdaavg")
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
@@ -355,6 +358,7 @@ class Image(Operation):
             "image_timestep": image_timestep,
             "image_maxinterval": image_bda_maxinterval,
             "image_timebase": image_bda_timebase,
+            "image_frequencybase": image_bda_frequencybase,
             "phasecenter": phasecenter,
             "image_name": image_root,
             "pol": self.image_pol,

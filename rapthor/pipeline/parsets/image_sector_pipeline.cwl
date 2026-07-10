@@ -85,6 +85,13 @@ inputs:
       (length = 1).
     type: float
 
+  - id: image_frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done
+      (length = 1).
+    type: float
+
   - id: image_maxinterval
     label: BDA maxinterval
     doc: |
@@ -729,6 +736,8 @@ steps:
         source: image_maxinterval
       - id: timebase
         source: image_timebase
+      - id: frequencybase
+        source: image_frequencybase
       - id: beamdir
         source: phasecenter
       - id: numthreads
