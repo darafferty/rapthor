@@ -185,8 +185,11 @@ Do these in order unless a regression blocks progress.
    `filter-workers-4x15` is neutral for the default single-sector benchmark
    and about 30% faster for many-sector mosaics because it exposes more
    independent sector and mosaic work to Dask. Use WSClean as the preferred
-   model-mosaic path, keep sparse FITS mapping as a fallback, and use `4x15` as
-   the preferred many-sector comparison shape for future split batches.
+   model-mosaic path and keep sparse FITS mapping as a fallback for products
+   without WSClean-renderable sky-model/component-list inputs. Keep the
+   many-sector and sparse-fallback scenarios available for targeted mosaic or
+   scalability runs, but leave them out of the automatic CI benchmark for now
+   because this code path is used less frequently.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
@@ -221,11 +224,13 @@ Do these in order unless a regression blocks progress.
    and raw/scientific outputs remain acceptable. Add compact reports under
    `docs/source/development/benchmark_baselines/`.
 
-   Include the Dask worker-thread runtime fix in the next benchmark comparison:
-   verify that moving from multi-threaded worker processes to single-threaded
-   worker processes does not harm the accepted CI-sized resource shapes, and
-   prefer adjusting worker count over restoring multiple Prefect task-engine
-   threads per worker.
+   The automatic CI benchmark should use the preferred `4x15` shape
+   (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`) and stay
+   focused enough to finish before tests. For the calibration split work, run
+   `ci-benchmark` and `ci-benchmark-wsclean-predict` automatically. Add
+   `ci-benchmark-image-products`, `ci-benchmark-many-sector-mosaic`, or
+   `ci-benchmark-many-sector-mosaic-sparse-fallback` only for targeted runs
+   when changing image products, mosaic behavior, or scalability scheduling.
 
 4. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
