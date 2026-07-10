@@ -187,15 +187,17 @@ Do these in order unless a regression blocks progress.
    data showed that `ci-benchmark` is stable for both `baseline-2x30` and
    `filter-workers-4x15`, while `ci-benchmark-many-sector-mosaic` is stable for
    `baseline-2x30` but unstable for `filter-workers-4x15` (`wsclean` exited
-   with code 137 in one repetition). The CI benchmark jobs are therefore split:
-   scheduled/default runs cover the stable `baseline-2x30` scenarios with three
-   repetitions; manual exploratory jobs cover the `filter-workers-4x15` profile
-   and a paired mosaic-method comparison with one repetition each. The
-   mosaic-method job must run both `ci-benchmark-many-sector-mosaic` and
-   `ci-benchmark-many-sector-mosaic-sparse-fallback` in the same CI job so
-   both paths use the same runner. Use these smaller artifacts to decide
-   whether the extra wall time is caused by WSClean-rendered model mosaics or
-   by the broader many-sector scheduling/runtime shape.
+   with code 137 in one repetition). CI now has a single automatic benchmark
+   comparison job that runs before the test stages. It runs `ci-benchmark`,
+   `ci-benchmark-many-sector-mosaic`, and
+   `ci-benchmark-many-sector-mosaic-sparse-fallback` under both
+   `baseline-2x30` and `filter-workers-4x15`, with one repetition each, so the
+   worker-shape and mosaic-method comparisons use the same runner and arrive
+   before the longer test suite. The job uses `--allow-failures` so exploratory
+   scenario failures are preserved in the benchmark report instead of losing
+   the artifact. Use these smaller artifacts to decide whether the extra wall
+   time is caused by WSClean-rendered model mosaics, the worker shape, or the
+   broader many-sector scheduling/runtime shape.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
