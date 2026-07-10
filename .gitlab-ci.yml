@@ -284,10 +284,9 @@ run_benchmark_baseline:
     RAPTHOR_BENCHMARK_REPETITIONS: "3"
     RAPTHOR_BENCHMARK_RESOURCE_PROFILE_ARGS: >-
       --resource-profile baseline-2x30
+      --resource-profile filter-workers-4x15
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
       --scenario ci-benchmark
-      --scenario ci-benchmark-image-products
-      --scenario ci-benchmark-wsclean-predict
       --scenario ci-benchmark-many-sector-mosaic
       --scenario ci-benchmark-many-sector-mosaic-sparse-fallback
     VECLIB_MAXIMUM_THREADS: "1"
@@ -296,8 +295,8 @@ run_benchmark_baseline:
     - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
-    # Run the baseline plus hidden-path scenarios on the 60-core runner so the
-    # next benchmark artifact can capture the pre-split task-boundary baseline.
+    # Run the many-sector mosaic path on the 60-core runner with two resource
+    # shapes so the next artifact can isolate model-mosaic method vs scheduling.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS
