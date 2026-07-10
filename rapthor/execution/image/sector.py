@@ -14,8 +14,9 @@ from rapthor.execution.image.outputs import (
     compress_image_records,
     filter_skymodel_products,
     make_filtered_model_image,
+    make_image_cube_catalog_record,
     make_image_cube_records,
-    make_normalization_records,
+    make_normalization_record,
     mfs_extra_image_patterns,
     source_list_records,
 )
@@ -201,36 +202,54 @@ def make_image_sector_cubes(
     }
 
 
-def normalize_image_sector_flux_scale(
+def make_image_sector_cube_catalog(
     sector: ImageSectorPayload,
-    prepared: Mapping[str, object],
     image_cube_result: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Build flux-scale normalization products for one sector when requested."""
+    """Build the source catalog used for one sector flux-scale normalization."""
     if not sector["normalize_flux_scale"]:
-        return {"source_catalog": None, "normalize_h5parm": None}
+        return {"source_catalog": None}
 
     image_cubes = list(image_cube_result["image_cubes"])
     image_cube_beams = list(image_cube_result["image_cube_beams"])
     image_cube_frequencies = list(image_cube_result["image_cube_frequencies"])
     if not image_cubes:
-        raise ValueError("normalize_flux_scale requires image cube outputs")
+        raise ValueError("make_catalog_from_image_cube requires image cube outputs")
 
     config = execution_config or ExecutionConfig(task_runner="sync")
-    source_catalog, normalize_h5parm = make_normalization_records(
-        image_cubes[0],
-        image_cube_beams[0],
-        image_cube_frequencies[0],
-        prepared["concat_record"],
-        sector,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
     return {
-        "source_catalog": source_catalog,
-        "normalize_h5parm": normalize_h5parm,
+        "source_catalog": make_image_cube_catalog_record(
+            image_cubes[0],
+            image_cube_beams[0],
+            image_cube_frequencies[0],
+            sector,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    }
+
+
+def normalize_image_sector_flux_scale(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    catalog_result: Mapping[str, object],
+) -> dict:
+    """Build a flux-scale normalization h5parm for one sector when requested."""
+    if not sector["normalize_flux_scale"]:
+        return {"normalize_h5parm": None}
+
+    source_catalog = catalog_result["source_catalog"]
+    if source_catalog is None:
+        raise ValueError("normalize_flux_scale requires a source catalog")
+
+    return {
+        "normalize_h5parm": make_normalization_record(
+            source_catalog,
+            prepared["concat_record"],
+            sector,
+        )
     }
 
 
@@ -241,6 +260,7 @@ def finalize_image_sector(
     diagnostics_result: Mapping[str, object],
     pipeline_working_dir: str,
     image_cube_result: Optional[Mapping[str, object]] = None,
+    catalog_result: Optional[Mapping[str, object]] = None,
     normalization_result: Optional[Mapping[str, object]] = None,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -306,9 +326,11 @@ def finalize_image_sector(
         )
 
     if sector["normalize_flux_scale"]:
+        if catalog_result is None:
+            raise ValueError("normalize_flux_scale finalization requires a source catalog")
         if normalization_result is None:
             raise ValueError("normalize_flux_scale finalization requires normalization outputs")
-        normalization_source_catalog = normalization_result["source_catalog"]
+        normalization_source_catalog = catalog_result["source_catalog"]
         normalize_h5parm = normalization_result["normalize_h5parm"]
     else:
         normalization_source_catalog = None
@@ -384,12 +406,16 @@ def run_image_sector(
         pipeline_working_dir,
     )
     image_cube_result = make_image_sector_cubes(sector, pipeline_working_dir)
-    normalization_result = normalize_image_sector_flux_scale(
+    catalog_result = make_image_sector_cube_catalog(
         sector,
-        prepared,
         image_cube_result,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,
+    )
+    normalization_result = normalize_image_sector_flux_scale(
+        sector,
+        prepared,
+        catalog_result,
     )
     return finalize_image_sector(
         sector,
@@ -398,6 +424,7 @@ def run_image_sector(
         diagnostics_result,
         pipeline_working_dir,
         image_cube_result=image_cube_result,
+        catalog_result=catalog_result,
         normalization_result=normalization_result,
         execution_config=execution_config,
         shell_operation_cls=shell_operation_cls,

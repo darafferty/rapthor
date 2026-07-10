@@ -166,16 +166,15 @@ def make_image_cube_records(
     return image_cubes, image_cube_beams, image_cube_frequencies
 
 
-def make_normalization_records(
+def make_image_cube_catalog_record(
     image_cube: dict,
     image_cube_beams: dict,
     image_cube_frequencies: dict,
-    concat_record: dict,
     sector: ImageSectorPayload,
     config: ExecutionConfig,
     shell_operation_cls=None,
-) -> tuple[dict, dict]:
-    """Build the normalization source catalog and flux-scale h5parm."""
+) -> dict:
+    """Build the source catalog used for flux-scale normalization."""
     run_external_command(
         build_make_catalog_from_image_cube_command(
             image_cube["path"],
@@ -191,10 +190,15 @@ def make_normalization_records(
         name="make_catalog_from_image_cube",
         shell_operation_cls=shell_operation_cls,
     )
-    source_catalog = require_file(
-        str(sector["output_source_catalog_path"]), "Normalization source catalog"
-    )
+    return require_file(str(sector["output_source_catalog_path"]), "Normalization source catalog")
 
+
+def make_normalization_record(
+    source_catalog: dict,
+    concat_record: dict,
+    sector: ImageSectorPayload,
+) -> dict:
+    """Build the flux-scale normalization h5parm from a source catalog."""
     normalize_flux_scale(
         source_catalog["path"],
         concat_record["path"],
@@ -202,10 +206,9 @@ def make_normalization_records(
         reference_skymodels=sector["normalization_skymodels"],
         reference_skymodels_frequencies=sector["normalization_reference_frequencies"],
     )
-    normalize_h5parm = require_file(
+    return require_file(
         str(sector["output_normalize_h5parm_path"]), "Flux-scale normalization h5parm"
     )
-    return source_catalog, normalize_h5parm
 
 
 def source_list_records(

@@ -147,9 +147,13 @@ def _image_sector_cube_result(index: int) -> dict:
 def _image_sector_normalization_result(index: int) -> dict:
     root = f"/work/image_1/sector_{index + 1}"
     return {
-        "source_catalog": file_record(f"{root}_source_catalog.fits"),
         "normalize_h5parm": file_record(f"{root}_normalize.h5parm"),
     }
+
+
+def _image_sector_catalog_result(index: int) -> dict:
+    root = f"/work/image_1/sector_{index + 1}"
+    return {"source_catalog": file_record(f"{root}_source_catalog.fits")}
 
 
 @pytest.mark.parametrize("task_runner", ["sync", "local_dask", "external_dask"])
@@ -160,11 +164,15 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     cube_task = _CapturedTask(_image_sector_cube_result)
+    catalog_task = _CapturedTask(_image_sector_catalog_result)
     finalize_task = _CapturedTask(_image_sector_result)
     monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_make_image_cube_task", cube_task)
+    monkeypatch.setattr(
+        image_module, "image_sector_make_catalog_from_image_cube_task", catalog_task
+    )
     monkeypatch.setattr(image_module, "image_sector_finalize_task", finalize_task)
 
     result = image_module._run_image_prefect_tasks(payload, execution_config=config)
@@ -189,6 +197,7 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
         "finalize",
     ]
     assert cube_task.submissions == []
+    assert catalog_task.submissions == []
     _assert_worker_submission_is_serializable(prepare_task.submissions[0], config)
     _assert_worker_submission_is_serializable(filter_task.submissions[0], config)
     _assert_worker_submission_is_serializable(diagnostics_task.submissions[0], config)
@@ -209,6 +218,7 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
     assert finalize_task.submissions[0]["args"][3].result() == _image_sector_diagnostics_result(0)
     assert finalize_task.submissions[0]["args"][5] is None
     assert finalize_task.submissions[0]["args"][6] is None
+    assert finalize_task.submissions[0]["args"][7] is None
 
 
 def test_image_flow_submits_image_cube_task_when_requested(monkeypatch):
@@ -219,6 +229,7 @@ def test_image_flow_submits_image_cube_task_when_requested(monkeypatch):
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     cube_task = _CapturedTask(_image_sector_cube_result)
+    catalog_task = _CapturedTask(_image_sector_catalog_result)
     finalize_task = _CapturedTask(
         lambda index: (
             _image_sector_result(index)
@@ -235,6 +246,9 @@ def test_image_flow_submits_image_cube_task_when_requested(monkeypatch):
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_make_image_cube_task", cube_task)
+    monkeypatch.setattr(
+        image_module, "image_sector_make_catalog_from_image_cube_task", catalog_task
+    )
     monkeypatch.setattr(image_module, "image_sector_finalize_task", finalize_task)
 
     result = image_module._run_image_prefect_tasks(payload, execution_config=config)
@@ -246,10 +260,12 @@ def test_image_flow_submits_image_cube_task_when_requested(monkeypatch):
         [file_record("/work/image_1/sector_1_I_freq_cube.fits")]
     ]
     _assert_worker_submission_is_serializable(cube_task.submissions[0], config)
+    assert catalog_task.submissions == []
     assert cube_task.submissions[0]["args"][1] is prepare_task.futures[0]
     assert finalize_task.submissions[0]["args"][5] is cube_task.futures[0]
     assert finalize_task.submissions[0]["args"][5].result() == _image_sector_cube_result(0)
     assert finalize_task.submissions[0]["args"][6] is None
+    assert finalize_task.submissions[0]["args"][7] is None
 
 
 def test_image_flow_submits_normalization_task_when_requested(monkeypatch):
@@ -261,6 +277,7 @@ def test_image_flow_submits_normalization_task_when_requested(monkeypatch):
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     cube_task = _CapturedTask(_image_sector_cube_result)
+    catalog_task = _CapturedTask(_image_sector_catalog_result)
     normalization_task = _CapturedTask(_image_sector_normalization_result)
     finalize_task = _CapturedTask(
         lambda index: (
@@ -285,6 +302,9 @@ def test_image_flow_submits_normalization_task_when_requested(monkeypatch):
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_make_image_cube_task", cube_task)
     monkeypatch.setattr(
+        image_module, "image_sector_make_catalog_from_image_cube_task", catalog_task
+    )
+    monkeypatch.setattr(
         image_module,
         "image_sector_normalize_flux_scale_task",
         normalization_task,
@@ -298,17 +318,24 @@ def test_image_flow_submits_normalization_task_when_requested(monkeypatch):
     ] == [
         "normalize_flux_scale",
     ]
+    assert [submission["options"]["task_run_name"] for submission in catalog_task.submissions] == [
+        "make_catalog_from_image_cube",
+    ]
     assert result["sector_normalize_h5parm"] == [
         file_record("/work/image_1/sector_1_normalize.h5parm")
     ]
     _assert_worker_submission_is_serializable(cube_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(catalog_task.submissions[0], config)
     _assert_worker_submission_is_serializable(normalization_task.submissions[0], config)
     assert cube_task.submissions[0]["args"][1] is prepare_task.futures[0]
+    assert catalog_task.submissions[0]["args"][1] is cube_task.futures[0]
     assert normalization_task.submissions[0]["args"][1] is prepare_task.futures[0]
-    assert normalization_task.submissions[0]["args"][2] is cube_task.futures[0]
+    assert normalization_task.submissions[0]["args"][2] is catalog_task.futures[0]
     assert finalize_task.submissions[0]["args"][5] is cube_task.futures[0]
-    assert finalize_task.submissions[0]["args"][6] is normalization_task.futures[0]
-    assert finalize_task.submissions[0]["args"][6].result() == _image_sector_normalization_result(0)
+    assert finalize_task.submissions[0]["args"][6] is catalog_task.futures[0]
+    assert finalize_task.submissions[0]["args"][6].result() == _image_sector_catalog_result(0)
+    assert finalize_task.submissions[0]["args"][7] is normalization_task.futures[0]
+    assert finalize_task.submissions[0]["args"][7].result() == _image_sector_normalization_result(0)
 
 
 def test_image_flow_disambiguates_sector_task_names_for_multiple_sectors(monkeypatch):

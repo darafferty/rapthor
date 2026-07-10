@@ -112,24 +112,40 @@ def image_sector_make_image_cube_task(
     return image_cubes
 
 
-@task(name="normalize_flux_scale")
-def image_sector_normalize_flux_scale_task(
+@task(name="make_catalog_from_image_cube")
+def image_sector_make_catalog_from_image_cube_task(
     sector: ImageSectorPayload,
-    prepared: Mapping[str, object],
     image_cubes: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
+    """Prefect task wrapper for one sector image-cube catalog step."""
+    assert_serializable_payload(image_cubes)
+    with publish_python_logs_to_prefect():
+        catalog = image_sector.make_image_sector_cube_catalog(
+            sector,
+            image_cubes,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(catalog)
+    return catalog
+
+
+@task(name="normalize_flux_scale")
+def image_sector_normalize_flux_scale_task(
+    sector: ImageSectorPayload,
+    prepared: Mapping[str, object],
+    catalog: Mapping[str, object],
+) -> dict:
     """Prefect task wrapper for one sector flux-scale normalization step."""
     assert_serializable_payload(prepared)
-    assert_serializable_payload(image_cubes)
+    assert_serializable_payload(catalog)
     with publish_python_logs_to_prefect():
         normalization = image_sector.normalize_image_sector_flux_scale(
             sector,
             prepared,
-            image_cubes,
-            execution_config=execution_config,
-            shell_operation_cls=shell_operation_cls,
+            catalog,
         )
     assert_serializable_payload(normalization)
     return normalization
@@ -143,6 +159,7 @@ def image_sector_finalize_task(
     diagnostics: Mapping[str, object],
     pipeline_working_dir: str,
     image_cubes: Optional[Mapping[str, object]] = None,
+    catalog: Optional[Mapping[str, object]] = None,
     normalization: Optional[Mapping[str, object]] = None,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
@@ -152,6 +169,7 @@ def image_sector_finalize_task(
     assert_serializable_payload(filtered)
     assert_serializable_payload(diagnostics)
     assert_serializable_payload(image_cubes)
+    assert_serializable_payload(catalog)
     assert_serializable_payload(normalization)
     with publish_python_logs_to_prefect():
         return image_sector.finalize_image_sector(
@@ -161,6 +179,7 @@ def image_sector_finalize_task(
             diagnostics,
             pipeline_working_dir,
             image_cube_result=image_cubes,
+            catalog_result=catalog,
             normalization_result=normalization,
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
@@ -278,6 +297,20 @@ def _submit_split_image_sector_tasks(
         )
         for index, sector in enumerate(sectors)
     ]
+    catalog_sector_futures = [
+        (
+            image_sector_make_catalog_from_image_cube_task.with_options(
+                task_run_name=sector_step_name(index, "make_catalog_from_image_cube")
+            ).submit(
+                sector,
+                image_cube_sector_futures[index],
+                execution_config=config,
+            )
+            if bool(sector.get("normalize_flux_scale", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
     normalization_sector_futures = [
         (
             image_sector_normalize_flux_scale_task.with_options(
@@ -285,8 +318,7 @@ def _submit_split_image_sector_tasks(
             ).submit(
                 sector,
                 prepared_sector_futures[index],
-                image_cube_sector_futures[index],
-                execution_config=config,
+                catalog_sector_futures[index],
             )
             if bool(sector.get("normalize_flux_scale", False))
             else None
@@ -303,6 +335,7 @@ def _submit_split_image_sector_tasks(
             diagnostics_sector_futures[index],
             payload["pipeline_working_dir"],
             image_cube_sector_futures[index],
+            catalog_sector_futures[index],
             normalization_sector_futures[index],
             execution_config=config,
         )
@@ -313,6 +346,7 @@ def _submit_split_image_sector_tasks(
         filtered_sector_futures,
         diagnostics_sector_futures,
         image_cube_sector_futures,
+        catalog_sector_futures,
         normalization_sector_futures,
         finalized_sector_futures,
     )
@@ -323,6 +357,7 @@ def _collect_image_sector_results(
     filtered_sector_futures,
     diagnostics_sector_futures,
     image_cube_sector_futures,
+    catalog_sector_futures,
     normalization_sector_futures,
     finalized_sector_futures,
 ) -> list[dict]:
@@ -338,6 +373,9 @@ def _collect_image_sector_results(
         for image_cube_sector in image_cube_sector_futures:
             if image_cube_sector is not None:
                 image_cube_sector.result()
+        for catalog_sector in catalog_sector_futures:
+            if catalog_sector is not None:
+                catalog_sector.result()
         for normalization_sector in normalization_sector_futures:
             if normalization_sector is not None:
                 normalization_sector.result()
@@ -356,6 +394,7 @@ def _run_image_prefect_tasks(
         filtered_sector_futures,
         diagnostics_sector_futures,
         image_cube_sector_futures,
+        catalog_sector_futures,
         normalization_sector_futures,
         finalized_sector_futures,
     ) = _submit_split_image_sector_tasks(payload, config)
@@ -364,6 +403,7 @@ def _run_image_prefect_tasks(
         filtered_sector_futures,
         diagnostics_sector_futures,
         image_cube_sector_futures,
+        catalog_sector_futures,
         normalization_sector_futures,
         finalized_sector_futures,
     )
