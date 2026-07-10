@@ -20,6 +20,7 @@ class SlurmClusterSpec:
     cpus_per_task: int
     worker_count: int
     threads_per_worker: int
+    command_threads_per_task: int
     memory_per_node_gb: int
 
 
@@ -49,13 +50,12 @@ def _first_positive_int(
 def slurm_cluster_spec(
     execution_config: ExecutionConfig,
     environ: Optional[Mapping[str, str]] = None,
-    reserve_scheduler_cpu: bool = True,
 ) -> SlurmClusterSpec:
     """Resolve Slurm allocation settings into the Dask worker layout.
 
-    The supported model starts one Dask worker per allocated node. By default it
-    reserves one CPU per worker so the scheduler, Prefect, shell wrappers, and
-    external tools do not all assume they own the full node simultaneously.
+    The supported model starts one single-threaded Dask worker per allocated
+    node. External command parallelism is tracked separately through the
+    ``command_threads_per_task`` budget.
     """
     environment = {} if environ is None else environ
     node_count = (
@@ -74,16 +74,13 @@ def slurm_cluster_spec(
         or _positive_int(environment.get(SLURM_CPUS_PER_TASK_ENV), SLURM_CPUS_PER_TASK_ENV)
         or 1
     )
-    threads_per_worker = cpus_per_task
-    if reserve_scheduler_cpu and cpus_per_task > 1:
-        threads_per_worker -= 1
-
     return SlurmClusterSpec(
         node_count=node_count,
         task_count=task_count,
         cpus_per_task=cpus_per_task,
         worker_count=node_count,
-        threads_per_worker=max(1, threads_per_worker),
+        threads_per_worker=1,
+        command_threads_per_task=cpus_per_task,
         memory_per_node_gb=execution_config.mem_per_node_gb,
     )
 

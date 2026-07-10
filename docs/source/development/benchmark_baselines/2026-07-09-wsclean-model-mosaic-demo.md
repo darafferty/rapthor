@@ -84,3 +84,39 @@ Before closing the mosaic queue item or removing the sparse FITS fallback, fix
 or isolate the Prefect/Dask threaded settings-cache failure and rerun the full
 multi-sector demo, the targeted mosaic science check, and the relevant
 benchmark comparison.
+
+## 2026-07-10 Runtime-Fix Rerun
+
+After decoupling Dask task-engine threads from external-command thread counts,
+the demo was rerun with:
+
+- `local_dask_workers = 4`
+- `cpus_per_task = 4`
+- `max_threads = 4`
+- `filter_skymodel_ncores = 4`
+- FITS previews enabled
+
+This confirmed the intended resource layout: four image-sector tasks were
+assigned to four separate Dask worker processes, while each
+`filter_skymodel` command still received `--ncores=4`.
+
+The rerun did not reproduce the Prefect settings/cachetools `KeyError`. It
+completed `image_1`, `mosaic_1`, `calibrate_2`, `predict_2`, `image_2`, and
+started `mosaic_2`. WSClean rendered model mosaics successfully for the two
+completed mosaic checks:
+
+| Operation | Command | Return Code | Duration (s) |
+| --- | --- | ---: | ---: |
+| `mosaic_1` | `wsclean -draw-model ... mosaic_1-MFS-model-pb.skymodel` | `0` | `5.787` |
+| `mosaic_2` | `wsclean -draw-model ... mosaic_2-MFS-model-pb.skymodel` | `0` | `3.973` |
+
+The rerun then failed while writing a regular regridded mosaic FITS product:
+
+```text
+OSError: Not enough free space to write 125833248 bytes
+```
+
+The workspace inside the dev container was full (`/app` had about 161 MB free).
+This is a run-environment problem, not the original Prefect settings-cache
+runtime failure. The full-demo gate still needs to be rerun after clearing disk
+space.

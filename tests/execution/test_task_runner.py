@@ -97,13 +97,13 @@ def test_sync_task_runner_uses_single_worker_thread_pool():
 def test_local_cluster_kwargs_are_conservative():
     kwargs = local_cluster_kwargs(ExecutionConfig(local_dask_workers=2, cpus_per_task=4))
 
-    assert kwargs == {"n_workers": 2, "threads_per_worker": 4}
+    assert kwargs == {"n_workers": 2, "threads_per_worker": 1, "processes": True}
 
 
 def test_local_cluster_kwargs_default_to_single_worker_capacity():
     kwargs = local_cluster_kwargs(ExecutionConfig(max_nodes=0, cpus_per_task=0))
 
-    assert kwargs == {"n_workers": 1, "threads_per_worker": 1}
+    assert kwargs == {"n_workers": 1, "threads_per_worker": 1, "processes": True}
 
 
 def test_local_cluster_kwargs_include_memory_limit():
@@ -111,7 +111,12 @@ def test_local_cluster_kwargs_include_memory_limit():
         ExecutionConfig(local_dask_workers=2, cpus_per_task=4, mem_per_node_gb=128)
     )
 
-    assert kwargs == {"n_workers": 2, "threads_per_worker": 4, "memory_limit": "128GB"}
+    assert kwargs == {
+        "n_workers": 2,
+        "threads_per_worker": 1,
+        "processes": True,
+        "memory_limit": "128GB",
+    }
 
 
 def test_local_cluster_kwargs_include_dashboard_address():
@@ -119,7 +124,12 @@ def test_local_cluster_kwargs_include_dashboard_address():
         ExecutionConfig(local_dask_workers=2, cpus_per_task=4, dask_dashboard_address=":8787")
     )
 
-    assert kwargs == {"n_workers": 2, "threads_per_worker": 4, "dashboard_address": ":8787"}
+    assert kwargs == {
+        "n_workers": 2,
+        "threads_per_worker": 1,
+        "processes": True,
+        "dashboard_address": ":8787",
+    }
 
 
 def test_start_local_dask_cluster_returns_managed_handle():
@@ -138,7 +148,8 @@ def test_start_local_dask_cluster_returns_managed_handle():
     assert handle.worker_count == 2
     assert FakeLocalCluster.instances[0].kwargs == {
         "n_workers": 2,
-        "threads_per_worker": 4,
+        "threads_per_worker": 1,
+        "processes": True,
         "dashboard_address": ":8787",
     }
     assert FakeLocalClient.instances[0].waits == [(2, "5s")]
@@ -174,7 +185,7 @@ def test_build_local_dask_task_runner_with_injected_class():
 
     assert runner.kwargs == {
         "cluster_class": "dask.distributed.LocalCluster",
-        "cluster_kwargs": {"n_workers": 2, "threads_per_worker": 4},
+        "cluster_kwargs": {"n_workers": 2, "threads_per_worker": 1, "processes": True},
     }
 
 

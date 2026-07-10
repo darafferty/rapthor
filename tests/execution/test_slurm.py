@@ -31,7 +31,8 @@ def test_slurm_cluster_spec_uses_slurm_allocation_environment():
     assert spec.task_count == 4
     assert spec.cpus_per_task == 32
     assert spec.worker_count == 4
-    assert spec.threads_per_worker == 31
+    assert spec.threads_per_worker == 1
+    assert spec.command_threads_per_task == 32
     assert spec.memory_per_node_gb == 256
 
 
@@ -48,21 +49,22 @@ def test_slurm_cluster_spec_uses_execution_config_without_slurm_environment():
     assert spec.node_count == 2
     assert spec.task_count == 2
     assert spec.worker_count == 2
-    assert spec.threads_per_worker == 7
+    assert spec.threads_per_worker == 1
+    assert spec.command_threads_per_task == 8
 
 
-def test_slurm_cluster_spec_can_use_all_worker_threads():
+def test_slurm_cluster_spec_keeps_prefect_task_execution_single_threaded():
     spec = slurm_cluster_spec(
         ExecutionConfig(
             task_runner="external_dask",
             batch_system="slurm",
             max_nodes=2,
             cpus_per_task=8,
-        ),
-        reserve_scheduler_cpu=False,
+        )
     )
 
-    assert spec.threads_per_worker == 8
+    assert spec.threads_per_worker == 1
+    assert spec.command_threads_per_task == 8
 
 
 def test_collect_slurm_config_issues_reports_too_few_tasks():
@@ -106,4 +108,5 @@ def test_slurm_scripts_export_dask_scheduler_and_start_one_worker_per_node():
         assert "export DASK_SCHEDULER=" in content
         assert "dask scheduler" in content
         assert "dask worker" in content
+        assert 'WORKER_THREADS="${RAPTHOR_DASK_WORKER_THREADS:-1}"' in content
         assert '--nodes="$NODE_COUNT" --ntasks="$NODE_COUNT" --ntasks-per-node=1' in content

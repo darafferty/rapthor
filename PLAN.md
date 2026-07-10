@@ -79,6 +79,12 @@ Completed and accepted:
   with WSClean, but the full demo failed later in `image_4` with a Prefect/Dask
   threaded settings-cache `KeyError`. Treat that runtime failure as the next
   blocker before closing the mosaic gate.
+- The Prefect/Dask settings-cache runtime failure has a targeted fix: local and
+  Slurm Dask workers now default to one Prefect task-engine thread per worker
+  process, while `cpus_per_task` remains the external-command thread budget.
+  A rerun confirmed separate worker processes for parallel sector tasks and no
+  repeated settings-cache `KeyError`, but the run then stopped because the dev
+  container filesystem was full.
 
 Keep in mind:
 
@@ -145,17 +151,17 @@ Do these in order unless a regression blocks progress.
 
    WSClean-rendered model mosaics are implemented for model products that carry
    matching sector sky-model/component lists. The first multi-sector demo smoke
-   check proved successful WSClean rendering for three mosaic cycles, but the
-   run failed later in `image_4` with a Prefect/Dask threaded settings-cache
-   `KeyError`.
+   check proved successful WSClean rendering for three mosaic cycles. The
+   Prefect/Dask threaded settings-cache failure seen in the first full-demo
+   attempt has been addressed by making Dask workers single-threaded task
+   executors and keeping external-command threading separate.
 
-   Next, fix or isolate that runtime failure without changing the scientific
-   mosaic behavior, then rerun the multi-sector demo with model previews
-   enabled. After the full demo is green, run the option-matrix/current-branch
-   mosaic scenario, compare the WSClean path against the sparse fallback, and
-   preserve compact evidence. Remove or demote the custom sparse mapper only
-   after the demo, science checks, and benchmark comparison prove the WSClean
-   path.
+   Next, clear enough run/workspace disk space and rerun the full multi-sector
+   demo with model previews enabled. After the full demo is green, run the
+   option-matrix/current-branch mosaic scenario, compare the WSClean path
+   against the sparse fallback, and preserve compact evidence. Remove or demote
+   the custom sparse mapper only after the demo, science checks, and benchmark
+   comparison prove the WSClean path.
 
 2. **Systematically split large opaque work units into Prefect tasks.**
    The filter-skymodel and diagnostics benchmarks give enough evidence that
@@ -181,6 +187,12 @@ Do these in order unless a regression blocks progress.
    when task count, scheduler gap, wall time, command totals, restart behavior,
    and raw/scientific outputs remain acceptable. Add compact reports under
    `docs/source/development/benchmark_baselines/`.
+
+   Include the Dask worker-thread runtime fix in the next benchmark comparison:
+   verify that moving from multi-threaded worker processes to single-threaded
+   worker processes does not harm the accepted CI-sized resource shapes, and
+   prefer adjusting worker count over restoring multiple Prefect task-engine
+   threads per worker.
 
 4. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,

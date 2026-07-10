@@ -275,7 +275,8 @@ def test_demo_main_passes_benchmark_resources_to_dask_and_runtime_parset(monkeyp
     assert cluster_config.local_dask_workers == 2
     assert cluster_config.local_dask_worker_count == 2
     assert cluster_config.cpus_per_task == 30
-    assert cluster_config.local_dask_threads_per_worker == 30
+    assert cluster_config.local_dask_threads_per_worker == 1
+    assert cluster_config.command_threads_per_task == 30
     assert cluster_config.command_profile == "time"
 
     pipeline_config = calls["pipeline_config"]

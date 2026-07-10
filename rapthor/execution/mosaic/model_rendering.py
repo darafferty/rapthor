@@ -42,7 +42,7 @@ def render_model_mosaic_with_wsclean(
         combined_skymodel,
         output_root,
         template_image,
-        num_threads=execution_config.local_dask_threads_per_worker,
+        num_threads=execution_config.command_threads_per_task,
     )
     run_external_command(
         build_draw_model_mosaic_command(options),

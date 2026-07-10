@@ -209,5 +209,16 @@ class ExecutionConfig:
 
     @property
     def local_dask_threads_per_worker(self) -> int:
-        """Return the thread count used for each local Dask worker."""
+        """Return the Dask task-engine thread count for each local worker.
+
+        Prefect task execution is not thread-safe inside one Dask worker
+        process, so Rapthor keeps worker task execution single-threaded.
+        External tools still receive ``cpus_per_task`` through command builders
+        and command environments.
+        """
+        return 1
+
+    @property
+    def command_threads_per_task(self) -> int:
+        """Return the external-command thread budget for one task."""
         return max(1, self.cpus_per_task or 1)

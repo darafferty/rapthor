@@ -171,16 +171,19 @@ def test_execution_config_exposes_effective_local_dask_capacity():
 
     assert config.local_dask_worker_count == 1
     assert config.local_dask_threads_per_worker == 1
+    assert config.command_threads_per_task == 1
 
     config = ExecutionConfig(max_nodes=4, local_dask_workers=0, cpus_per_task=8)
 
     assert config.local_dask_worker_count == 4
-    assert config.local_dask_threads_per_worker == 8
+    assert config.local_dask_threads_per_worker == 1
+    assert config.command_threads_per_task == 8
 
     config = ExecutionConfig(max_nodes=1, local_dask_workers=4, cpus_per_task=8)
 
     assert config.local_dask_worker_count == 4
-    assert config.local_dask_threads_per_worker == 8
+    assert config.local_dask_threads_per_worker == 1
+    assert config.command_threads_per_task == 8
 
 
 def test_execution_config_rejects_invalid_task_runner():

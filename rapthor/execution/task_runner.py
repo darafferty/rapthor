@@ -74,10 +74,16 @@ def _load_thread_pool_task_runner_cls():
 
 
 def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
-    """Build conservative kwargs for a local Dask cluster."""
+    """Build conservative kwargs for a local Dask cluster.
+
+    Dask worker threads control how many Prefect task engines run concurrently
+    inside one worker process. Keep that single-threaded; external command
+    parallelism is controlled separately by ``cpus_per_task``.
+    """
     kwargs = {
         "n_workers": execution_config.local_dask_worker_count,
         "threads_per_worker": execution_config.local_dask_threads_per_worker,
+        "processes": True,
     }
     if execution_config.mem_per_node_gb:
         kwargs["memory_limit"] = f"{execution_config.mem_per_node_gb}GB"

@@ -404,9 +404,11 @@ Use the development template when a persistent Prefect API is already running:
     $ PREFECT_API_URL=http://prefect.example:4200/api RAPTHOR_PARSET=/path/to/rapthor.parset sbatch scripts/dev/run-rapthor-slurm-dev.sbatch
 
 Both templates can source site-specific environment setup by setting
-``RAPTHOR_ENV_SCRIPT``. They reserve one CPU per node for scheduler and wrapper
-processes by default; set ``RAPTHOR_DASK_WORKER_THREADS`` to override the Dask
-worker thread count for a specific cluster.
+``RAPTHOR_ENV_SCRIPT``. Dask workers are single-threaded by default so each
+worker runs one Prefect task engine at a time. External tool parallelism remains
+controlled by Rapthor settings such as ``cpus_per_task`` and ``max_threads``.
+Only set ``RAPTHOR_DASK_WORKER_THREADS`` for a specific cluster after checking
+that multi-threaded Prefect task execution is stable there.
 
 The Slurm integration check is skipped by default. To validate a staging
 allocation, run the integration suite from inside the Slurm job with

@@ -139,7 +139,10 @@ def test_preflight_local_dask_reports_local_settings_without_scheduler_check(cap
 
     assert plan.dask_scheduler is None
     assert plan.dask_worker_count is None
-    assert "Using local Dask with 2 worker(s) and 4 thread(s) per worker." in caplog.text
+    assert (
+        "Using local Dask with 2 single-threaded worker(s); "
+        "external commands may use up to 4 thread(s) per task."
+    ) in caplog.text
 
 
 def test_bootstrapped_runtime_sets_and_restores_external_prefect_api():

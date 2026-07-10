@@ -132,9 +132,10 @@ def preflight_runtime(
         log.info("Using external Dask scheduler %s with %s worker(s).", scheduler, worker_count)
     elif execution_config.task_runner == "local_dask":
         log.info(
-            "Using local Dask with %s worker(s) and %s thread(s) per worker.",
+            "Using local Dask with %s single-threaded worker(s); "
+            "external commands may use up to %s thread(s) per task.",
             execution_config.local_dask_worker_count,
-            execution_config.local_dask_threads_per_worker,
+            execution_config.command_threads_per_task,
         )
     else:
         log.info("Using synchronous Prefect task execution.")
