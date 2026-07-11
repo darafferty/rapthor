@@ -274,7 +274,7 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
     assert [
         submission["options"]["task_run_name"]
         for submission in preparation_tasks["prepare_visibility"].submissions
-    ] == ["prepare_observation_1"]
+    ] == ["prepare_chunk_1"]
     assert preparation_tasks["prepare_visibility"].submissions[0]["options"]["tags"] == ["dp3"]
     assert [
         submission["options"]["task_run_name"]
@@ -592,8 +592,8 @@ def test_image_flow_disambiguates_sector_task_names_for_multiple_sectors(monkeyp
         submission["options"]["task_run_name"]
         for submission in preparation_tasks["prepare_visibility"].submissions
     ] == [
-        "sector_1_prepare_observation_1",
-        "sector_2_prepare_observation_1",
+        "sector_1_prepare_chunk_1",
+        "sector_2_prepare_chunk_1",
     ]
     assert [
         submission["options"]["task_run_name"]

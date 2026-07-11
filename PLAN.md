@@ -245,8 +245,11 @@ Task naming:
   `plot_solutions`, `make_mosaic`.
 - Add only the smallest useful discriminator when several sibling tasks of the
   same kind can run in the same flow: `sector_1_filter_skymodel`,
-  `solve_chunk_1`, `screen_chunk_1`, `dp3_predict_chunk_1`,
-  `wsclean_predict_chunk_1`, `postprocess_1`.
+  `prepare_chunk_1`, `solve_chunk_1`, `screen_chunk_1`,
+  `dp3_predict_chunk_1`, `wsclean_predict_chunk_1`, `postprocess_1`.
+- Use `prepare_chunk_*` for image-sector visibility preparation. The sector is
+  the sky work unit; the chunk is the prepared visibility/MS slice inside that
+  sector.
 - Prefer scientific labels over numerical suffixes when they are stable and
   meaningful, for example `mosaic_I_image` instead of `mosaic_1`.
 - Keep tool identity in Prefect tags rather than cramming it into every run

@@ -34,7 +34,7 @@ def image_sector_task(
         )
 
 
-@task(name="prepare_imaging_data")
+@task(name="prepare_chunk")
 def image_sector_prepare_visibility_task(
     sector: ImageSectorPayload,
     prepare_task: Mapping[str, object],
@@ -42,7 +42,7 @@ def image_sector_prepare_visibility_task(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Prefect task wrapper for one per-observation imaging-data preparation."""
+    """Prefect task wrapper for one imaging visibility chunk preparation."""
     with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         prepared_record = image_sector.prepare_image_sector_visibility(
             sector,
@@ -426,7 +426,7 @@ def _submit_split_image_sector_tasks(
         [
             image_sector_prepare_visibility_task.with_options(
                 **task_run_options(
-                    sector_step_name(index, "prepare_observation", task_index + 1),
+                    sector_step_name(index, "prepare_chunk", task_index + 1),
                     tags=["dp3"],
                 )
             ).submit(
