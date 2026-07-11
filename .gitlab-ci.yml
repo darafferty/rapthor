@@ -286,7 +286,6 @@ run_benchmark_comparison:
     RAPTHOR_BENCHMARK_REPETITIONS: "1"
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
       --scenario ci-benchmark
-      --scenario ci-benchmark-calibration-postprocess
       --scenario ci-benchmark-wsclean-predict
     VECLIB_MAXIMUM_THREADS: "1"
   script:
@@ -295,7 +294,8 @@ run_benchmark_comparison:
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
     # Keep the automatic benchmark narrow enough to finish before tests. Wider
-    # many-sector and fallback comparisons remain available as targeted runs.
+    # image-products, calibration-postprocess, many-sector, and fallback
+    # comparisons remain available as targeted runs.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS
