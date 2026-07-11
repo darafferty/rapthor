@@ -286,16 +286,17 @@ run_benchmark_comparison:
     RAPTHOR_BENCHMARK_REPETITIONS: "1"
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
       --scenario ci-benchmark
-      --scenario ci-benchmark-wsclean-predict
+      --scenario ci-benchmark-image-products
     VECLIB_MAXIMUM_THREADS: "1"
   script:
     - export RAPTHOR_BENCHMARK_RUN_STAMP="$(date -u +%Y%m%d-%H%M%S)"
     - export RAPTHOR_BENCHMARK_RUN_ROOT="$CI_PROJECT_DIR/ci/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/benchmark-$RAPTHOR_BENCHMARK_RUN_STAMP"
     - mkdir -p "$RAPTHOR_BENCHMARK_RUN_ROOT" "$PREFECT_HOME"
-    # Keep the automatic benchmark narrow enough to finish before tests. Wider
-    # image-products, calibration-postprocess, many-sector, and fallback
-    # comparisons remain available as targeted runs.
+    # Keep the automatic benchmark narrow enough to finish before tests. The
+    # image-products scenario is included while accepting the image-sector
+    # preparation split; WSClean-predict, calibration-postprocess, many-sector,
+    # and fallback comparisons remain available as targeted runs.
     - >-
       python3 scripts/dev/run_benchmark_baseline.py
       $RAPTHOR_BENCHMARK_SCENARIO_ARGS

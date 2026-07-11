@@ -97,9 +97,8 @@ Do these in order unless a regression blocks progress.
    task-duration visibility, and image-products behavior against the previous
    baseline.
 
-   - keep automatic: `ci-benchmark`
-   - add automatic for this batch if not already enabled:
-     `ci-benchmark-image-products`
+   - automatic for this batch: `ci-benchmark`
+   - automatic for this batch: `ci-benchmark-image-products`
    - leave `ci-benchmark-wsclean-predict` targeted unless WSClean-predict
      inputs were touched
    - keep targeted/manual only: many-sector mosaic scenarios
