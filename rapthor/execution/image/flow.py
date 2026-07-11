@@ -34,20 +34,137 @@ def image_sector_task(
         )
 
 
-@task(name="prepare")
-def image_sector_prepare_task(
+@task(name="prepare_imaging_data")
+def image_sector_prepare_visibility_task(
     sector: ImageSectorPayload,
+    prepare_task: Mapping[str, object],
     pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Prefect task wrapper for data preparation and WSClean for one sector."""
+    """Prefect task wrapper for one per-observation imaging-data preparation."""
     with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
-        prepared = image_sector.prepare_image_sector(
+        prepared_record = image_sector.prepare_image_sector_visibility(
             sector,
+            prepare_task,
             pipeline_working_dir,
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(prepared_record)
+    return prepared_record
+
+
+@task(name="concatenate_visibilities")
+def image_sector_concatenate_task(
+    sector: ImageSectorPayload,
+    prepared_records: list[Mapping[str, object]],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for concatenating prepared imaging data."""
+    assert_serializable_payload(prepared_records)
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        concat_record = image_sector.concatenate_image_sector_visibilities(
+            sector,
+            [dict(record) for record in prepared_records],
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(concat_record)
+    return concat_record
+
+
+@task(name="wsclean_image")
+def image_sector_wsclean_task(
+    sector: ImageSectorPayload,
+    concat_record: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for running or reusing WSClean images."""
+    assert_serializable_payload(concat_record)
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        image_products = image_sector.make_image_sector_wsclean_products(
+            sector,
+            concat_record,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(image_products)
+    return image_products
+
+
+@task(name="finish_wsclean_images")
+def image_sector_finish_wsclean_task(
+    sector: ImageSectorPayload,
+    image_products: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for bright-source restoration and beam checks."""
+    assert_serializable_payload(image_products)
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        finished_products = image_sector.finish_image_sector_wsclean_products(
+            sector,
+            image_products,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(finished_products)
+    return finished_products
+
+
+@task(name="make_residual_visibilities")
+def image_sector_residual_visibilities_task(
+    sector: ImageSectorPayload,
+    concat_record: Mapping[str, object],
+    image_products: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for optional residual Measurement Set creation."""
+    assert_serializable_payload(concat_record)
+    assert_serializable_payload(image_products)
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        residual_result = image_sector.make_image_sector_residual_visibility_product(
+            sector,
+            concat_record,
+            image_products,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(residual_result)
+    return residual_result
+
+
+@task(name="prepare_outputs")
+def image_sector_prepare_outputs_task(
+    prepared_records: list[Mapping[str, object]],
+    concat_record: Mapping[str, object],
+    image_products: Mapping[str, object],
+    pipeline_working_dir: str,
+    residual_result: Optional[Mapping[str, object]] = None,
+) -> dict:
+    """Prefect task wrapper for assembling the downstream prepared payload."""
+    assert_serializable_payload(prepared_records)
+    assert_serializable_payload(concat_record)
+    assert_serializable_payload(image_products)
+    assert_serializable_payload(residual_result)
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        prepared = image_sector.assemble_image_sector_preparation(
+            [dict(record) for record in prepared_records],
+            concat_record,
+            image_products,
+            residual_result,
         )
     assert_serializable_payload(prepared)
     return prepared
@@ -305,15 +422,92 @@ def _submit_split_image_sector_tasks(
         sector = sectors[index]
         return task_run_name(sector.get("image_name") or f"sector_{index + 1}", step)
 
-    prepared_sector_futures = [
-        image_sector_prepare_task.with_options(
-            **task_run_options(sector_step_name(index, "prepare"), tags=["dp3", "wsclean"])
+    prepared_record_futures = [
+        [
+            image_sector_prepare_visibility_task.with_options(
+                **task_run_options(
+                    sector_step_name(index, f"prepare_imaging_data_{task_index + 1}"),
+                    tags=["dp3"],
+                )
+            ).submit(
+                sector,
+                prepare_task,
+                payload["pipeline_working_dir"],
+                execution_config=config,
+            )
+            for task_index, prepare_task in enumerate(sector["prepare_tasks"])
+        ]
+        for index, sector in enumerate(sectors)
+    ]
+    concat_sector_futures = [
+        image_sector_concatenate_task.with_options(
+            **task_run_options(
+                sector_step_name(index, "concatenate_visibilities"),
+                tags=["casacore"],
+            )
         ).submit(
             sector,
+            prepared_record_futures[index],
             payload["pipeline_working_dir"],
             execution_config=config,
         )
         for index, sector in enumerate(sectors)
+    ]
+    wsclean_sector_futures = [
+        image_sector_wsclean_task.with_options(
+            **task_run_options(sector_step_name(index, "wsclean_image"), tags=["wsclean"])
+        ).submit(
+            sector,
+            concat_sector_futures[index],
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    finished_wsclean_sector_futures = [
+        image_sector_finish_wsclean_task.with_options(
+            **task_run_options(
+                sector_step_name(index, "finish_wsclean_images"),
+                tags=["wsclean"] if bool(sector.get("peel_bright_sources", False)) else ["python"],
+            )
+        ).submit(
+            sector,
+            wsclean_sector_futures[index],
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    residual_visibilities_sector_futures = [
+        (
+            image_sector_residual_visibilities_task.with_options(
+                **task_run_options(
+                    sector_step_name(index, "make_residual_visibilities"),
+                    tags=["dp3"],
+                )
+            ).submit(
+                sector,
+                concat_sector_futures[index],
+                finished_wsclean_sector_futures[index],
+                payload["pipeline_working_dir"],
+                execution_config=config,
+            )
+            if bool(sector.get("make_residual_visibilities", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    prepared_sector_futures = [
+        image_sector_prepare_outputs_task.with_options(
+            **task_run_options(sector_step_name(index, "prepare_outputs"), tags=["python"])
+        ).submit(
+            prepared_record_futures[index],
+            concat_sector_futures[index],
+            finished_wsclean_sector_futures[index],
+            payload["pipeline_working_dir"],
+            residual_visibilities_sector_futures[index],
+        )
+        for index, _sector in enumerate(sectors)
     ]
     filtered_sector_futures = [
         image_sector_filter_skymodel_task.with_options(
@@ -440,6 +634,11 @@ def _submit_split_image_sector_tasks(
         for index, sector in enumerate(sectors)
     ]
     return (
+        prepared_record_futures,
+        concat_sector_futures,
+        wsclean_sector_futures,
+        finished_wsclean_sector_futures,
+        residual_visibilities_sector_futures,
         prepared_sector_futures,
         filtered_sector_futures,
         diagnostics_sector_futures,
@@ -453,6 +652,11 @@ def _submit_split_image_sector_tasks(
 
 
 def _collect_image_sector_results(
+    prepared_record_futures,
+    concat_sector_futures,
+    wsclean_sector_futures,
+    finished_wsclean_sector_futures,
+    residual_visibilities_sector_futures,
     prepared_sector_futures,
     filtered_sector_futures,
     diagnostics_sector_futures,
@@ -466,6 +670,18 @@ def _collect_image_sector_results(
     try:
         return [output.result() for output in finalized_sector_futures]
     except UnfinishedRun:
+        for sector_prepared_records in prepared_record_futures:
+            for prepared_record in sector_prepared_records:
+                prepared_record.result()
+        for concat_sector in concat_sector_futures:
+            concat_sector.result()
+        for wsclean_sector in wsclean_sector_futures:
+            wsclean_sector.result()
+        for finished_wsclean_sector in finished_wsclean_sector_futures:
+            finished_wsclean_sector.result()
+        for residual_visibilities_sector in residual_visibilities_sector_futures:
+            if residual_visibilities_sector is not None:
+                residual_visibilities_sector.result()
         for prepared_sector in prepared_sector_futures:
             prepared_sector.result()
         for filtered_sector in filtered_sector_futures:
@@ -498,6 +714,11 @@ def _run_image_prefect_tasks(
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_image_payload(payload)
     (
+        prepared_record_futures,
+        concat_sector_futures,
+        wsclean_sector_futures,
+        finished_wsclean_sector_futures,
+        residual_visibilities_sector_futures,
         prepared_sector_futures,
         filtered_sector_futures,
         diagnostics_sector_futures,
@@ -509,6 +730,11 @@ def _run_image_prefect_tasks(
         finalized_sector_futures,
     ) = _submit_split_image_sector_tasks(payload, config)
     sector_outputs = _collect_image_sector_results(
+        prepared_record_futures,
+        concat_sector_futures,
+        wsclean_sector_futures,
+        finished_wsclean_sector_futures,
+        residual_visibilities_sector_futures,
         prepared_sector_futures,
         filtered_sector_futures,
         diagnostics_sector_futures,

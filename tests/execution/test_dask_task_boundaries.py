@@ -122,6 +122,32 @@ def _image_sector_preparation_result(index: int) -> dict:
     }
 
 
+def _image_sector_prepared_visibility_result(index: int) -> dict:
+    return directory_record(f"/work/image_1/obs_{index + 1}.prep.ms")
+
+
+def _image_sector_wsclean_result(index: int) -> dict:
+    root = f"/work/image_1/sector_{index + 1}"
+    return {
+        "mask_record": file_record(f"{root}.mask.fits"),
+        "region_record": None,
+        "nonpb_image": file_record(f"{root}-I-image.fits"),
+        "pb_image": file_record(f"{root}-I-image-pb.fits"),
+        "wsclean_ran": True,
+        "extra_images": [],
+        "sector_images": [
+            file_record(f"{root}-I-image.fits"),
+            file_record(f"{root}-I-image-pb.fits"),
+        ],
+        "skymodel_nonpb": None,
+        "skymodel_pb": None,
+    }
+
+
+def _image_sector_no_residual_result(_index: int) -> dict:
+    return {"residual_visibilities": None}
+
+
 def _image_sector_filter_result(index: int) -> dict:
     root = f"/work/image_1/sector_{index + 1}"
     return {
@@ -182,11 +208,45 @@ def _image_sector_compression_result(index: int) -> dict:
     }
 
 
+def _patch_image_preparation_tasks(monkeypatch):
+    prepare_visibility_task = _CapturedTask(_image_sector_prepared_visibility_result)
+    concatenate_task = _CapturedTask(
+        lambda index: directory_record(f"/work/image_1/sector_{index + 1}.concat.ms")
+    )
+    wsclean_task = _CapturedTask(_image_sector_wsclean_result)
+    finish_wsclean_task = _CapturedTask(_image_sector_wsclean_result)
+    residual_task = _CapturedTask(_image_sector_no_residual_result)
+    prepare_outputs_task = _CapturedTask(_image_sector_preparation_result)
+    monkeypatch.setattr(
+        image_module,
+        "image_sector_prepare_visibility_task",
+        prepare_visibility_task,
+    )
+    monkeypatch.setattr(image_module, "image_sector_concatenate_task", concatenate_task)
+    monkeypatch.setattr(image_module, "image_sector_wsclean_task", wsclean_task)
+    monkeypatch.setattr(image_module, "image_sector_finish_wsclean_task", finish_wsclean_task)
+    monkeypatch.setattr(
+        image_module,
+        "image_sector_residual_visibilities_task",
+        residual_task,
+    )
+    monkeypatch.setattr(image_module, "image_sector_prepare_outputs_task", prepare_outputs_task)
+    return {
+        "prepare_visibility": prepare_visibility_task,
+        "concatenate": concatenate_task,
+        "wsclean": wsclean_task,
+        "finish_wsclean": finish_wsclean_task,
+        "residual": residual_task,
+        "prepare_outputs": prepare_outputs_task,
+    }
+
+
 @pytest.mark.parametrize("task_runner", ["sync", "local_dask", "external_dask"])
 def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner):
     config = ExecutionConfig(task_runner=task_runner)
     payload = representative_image_payload()
-    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    preparation_tasks = _patch_image_preparation_tasks(monkeypatch)
+    prepare_task = preparation_tasks["prepare_outputs"]
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     cube_task = _CapturedTask(_image_sector_cube_result)
@@ -194,7 +254,6 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
     restore_task = _CapturedTask(_image_sector_restored_model_result)
     compression_task = _CapturedTask(_image_sector_compression_result)
     finalize_task = _CapturedTask(_image_sector_result)
-    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_make_image_cube_task", cube_task)
@@ -212,10 +271,31 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
         "filtered_skymodel_apparent_sky",
         "pybdsf_catalog",
     ]
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["prepare_visibility"].submissions
+    ] == ["prepare_imaging_data_1"]
+    assert preparation_tasks["prepare_visibility"].submissions[0]["options"]["tags"] == ["dp3"]
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["concatenate"].submissions
+    ] == ["concatenate_visibilities"]
+    assert preparation_tasks["concatenate"].submissions[0]["options"]["tags"] == ["casacore"]
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["wsclean"].submissions
+    ] == ["wsclean_image"]
+    assert preparation_tasks["wsclean"].submissions[0]["options"]["tags"] == ["wsclean"]
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["finish_wsclean"].submissions
+    ] == ["finish_wsclean_images"]
+    assert preparation_tasks["finish_wsclean"].submissions[0]["options"]["tags"] == ["python"]
+    assert preparation_tasks["residual"].submissions == []
     assert [submission["options"]["task_run_name"] for submission in prepare_task.submissions] == [
-        "prepare",
+        "prepare_outputs",
     ]
-    assert prepare_task.submissions[0]["options"]["tags"] == ["dp3", "wsclean"]
+    assert prepare_task.submissions[0]["options"]["tags"] == ["python"]
     assert [submission["options"]["task_run_name"] for submission in filter_task.submissions] == [
         "filter_skymodel",
     ]
@@ -232,7 +312,34 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
     assert catalog_task.submissions == []
     assert restore_task.submissions == []
     assert compression_task.submissions == []
+    _assert_worker_submission_is_serializable(
+        preparation_tasks["prepare_visibility"].submissions[0], config
+    )
+    _assert_worker_submission_is_serializable(
+        preparation_tasks["concatenate"].submissions[0], config
+    )
+    _assert_worker_submission_is_serializable(preparation_tasks["wsclean"].submissions[0], config)
+    _assert_worker_submission_is_serializable(
+        preparation_tasks["finish_wsclean"].submissions[0], config
+    )
     _assert_worker_submission_is_serializable(prepare_task.submissions[0], config)
+    assert preparation_tasks["concatenate"].submissions[0]["args"][1] == [
+        preparation_tasks["prepare_visibility"].futures[0]
+    ]
+    assert (
+        preparation_tasks["wsclean"].submissions[0]["args"][1]
+        is preparation_tasks["concatenate"].futures[0]
+    )
+    assert (
+        preparation_tasks["finish_wsclean"].submissions[0]["args"][1]
+        is preparation_tasks["wsclean"].futures[0]
+    )
+    assert prepare_task.submissions[0]["args"][0] == [
+        preparation_tasks["prepare_visibility"].futures[0]
+    ]
+    assert prepare_task.submissions[0]["args"][1] is preparation_tasks["concatenate"].futures[0]
+    assert prepare_task.submissions[0]["args"][2] is preparation_tasks["finish_wsclean"].futures[0]
+    assert prepare_task.submissions[0]["args"][4] is None
     _assert_worker_submission_is_serializable(filter_task.submissions[0], config)
     _assert_worker_submission_is_serializable(diagnostics_task.submissions[0], config)
     _assert_worker_submission_is_serializable(finalize_task.submissions[0], config)
@@ -261,7 +368,8 @@ def test_image_flow_submits_image_cube_task_when_requested(monkeypatch):
     config = ExecutionConfig(task_runner="sync")
     payload = representative_image_payload()
     payload["sectors"][0]["make_image_cube"] = True
-    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    preparation_tasks = _patch_image_preparation_tasks(monkeypatch)
+    prepare_task = preparation_tasks["prepare_outputs"]
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     cube_task = _CapturedTask(_image_sector_cube_result)
@@ -280,7 +388,6 @@ def test_image_flow_submits_image_cube_task_when_requested(monkeypatch):
             }
         )
     )
-    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_make_image_cube_task", cube_task)
@@ -317,7 +424,8 @@ def test_image_flow_submits_normalization_task_when_requested(monkeypatch):
     payload = representative_image_payload()
     payload["sectors"][0]["make_image_cube"] = True
     payload["sectors"][0]["normalize_flux_scale"] = True
-    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    preparation_tasks = _patch_image_preparation_tasks(monkeypatch)
+    prepare_task = preparation_tasks["prepare_outputs"]
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     cube_task = _CapturedTask(_image_sector_cube_result)
@@ -343,7 +451,6 @@ def test_image_flow_submits_normalization_task_when_requested(monkeypatch):
             }
         )
     )
-    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_make_image_cube_task", cube_task)
@@ -395,7 +502,8 @@ def test_image_flow_submits_restoration_and_compression_tasks_when_requested(mon
     payload = representative_image_payload()
     payload["sectors"][0]["save_filtered_model_image"] = True
     payload["sectors"][0]["compress_images"] = True
-    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    preparation_tasks = _patch_image_preparation_tasks(monkeypatch)
+    prepare_task = preparation_tasks["prepare_outputs"]
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     cube_task = _CapturedTask(_image_sector_cube_result)
@@ -414,7 +522,6 @@ def test_image_flow_submits_restoration_and_compression_tasks_when_requested(mon
             }
         )
     )
-    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_make_image_cube_task", cube_task)
@@ -470,20 +577,48 @@ def test_image_flow_disambiguates_sector_task_names_for_multiple_sectors(monkeyp
     second_sector = deepcopy(payload["sectors"][0])
     second_sector["image_name"] = "sector_2"
     payload["sectors"].append(second_sector)
-    prepare_task = _CapturedTask(_image_sector_preparation_result)
+    preparation_tasks = _patch_image_preparation_tasks(monkeypatch)
+    prepare_task = preparation_tasks["prepare_outputs"]
     filter_task = _CapturedTask(_image_sector_filter_result)
     diagnostics_task = _CapturedTask(_image_sector_diagnostics_result)
     finalize_task = _CapturedTask(_image_sector_result)
-    monkeypatch.setattr(image_module, "image_sector_prepare_task", prepare_task)
     monkeypatch.setattr(image_module, "image_sector_filter_skymodel_task", filter_task)
     monkeypatch.setattr(image_module, "image_sector_diagnostics_task", diagnostics_task)
     monkeypatch.setattr(image_module, "image_sector_finalize_task", finalize_task)
 
     image_module._run_image_prefect_tasks(payload, execution_config=config)
 
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["prepare_visibility"].submissions
+    ] == [
+        "sector_1_prepare_imaging_data_1",
+        "sector_2_prepare_imaging_data_1",
+    ]
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["concatenate"].submissions
+    ] == [
+        "sector_1_concatenate_visibilities",
+        "sector_2_concatenate_visibilities",
+    ]
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["wsclean"].submissions
+    ] == [
+        "sector_1_wsclean_image",
+        "sector_2_wsclean_image",
+    ]
+    assert [
+        submission["options"]["task_run_name"]
+        for submission in preparation_tasks["finish_wsclean"].submissions
+    ] == [
+        "sector_1_finish_wsclean_images",
+        "sector_2_finish_wsclean_images",
+    ]
     assert [submission["options"]["task_run_name"] for submission in prepare_task.submissions] == [
-        "sector_1_prepare",
-        "sector_2_prepare",
+        "sector_1_prepare_outputs",
+        "sector_2_prepare_outputs",
     ]
     assert [submission["options"]["task_run_name"] for submission in filter_task.submissions] == [
         "sector_1_filter_skymodel",

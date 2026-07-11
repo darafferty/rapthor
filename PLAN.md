@@ -66,6 +66,11 @@ Accepted performance and task-boundary evidence:
   stable external command counts, and the expected new visible task groups
   (`make_predict_region_task`, `wsclean_predict_facet_info_task`,
   `wsclean_predict_chunk_task`) in `ci-benchmark-wsclean-predict`.
+- The image-sector preparation split is implemented and focused tests pass. It
+  exposes per-observation DP3 preparation, concatenation, WSClean imaging,
+  WSClean image finishing, optional residual-visibilities production, and the
+  prepared-output join as separate tasks. It still needs benchmark acceptance
+  before it is treated as an accepted task-boundary change.
 - WSClean-rendered model mosaics are the preferred path when sector sky-model
   inputs exist. Sparse FITS mapping remains a fallback for products that cannot
   be rendered by WSClean.
@@ -86,34 +91,17 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Split the large image-sector `prepare` task.**
-   Split only meaningful work that helps observability or multi-observation
-   scaling, such as per-observation DP3 preparation, concatenation, WSClean
-   imaging, bright-source restoration, and residual-visibilities production.
-   Keep tiny helpers, validation, command builders, and output-record assembly
-   as plain Python.
-
-   Performance targets from the latest benchmark:
-
-   - expose the WSClean imaging portion currently hidden inside `prepare`
-     because WSClean is one of the two dominant costs
-   - expose per-observation DP3 preparation and concatenation so many-MS runs
-     can reveal whether these paths are waiting unnecessarily
-   - keep `filter_skymodel` as the next optimisation candidate after the
-     prepare split; it remains the largest single command cost
-   - keep calibration plotting/Python post-processing as a secondary target;
-     `plot_solutions_task` is now visible and still contributes meaningful
-     aggregate task time
-
-   Tests required: payload serializability, task dependency shape, output
-   records, restart markers, and command records for each new boundary.
-
-   Benchmark after this batch:
+1. **Benchmark and accept/reject the image-sector preparation split.**
+   The split is implemented and focused tests are green. Run the next benchmark
+   before further task-splitting work so we can check command totals, wall time,
+   task-duration visibility, and image-products behavior against the previous
+   baseline.
 
    - keep automatic: `ci-benchmark`
-   - add automatic for this batch: `ci-benchmark-image-products`
-   - add targeted only if the split changes WSClean-predict inputs:
-     `ci-benchmark-wsclean-predict`
+   - add automatic for this batch if not already enabled:
+     `ci-benchmark-image-products`
+   - leave `ci-benchmark-wsclean-predict` targeted unless WSClean-predict
+     inputs were touched
    - keep targeted/manual only: many-sector mosaic scenarios
 
    Accept if image-products command totals and scientific outputs are stable

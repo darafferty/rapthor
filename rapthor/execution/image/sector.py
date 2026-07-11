@@ -21,9 +21,11 @@ from rapthor.execution.image.outputs import (
     source_list_records,
 )
 from rapthor.execution.image.preparation import (
+    concatenate_prepared_visibilities,
     ensure_facet_region,
     ensure_imaging_mask,
     prepare_and_concatenate_visibilities,
+    prepare_visibility_ms,
 )
 from rapthor.execution.image.residual_visibilities import make_residual_visibility_record
 from rapthor.execution.image.wsclean import (
@@ -42,7 +44,6 @@ def prepare_image_sector(
 ) -> dict:
     """Run data preparation and WSClean for one imaging sector."""
     config = execution_config or ExecutionConfig(task_runner="sync")
-    image_name = str(sector["image_name"])
 
     prepared_records, concat_record = prepare_and_concatenate_visibilities(
         sector,
@@ -50,6 +51,82 @@ def prepare_image_sector(
         config,
         shell_operation_cls=shell_operation_cls,
     )
+    image_products = make_image_sector_wsclean_products(
+        sector,
+        concat_record,
+        pipeline_working_dir,
+        execution_config=config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    image_products = finish_image_sector_wsclean_products(
+        sector,
+        image_products,
+        pipeline_working_dir,
+        execution_config=config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    residual_result = make_image_sector_residual_visibility_product(
+        sector,
+        concat_record,
+        image_products,
+        pipeline_working_dir,
+        execution_config=config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return assemble_image_sector_preparation(
+        prepared_records,
+        concat_record,
+        image_products,
+        residual_result,
+    )
+
+
+def prepare_image_sector_visibility(
+    sector: ImageSectorPayload,
+    prepare_task: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prepare one observation Measurement Set for an image sector."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    return prepare_visibility_ms(
+        sector,
+        prepare_task,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def concatenate_image_sector_visibilities(
+    sector: ImageSectorPayload,
+    prepared_records: list[dict],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Concatenate prepared observation Measurement Sets for an image sector."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    return concatenate_prepared_visibilities(
+        sector,
+        prepared_records,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def make_image_sector_wsclean_products(
+    sector: ImageSectorPayload,
+    concat_record: Mapping[str, str],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run or reuse WSClean products for one image sector."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    image_name = str(sector["image_name"])
     mask_record = ensure_imaging_mask(sector)
     region_record = ensure_facet_region(sector)
 
@@ -66,48 +143,97 @@ def prepare_image_sector(
     extra_images = file_records_for_patterns(
         mfs_extra_image_patterns(image_name, pipeline_working_dir)
     )
-    nonpb_image, pb_image = restore_bright_source_images(
-        sector,
-        nonpb_image,
-        pb_image,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    residual_visibilities = make_residual_visibility_record(
-        sector,
-        concat_record,
-        pipeline_working_dir,
-        config,
-        force=wsclean_ran,
-        shell_operation_cls=shell_operation_cls,
-    )
-    sector_images = [nonpb_image, pb_image]
-
     skymodel_nonpb, skymodel_pb = source_list_records(
         sector,
         image_name,
         pipeline_working_dir,
     )
-    if wsclean_ran:
-        check_wsclean_beams(
-            (pb_image, nonpb_image),
-            sector,
-        )
-
     return {
-        "prepared_records": prepared_records,
-        "concat_record": concat_record,
         "mask_record": mask_record,
         "region_record": region_record,
         "nonpb_image": nonpb_image,
         "pb_image": pb_image,
         "wsclean_ran": wsclean_ran,
         "extra_images": extra_images,
-        "residual_visibilities": residual_visibilities,
-        "sector_images": sector_images,
+        "sector_images": [nonpb_image, pb_image],
         "skymodel_nonpb": skymodel_nonpb,
         "skymodel_pb": skymodel_pb,
+    }
+
+
+def finish_image_sector_wsclean_products(
+    sector: ImageSectorPayload,
+    image_products: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Restore bright sources when requested and validate new WSClean beams."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    nonpb_image, pb_image = restore_bright_source_images(
+        sector,
+        image_products["nonpb_image"],
+        image_products["pb_image"],
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    if image_products["wsclean_ran"]:
+        check_wsclean_beams(
+            (pb_image, nonpb_image),
+            sector,
+        )
+    return dict(image_products) | {
+        "nonpb_image": nonpb_image,
+        "pb_image": pb_image,
+        "sector_images": [nonpb_image, pb_image],
+    }
+
+
+def make_image_sector_residual_visibility_product(
+    sector: ImageSectorPayload,
+    concat_record: Mapping[str, str],
+    image_products: Mapping[str, object],
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Create residual visibilities when the sector requests them."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    residual_visibilities = make_residual_visibility_record(
+        sector,
+        concat_record,
+        pipeline_working_dir,
+        config,
+        force=bool(image_products["wsclean_ran"]),
+        shell_operation_cls=shell_operation_cls,
+    )
+    return {"residual_visibilities": residual_visibilities}
+
+
+def assemble_image_sector_preparation(
+    prepared_records: list[dict],
+    concat_record: Mapping[str, str],
+    image_products: Mapping[str, object],
+    residual_result: Optional[Mapping[str, object]] = None,
+) -> dict:
+    """Assemble the prepared sector payload consumed by downstream image tasks."""
+    residual_visibilities = None
+    if residual_result is not None:
+        residual_visibilities = residual_result["residual_visibilities"]
+    return {
+        "prepared_records": prepared_records,
+        "concat_record": concat_record,
+        "mask_record": image_products["mask_record"],
+        "region_record": image_products["region_record"],
+        "nonpb_image": image_products["nonpb_image"],
+        "pb_image": image_products["pb_image"],
+        "wsclean_ran": image_products["wsclean_ran"],
+        "extra_images": image_products["extra_images"],
+        "residual_visibilities": residual_visibilities,
+        "sector_images": image_products["sector_images"],
+        "skymodel_nonpb": image_products["skymodel_nonpb"],
+        "skymodel_pb": image_products["skymodel_pb"],
     }
 
 

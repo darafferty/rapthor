@@ -38,11 +38,15 @@ from rapthor.execution.image.commands import (
 )
 from rapthor.execution.image.flow import (
     image_flow,
+    image_sector_concatenate_task,
     image_sector_diagnostics_task,
     image_sector_filter_skymodel_task,
     image_sector_finalize_task,
-    image_sector_prepare_task,
+    image_sector_finish_wsclean_task,
+    image_sector_prepare_outputs_task,
+    image_sector_prepare_visibility_task,
     image_sector_task,
+    image_sector_wsclean_task,
 )
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
@@ -2587,21 +2591,70 @@ def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls
     assert output["sector_I_images"] == _sector_i_image_records(tmp_path)
 
 
-def test_image_sector_tasks_split_post_wsclean_work(tmp_path, fake_image_shell_operation_cls):
+def test_image_sector_tasks_split_preparation_and_post_wsclean_work(
+    tmp_path, fake_image_shell_operation_cls
+):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
     sector = payload["sectors"][0]
     config = ExecutionConfig(task_runner="sync")
 
-    prepare_fn = getattr(image_sector_prepare_task, "fn", image_sector_prepare_task)
+    prepare_visibility_fn = getattr(
+        image_sector_prepare_visibility_task,
+        "fn",
+        image_sector_prepare_visibility_task,
+    )
+    concatenate_fn = getattr(image_sector_concatenate_task, "fn", image_sector_concatenate_task)
+    wsclean_fn = getattr(image_sector_wsclean_task, "fn", image_sector_wsclean_task)
+    finish_wsclean_fn = getattr(
+        image_sector_finish_wsclean_task,
+        "fn",
+        image_sector_finish_wsclean_task,
+    )
+    prepare_outputs_fn = getattr(
+        image_sector_prepare_outputs_task,
+        "fn",
+        image_sector_prepare_outputs_task,
+    )
     filter_fn = getattr(image_sector_filter_skymodel_task, "fn", image_sector_filter_skymodel_task)
     diagnostics_fn = getattr(image_sector_diagnostics_task, "fn", image_sector_diagnostics_task)
     finalize_fn = getattr(image_sector_finalize_task, "fn", image_sector_finalize_task)
 
-    prepared = prepare_fn(
+    prepared_records = [
+        prepare_visibility_fn(
+            sector,
+            prepare_task,
+            str(tmp_path),
+            execution_config=config,
+            shell_operation_cls=fake_image_shell_operation_cls,
+        )
+        for prepare_task in sector["prepare_tasks"]
+    ]
+    concat_record = concatenate_fn(
         sector,
+        prepared_records,
         str(tmp_path),
         execution_config=config,
         shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    image_products = wsclean_fn(
+        sector,
+        concat_record,
+        str(tmp_path),
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    image_products = finish_wsclean_fn(
+        sector,
+        image_products,
+        str(tmp_path),
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    prepared = prepare_outputs_fn(
+        prepared_records,
+        concat_record,
+        image_products,
+        str(tmp_path),
     )
     filtered = filter_fn(
         sector,
