@@ -416,17 +416,17 @@ def _submit_split_image_sector_tasks(
 ):
     sectors = list(payload["sectors"])
 
-    def sector_step_name(index: int, step: str) -> str:
+    def sector_step_name(index: int, *steps: object) -> str:
         if len(sectors) == 1:
-            return task_run_name(step)
+            return task_run_name(*steps)
         sector = sectors[index]
-        return task_run_name(sector.get("image_name") or f"sector_{index + 1}", step)
+        return task_run_name(sector.get("image_name") or f"sector_{index + 1}", *steps)
 
     prepared_record_futures = [
         [
             image_sector_prepare_visibility_task.with_options(
                 **task_run_options(
-                    sector_step_name(index, f"prepare_imaging_data_{task_index + 1}"),
+                    sector_step_name(index, "prepare_observation", task_index + 1),
                     tags=["dp3"],
                 )
             ).submit(
