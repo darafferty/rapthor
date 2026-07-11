@@ -229,6 +229,35 @@ Do these in order unless a regression blocks progress.
    - mosaic: WSClean-rendered model mosaics, per-sector regridding, mosaic
      assembly, and compression
 
+   Parallelism review, 2026-07-11:
+
+   - Image-sector work already fans out across sectors. Within each sector,
+     `prepare` gates the rest of the work, then `filter_skymodel`,
+     `make_image_cube`, `restore_skymodel`, `compress_images`, and `finalize`
+     use their real product dependencies. Do not split the cube/catalog/
+     normalization chain further unless the image-products benchmark shows it
+     is a bottleneck. Per-file compression is a possible later split, but only
+     if compression time outweighs the extra scheduling and I/O contention.
+   - Calibration chunks already run in parallel. The new per-solve
+     `collect_h5parms -> process_solutions -> plot_solutions` paths can run
+     independently after chunk fan-in, and `combine_h5parms` does not need to
+     wait for plotting. Avoid more calibration splitting until the next
+     benchmark shows whether `process_solutions`, `plot_solutions`, or
+     `combine_h5parms` remains material. If plotting dominates, split
+     slow-gain phase and amplitude plots into separate tasks.
+   - Prediction has the clearest remaining parallelism opportunity:
+     `postprocess` currently waits for all `predict_model_data` tasks. Review
+     whether model outputs can be grouped by observation/target so each
+     post-processing task starts as soon as its own model-data inputs are
+     available, while preserving DI add-model and DD subtract-model semantics.
+   - Mosaic products already run in parallel behind one shared template.
+     Further split per-sector regridding/rendering/compression inside a mosaic
+     product only if targeted mosaic profiling shows product-level tasks are
+     still too opaque or slow.
+   - Keep finalizer tasks as fan-in/reporting boundaries. They should stay
+     thin and should not introduce artificial serialization before independent
+     work has completed.
+
 3. **Benchmark after each owner-package split batch.**
    Rerun the relevant hidden-path scenarios after each batch. Keep the split
    when task count, scheduler gap, wall time, command totals, restart behavior,
