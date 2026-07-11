@@ -235,6 +235,19 @@ def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
             ),
         ),
         BenchmarkScenario(
+            scenario_id="ci-benchmark-predict-chunks",
+            description=(
+                "Generated CI benchmark variant forcing observation chunking so "
+                "predict model-data and post-processing dependencies can be "
+                "measured across multiple time chunks."
+            ),
+            parset="examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
+            local_dask_workers=2,
+            cpus_per_task=30,
+            max_threads=30,
+            parset_overrides=(ParsetOverride("cluster", "max_nodes", "2"),),
+        ),
+        BenchmarkScenario(
             scenario_id="ci-benchmark-calibration-postprocess",
             description=(
                 "Generated CI benchmark variant isolating calibration solution "

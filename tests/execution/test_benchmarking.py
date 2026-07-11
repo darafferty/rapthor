@@ -56,6 +56,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
     scenarios = benchmark_scenarios_by_id()
     scenario = scenarios["ci-benchmark"]
     calibration_scenario = scenarios["ci-benchmark-calibration-postprocess"]
+    chunked_predict_scenario = scenarios["ci-benchmark-predict-chunks"]
     many_sector_scenario = scenarios["ci-benchmark-many-sector-mosaic"]
     sparse_fallback_scenario = scenarios["ci-benchmark-many-sector-mosaic-sparse-fallback"]
 
@@ -68,6 +69,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
         "ci-benchmark-image-products",
         "ci-benchmark-many-sector-mosaic",
         "ci-benchmark-many-sector-mosaic-sparse-fallback",
+        "ci-benchmark-predict-chunks",
         "ci-benchmark-wsclean-predict",
     }
     assert command[1] == "/repo/scripts/dev/run-rapthor-prefect-demo.py"
@@ -86,6 +88,9 @@ def test_default_benchmark_scenarios_build_demo_commands():
             "prefect_demo_benchmark_calibration_postprocess_strategy.py",
         ),
     )
+    assert chunked_predict_scenario.parset_overrides == (
+        ParsetOverride("cluster", "max_nodes", "2"),
+    )
     assert (
         "/repo/examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset"
         in many_sector_command
@@ -99,6 +104,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
 def test_hidden_path_benchmark_scenarios_materialize_parset_overrides(tmp_path):
     scenario = benchmark_scenarios_by_id()["ci-benchmark-image-products"]
     calibration_scenario = benchmark_scenarios_by_id()["ci-benchmark-calibration-postprocess"]
+    chunked_predict_scenario = benchmark_scenarios_by_id()["ci-benchmark-predict-chunks"]
     sparse_fallback_scenario = benchmark_scenarios_by_id()[
         "ci-benchmark-many-sector-mosaic-sparse-fallback"
     ]
@@ -131,9 +137,11 @@ prefect_task_runner = local_dask
 
     command = scenario.command(repo_root, tmp_path / "run")
     calibration_command = calibration_scenario.command(repo_root, tmp_path / "run")
+    chunked_predict_command = chunked_predict_scenario.command(repo_root, tmp_path / "run")
     sparse_fallback_command = sparse_fallback_scenario.command(repo_root, tmp_path / "run")
     scenario_parset = Path(command[2])
     calibration_parset = Path(calibration_command[2])
+    chunked_predict_parset = Path(chunked_predict_command[2])
     sparse_fallback_parset = Path(sparse_fallback_command[2])
 
     assert scenario_parset.name == ("prefect_demo_benchmark.ci-benchmark-image-products.parset")
@@ -150,6 +158,10 @@ prefect_task_runner = local_dask
     )
     calibration_text = calibration_parset.read_text(encoding="utf-8")
     assert "prefect_demo_benchmark_calibration_postprocess_strategy.py" in calibration_text
+    assert chunked_predict_parset.name == (
+        "prefect_demo_benchmark.ci-benchmark-predict-chunks.parset"
+    )
+    assert "max_nodes = 2" in chunked_predict_parset.read_text(encoding="utf-8")
     assert sparse_fallback_parset.name == (
         "prefect_demo_multisector_benchmark.ci-benchmark-many-sector-mosaic-sparse-fallback.parset"
     )

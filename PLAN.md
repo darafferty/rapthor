@@ -119,11 +119,11 @@ Do these in order unless a regression blocks progress.
    Benchmark this batch:
 
    - run automatic: `ci-benchmark`
+   - include targeted: `ci-benchmark-predict-chunks`, which sets
+     `cluster.max_nodes = 2` to force observation chunking and expose multiple
+     `predict_model_data` / `postprocess` dependency groups
    - use `ci-benchmark-image-products` only if it is already part of the paired
      CI run
-   - add a targeted prediction-heavy scenario only if the default report does
-     not expose enough `predict_model_data` and `postprocess` activity to judge
-     scheduler effects
    - run `ci-benchmark-wsclean-predict` only if calibration prediction setup or
      WSClean-predict paths are touched
 
