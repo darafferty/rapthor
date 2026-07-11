@@ -107,6 +107,19 @@ Completed and accepted:
   It preserves the before-split evidence for `finalize_solutions_task`: four
   task calls and about 19.6-19.9 seconds of aggregate task time across the
   automatic `ci-benchmark` and `ci-benchmark-wsclean-predict` runs.
+- The post-calibration-postprocess-split benchmark in
+  `runs/benchmark-20260711-061530` completed `ci-benchmark`,
+  `ci-benchmark-calibration-postprocess`, and
+  `ci-benchmark-wsclean-predict`. Broad wall time stayed comparable with the
+  pre-split run (`316.5 -> 322.1` seconds for default,
+  `294.7 -> 291.7` seconds for WSClean-predict), Dask task count increased from
+  `40` to `61`, and Dask gap improved (`53.7 -> 36.1` seconds for default,
+  `56.3 -> 41.3` seconds for WSClean-predict). The split achieved its
+  observability goal: `finalize_solutions_task` dropped from about
+  `19.6-19.9` seconds aggregate to about `0.7` seconds aggregate. The main
+  newly visible calibration post-processing cost is `plot_solutions_task`
+  (about `25.7` seconds aggregate in broad runs); collection, processing,
+  combination, and finalization are small.
 
 Keep in mind:
 
@@ -217,17 +230,28 @@ Do these in order unless a regression blocks progress.
      `make_catalog_from_image_cube`, `normalize_flux_scale`,
      `restore_skymodel`, and `compress_images` are now optional per-sector
      Prefect tasks that run after WSClean preparation and before `finalize`;
-     next use the hidden-path benchmarks to decide whether any remaining image
-     helpers are worth splitting before moving on to calibration
+     treat this batch as accepted and revisit only if an image-products
+     benchmark shows another helper is a material bottleneck
    - calibration post-processing: `collect_h5parms`, per-solve
      `process_solutions`, per-solve `plot_solutions`, optional
      `combine_h5parms`, and thin `finalize_solutions` are now separate Prefect
-     task boundaries; next benchmark this batch before splitting more
-     calibration work
-   - prediction: WSClean-predict loops and sector-model post-processing are
-     the next task-split candidates after the calibration split benchmark
+     task boundaries and the post-split benchmark accepts this batch
+   - calibration image-based prediction: split `prepare_image_based_predict`
+     into named tasks for region/model preparation and WSClean draw/predict
+     work; the WSClean-predict benchmark shows the extra WSClean commands but
+     they are still hidden inside plain flow helper code rather than visible
+     task groups
+   - image-sector preparation/WSClean: split the current large `prepare` task
+     only where it exposes meaningful stages such as per-observation DP3
+     preparation, concatenation, WSClean imaging, bright-source restoration,
+     and residual-visibilities production; this is the largest remaining named
+     task group after `filter_skymodel`
+   - standalone prediction: review whether `predict_model_data` and
+     `postprocess` can be grouped by observation/target so post-processing can
+     begin as soon as its own model-data inputs are ready
    - mosaic: WSClean-rendered model mosaics, per-sector regridding, mosaic
-     assembly, and compression
+     assembly, and compression remain targeted work, not part of the automatic
+     benchmark while the many-sector path is less frequently used
 
    Parallelism review, 2026-07-11:
 
@@ -241,11 +265,16 @@ Do these in order unless a regression blocks progress.
    - Calibration chunks already run in parallel. The new per-solve
      `collect_h5parms -> process_solutions -> plot_solutions` paths can run
      independently after chunk fan-in, and `combine_h5parms` does not need to
-     wait for plotting. Avoid more calibration splitting until the next
-     benchmark shows whether `process_solutions`, `plot_solutions`, or
-     `combine_h5parms` remains material. If plotting dominates, split
-     slow-gain phase and amplitude plots into separate tasks.
-   - Prediction has the clearest remaining parallelism opportunity:
+     wait for plotting. The post-split benchmark shows `finalize_solutions` is
+     now thin, while `plot_solutions` is the only material visible
+     post-processing task. Treat plotting as a secondary tuning target: split
+     slow-gain phase/amplitude plots or make plotting optional only if a
+     plotting-specific benchmark or user workflow shows it gates progress.
+   - Calibration WSClean-predict setup is the clearest remaining hidden
+     parallelism opportunity. Today `prepare_image_based_predict` runs before
+     calibration chunks as helper code, so WSClean draw/predict commands are not
+     visible as named task groups and cannot be independently scheduled.
+   - Standalone prediction has a smaller but cleaner parallelism opportunity:
      `postprocess` currently waits for all `predict_model_data` tasks. Review
      whether model outputs can be grouped by observation/target so each
      post-processing task starts as soon as its own model-data inputs are
@@ -264,21 +293,37 @@ Do these in order unless a regression blocks progress.
    and raw/scientific outputs remain acceptable. Add compact reports under
    `docs/source/development/benchmark_baselines/`.
 
-   The next benchmark should compare the calibration post-processing split
-   against the accepted hidden-path baseline and the
-   `2026-07-10-pre-calibration-postprocess-split` report. It should confirm
-   that `process_solutions_task`, `plot_solutions_task`, and
-   `combine_h5parms_task` are visible, that `finalize_solutions_task` is thin,
-   and that command counts/totals remain within normal CI variance.
+   The post-calibration split benchmark accepts the new calibration task
+   boundaries. Use it as the after-split reference for this batch.
 
    The automatic CI benchmark should use the preferred `4x15` shape
    (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`) and stay
-   focused enough to finish before tests. For the calibration split work, run
-   `ci-benchmark`, `ci-benchmark-calibration-postprocess`, and
-   `ci-benchmark-wsclean-predict` automatically. Add
+   focused enough to finish before tests. For the next task-split batch, run
+   `ci-benchmark` and `ci-benchmark-wsclean-predict` automatically. Keep
+   `ci-benchmark-calibration-postprocess` only for targeted calibration-plotting
+   or h5parm-collection changes; otherwise demote it to save CI time. Add
    `ci-benchmark-image-products`, `ci-benchmark-many-sector-mosaic`, or
    `ci-benchmark-many-sector-mosaic-sparse-fallback` only for targeted runs
    when changing image products, mosaic behavior, or scalability scheduling.
+
+   Performance improvement targets from the 2026-07-11 benchmark:
+
+   - First target: taskize calibration image-based/WSClean prediction setup.
+     This should expose WSClean draw/predict work, copied-MS preparation, and
+     per-frequency/per-chunk work in the dashboard and make the WSClean-predict
+     scenario easier to optimize.
+   - Second target: split the large image-sector `prepare` wrapper where it
+     improves observability or multi-observation scaling. A single WSClean image
+     command will not become faster merely because it is a separate task, but
+     per-observation DP3 preparation and concatenation can be made clearer and
+     potentially more parallel.
+   - Secondary target: calibration plotting. It is now visible and measurable,
+     but it is not the next broad scalability blocker unless it gates a real
+     workflow.
+   - Defer tiny helpers and already-small task groups such as h5parm
+     collection, solution processing, h5parm combination, finalizers, and
+     standalone predict post-processing until a targeted benchmark shows they
+     matter.
 
 4. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
