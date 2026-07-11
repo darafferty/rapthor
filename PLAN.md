@@ -102,33 +102,24 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Freeze and run the baseline performance-equivalence gate.**
-   Do this before further optimisation. The current branch has enough accepted
-   task-boundary and science-equivalence evidence that the next useful
-   checkpoint is a branch-vs-master runtime baseline. That gives later
-   `filter_skymodel`, WSClean, and scheduling changes a stable "before"
-   reference instead of comparing against a moving target.
+1. **Make the performance-equivalence gate repeatability-aware and passable.**
+   Do this before further optimisation. The first full advisory baseline has
+   been captured, but the gate cannot produce a defensible pass/fail decision
+   yet because the strict product comparator fails same-branch repeatability
+   pairs as well as branch-vs-branch pairs. The next work is therefore to turn
+   the advisory evidence into a calibrated gate.
 
-   Baseline protocol:
+   What the gate must prove:
 
-   - use `docs/source/development/performance_equivalence_contract.rst` as the
-     contract
-   - compare current branch and `master` with matched inputs, resource shape,
-     preview settings, run roots, and science checks
-   - start advisory: fail only on infrastructure errors, missing outputs,
-     failed runs, or science-equivalence failures; report performance as
-     pass/warn/fail bands until variance is characterized
-   - run `phase-only-core` first; add `dd-phase-plus-di-fulljones` once the
-     first scenario is repeatable
-   - use at least three repetitions per branch for decision-quality evidence
-     when CI/runtime budget allows; otherwise clearly label a one-repetition
-     run as a smoke baseline
-   - archive compact reports under
-     `docs/source/development/performance_equivalence_runs/` and keep raw run
-     products out of git
-
-   Do not change performance-sensitive pipeline behavior while this baseline
-   gate is being captured.
+   - all branch runs complete with return code `0`
+   - required scientific products, records, logs, and diagnostics are present
+   - current-branch outputs remain scientifically acceptable under the science
+     gate contract
+   - branch-vs-branch product differences are no larger than justified by
+     same-branch repeatability scatter, or are explicitly labelled as an
+     intentional/accepted legacy difference
+   - current runtime is faster, neutral, or slower only within the measured
+     repeatability/performance band and with a clear explanation
 
    Current setup status:
 
@@ -149,6 +140,40 @@ Do these in order unless a regression blocks progress.
      fail the current tolerances, so the next gate task is to calibrate
      pass/warn/fail bands against same-branch scatter before treating this as a
      formal gate pass.
+
+   Implementation steps to pass the gate:
+
+   - Split the reported decision into `run validity`, `science/product
+     validity`, and `performance decision`. Non-zero return codes, missing
+     outputs, or missing required diagnostics remain hard failures.
+   - Build same-branch repeatability envelopes from `master`-vs-`master` and
+     current-vs-current pairs before judging cross-branch pairs.
+   - Convert existing product classifications into explicit gate decisions:
+     `pass`, `warn`, `repeatability-bounded`, `accepted-difference`, and
+     `fail`.
+   - For FITS image products, judge cross-branch residual RMS, p99 residuals,
+     and diagnostic deltas against same-branch envelopes. Do not let isolated
+     sparse-pixel max deltas fail the gate when p99/RMS and diagnostics are
+     repeatability-bounded.
+   - For model images, document and encode the accepted comparison rule for
+     sparse model products versus WSClean-rendered products. Model-image
+     differences should be warnings or repeatability-bounded only when they do
+     not affect image diagnostics or downstream products.
+   - For h5parm products, keep structure, axes, directions, solution names, and
+     metadata strict. Add a small numeric tolerance only if it is justified by
+     solver repeatability/phase wrapping and covered by a focused test.
+   - Keep output-record auxiliary artifact basename differences as warnings
+     when final scientific product paths and records are otherwise equivalent.
+   - Update compact Markdown/JSON reports so reviewers can see: same-branch
+     envelopes, cross-branch deltas, the final decision band, and why each
+     warning is accepted.
+   - Rerun `phase-only-core` with a short run root under `/tmp`, three
+     repetitions per branch, and archive the compact report. Only then move to
+     `dd-phase-plus-di-fulljones`.
+
+   Do not make additional performance-sensitive pipeline changes until the
+   phase-only performance-equivalence gate can produce a repeatability-aware
+   decision.
 
 2. **Target the next image-side performance bottlenecks.**
    Current benchmarks consistently show the largest costs are
