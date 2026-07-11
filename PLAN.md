@@ -102,7 +102,35 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Target the next image-side performance bottlenecks.**
+1. **Freeze and run the baseline performance-equivalence gate.**
+   Do this before further optimisation. The current branch has enough accepted
+   task-boundary and science-equivalence evidence that the next useful
+   checkpoint is a branch-vs-master runtime baseline. That gives later
+   `filter_skymodel`, WSClean, and scheduling changes a stable "before"
+   reference instead of comparing against a moving target.
+
+   Baseline protocol:
+
+   - use `docs/source/development/performance_equivalence_contract.rst` as the
+     contract
+   - compare current branch and `master` with matched inputs, resource shape,
+     preview settings, run roots, and science checks
+   - start advisory: fail only on infrastructure errors, missing outputs,
+     failed runs, or science-equivalence failures; report performance as
+     pass/warn/fail bands until variance is characterized
+   - run `phase-only-core` first; add `dd-phase-plus-di-fulljones` once the
+     first scenario is repeatable
+   - use at least three repetitions per branch for decision-quality evidence
+     when CI/runtime budget allows; otherwise clearly label a one-repetition
+     run as a smoke baseline
+   - archive compact reports under
+     `docs/source/development/performance_equivalence_runs/` and keep raw run
+     products out of git
+
+   Do not change performance-sensitive pipeline behavior while this baseline
+   gate is being captured.
+
+2. **Target the next image-side performance bottlenecks.**
    Current benchmarks consistently show the largest costs are
    `filter_skymodel` and WSClean image runs. Treat calibration plotting as a
    secondary target, and only optimize it if larger/repeated runs keep showing
@@ -141,7 +169,7 @@ Do these in order unless a regression blocks progress.
    - add `ci-benchmark-wsclean-predict` only when calibration prediction setup
      or WSClean-predict paths are touched
 
-2. **Keep mosaic science coverage explicit, but targeted.**
+3. **Keep mosaic science coverage explicit, but targeted.**
    The `multi-sector-mosaic` option-matrix scenario protects sector imaging,
    regridding, and mosaic assembly, but branch-vs-master equivalence is blocked
    because `master` fails before imaging commands run with the generated CWL
@@ -160,13 +188,6 @@ Do these in order unless a regression blocks progress.
    changing mosaic behavior, WSClean-rendered model mosaics, sparse fallback,
    sector regridding, or scalability scheduling. When they are used, run them
    as targeted paired scenarios and archive compact evidence.
-
-3. **Build the scalability/performance equivalence gate.**
-   Compare current branch and master with identical inputs, resource shape,
-   preview settings, run roots, and science checks. Start advisory: fail only
-   on infrastructure errors, missing outputs, failed runs, or science
-   equivalence failures; report performance as pass/warn/fail bands until
-   variance is characterized.
 
 4. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
