@@ -1,0 +1,55 @@
+{
+  "source_run": "runs/benchmark-20260711-081953",
+  "commit": "498231dd7df90b48b980c9eb34a81e4799e126c2",
+  "ci_job": "1837072",
+  "pipeline": "201445",
+  "runner": "astron-docker-3",
+  "decision": "Accepted: calibration image-based/WSClean prediction setup split exposes expected task groups without changing external command counts.",
+  "resource_shape": {
+    "local_dask_workers": 4,
+    "cpus_per_task": 15,
+    "max_threads": 15,
+    "filter_skymodel_ncores": 15,
+    "prefect_publish_fits_previews": false
+  },
+  "profiles": {
+    "ci-benchmark": {
+      "wall_median_seconds": 182.96,
+      "command_median_seconds": 140.9,
+      "command_count": 47,
+      "dask_duration_median_seconds": 172.67,
+      "dask_compute_median_seconds": 152.46,
+      "dask_gap_median_seconds": 20.21,
+      "task_count": 61,
+      "dominant_commands": {
+        "filter_skymodel_seconds": 68.795,
+        "wsclean_seconds": 49.851,
+        "python3_seconds": 17.497,
+        "dp3_seconds": 1.825,
+        "fpack_seconds": 2.031
+      }
+    },
+    "ci-benchmark-wsclean-predict": {
+      "wall_median_seconds": 171.067,
+      "command_median_seconds": 131.277,
+      "command_count": 59,
+      "dask_duration_median_seconds": 162.88,
+      "dask_compute_median_seconds": 144.49,
+      "dask_gap_median_seconds": 18.39,
+      "task_count": 67,
+      "new_visible_task_groups": {
+        "make_predict_region_task": 2,
+        "wsclean_predict_facet_info_task": 2,
+        "wsclean_predict_chunk_task": 2
+      },
+      "dominant_commands": {
+        "filter_skymodel_seconds": 56.537,
+        "wsclean_seconds": 52.526,
+        "python3_seconds": 17.559,
+        "dp3_seconds": 1.718,
+        "fpack_seconds": 2.031
+      }
+    }
+  },
+  "next_step": "Proceed to the image-sector prepare split. Benchmark that batch with ci-benchmark and ci-benchmark-image-products; run ci-benchmark-wsclean-predict only if WSClean-predict inputs or calibration prediction setup paths are touched."
+}

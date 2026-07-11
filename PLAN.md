@@ -61,8 +61,11 @@ Accepted performance and task-boundary evidence:
 - The calibration post-processing split is accepted. It moved the real work out
   of `finalize_solutions_task`; plotting is now the main visible
   post-processing cost and is a secondary tuning target.
-- The calibration image-based/WSClean prediction setup split is implemented and
-  awaiting benchmark confirmation with `ci-benchmark-wsclean-predict`.
+- The calibration image-based/WSClean prediction setup split is accepted.
+  Benchmark `runs/benchmark-20260711-081953` confirmed clean return codes,
+  stable external command counts, and the expected new visible task groups
+  (`make_predict_region_task`, `wsclean_predict_facet_info_task`,
+  `wsclean_predict_chunk_task`) in `ci-benchmark-wsclean-predict`.
 - WSClean-rendered model mosaics are the preferred path when sector sky-model
   inputs exist. Sparse FITS mapping remains a fallback for products that cannot
   be rendered by WSClean.
@@ -83,29 +86,24 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Benchmark the calibration prediction setup split.**
-   This is the first validation target before more task splitting. Run the
-   automatic benchmark with only:
-
-   - keep: `ci-benchmark`
-   - keep: `ci-benchmark-wsclean-predict`
-   - remove from automatic CI for this batch:
-     `ci-benchmark-calibration-postprocess`, `ci-benchmark-image-products`,
-     `ci-benchmark-many-sector-mosaic`, and
-     `ci-benchmark-many-sector-mosaic-sparse-fallback`
-
-   Accept the split if command counts, task groups, Dask gap, wall time,
-   return codes, restart behavior, and raw/scientific outputs remain within
-   normal benchmark variance. Archive a compact report under
-   `docs/source/development/benchmark_baselines/`. If this benchmark regresses,
-   fix or revert the prediction setup split before continuing.
-
-2. **Split the large image-sector `prepare` task.**
+1. **Split the large image-sector `prepare` task.**
    Split only meaningful work that helps observability or multi-observation
    scaling, such as per-observation DP3 preparation, concatenation, WSClean
    imaging, bright-source restoration, and residual-visibilities production.
    Keep tiny helpers, validation, command builders, and output-record assembly
    as plain Python.
+
+   Performance targets from the latest benchmark:
+
+   - expose the WSClean imaging portion currently hidden inside `prepare`
+     because WSClean is one of the two dominant costs
+   - expose per-observation DP3 preparation and concatenation so many-MS runs
+     can reveal whether these paths are waiting unnecessarily
+   - keep `filter_skymodel` as the next optimisation candidate after the
+     prepare split; it remains the largest single command cost
+   - keep calibration plotting/Python post-processing as a secondary target;
+     `plot_solutions_task` is now visible and still contributes meaningful
+     aggregate task time
 
    Tests required: payload serializability, task dependency shape, output
    records, restart markers, and command records for each new boundary.
@@ -122,7 +120,7 @@ Do these in order unless a regression blocks progress.
    and the new task groups expose useful timing without increasing wall time
    outside normal variance.
 
-3. **Review standalone prediction parallelism.**
+2. **Review standalone prediction parallelism.**
    `postprocess` currently waits for all `predict_model_data` tasks. Review
    whether model outputs can be grouped by observation or target so each
    post-processing task starts as soon as its own model-data inputs are
@@ -136,7 +134,7 @@ Do these in order unless a regression blocks progress.
    - run `ci-benchmark-wsclean-predict` only if calibration prediction setup or
      WSClean-predict paths are touched
 
-4. **Keep mosaic science coverage explicit, but targeted.**
+3. **Keep mosaic science coverage explicit, but targeted.**
    The `multi-sector-mosaic` option-matrix scenario protects sector imaging,
    regridding, and mosaic assembly, but branch-vs-master equivalence is blocked
    because `master` fails before imaging commands run with the generated CWL
@@ -156,20 +154,20 @@ Do these in order unless a regression blocks progress.
    sector regridding, or scalability scheduling. When they are used, run them
    as targeted paired scenarios and archive compact evidence.
 
-5. **Build the scalability/performance equivalence gate.**
+4. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-6. **Guard the science-equivalence contract.**
+5. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-7. **Polish runtime UX and contributor docs after the next scalability result.**
+6. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -249,7 +247,8 @@ Task naming:
   `plot_solutions`, `predict_model_data`, `make_mosaic`.
 - Add only the smallest useful discriminator when several sibling tasks of the
   same kind can run in the same flow: `sector_1_filter_skymodel`,
-  `solve_chunk_1`, `screen_chunk_1`, `model_1`, `postprocess_1`.
+  `solve_chunk_1`, `screen_chunk_1`, `predict_model_data_1`,
+  `postprocess_1`.
 - Prefer scientific labels over numerical suffixes when they are stable and
   meaningful, for example `mosaic_I_image` instead of `mosaic_1`.
 - Keep tool identity in Prefect tags rather than cramming it into every run
@@ -280,6 +279,7 @@ Most relevant benchmark reports:
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-only-profile.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-post-split-filter-skymodel-profile.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-pre-calibration-postprocess-split.md`
+- `docs/source/development/benchmark_baselines/2026-07-11-wsclean-predict-task-split-confirmation.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-thread-wsclean-model-benchmark.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-shape-mosaic-method-comparison.md`
 
