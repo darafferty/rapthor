@@ -372,6 +372,8 @@ def test_run_rapthor_with_base_runner_command_uses_isolated_pythonpath(tmp_path,
 
     monkeypatch.setenv("PYTHONPATH", "/current/branch")
     monkeypatch.setattr(module.subprocess, "run", fake_run)
+    ticks = iter([10.0, 12.5])
+    monkeypatch.setattr(module.time, "perf_counter", lambda: next(ticks))
     prepared = module.PreparedRun(
         side="base",
         ref="master",
@@ -384,10 +386,45 @@ def test_run_rapthor_with_base_runner_command_uses_isolated_pythonpath(tmp_path,
     result = module._run_rapthor_from_repo(prepared, runner_command=[str(command)])
 
     assert result.returncode == 0
+    assert result.elapsed_seconds == 2.5
     assert captured["command"] == [str(command), str(tmp_path / "input.parset")]
     assert "PYTHONPATH" not in captured["env"]
     assert captured["env"]["PATH"].split(os.pathsep)[0] == str(command_dir)
     assert (tmp_path / "run" / "rapthor-command.log").read_text(encoding="utf-8") == "ok\n"
+
+
+def test_runtime_summary_reports_min_median_max_and_delta(tmp_path):
+    module = load_branch_equivalence_script()
+    base_runs = [
+        module.PreparedRun("base", "master", tmp_path, tmp_path, tmp_path, tmp_path),
+        module.PreparedRun("base", "master", tmp_path, tmp_path, tmp_path, tmp_path),
+        module.PreparedRun("base", "master", tmp_path, tmp_path, tmp_path, tmp_path),
+    ]
+    current_runs = [
+        module.PreparedRun("current", "current", tmp_path, tmp_path, tmp_path, tmp_path),
+        module.PreparedRun("current", "current", tmp_path, tmp_path, tmp_path, tmp_path),
+        module.PreparedRun("current", "current", tmp_path, tmp_path, tmp_path, tmp_path),
+    ]
+    for prepared, elapsed in zip(base_runs, [10.0, 12.0, 14.0]):
+        prepared.elapsed_seconds = elapsed
+    for prepared, elapsed in zip(current_runs, [9.0, 11.0, 13.0]):
+        prepared.elapsed_seconds = elapsed
+
+    summary = module._runtime_summary({"base": base_runs, "current": current_runs})
+
+    assert summary["base"] == {
+        "count": 3,
+        "min_seconds": 10.0,
+        "median_seconds": 12.0,
+        "max_seconds": 14.0,
+    }
+    assert summary["current"] == {
+        "count": 3,
+        "min_seconds": 9.0,
+        "median_seconds": 11.0,
+        "max_seconds": 13.0,
+    }
+    assert summary["current_vs_base_median_delta_percent"] == pytest.approx(-1.0 / 12.0)
 
 
 def _write_fits(path, data):
@@ -686,6 +723,7 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
         "base": {
             "ref": "master",
             "returncode": 0,
+            "elapsed_seconds": 12.3456,
             "parset_path": "base.parset",
             "work_dir": "base-work",
             "log_path": "base.log",
@@ -693,9 +731,25 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
         "current": {
             "ref": "current",
             "returncode": 0,
+            "elapsed_seconds": 10.0,
             "parset_path": "current.parset",
             "work_dir": "current-work",
             "log_path": "current.log",
+        },
+        "runtime_summary": {
+            "base": {
+                "count": 1,
+                "min_seconds": 12.3456,
+                "median_seconds": 12.3456,
+                "max_seconds": 12.3456,
+            },
+            "current": {
+                "count": 1,
+                "min_seconds": 10.0,
+                "median_seconds": 10.0,
+                "max_seconds": 10.0,
+            },
+            "current_vs_base_median_delta_percent": -0.19,
         },
         "comparison": {
             "passed": True,
@@ -721,6 +775,9 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
     assert "# Rapthor Branch Equivalence" in markdown
     assert "`base.parset`" in markdown
     assert "`current.parset`" in markdown
+    assert "## Runtime Summary" in markdown
+    assert "12.346" in markdown
+    assert "Current-vs-base median delta: -19.000%" in markdown
     assert "## Difference Classification" in markdown
     assert "`small_image_residual`" in markdown
     assert "## Adaptations" not in markdown
@@ -760,6 +817,7 @@ def test_prepare_only_writes_reports_without_running_branches(tmp_path):
     manifest = json.loads((run_root / "scenario-manifest.json").read_text())
     assert "adaptations" not in report
     assert report["base"]["parset_path"] == str(base_parset)
+    assert report["runtime_summary"]["base"]["count"] == 0
     assert report["current"]["parset_path"] == str(current_parset)
     assert report["base"]["input_snapshot"] == {
         "parset": "inputs/base/base.parset",
@@ -798,6 +856,7 @@ def test_repeatability_prepare_only_writes_summary_and_generated_inputs(tmp_path
     summary = json.loads((run_root / "repeatability-summary.json").read_text())
     assert (run_root / "repeatability-summary.md").is_file()
     assert summary["repetitions"] == 2
+    assert summary["runtime_summary"]["current"]["count"] == 0
     assert len(summary["planned_pairs"]) == 6
     assert summary["pair_summaries"] == []
     assert summary["runs"]["base"]["rep-01"]["work_dir"] == str(

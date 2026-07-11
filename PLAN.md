@@ -130,6 +130,15 @@ Do these in order unless a regression blocks progress.
    Do not change performance-sensitive pipeline behavior while this baseline
    gate is being captured.
 
+   Current setup status:
+
+   - `scripts/dev/run_branch_equivalence.py` now records elapsed seconds for
+     each branch run and writes runtime min/median/max summaries.
+   - The `phase-only-core` prepare-only smoke has been validated with
+     `--repeatability-repetitions 3`; it writes the expected 15 planned pairs.
+   - Baseline run instructions live in
+     `docs/source/development/performance_equivalence_runs/README.md`.
+
 2. **Target the next image-side performance bottlenecks.**
    Current benchmarks consistently show the largest costs are
    `filter_skymodel` and WSClean image runs. Treat calibration plotting as a

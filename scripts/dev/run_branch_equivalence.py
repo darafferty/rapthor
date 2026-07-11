@@ -93,6 +93,7 @@ class PreparedRun:
     work_dir: Path
     command: list[str] = field(default_factory=list)
     returncode: int | None = None
+    elapsed_seconds: float | None = None
     log_path: Path | None = None
     input_snapshot: dict[str, str] = field(default_factory=dict)
 
@@ -379,15 +380,19 @@ def _run_rapthor_from_repo(
             env.get("PATH", ""),
         ]
     )
-    completed = subprocess.run(
-        command,
-        cwd=prepared.repo_root,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-        env=env,
-    )
+    start = time.perf_counter()
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=prepared.repo_root,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+            env=env,
+        )
+    finally:
+        prepared.elapsed_seconds = time.perf_counter() - start
     log_path = prepared.run_dir / "rapthor-command.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_path.write_text(completed.stdout, encoding="utf-8")
@@ -923,6 +928,48 @@ def _run_as_dict(prepared: PreparedRun) -> dict[str, Any]:
     return data
 
 
+def _elapsed_values(prepared_runs: Sequence[PreparedRun]) -> list[float]:
+    values = []
+    for prepared in prepared_runs:
+        value = prepared.elapsed_seconds
+        if value is not None and math.isfinite(float(value)):
+            values.append(float(value))
+    return values
+
+
+def _median(values: Sequence[float]) -> float | None:
+    if not values:
+        return None
+    sorted_values = sorted(values)
+    midpoint = len(sorted_values) // 2
+    if len(sorted_values) % 2:
+        return sorted_values[midpoint]
+    return (sorted_values[midpoint - 1] + sorted_values[midpoint]) / 2.0
+
+
+def _runtime_stats(prepared_runs: Sequence[PreparedRun]) -> dict[str, Any]:
+    values = _elapsed_values(prepared_runs)
+    return {
+        "count": len(values),
+        "min_seconds": min(values) if values else None,
+        "median_seconds": _median(values),
+        "max_seconds": max(values) if values else None,
+    }
+
+
+def _runtime_summary(
+    runs_by_side: dict[str, Sequence[PreparedRun]],
+) -> dict[str, Any]:
+    summary = {side: _runtime_stats(prepared_runs) for side, prepared_runs in runs_by_side.items()}
+    base_median = summary.get("base", {}).get("median_seconds")
+    current_median = summary.get("current", {}).get("median_seconds")
+    delta_percent = None
+    if base_median not in (None, 0) and current_median is not None:
+        delta_percent = (float(current_median) - float(base_median)) / float(base_median)
+    summary["current_vs_base_median_delta_percent"] = delta_percent
+    return summary
+
+
 def _comparison_as_dict(comparison: saved_equivalence.ComparisonResult) -> dict[str, Any]:
     return {
         "passed": comparison.passed,
@@ -1259,6 +1306,15 @@ def _format_percent(value: Any) -> str:
     return f"{float(value) * 100:.3f}%"
 
 
+def _format_seconds(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    number = float(value)
+    if not math.isfinite(number):
+        return "n/a"
+    return f"{number:.3f}"
+
+
 def _max_finite_metric(metrics: list[dict[str, Any]], key: str) -> float | None:
     values = []
     for metric in metrics:
@@ -1340,15 +1396,16 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
                 f"Repeatability pair: `{pair['pair_id']}` "
                 f"({pair['reference']} -> {pair['current']})",
                 "",
-                "| Role | Repetition | Ref | Return Code | Parset | Work Dir | Log |",
-                "| --- | --- | --- | ---: | --- | --- | --- |",
+                "| Role | Repetition | Ref | Return Code | Elapsed (s) | Parset | Work Dir | Log |",
+                "| --- | --- | --- | ---: | ---: | --- | --- | --- |",
             ]
         )
     else:
         lines.extend(
             [
-                "| Side | Ref | Return Code | Parset | Work Dir | Log | Input Snapshot |",
-                "| --- | --- | ---: | --- | --- | --- | --- |",
+                "| Side | Ref | Return Code | Elapsed (s) | Parset | Work Dir | Log | "
+                "Input Snapshot |",
+                "| --- | --- | ---: | ---: | --- | --- | --- | --- |",
             ]
         )
     for side in ("base", "current"):
@@ -1359,6 +1416,7 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
             lines.append(
                 "| "
                 f"{role} | `{repetition}` | `{run['ref']}` | {run.get('returncode')} | "
+                f"{_format_seconds(run.get('elapsed_seconds'))} | "
                 f"`{run['parset_path']}` | `{run['work_dir']}` | "
                 f"`{run.get('log_path')}` |"
             )
@@ -1370,9 +1428,38 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
             lines.append(
                 "| "
                 f"{side} | `{run['ref']}` | {run.get('returncode')} | "
+                f"{_format_seconds(run.get('elapsed_seconds'))} | "
                 f"`{run['parset_path']}` | `{run['work_dir']}` | "
                 f"`{run.get('log_path')}` | {snapshot_text} |"
             )
+
+    runtime_summary = report.get("runtime_summary")
+    if runtime_summary:
+        lines.extend(
+            [
+                "",
+                "## Runtime Summary",
+                "",
+                "| Side | Runs | Min (s) | Median (s) | Max (s) |",
+                "| --- | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for side in ("base", "current"):
+            stats = runtime_summary.get(side, {})
+            lines.append(
+                "| "
+                f"{side} | {stats.get('count', 0)} | "
+                f"{_format_seconds(stats.get('min_seconds'))} | "
+                f"{_format_seconds(stats.get('median_seconds'))} | "
+                f"{_format_seconds(stats.get('max_seconds'))} |"
+            )
+        lines.extend(
+            [
+                "",
+                "Current-vs-base median delta: "
+                f"{_format_percent(runtime_summary.get('current_vs_base_median_delta_percent'))}",
+            ]
+        )
 
     lines.extend(
         [
@@ -1506,6 +1593,7 @@ def _write_reports(
         "run_root": str(run_root),
         "base": _run_as_dict(base),
         "current": _run_as_dict(current),
+        "runtime_summary": _runtime_summary({"base": [base], "current": [current]}),
         "comparison": _comparison_as_dict(comparison),
     }
     (run_root / "branch-equivalence-report.json").write_text(
@@ -1556,6 +1644,7 @@ def _write_pair_report(
         },
         "base": _run_as_dict(reference),
         "current": _run_as_dict(current),
+        "runtime_summary": _runtime_summary({"base": [reference], "current": [current]}),
         "comparison": _comparison_as_dict(comparison),
     }
     json_path = pair_dir / "branch-equivalence-report.json"
@@ -1592,17 +1681,46 @@ def _render_repeatability_summary(report: dict[str, Any]) -> str:
         "",
         "## Branch Runs",
         "",
-        "| Side | Repetition | Ref | Return Code | Parset | Work Dir | Log |",
-        "| --- | --- | --- | ---: | --- | --- | --- |",
+        "| Side | Repetition | Ref | Return Code | Elapsed (s) | Parset | Work Dir | Log |",
+        "| --- | --- | --- | ---: | ---: | --- | --- | --- |",
     ]
     for side, runs in report["runs"].items():
         for rep_label, run in runs.items():
             lines.append(
                 "| "
                 f"{side} | `{rep_label}` | `{run['ref']}` | {run.get('returncode')} | "
+                f"{_format_seconds(run.get('elapsed_seconds'))} | "
                 f"`{run['parset_path']}` | `{run['work_dir']}` | "
                 f"`{run.get('log_path')}` |"
             )
+
+    runtime_summary = report.get("runtime_summary")
+    if runtime_summary:
+        lines.extend(
+            [
+                "",
+                "## Runtime Summary",
+                "",
+                "| Side | Runs | Min (s) | Median (s) | Max (s) |",
+                "| --- | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for side in ("base", "current"):
+            stats = runtime_summary.get(side, {})
+            lines.append(
+                "| "
+                f"{side} | {stats.get('count', 0)} | "
+                f"{_format_seconds(stats.get('min_seconds'))} | "
+                f"{_format_seconds(stats.get('median_seconds'))} | "
+                f"{_format_seconds(stats.get('max_seconds'))} |"
+            )
+        lines.extend(
+            [
+                "",
+                "Current-vs-base median delta: "
+                f"{_format_percent(runtime_summary.get('current_vs_base_median_delta_percent'))}",
+            ]
+        )
 
     lines.extend(
         [
@@ -1681,6 +1799,9 @@ def _write_repeatability_summary(
         "run_root": str(run_root),
         "repetitions": repetitions,
         "runs": _repeatability_runs_payload(runs_by_side),
+        "runtime_summary": _runtime_summary(
+            {side: list(runs.values()) for side, runs in runs_by_side.items()}
+        ),
         "planned_pairs": planned_pairs,
         "pair_summaries": pair_summaries,
     }

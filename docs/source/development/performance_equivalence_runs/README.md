@@ -1,0 +1,45 @@
+# Performance Equivalence Runs
+
+Compact milestone reports for the branch-vs-master performance gate belong in
+this directory. Keep raw Measurement Sets, FITS products, h5parm files, full
+logs, Dask HTML reports, and run working directories out of git.
+
+Use `docs/source/development/performance_equivalence_contract.rst` as the
+contract for deciding whether a run is valid and how to interpret the result.
+
+## Baseline Gate
+
+Run the first gate before making further performance-sensitive optimisation
+changes. Start with the phase-only scenario because both branches can run it
+without the known legacy slow-gain combination limitations.
+
+Prepare-only smoke:
+
+```bash
+python3 scripts/dev/run_branch_equivalence.py \
+  --scenario-id phase-only-core-performance-baseline \
+  --base-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/base/master_benchmark_phase_only.parset \
+  --current-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/current/current_benchmark_phase_only.parset \
+  --run-root /tmp/rapthor-performance-gate-prepare-phase-only \
+  --prepare-only \
+  --repeatability-repetitions 3
+```
+
+Full advisory baseline:
+
+```bash
+python3 scripts/dev/run_branch_equivalence.py \
+  --scenario-id phase-only-core-performance-baseline \
+  --base-ref master \
+  --base-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/base/master_benchmark_phase_only.parset \
+  --current-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/current/current_benchmark_phase_only.parset \
+  --run-root runs/performance-gate-phase-only-core-$(date -u +%Y%m%d-%H%M%S) \
+  --repeatability-repetitions 3 \
+  --setup-base-env \
+  --base-system-site-packages \
+  --base-install-spec .
+```
+
+The runner writes elapsed wall-clock seconds for each branch repetition and a
+runtime summary with min, median, max, and current-vs-base median delta. Archive
+the compact JSON/Markdown report here after the full gate completes.
