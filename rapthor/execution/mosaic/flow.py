@@ -22,8 +22,9 @@ from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mos
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.run_names import operation_run_name, task_run_name
+from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
 from rapthor.execution.shell import run_external_command
+from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import file_record_path, validate_output_record
 
@@ -205,7 +206,7 @@ def mosaic_template_task(
     pipeline_working_dir: str,
 ) -> dict:
     """Prefect task wrapper for the shared mosaic template."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         return run_mosaic_template(mosaic_product, pipeline_working_dir)
 
 
@@ -218,7 +219,7 @@ def mosaic_task(
     execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     """Prefect task wrapper for one mosaic product."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         return run_mosaic_product(
             mosaic_product,
             compress_images,
@@ -248,6 +249,18 @@ def _mosaic_task_run_name(mosaic_product: MosaicProductPayload, index: int) -> s
     return task_run_name("mosaic", label or index + 1)
 
 
+def _mosaic_task_tags(mosaic_product: MosaicProductPayload, compress_images: bool) -> list[str]:
+    """Return tool/runtime tags for one mosaic product task."""
+    tags = ["python"]
+    if mosaic_product["sector_model_skymodel_filenames"] and is_sparse_model_product(
+        mosaic_product["mosaic_filename"]
+    ):
+        tags.append("wsclean")
+    if compress_images:
+        tags.append("fpack")
+    return tags
+
+
 def _run_mosaic_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
@@ -259,13 +272,18 @@ def _run_mosaic_prefect_tasks(
 
     config = execution_config or ExecutionConfig(task_runner="sync")
     template_record = mosaic_template_task.with_options(
-        task_run_name="make_mosaic_template"
+        **task_run_options("make_mosaic_template", tags=["python"])
     ).submit(
         payload["mosaic_products"][0],
         payload["pipeline_working_dir"],
     )
     outputs = [
-        mosaic_task.with_options(task_run_name=_mosaic_task_run_name(mosaic_product, index)).submit(
+        mosaic_task.with_options(
+            **task_run_options(
+                _mosaic_task_run_name(mosaic_product, index),
+                tags=_mosaic_task_tags(mosaic_product, payload["compress_images"]),
+            )
+        ).submit(
             mosaic_product,
             payload["compress_images"],
             payload["pipeline_working_dir"],

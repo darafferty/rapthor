@@ -302,6 +302,7 @@ def test_publish_fits_postage_stamp_artifacts_renders_brightest_catalog_sources(
     assert records[0]["clip_percentile"] == 99.8
     assert records[0]["display_vmin"] < records[0]["display_vmax"]
     assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
+    assert Path(records[0]["path"]).parent == tmp_path / "images" / "image_1" / "postage-stamps"
     assert [call[0] for call in recorder.calls] == ["image", "image"]
     assert recorder.calls[0][1]["key"].startswith(
         "rapthor-postage-stamp-preview-image-1-sector-1-mfs-i-image-pb-fits-source-01-"
@@ -452,6 +453,7 @@ def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
                 (
                     '{"operation": "calibrate_1", "name": "solve", '
                     '"status": "completed", "duration_seconds": 12.5, '
+                    '"task_run_name": "solve_chunk_1", '
                     '"profile": {"resource_metrics": {"cpu_percent": 150.0, '
                     '"max_rss_kb": 1048576, "file_system_inputs": 8, '
                     '"file_system_outputs": 16}}, '
@@ -470,6 +472,14 @@ def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
         + "\n",
         encoding="utf-8",
     )
+    (log_dir / "tasks.jsonl").write_text(
+        (
+            '{"operation": "calibrate_1", "task_name": "chunk", '
+            '"task_run_name": "solve_chunk_1", "task_tags": ["dp3"], '
+            '"status": "completed", "duration_seconds": 13.0}\n'
+        ),
+        encoding="utf-8",
+    )
     recorder = RecordingArtifactWriters()
 
     artifact_id = publish_command_metrics_artifact(
@@ -484,14 +494,20 @@ def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
     assert markdown_call["key"] == "rapthor-command-metrics"
     assert "# Rapthor command timings" in markdown_call["markdown"]
     assert "Total recorded external-command time: `1.23 min`" in markdown_call["markdown"]
+    assert "Total recorded Prefect task time: `13.00 s`" in markdown_call["markdown"]
     assert "## Bottleneck summary" in markdown_call["markdown"]
+    assert "## Prefect task runtimes" in markdown_call["markdown"]
     assert "- Highest peak memory: `image_1/wsclean` at `2.00 GB`" in markdown_call["markdown"]
     assert (
-        "| calibrate_1 | solve | completed | 12.50 s | 150% | 1.00 GB | 8 | 16 | "
+        "| calibrate_1 | solve_chunk_1 | chunk | dp3 | completed | 13.00 s |"
+        in markdown_call["markdown"]
+    )
+    assert (
+        "| calibrate_1 | solve_chunk_1 | solve | completed | 12.50 s | 150% | 1.00 GB | 8 | 16 | "
         "`DP3 msin=input.ms` |" in markdown_call["markdown"]
     )
     assert (
-        "| image_1 | wsclean | failed | 1.02 min | 95% | 2.00 GB | 128 | 256 | "
+        "| image_1 |  | wsclean | failed | 1.02 min | 95% | 2.00 GB | 128 | 256 | "
         "`wsclean -name sector` |" in markdown_call["markdown"]
     )
     image_call = recorder.calls[1][1]

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Optional
 
 from rapthor.execution.prefect_context import in_prefect_run_context
+from rapthor.execution.task_metrics import TASK_LOG_FILENAME
 
 log = logging.getLogger("rapthor")
 
@@ -125,6 +126,14 @@ def _fits_postage_stamp_path(
     relative_path = _relative_artifact_path(fits_path, root_dir, include_root_name=False)
     stem = _slug(relative_path, max_length=100)
     return preview_dir / f"{stem}-source-{source_rank:02d}.png"
+
+
+def _default_postage_stamp_dir(root_dir: Path) -> Path:
+    """Return the durable postage-stamp directory for a pipeline operation."""
+    root_dir = Path(root_dir)
+    if root_dir.parent.name == "pipelines" and root_dir.name:
+        return root_dir.parent.parent / "images" / root_dir.name / "postage-stamps"
+    return root_dir / ".rapthor-artifacts" / "postage-stamps"
 
 
 def _postage_stamp_label(fits_path: Path) -> str:
@@ -456,20 +465,31 @@ def _command_log_path(working_dir: Path) -> Path:
     return working_dir / "logs" / COMMAND_LOG_FILENAME
 
 
-def _command_metric_records(working_dir: Path) -> list[dict]:
-    log_path = _command_log_path(working_dir)
-    if not log_path.exists():
+def _task_log_path(working_dir: Path) -> Path:
+    return working_dir / "logs" / TASK_LOG_FILENAME
+
+
+def _jsonl_records(path: Path, *, record_type: str) -> list[dict]:
+    if not path.exists():
         return []
 
     records = []
-    for line in log_path.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         try:
             records.append(json.loads(line))
         except json.JSONDecodeError:
-            log.warning("Skipping malformed command metric line in %s", log_path)
+            log.warning("Skipping malformed %s metric line in %s", record_type, path)
     return records
+
+
+def _command_metric_records(working_dir: Path) -> list[dict]:
+    return _jsonl_records(_command_log_path(working_dir), record_type="command")
+
+
+def _task_metric_records(working_dir: Path) -> list[dict]:
+    return _jsonl_records(_task_log_path(working_dir), record_type="task")
 
 
 def _markdown_cell(value: object, *, max_length: int = 120) -> str:
@@ -574,6 +594,15 @@ def _record_label(record: Mapping[str, object]) -> str:
     return f"{operation}/{name}"
 
 
+def _task_record_name(record: Mapping[str, object]) -> str:
+    return str(record.get("task_run_name") or record.get("task_name") or "task")
+
+
+def _task_record_label(record: Mapping[str, object]) -> str:
+    operation = str(record.get("operation") or "operation")
+    return f"{operation}/{_task_record_name(record)}"
+
+
 def _top_metric_line(
     label: str,
     records: list[dict],
@@ -662,23 +691,39 @@ def _command_profile_chart_path(working_dir: Path) -> Path:
     return working_dir / "logs" / "command-profile-summary.png"
 
 
-def render_command_profile_chart(working_dir: Path, records: list[dict]) -> Optional[Path]:
-    """Render CPU, memory, I/O, and duration summaries for external commands."""
-    records = [
+def render_command_profile_chart(
+    working_dir: Path,
+    records: list[dict],
+    task_records: Optional[list[dict]] = None,
+) -> Optional[Path]:
+    """Render CPU, memory, I/O, and duration summaries for commands and tasks."""
+    command_records = [
         record
         for record in records
         if isinstance(record.get("duration_seconds"), (int, float)) or _resource_metrics(record)
     ]
-    if not records:
+    task_records = [
+        record
+        for record in (task_records or [])
+        if isinstance(record.get("duration_seconds"), (int, float))
+    ]
+    chart_records = [
+        {**record, "_profile_label": _record_label(record), "_profile_type": "command"}
+        for record in command_records
+    ] + [
+        {**record, "_profile_label": _task_record_label(record), "_profile_type": "task"}
+        for record in task_records
+    ]
+    if not chart_records:
         return None
 
     top_records = sorted(
-        records,
+        chart_records,
         key=lambda record: float(record.get("duration_seconds") or 0.0),
         reverse=True,
     )[:20]
     top_records.reverse()
-    labels = [_record_label(record) for record in top_records]
+    labels = [f"{record['_profile_label']} ({record['_profile_type']})" for record in top_records]
     y_positions = list(range(len(top_records)))
 
     import matplotlib
@@ -726,7 +771,7 @@ def render_command_profile_chart(working_dir: Path, records: list[dict]) -> Opti
         ax.set_yticklabels(labels, fontsize=7)
         ax.grid(axis="x", alpha=0.25)
 
-    fig.suptitle("Rapthor external command profile summary", fontsize=12)
+    fig.suptitle("Rapthor command and task profile summary", fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     chart_path = _command_profile_chart_path(Path(working_dir))
     chart_path.parent.mkdir(parents=True, exist_ok=True)
@@ -735,23 +780,48 @@ def render_command_profile_chart(working_dir: Path, records: list[dict]) -> Opti
     return chart_path
 
 
-def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
+def _tag_text(value: object) -> str:
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(str(item) for item in value)
+    return "" if value is None else str(value)
+
+
+def _command_metrics_markdown(
+    working_dir: Path,
+    records: list[dict],
+    task_records: Optional[list[dict]] = None,
+) -> str:
     log_path = _command_log_path(working_dir)
+    task_log = _task_log_path(working_dir)
     durations = [
         float(record["duration_seconds"])
         for record in records
+        if isinstance(record.get("duration_seconds"), (int, float))
+    ]
+    task_records = task_records or []
+    task_durations = [
+        float(record["duration_seconds"])
+        for record in task_records
         if isinstance(record.get("duration_seconds"), (int, float))
     ]
     lines = [
         "# Rapthor command timings",
         "",
         f"Source: `{log_path}`",
+        f"Task source: `{task_log}`",
         "",
     ]
     if durations:
         lines.extend(
             [
                 f"Total recorded external-command time: `{_duration_text(sum(durations))}`",
+                "",
+            ]
+        )
+    if task_durations:
+        lines.extend(
+            [
+                f"Total recorded Prefect task time: `{_duration_text(sum(task_durations))}`",
                 "",
             ]
         )
@@ -774,10 +844,33 @@ def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
             lines.append(f"- `{record['label']}`: [local SVG]({_local_file_url(record['path'])})")
         lines.append("")
 
+    if task_records:
+        lines.extend(
+            [
+                "## Prefect task runtimes",
+                "",
+                "| Operation | Task run | Task | Tags | Status | Duration |",
+                "| --- | --- | --- | --- | --- | ---: |",
+            ]
+        )
+        for record in task_records:
+            lines.append(
+                "| "
+                f"{_markdown_cell(record.get('operation'))} | "
+                f"{_markdown_cell(record.get('task_run_name'))} | "
+                f"{_markdown_cell(record.get('task_name'))} | "
+                f"{_markdown_cell(_tag_text(record.get('task_tags')))} | "
+                f"{_markdown_cell(record.get('status'))} | "
+                f"{_markdown_cell(_duration_text(record.get('duration_seconds')))} |"
+            )
+        lines.append("")
+
     lines.extend(
         [
-            "| Operation | Name | Status | Duration | CPU | Max RSS | FS In | FS Out | Command |",
-            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+            "## External command runtimes",
+            "",
+            "| Operation | Task run | Name | Status | Duration | CPU | Max RSS | FS In | FS Out | Command |",
+            "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
         ]
     )
     for record in records:
@@ -788,6 +881,7 @@ def _command_metrics_markdown(working_dir: Path, records: list[dict]) -> str:
         lines.append(
             "| "
             f"{_markdown_cell(record.get('operation'))} | "
+            f"{_markdown_cell(record.get('task_run_name'))} | "
             f"{_markdown_cell(_command_name(record))} | "
             f"{_markdown_cell(record.get('status'))} | "
             f"{_markdown_cell(_duration_text(record.get('duration_seconds')))} | "
@@ -957,7 +1051,7 @@ def publish_fits_postage_stamp_artifacts(
     root_dir = Path(root_dir)
     image_path = Path(str(image_record["path"]))
     source_catalog_path = Path(str(source_catalog_record["path"]))
-    preview_dir = Path(preview_dir or root_dir / ".rapthor-artifacts" / "postage-stamps")
+    preview_dir = Path(preview_dir or _default_postage_stamp_dir(root_dir))
     try:
         stamp_records = render_fits_postage_stamp_pngs(
             image_path,
@@ -1118,19 +1212,20 @@ def publish_command_metrics_artifact(
     """Publish a Markdown summary of external-command timings, if available."""
     working_dir = Path(working_dir)
     records = _command_metric_records(working_dir)
-    if not records:
+    task_records = _task_metric_records(working_dir)
+    if not records and not task_records:
         return None
     if not in_run_context():
         return None
 
     writers = artifact_writers or _prefect_artifact_writers()
     artifact_id = writers.markdown(
-        markdown=_command_metrics_markdown(working_dir, records),
+        markdown=_command_metrics_markdown(working_dir, records, task_records),
         key=COMMAND_METRICS_ARTIFACT_KEY,
-        description="Rapthor external-command timing summary.",
+        description="Rapthor task and external-command timing summary.",
     )
     try:
-        chart_path = render_command_profile_chart(working_dir, records)
+        chart_path = render_command_profile_chart(working_dir, records, task_records)
     except Exception as err:
         log.warning("Failed to render command profile chart for %s: %s", working_dir, err)
     else:
@@ -1138,7 +1233,7 @@ def publish_command_metrics_artifact(
             writers.image(
                 image_url=_data_url(chart_path),
                 key=COMMAND_PROFILE_SUMMARY_ARTIFACT_KEY,
-                description="Rapthor external-command CPU, memory, I/O, and timing summary.",
+                description="Rapthor task and external-command CPU, memory, I/O, and timing summary.",
             )
     for flamegraph in _command_flamegraph_records(records):
         writers.image(

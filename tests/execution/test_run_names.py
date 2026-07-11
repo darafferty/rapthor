@@ -1,4 +1,10 @@
-from rapthor.execution.run_names import operation_cycle, operation_run_name, task_run_name
+from rapthor.execution.run_names import (
+    operation_cycle,
+    operation_run_name,
+    task_run_name,
+    task_run_options,
+    task_tags,
+)
 
 
 def test_operation_run_name_adds_mode_to_cycle_operation():
@@ -38,3 +44,14 @@ def test_operation_cycle_returns_none_when_missing():
 def test_task_run_name_appends_clean_suffixes():
     assert task_run_name("chunk", 1) == "chunk_1"
     assert task_run_name("sector 1", "filter skymodel") == "sector_1_filter_skymodel"
+
+
+def test_task_tags_are_sanitized_and_stable():
+    assert task_tags("DP3", "python helper", "DP3", "", None) == ["dp3", "python_helper"]
+
+
+def test_task_run_options_builds_name_and_tags_for_prefect():
+    assert task_run_options("solve chunk", 1, tags=["DP3"]) == {
+        "task_run_name": "solve_chunk_1",
+        "tags": ["dp3"],
+    }

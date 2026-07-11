@@ -20,8 +20,9 @@ from rapthor.execution.predict.payloads import (
 from rapthor.execution.predict.sector_model_addition import add_sector_models
 from rapthor.execution.predict.sector_model_subtraction import subtract_sector_models
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.run_names import operation_run_name, task_run_name
+from rapthor.execution.run_names import operation_run_name, task_run_options
 from rapthor.execution.shell import run_external_command
+from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import directory_record, validate_output_record
 
@@ -157,7 +158,7 @@ def predict_model_data_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one DP3 prediction."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         return run_predict_model_data(
             predict_task,
             pipeline_working_dir,
@@ -174,7 +175,7 @@ def predict_postprocess_task(
     pipeline_working_dir: str,
 ) -> list[dict]:
     """Prefect task wrapper for DI add or DD subtract post-processing."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         return run_predict_postprocess(
             mode,
             postprocess_task,
@@ -199,7 +200,7 @@ def _run_predict_prefect_tasks(
     payload = validate_predict_payload(payload)
     model_outputs = [
         predict_model_data_task.with_options(
-            task_run_name=task_run_name("model", index + 1)
+            **task_run_options("predict_model_data", index + 1, tags=["dp3"])
         ).submit(
             predict_task,
             payload["pipeline_working_dir"],
@@ -210,7 +211,7 @@ def _run_predict_prefect_tasks(
     model_outputs = [output.result() for output in model_outputs]
     postprocess_outputs = [
         predict_postprocess_task.with_options(
-            task_run_name=task_run_name("postprocess", index + 1)
+            **task_run_options("postprocess", index + 1, tags=["python", "casacore"])
         ).submit(
             payload["mode"],
             postprocess_task,

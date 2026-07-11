@@ -215,9 +215,11 @@ def test_image_flow_submits_plain_sector_task_payloads(monkeypatch, task_runner)
     assert [submission["options"]["task_run_name"] for submission in prepare_task.submissions] == [
         "prepare",
     ]
+    assert prepare_task.submissions[0]["options"]["tags"] == ["dp3", "wsclean"]
     assert [submission["options"]["task_run_name"] for submission in filter_task.submissions] == [
         "filter_skymodel",
     ]
+    assert filter_task.submissions[0]["options"]["tags"] == ["python"]
     assert [
         submission["options"]["task_run_name"] for submission in diagnostics_task.submissions
     ] == [
@@ -561,8 +563,9 @@ def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypa
     assert [
         submission["options"]["task_run_name"] for submission in calibrate_task.submissions
     ] == [
-        "chunk_1",
+        "solve_chunk_1",
     ]
+    assert calibrate_task.submissions[0]["options"]["tags"] == ["dp3"]
     assert [submission["options"]["task_run_name"] for submission in collect_task.submissions] == [
         "collect_h5parms_1",
         "collect_h5parms_2",
@@ -694,9 +697,11 @@ def test_calibrate_flow_submits_image_predict_preparation_tasks(monkeypatch):
     assert [submission["options"]["task_run_name"] for submission in region_task.submissions] == [
         "make_predict_region",
     ]
+    assert region_task.submissions[0]["options"]["tags"] == ["python"]
     assert [submission["options"]["task_run_name"] for submission in draw_task.submissions] == [
         "draw_model",
     ]
+    assert draw_task.submissions[0]["options"]["tags"] == ["wsclean"]
     assert facet_task.submissions == []
     assert wsclean_task.submissions == []
     assert normalization_task.submissions == []
@@ -766,6 +771,7 @@ def test_calibrate_flow_submits_wsclean_predict_chunk_tasks(monkeypatch):
     _assert_worker_submission_is_serializable(facet_task.submissions[0], config)
     _assert_worker_submission_is_serializable(wsclean_task.submissions[0], config)
     assert facet_task.submissions[0]["args"][0] is region_task.futures[0]
+    assert facet_task.submissions[0]["args"][1] == payload["pipeline_working_dir"]
     assert wsclean_task.submissions[0]["args"][3] is facet_task.futures[0]
 
 
@@ -785,13 +791,15 @@ def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypa
 
     assert result == {"msfiles_di_cal": [[directory_record("/work/predict_1/postprocess_1.ms")]]}
     assert [submission["options"]["task_run_name"] for submission in model_task.submissions] == [
-        "model_1",
+        "predict_model_data_1",
     ]
+    assert model_task.submissions[0]["options"]["tags"] == ["dp3"]
     assert [
         submission["options"]["task_run_name"] for submission in postprocess_task.submissions
     ] == [
         "postprocess_1",
     ]
+    assert postprocess_task.submissions[0]["options"]["tags"] == ["casacore", "python"]
     _assert_worker_submission_is_serializable(model_task.submissions[0], config)
     _assert_worker_submission_is_serializable(postprocess_task.submissions[0], config)
 
@@ -814,9 +822,11 @@ def test_mosaic_flow_submits_plain_payloads_with_mosaic_product_names(monkeypatc
     assert [submission["options"]["task_run_name"] for submission in template_task.submissions] == [
         "make_mosaic_template",
     ]
+    assert template_task.submissions[0]["options"]["tags"] == ["python"]
     assert [submission["options"]["task_run_name"] for submission in mosaic_task.submissions] == [
         "mosaic_I_image",
     ]
+    assert mosaic_task.submissions[0]["options"]["tags"] == ["python"]
     _assert_worker_submission_is_serializable(template_task.submissions[0], config)
     _assert_worker_submission_is_serializable(mosaic_task.submissions[0], config)
 
@@ -837,6 +847,7 @@ def test_concatenate_flow_submits_plain_payloads_with_epoch_names(monkeypatch):
     assert [
         submission["options"]["task_run_name"] for submission in concatenate_task.submissions
     ] == [
-        "epoch_1",
+        "concatenate_epoch_1",
     ]
+    assert concatenate_task.submissions[0]["options"]["tags"] == ["casacore"]
     _assert_worker_submission_is_serializable(concatenate_task.submissions[0], config)

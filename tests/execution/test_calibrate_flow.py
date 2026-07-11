@@ -3760,19 +3760,19 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
             events.append("finalize-submit")
             return FakeFinalizeFuture()
 
-    def fake_chunk_with_options(task_run_name):
+    def fake_chunk_with_options(task_run_name, **_options):
         return FakeChunkTask(task_run_name)
 
-    def fake_collect_with_options(task_run_name):
+    def fake_collect_with_options(task_run_name, **_options):
         return FakeCollectTask(task_run_name)
 
-    def fake_process_with_options(task_run_name):
+    def fake_process_with_options(task_run_name, **_options):
         return FakeProcessTask(task_run_name)
 
-    def fake_plot_with_options(task_run_name):
+    def fake_plot_with_options(task_run_name, **_options):
         return FakePlotTask(task_run_name)
 
-    def fake_finalize_with_options(task_run_name):
+    def fake_finalize_with_options(task_run_name, **_options):
         return FakeFinalizeTask(task_run_name)
 
     monkeypatch.setattr(
@@ -3808,9 +3808,9 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
 
     assert outputs == {"combined_solutions": file_record(tmp_path / "fulljones_solutions.h5")}
     assert events == [
-        "task-name-chunk_1",
+        "task-name-solve_chunk_1",
         "submit-fulljones_gain_0.h5parm",
-        "task-name-chunk_2",
+        "task-name-solve_chunk_2",
         "submit-fulljones_gain_1.h5parm",
         "result-0",
         "result-1",

@@ -21,6 +21,7 @@ from typing import Mapping, Optional
 
 from rapthor.execution.commands import CommandInput, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.task_metrics import current_prefect_task_metadata
 
 
 class MissingPrefectShellError(RuntimeError):
@@ -670,6 +671,12 @@ def write_command_log_record(
         record["error"] = error
     if profile:
         record["profile"] = dict(profile)
+
+    task_metadata = current_prefect_task_metadata()
+    if task_metadata:
+        record.update(
+            {key: value for key, value in task_metadata.items() if value not in (None, "", [])}
+        )
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as handle:

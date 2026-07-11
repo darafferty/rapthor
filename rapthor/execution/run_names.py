@@ -1,8 +1,8 @@
-"""Helpers for readable Prefect flow and task run names."""
+"""Helpers for readable Prefect flow and task run metadata."""
 
-import os
 import re
-from typing import Mapping, Optional
+from pathlib import Path
+from typing import Iterable, Mapping, Optional
 
 _CYCLE_SUFFIX = re.compile(r"_(\d+)$")
 _RUN_NAME_SAFE_CHARACTERS = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -17,7 +17,7 @@ def _safe_run_name_part(value: object) -> str:
 def operation_basename(payload: Mapping[str, object]) -> str:
     """Return the operation directory name from a flow payload."""
     pipeline_working_dir = str(payload.get("pipeline_working_dir", ""))
-    return os.path.basename(os.path.normpath(pipeline_working_dir))
+    return Path(pipeline_working_dir).name
 
 
 def operation_cycle(payload: Mapping[str, object]) -> Optional[int]:
@@ -51,3 +51,21 @@ def task_run_name(*parts: object) -> str:
     """Build a readable local Prefect task run name below an operation flow."""
     name_parts = [_safe_run_name_part(part) for part in parts if part not in (None, "")]
     return "_".join(part for part in name_parts if part)
+
+
+def task_tags(*tags: object) -> list[str]:
+    """Return stable, sanitized Prefect task tags."""
+    sanitized = [_safe_run_name_part(tag).lower() for tag in tags if tag not in (None, "")]
+    return sorted(dict.fromkeys(tag for tag in sanitized if tag))
+
+
+def task_run_options(
+    *name_parts: object,
+    tags: Optional[Iterable[object]] = None,
+) -> dict[str, object]:
+    """Build keyword arguments for ``Prefect task.with_options``."""
+    options: dict[str, object] = {"task_run_name": task_run_name(*name_parts)}
+    task_tag_values = task_tags(*(tags or ()))
+    if task_tag_values:
+        options["tags"] = task_tag_values
+    return options

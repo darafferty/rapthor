@@ -54,6 +54,10 @@ Accepted performance and task-boundary evidence:
   image-sector `filter_skymodel`, image diagnostics, optional image
   post-processing tasks, calibration post-processing, and calibration
   image-based/WSClean prediction setup.
+- Task observability polish is in place: shared task run-name/tag helpers,
+  readable calibration chunk names (`solve_chunk_*`, `screen_chunk_*`),
+  tool/runtime tags, task-runtime JSONL records, task-aware command/profile
+  artifacts, and durable postage-stamp PNGs under cycle image directories.
 - The calibration post-processing split is accepted. It moved the real work out
   of `finalize_solutions_task`; plotting is now the main visible
   post-processing cost and is a secondary tuning target.
@@ -96,35 +100,7 @@ Do these in order unless a regression blocks progress.
    `docs/source/development/benchmark_baselines/`. If this benchmark regresses,
    fix or revert the prediction setup split before continuing.
 
-2. **Polish task observability before the next split batch.**
-   This is low-risk runtime/reporting work that makes future benchmarks easier
-   to interpret.
-
-   Implement together:
-
-   - add a shared task metadata helper near `rapthor.execution.run_names` for
-     sanitized task run names and Prefect tags
-   - rename ambiguous calibration siblings from `chunk_1`/`chunk_2` to
-     `solve_chunk_1`/`solve_chunk_2`, and from `screen_1` to
-     `screen_chunk_1`
-   - tag tasks by primary tool or runtime: `dp3`, `wsclean`, `python`,
-     `fpack`, `pybdsf`, `casacore`
-   - extend `rapthor-command-metrics` and `rapthor-command-profile-summary` so
-     they include task runtime rows as well as external-command rows
-   - when postage-stamp previews are requested, save the generated PNGs under
-     the corresponding cycle `images/` directory as durable image products as
-     well as publishing Prefect artifacts
-
-   Tests required: task metadata helper tests, flow submission-name/tag tests,
-   command/profile artifact tests, and postage-stamp persistence tests.
-
-   Benchmark after this batch: run `ci-benchmark` and
-   `ci-benchmark-wsclean-predict` once. Do not add image-products or mosaic
-   scenarios unless this work changes image output generation beyond the
-   postage-stamp path. Keep postage-stamp previews disabled in benchmark
-   parsets unless explicitly measuring preview overhead.
-
-3. **Split the large image-sector `prepare` task.**
+2. **Split the large image-sector `prepare` task.**
    Split only meaningful work that helps observability or multi-observation
    scaling, such as per-observation DP3 preparation, concatenation, WSClean
    imaging, bright-source restoration, and residual-visibilities production.
@@ -146,7 +122,7 @@ Do these in order unless a regression blocks progress.
    and the new task groups expose useful timing without increasing wall time
    outside normal variance.
 
-4. **Review standalone prediction parallelism.**
+3. **Review standalone prediction parallelism.**
    `postprocess` currently waits for all `predict_model_data` tasks. Review
    whether model outputs can be grouped by observation or target so each
    post-processing task starts as soon as its own model-data inputs are
@@ -160,7 +136,7 @@ Do these in order unless a regression blocks progress.
    - run `ci-benchmark-wsclean-predict` only if calibration prediction setup or
      WSClean-predict paths are touched
 
-5. **Keep mosaic science coverage explicit, but targeted.**
+4. **Keep mosaic science coverage explicit, but targeted.**
    The `multi-sector-mosaic` option-matrix scenario protects sector imaging,
    regridding, and mosaic assembly, but branch-vs-master equivalence is blocked
    because `master` fails before imaging commands run with the generated CWL
@@ -180,20 +156,20 @@ Do these in order unless a regression blocks progress.
    sector regridding, or scalability scheduling. When they are used, run them
    as targeted paired scenarios and archive compact evidence.
 
-6. **Build the scalability/performance equivalence gate.**
+5. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-7. **Guard the science-equivalence contract.**
+6. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-8. **Polish runtime UX and contributor docs after the next scalability result.**
+7. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -207,17 +183,9 @@ not just a final check.
 - Add focused tests with each new task boundary: payload shape,
   serializability, task/run names, output records, restart markers, and command
   records.
-- Add focused tests for task metadata helpers: readable run names, stable
-  sibling discriminators, and tool tags such as `dp3`, `wsclean`, `python`,
-  `fpack`, `pybdsf`, and `casacore`.
-- Add focused tests for command/profile artifact enrichment: task duration
-  rows, command-to-task association where available, stable Markdown table
-  columns, and graceful fallback when Prefect/Dask task timing metadata is not
-  available.
-- Add focused tests for postage-stamp preview persistence: when postage stamps
-  are requested, PNGs are created under the cycle `images/` directory as well
-  as being publishable as Prefect artifacts; when disabled, no extra image
-  products are written.
+- Keep task-observability regression tests green: readable run names, stable
+  sibling discriminators, tool tags, task-duration report rows,
+  command-to-task association, and postage-stamp preview persistence.
 - Keep science-regression coverage explicit for calibration strategy behavior,
   image-only cycles, DI pre-apply, DD on-the-fly apply, previous-cycle solution
   handling, and master feature catch-up cases.

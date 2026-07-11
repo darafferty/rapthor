@@ -30,7 +30,8 @@ from rapthor.execution.calibrate.validation import validate_calibrate_payload
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.run_names import operation_run_name, task_run_name
+from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
+from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
 
 
@@ -42,7 +43,7 @@ def calibrate_chunk_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one calibration chunk."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         return run_calibrate_chunk(
             payload,
             chunk,
@@ -59,7 +60,7 @@ def calibrate_screen_chunk_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one screen-generation chunk."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         return run_calibrate_screen_chunk(
             payload,
             chunk,
@@ -80,7 +81,7 @@ def collect_h5parms_task(
     assert_serializable_payload(solve_records)
     assert_serializable_payload(solve_slot)
     config = execution_config or ExecutionConfig(task_runner="sync")
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         collected = collect_strategy_solve_h5parm(
             payload,
             solve_records,
@@ -99,7 +100,7 @@ def process_solutions_task(
 ) -> dict:
     """Prefect task wrapper for per-solve calibration solution processing."""
     assert_serializable_payload(collected_product)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = process_collected_solve_product(payload, collected_product)
     assert_serializable_payload(result)
     return result
@@ -115,7 +116,7 @@ def plot_solutions_task(
     """Prefect task wrapper for per-solve calibration solution plots."""
     assert_serializable_payload(processed_product)
     config = execution_config or ExecutionConfig(task_runner="sync")
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = plot_processed_solve_product(
             payload,
             processed_product,
@@ -133,7 +134,7 @@ def combine_h5parms_task(
 ) -> dict:
     """Prefect task wrapper for combining processed calibration h5parms."""
     assert_serializable_payload(processed_products)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = combine_processed_solution_products(payload, processed_products)
     assert_serializable_payload(result)
     return result
@@ -150,7 +151,7 @@ def finalize_solutions_task(
     assert_serializable_payload(processed_products)
     assert_serializable_payload(plot_products)
     assert_serializable_payload(active_solution)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = finalize_processed_solution_products(
             payload,
             processed_products,
@@ -168,7 +169,7 @@ def collect_screen_h5parms_task(
 ) -> dict:
     """Prefect task wrapper for collecting screen-generation h5parms."""
     assert_serializable_payload(screen_records)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = collect_screen_solutions(payload, screen_records)
     assert_serializable_payload(result)
     return result
@@ -178,7 +179,7 @@ def collect_screen_h5parms_task(
 def make_predict_region_task(payload: CalibratePayload) -> dict:
     """Prefect task wrapper for preparing a calibration prediction region."""
     assert_serializable_payload(payload)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = make_predict_region_file(payload)
     assert_serializable_payload(result)
     return result
@@ -193,7 +194,7 @@ def draw_predict_model_task(
     """Prefect task wrapper for drawing calibration prediction model images."""
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = draw_predict_model_images(
             payload,
             config,
@@ -204,10 +205,13 @@ def draw_predict_model_task(
 
 
 @task(name="read_predict_facets")
-def wsclean_predict_facet_info_task(region_record: Mapping[str, object]) -> dict:
+def wsclean_predict_facet_info_task(
+    region_record: Mapping[str, object],
+    pipeline_working_dir: str,
+) -> dict:
     """Prefect task wrapper for reading WSClean-predict facet names."""
     assert_serializable_payload(region_record)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         result = wsclean_predict_facet_info(region_record)
     assert_serializable_payload(result)
     return result
@@ -227,7 +231,7 @@ def wsclean_predict_chunk_task(
     assert_serializable_payload(chunk)
     assert_serializable_payload(facet_info)
     config = execution_config or ExecutionConfig(task_runner="sync")
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = prepare_wsclean_predict_chunk(
             payload,
             chunk,
@@ -244,7 +248,7 @@ def wsclean_predict_chunk_task(
 def adjust_prediction_normalization_h5parm_task(payload: CalibratePayload) -> str:
     """Prefect task wrapper for prediction-time normalization h5parm adjustment."""
     assert_serializable_payload(payload)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(payload["pipeline_working_dir"]):
         result = adjust_prediction_normalization_h5parm(payload)
     assert_serializable_payload(result)
     return result
@@ -276,24 +280,24 @@ def _prepare_prediction_payload_with_tasks(
         return payload
 
     region_future = make_predict_region_task.with_options(
-        task_run_name=task_run_name("make_predict_region")
+        **task_run_options("make_predict_region", tags=["python"])
     ).submit(payload)
 
     model_images_future = None
     if payload.get("image_based_predict"):
         model_images_future = draw_predict_model_task.with_options(
-            task_run_name=task_run_name("draw_model")
+            **task_run_options("draw_model", tags=["wsclean"])
         ).submit(payload, execution_config=config)
 
     facet_info_future = None
     prepared_chunk_futures = None
     if payload.get("wsclean_predict"):
         facet_info_future = wsclean_predict_facet_info_task.with_options(
-            task_run_name=task_run_name("read_predict_facets")
-        ).submit(region_future)
+            **task_run_options("read_predict_facets", tags=["python"])
+        ).submit(region_future, payload["pipeline_working_dir"])
         prepared_chunk_futures = [
             wsclean_predict_chunk_task.with_options(
-                task_run_name=task_run_name("wsclean_predict", index + 1)
+                **task_run_options("wsclean_predict", index + 1, tags=["wsclean"])
             ).submit(
                 payload,
                 chunk,
@@ -307,7 +311,7 @@ def _prepare_prediction_payload_with_tasks(
     normalization_future = None
     if payload.get("normalize_h5parm"):
         normalization_future = adjust_prediction_normalization_h5parm_task.with_options(
-            task_run_name=task_run_name("adjust_normalization_h5parm")
+            **task_run_options("adjust_normalization_h5parm", tags=["python"])
         ).submit(payload)
 
     prepared_payload = dict(payload)
@@ -341,29 +345,29 @@ def _run_calibrate_prefect_tasks(
     if payload["calibration_kind"] == "dd_screen":
         screen_records = [
             calibrate_screen_chunk_task.with_options(
-                task_run_name=task_run_name("screen", index + 1)
+                **task_run_options("screen_chunk", index + 1, tags=["dp3"])
             ).submit(payload, chunk, execution_config=config)
             for index, chunk in enumerate(payload["chunks"])
         ]
         screen_records = [record.result() for record in screen_records]
         return (
             collect_screen_h5parms_task.with_options(
-                task_run_name=task_run_name("collect_screen_h5parms")
+                **task_run_options("collect_screen_h5parms", tags=["python"])
             )
             .submit(payload, screen_records)
             .result()
         )
 
     solve_records = [
-        calibrate_chunk_task.with_options(task_run_name=task_run_name("chunk", index + 1)).submit(
-            payload, chunk, execution_config=config
-        )
+        calibrate_chunk_task.with_options(
+            **task_run_options("solve_chunk", index + 1, tags=["dp3"])
+        ).submit(payload, chunk, execution_config=config)
         for index, chunk in enumerate(payload["chunks"])
     ]
     solve_records = [record.result() for record in solve_records]
     collected_products = [
         collect_h5parms_task.with_options(
-            task_run_name=task_run_name("collect_h5parms", index + 1)
+            **task_run_options("collect_h5parms", index + 1, tags=["python"])
         ).submit(
             payload,
             solve_records,
@@ -375,24 +379,26 @@ def _run_calibrate_prefect_tasks(
     solve_slots = list(payload["chunks"][0]["solve_slots"])
     processed_products = [
         process_solutions_task.with_options(
-            task_run_name=_solve_task_run_name("process", solve_slot)
+            **task_run_options(_solve_task_run_name("process", solve_slot), tags=["python"])
         ).submit(payload, collected_product)
         for collected_product, solve_slot in zip(collected_products, solve_slots)
     ]
     plot_products = [
         plot_solutions_task.with_options(
-            task_run_name=_solve_task_run_name("plot", solve_slot)
+            **task_run_options(_solve_task_run_name("plot", solve_slot), tags=["python"])
         ).submit(payload, processed_product, execution_config=config)
         for processed_product, solve_slot in zip(processed_products, solve_slots)
     ]
     if needs_solution_combination(payload):
         active_solution = combine_h5parms_task.with_options(
-            task_run_name=task_run_name("combine_h5parms")
+            **task_run_options("combine_h5parms", tags=["python"])
         ).submit(payload, processed_products)
     else:
         active_solution = processed_products[active_solution_product_index(payload)]
     return (
-        finalize_solutions_task.with_options(task_run_name=task_run_name("finalize_solutions"))
+        finalize_solutions_task.with_options(
+            **task_run_options("finalize_solutions", tags=["python"])
+        )
         .submit(payload, processed_products, plot_products, active_solution)
         .result()
     )

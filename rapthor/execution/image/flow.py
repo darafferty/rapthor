@@ -11,7 +11,8 @@ from rapthor.execution.image.contracts import ImageSectorPayload
 from rapthor.execution.image.validation import validate_image_payload
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
-from rapthor.execution.run_names import operation_run_name, task_run_name
+from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
+from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
 
@@ -24,7 +25,7 @@ def image_sector_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one imaging sector."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         return image_sector.run_image_sector(
             sector,
             pipeline_working_dir,
@@ -41,7 +42,7 @@ def image_sector_prepare_task(
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for data preparation and WSClean for one sector."""
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         prepared = image_sector.prepare_image_sector(
             sector,
             pipeline_working_dir,
@@ -62,7 +63,7 @@ def image_sector_filter_skymodel_task(
 ) -> dict:
     """Prefect task wrapper for one sector skymodel-filtering step."""
     assert_serializable_payload(prepared)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         filtered = image_sector.filter_image_sector_skymodel(
             sector,
             prepared,
@@ -84,7 +85,7 @@ def image_sector_diagnostics_task(
     """Prefect task wrapper for one sector diagnostics calculation."""
     assert_serializable_payload(prepared)
     assert_serializable_payload(filtered)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         diagnostics = image_sector.calculate_image_sector_diagnostics(
             sector,
             prepared,
@@ -103,7 +104,7 @@ def image_sector_make_image_cube_task(
 ) -> dict:
     """Prefect task wrapper for one sector image-cube creation step."""
     assert_serializable_payload(prepared)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         image_cubes = image_sector.make_image_sector_cubes(
             sector,
             pipeline_working_dir,
@@ -116,12 +117,13 @@ def image_sector_make_image_cube_task(
 def image_sector_make_catalog_from_image_cube_task(
     sector: ImageSectorPayload,
     image_cubes: Mapping[str, object],
+    pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
     """Prefect task wrapper for one sector image-cube catalog step."""
     assert_serializable_payload(image_cubes)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         catalog = image_sector.make_image_sector_cube_catalog(
             sector,
             image_cubes,
@@ -137,11 +139,12 @@ def image_sector_normalize_flux_scale_task(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
     catalog: Mapping[str, object],
+    pipeline_working_dir: str,
 ) -> dict:
     """Prefect task wrapper for one sector flux-scale normalization step."""
     assert_serializable_payload(prepared)
     assert_serializable_payload(catalog)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         normalization = image_sector.normalize_image_sector_flux_scale(
             sector,
             prepared,
@@ -156,11 +159,12 @@ def image_sector_restore_skymodel_task(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
     filtered: Mapping[str, object],
+    pipeline_working_dir: str,
 ) -> dict:
     """Prefect task wrapper for one sector filtered-skymodel restoration step."""
     assert_serializable_payload(prepared)
     assert_serializable_payload(filtered)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         restored_model = image_sector.restore_image_sector_skymodel(
             sector,
             prepared,
@@ -182,7 +186,7 @@ def image_sector_compress_images_task(
     """Prefect task wrapper for one sector image-compression step."""
     assert_serializable_payload(prepared)
     assert_serializable_payload(diagnostics)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         compression = image_sector.compress_image_sector_products(
             sector,
             prepared,
@@ -219,7 +223,7 @@ def image_sector_finalize_task(
     assert_serializable_payload(normalization)
     assert_serializable_payload(restored_model)
     assert_serializable_payload(compression)
-    with publish_python_logs_to_prefect():
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
         return image_sector.finalize_image_sector(
             sector,
             prepared,
@@ -303,7 +307,7 @@ def _submit_split_image_sector_tasks(
 
     prepared_sector_futures = [
         image_sector_prepare_task.with_options(
-            task_run_name=sector_step_name(index, "prepare")
+            **task_run_options(sector_step_name(index, "prepare"), tags=["dp3", "wsclean"])
         ).submit(
             sector,
             payload["pipeline_working_dir"],
@@ -313,7 +317,7 @@ def _submit_split_image_sector_tasks(
     ]
     filtered_sector_futures = [
         image_sector_filter_skymodel_task.with_options(
-            task_run_name=sector_step_name(index, "filter_skymodel")
+            **task_run_options(sector_step_name(index, "filter_skymodel"), tags=["python"])
         ).submit(
             sector,
             prepared_sector_futures[index],
@@ -324,7 +328,10 @@ def _submit_split_image_sector_tasks(
     ]
     diagnostics_sector_futures = [
         image_sector_diagnostics_task.with_options(
-            task_run_name=sector_step_name(index, "calculate_image_diagnostics")
+            **task_run_options(
+                sector_step_name(index, "calculate_image_diagnostics"),
+                tags=["python"],
+            )
         ).submit(
             sector,
             prepared_sector_futures[index],
@@ -336,7 +343,7 @@ def _submit_split_image_sector_tasks(
     image_cube_sector_futures = [
         (
             image_sector_make_image_cube_task.with_options(
-                task_run_name=sector_step_name(index, "make_image_cube")
+                **task_run_options(sector_step_name(index, "make_image_cube"), tags=["python"])
             ).submit(
                 sector,
                 prepared_sector_futures[index],
@@ -350,10 +357,14 @@ def _submit_split_image_sector_tasks(
     catalog_sector_futures = [
         (
             image_sector_make_catalog_from_image_cube_task.with_options(
-                task_run_name=sector_step_name(index, "make_catalog_from_image_cube")
+                **task_run_options(
+                    sector_step_name(index, "make_catalog_from_image_cube"),
+                    tags=["pybdsf"],
+                )
             ).submit(
                 sector,
                 image_cube_sector_futures[index],
+                payload["pipeline_working_dir"],
                 execution_config=config,
             )
             if bool(sector.get("normalize_flux_scale", False))
@@ -364,11 +375,15 @@ def _submit_split_image_sector_tasks(
     normalization_sector_futures = [
         (
             image_sector_normalize_flux_scale_task.with_options(
-                task_run_name=sector_step_name(index, "normalize_flux_scale")
+                **task_run_options(
+                    sector_step_name(index, "normalize_flux_scale"),
+                    tags=["python"],
+                )
             ).submit(
                 sector,
                 prepared_sector_futures[index],
                 catalog_sector_futures[index],
+                payload["pipeline_working_dir"],
             )
             if bool(sector.get("normalize_flux_scale", False))
             else None
@@ -378,11 +393,12 @@ def _submit_split_image_sector_tasks(
     restored_model_sector_futures = [
         (
             image_sector_restore_skymodel_task.with_options(
-                task_run_name=sector_step_name(index, "restore_skymodel")
+                **task_run_options(sector_step_name(index, "restore_skymodel"), tags=["python"])
             ).submit(
                 sector,
                 prepared_sector_futures[index],
                 filtered_sector_futures[index],
+                payload["pipeline_working_dir"],
             )
             if bool(sector.get("save_filtered_model_image", False))
             else None
@@ -392,7 +408,7 @@ def _submit_split_image_sector_tasks(
     compression_sector_futures = [
         (
             image_sector_compress_images_task.with_options(
-                task_run_name=sector_step_name(index, "compress_images")
+                **task_run_options(sector_step_name(index, "compress_images"), tags=["fpack"])
             ).submit(
                 sector,
                 prepared_sector_futures[index],
@@ -407,7 +423,7 @@ def _submit_split_image_sector_tasks(
     ]
     finalized_sector_futures = [
         image_sector_finalize_task.with_options(
-            task_run_name=sector_step_name(index, "finalize")
+            **task_run_options(sector_step_name(index, "finalize"), tags=["python"])
         ).submit(
             sector,
             prepared_sector_futures[index],
