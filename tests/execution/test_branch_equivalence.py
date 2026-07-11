@@ -131,6 +131,36 @@ def test_prepare_repeatability_branch_inputs_write_unique_working_parsets(tmp_pa
         assert run.work_dir.parent.is_dir()
 
 
+def test_prepare_repeatability_branch_inputs_rehomes_archived_absolute_strategy(tmp_path):
+    module = load_branch_equivalence_script()
+    repo_root = tmp_path / "checkout"
+    repo_root.mkdir()
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    strategy = inputs / "archived_strategy.py"
+    strategy.write_text("strategy_steps = []\n", encoding="utf-8")
+    parset = inputs / "base.parset"
+    _write_parset(parset, "stale-work")
+    parser = module._read_parset(parset)
+    parser.set("global", "strategy", "/old/run/inputs/archived_strategy.py")
+    with parset.open("w", encoding="utf-8") as handle:
+        parser.write(handle)
+
+    prepared = module._prepare_repeatability_branch_inputs(
+        side="base",
+        ref="master",
+        repo_root=repo_root,
+        parset_path=parset,
+        run_root=tmp_path / "repeatability",
+        work_root=tmp_path / "repeatability" / "work",
+        repetitions=2,
+    )
+
+    for run in prepared.values():
+        parser = module._read_parset(run.parset_path)
+        assert parser.get("global", "strategy") == str(strategy.resolve())
+
+
 def test_prepare_repeatability_branch_inputs_requires_global_section(tmp_path):
     module = load_branch_equivalence_script()
     parset = tmp_path / "broken.parset"

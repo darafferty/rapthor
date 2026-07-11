@@ -1,0 +1,69 @@
+{
+  "scenario_id": "phase-only-core-performance-baseline",
+  "run_date": "2026-07-11",
+  "run_root": "/tmp/rpbe0711",
+  "base_ref": "master",
+  "base_commit": "17448437b78583f1eaf38112a524b2dbe5f34bb8",
+  "current_commit": "c42ae88db7a8d9b4c641563f123bb7da3b18a4c0",
+  "wrapper_exit_code": 1,
+  "all_branch_runs_completed": true,
+  "interpretation": "advisory_performance_baseline_science_tolerances_need_repeatability_calibration",
+  "runtime_summary": {
+    "base": {
+      "count": 3,
+      "min_seconds": 606.397,
+      "median_seconds": 631.209,
+      "max_seconds": 658.879
+    },
+    "current": {
+      "count": 3,
+      "min_seconds": 324.417,
+      "median_seconds": 331.178,
+      "max_seconds": 372.995
+    },
+    "current_vs_base_median_delta_percent": -47.533
+  },
+  "operation_median_delta_percent": {
+    "calibrate_1": -66.409,
+    "calibrate_2": -67.181,
+    "calibrate_3": -66.126,
+    "calibrate_4": -56.763,
+    "image_1": -43.682,
+    "image_2": -45.089,
+    "image_3": -43.657,
+    "image_4": -45.856,
+    "mosaic_1": -68.173,
+    "mosaic_2": -68.901,
+    "mosaic_3": -70.023,
+    "mosaic_4": -67.824
+  },
+  "pair_group_summary": {
+    "base_base": {
+      "pairs": 3,
+      "failed_pairs": 3,
+      "failure_count_range": [25, 120],
+      "max_abs_delta_range": [0.435586, 0.437062],
+      "p99_abs_delta_range": [0.00000993, 0.00789592],
+      "residual_rms_range": [0.0045922, 0.00466974],
+      "max_diagnostic_relative_delta_percent": 0.218
+    },
+    "current_current": {
+      "pairs": 3,
+      "failed_pairs": 3,
+      "failure_count_range": [17, 18],
+      "max_abs_delta_range": [0.0000146, 0.001410],
+      "p99_abs_delta_range": [0.00000992, 0.00000994],
+      "residual_rms_range": [0.00000416, 0.00000416],
+      "max_diagnostic_relative_delta_percent": 0.014
+    },
+    "base_current": {
+      "pairs": 9,
+      "failed_pairs": 9,
+      "failure_count_range": [33, 127],
+      "max_abs_delta_range": [0.222021, 0.222024],
+      "p99_abs_delta_range": [0.00000992, 0.00789602],
+      "residual_rms_range": [0.00325417, 0.00328512],
+      "max_diagnostic_relative_delta_percent": 0.216
+    }
+  }
+}

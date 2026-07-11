@@ -141,6 +141,14 @@ Do these in order unless a regression blocks progress.
      `--repeatability-repetitions 3`; it writes the expected 15 planned pairs.
    - Baseline run instructions live in
      `docs/source/development/performance_equivalence_runs/README.md`.
+   - The first full advisory baseline is archived in
+     `docs/source/development/performance_equivalence_runs/2026-07-11-phase-only-core-baseline.md`.
+     All six branch runs completed successfully and the current branch median
+     runtime was about `47.5%` faster than `master`. The strict science
+     comparator still exited failed because same-branch repeatability pairs also
+     fail the current tolerances, so the next gate task is to calibrate
+     pass/warn/fail bands against same-branch scatter before treating this as a
+     formal gate pass.
 
 2. **Target the next image-side performance bottlenecks.**
    Current benchmarks consistently show the largest costs are

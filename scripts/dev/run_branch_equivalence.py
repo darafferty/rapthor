@@ -226,6 +226,8 @@ def _strategy_path_from_parset(parset_path: Path, *, repo_root: Path) -> Path | 
 
     strategy_path = Path(strategy).expanduser()
     candidates = [strategy_path] if strategy_path.is_absolute() else []
+    if strategy_path.name:
+        candidates.append(parset_path.parent / strategy_path.name)
     candidates.extend(
         [
             parset_path.parent / strategy_path,
