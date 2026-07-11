@@ -245,6 +245,17 @@ Do these in order unless a regression blocks progress.
      `read_predict_facets`, per-chunk `wsclean_predict`, and
      `adjust_normalization_h5parm` are now separate task boundaries; benchmark
      this batch before splitting the next owner package
+   - dashboard naming and tool tags: before the next task-split batch, replace
+     ambiguous sibling task names such as calibration `chunk_1`/`chunk_2` with
+     intent-bearing names such as `solve_chunk_1`/`solve_chunk_2` and
+     `screen_chunk_1`/`screen_chunk_2`; add a small shared helper for
+     per-submission task metadata so run names and Prefect tags are applied
+     consistently across owner packages
+   - task-runtime artifacts: update the code that publishes
+     `rapthor-command-metrics` and `rapthor-command-profile-summary` so those
+     artifacts show individual Prefect task runtimes alongside external-command
+     runtimes; include task run name, task definition name, tags/tool identity,
+     state, duration, and any associated command records where available
    - image-sector preparation/WSClean: split the current large `prepare` task
      only where it exposes meaningful stages such as per-observation DP3
      preparation, concatenation, WSClean imaging, bright-source restoration,
@@ -316,6 +327,20 @@ Do these in order unless a regression blocks progress.
    - First validation target: benchmark the calibration image-based/WSClean
      prediction setup split with `ci-benchmark-wsclean-predict`. Confirm task
      names, command counts, wall time, Dask gap, and raw/scientific outputs.
+   - Before the next split batch, polish task run names and tool tags so the
+     benchmark and dashboard group work by scientific step and external tool
+     rather than by generic labels such as `chunk`.
+   - Extend the command profile artifacts so `rapthor-command-metrics` and
+     `rapthor-command-profile-summary` include task-level runtime information.
+     This should make the dashboard artifacts useful even when a task is mostly
+     Python orchestration, plotting, or fan-in work rather than a single
+     external command.
+   - Persist requested postage-stamp previews as image products as well as
+     Prefect dashboard artifacts. When
+     `prefect_publish_postage_stamp_previews` is enabled, the generated PNGs
+     should also be written under the corresponding cycle's `images/`
+     directory with stable filenames so users can inspect and archive them
+     without needing the Prefect UI.
    - Next implementation target: split the large image-sector `prepare` wrapper
      where it improves observability or multi-observation scaling. A single
      WSClean image command will not become faster merely because it is a
@@ -356,6 +381,17 @@ not just a final check.
 - Add focused tests with each new task boundary: payload shape,
   serializability, task/run names, output records, restart markers, and command
   records.
+- Add focused tests for task metadata helpers: readable run names, stable
+  sibling discriminators, and tool tags such as `dp3`, `wsclean`, `python`,
+  `fpack`, `pybdsf`, and `casacore`.
+- Add focused tests for command/profile artifact enrichment: task duration
+  rows, command-to-task association where available, stable Markdown table
+  columns, and graceful fallback when Prefect/Dask task timing metadata is not
+  available.
+- Add focused tests for postage-stamp preview persistence: when postage stamps
+  are requested, PNGs are created under the cycle `images/` directory as well
+  as being publishable as Prefect artifacts; when disabled, no extra image
+  products are written.
 - Keep science-regression coverage explicit for calibration strategy behavior,
   image-only cycles, DI pre-apply, DD on-the-fly apply, previous-cycle solution
   handling, and master feature catch-up cases.
@@ -419,9 +455,17 @@ Task naming:
   `plot_solutions`, `predict_model_data`, `make_mosaic`.
 - Add only the smallest useful discriminator when several sibling tasks of the
   same kind can run in the same flow: `sector_1_filter_skymodel`,
-  `chunk_1`, `screen_1`, `model_1`, `postprocess_1`.
+  `solve_chunk_1`, `screen_chunk_1`, `model_1`, `postprocess_1`.
 - Prefer scientific labels over numerical suffixes when they are stable and
   meaningful, for example `mosaic_I_image` instead of `mosaic_1`.
+- Keep tool identity in Prefect tags rather than cramming it into every run
+  name. Use lower-case tool tags such as `dp3`, `wsclean`, `python`, `fpack`,
+  `pybdsf`, and `casacore`, plus secondary tags only when they help filtering
+  without duplicating the flow name.
+- Centralize task-run metadata instead of repeating literal strings in every
+  flow. Prefer a tiny helper near `rapthor.execution.run_names` that returns
+  sanitized run names and tool tags for `.with_options(...)`; keep payloads and
+  command builders independent of Prefect metadata.
 
 ## Benchmark And Equivalence Evidence
 
