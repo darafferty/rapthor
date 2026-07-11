@@ -1,0 +1,19 @@
+{
+  "scenario_id": "normalization-rich-demo",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/base/normalization_rich_demo.parset",
+  "current_parset": "/app/docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/current/normalization_rich_demo.parset",
+  "base_work_dir": "/tmp/rom-base",
+  "current_work_dir": "/tmp/rom-current",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/normalization_rich_demo.parset",
+      "strategy": "inputs/base/normalization_rich_demo_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/normalization_rich_demo.parset",
+      "strategy": "inputs/current/normalization_rich_demo_strategy.py"
+    }
+  }
+}

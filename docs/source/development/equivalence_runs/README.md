@@ -9,6 +9,28 @@ The historical long-form science-gate run log is preserved in
 `science_gate_history.md`. The current gate verdict and evidence summary live
 in the root `EQUIVALENCE_REPORT.md`.
 
+Archiving compact evidence is part of running an equivalence gate. After every
+successful or decision-relevant rerun, create a dated, descriptive directory
+under this folder and copy the reviewable outputs before cleaning or ignoring
+the raw run root:
+
+- saved-reference gates: `equivalence-report.json` and
+  `equivalence-report.md`
+- branch-vs-master gates: `branch-equivalence-report.json`,
+  `branch-equivalence-report.md`, `scenario-manifest.json`, and selected short
+  command logs only when they explain the result
+- option matrices: `option-matrix-summary.json`,
+  `option-matrix-summary.md`, plus each active scenario's compact branch report
+  and manifest
+- repeatability gates: `repeatability-summary.json`,
+  `repeatability-summary.md`, and selected per-pair compact reports when they
+  are needed to justify tolerances
+
+Update this README and `science_gate_history.md` in the same change so future
+reviewers can find the latest evidence without searching ignored `runs/`
+directories. Keep raw Measurement Sets, FITS products, h5parm files, full logs,
+Dask reports, visual-comparison PNGs, and temporary run directories out of git.
+
 Use `scripts/dev/run_branch_equivalence.py --repeatability-repetitions 3` when
 deciding whether branch differences are scientifically meaningful. This writes
 unique generated parsets and work directories for each base/current repetition,
@@ -61,6 +83,10 @@ long`.
   default non-stale saved scenarios pass; the old DI full-Jones CWL fixture is
   excluded from the default matrix because it predates same-cycle full-Jones
   imaging application.
+- `2026-07-11-post-task-split-saved-reference/`: saved-reference science gate
+  rerun after the image, mosaic, and calibration task-boundary work. All active
+  non-stale saved scenarios pass; remaining warnings are accepted optional
+  output-record basename differences.
 - `2026-07-04-default-like-master-ref/`: default-like four-cycle comparison
   that exposes the legacy master slow-gain/amplitude-solution behavior.
 - `2026-07-04-phase-only-master-ref/`: four-cycle phase-only comparison using
@@ -104,6 +130,11 @@ long`.
   scenario passes after capping imaging averaging so the 8-channel demo data
   still leaves four unique WSClean output channels. Screens remain skipped
   until target tool support is ready.
+- `2026-07-11-post-task-split-option-matrix/`: risk-based branch-vs-master
+  option-equivalence rerun after the task-splitting work. Normalization,
+  DP3 image-based predict, WSClean predict, and BDA/averaging pass against
+  `master`; multi-sector mosaic and screens remain explicitly skipped for the
+  documented legacy/tool-support reasons.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones

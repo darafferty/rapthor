@@ -8,7 +8,7 @@ Generated: 2026-06-11
 
 Archived for post-cutover cleanup: 2026-06-12
 
-Latest on-disk report scan: 2026-07-09
+Latest on-disk report scan: 2026-07-11
 
 Method contract: `docs/source/development/science_equivalence_contract.rst`
 
@@ -31,7 +31,7 @@ active CWL equivalence harness, CWL workflow/parset files, and `cwltool`
 validation tests have since been removed as part of post-cutover cleanup. This
 file is now the historical parity record.
 
-Current gate verdict as of 2026-07-09: the saved-reference matrix, focused
+Current gate verdict as of 2026-07-11: the saved-reference matrix, focused
 DD-plus-DI full-Jones branch-vs-master rerun, three-repeat normalized
 branch-repeatability envelope, and full integration suite support accepting the
 current branch for the covered scientific contract. Remaining cross-branch
@@ -44,6 +44,9 @@ provided sky-model flux-scale normalization, DP3 image-based predict, WSClean
 predict, and BDA/averaging on the rich demo data. The latest 2026-07-09
 saved-reference rerun also passes all active saved scenarios after correcting
 the saved normalization fixture to use valid distinct reference frequencies.
+The 2026-07-11 post-task-split rerun passes the same active saved-reference
+matrix and the same active branch-vs-master option-matrix rows after the image,
+mosaic, and calibration task-boundary work.
 The multi-sector mosaic option-matrix row is documented as a current-branch
 coverage/stored-reference target rather than a branch-vs-master gate because
 legacy `master` fails before comparison in the CWL multi-sector image scatter.
@@ -213,6 +216,49 @@ one scatter input is not per-sector. This is a legacy orchestration limitation,
 not evidence of a current-branch scientific mismatch. Keep multi-sector mosaic
 covered by current-branch integration/benchmark runs for now, and promote it to
 a stored-reference science gate once a stable reference run is captured.
+
+## 2026-07-11 Post-Task-Split Science Gate Rerun
+
+The saved-reference gate was rerun on 2026-07-11 after the image, mosaic, and
+calibration task-boundary work. The archived report is:
+
+```text
+docs/source/development/equivalence_runs/2026-07-11-post-task-split-saved-reference/equivalence-report.json
+docs/source/development/equivalence_runs/2026-07-11-post-task-split-saved-reference/equivalence-report.md
+```
+
+All active saved-reference scenarios passed. Remaining warnings are optional
+output-record artifact basename differences only.
+
+| Scenario | Result | Ops | Records | FITS | Image HDUs | Table HDUs | H5 | Text |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `dd_only_calibration` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
+| `di_only_calibration` | pass | 5 | 5 | 6 | 5 | 1 | 2 | 9 |
+| `full_stokes_clean_disabled` | pass | 4 | 4 | 9 | 8 | 1 | 3 | 8 |
+| `image_cube` | pass | 4 | 4 | 7 | 6 | 1 | 3 | 12 |
+| `normalization` | pass | 5 | 5 | 7 | 6 | 1 | 4 | 12 |
+| `peeling` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 11 |
+| `restart` | pass | 4 | 4 | 6 | 5 | 1 | 3 | 10 |
+
+The risk-based branch-vs-master option matrix was rerun against `master` commit
+`17448437`. The archived summary and per-scenario reports are:
+
+```text
+docs/source/development/equivalence_runs/2026-07-11-post-task-split-option-matrix/option-matrix-summary.json
+docs/source/development/equivalence_runs/2026-07-11-post-task-split-option-matrix/option-matrix-summary.md
+```
+
+The four active branch-vs-master option rows passed. Each active row has one
+classified auxiliary output-record warning and no failures.
+
+| Scenario | Result | Pairs | Passed Pairs | Failures | Warnings | FITS | H5 | Text | Diagnostics |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `normalization-rich-demo` | pass | 1 | 1 | 0 | 1 | 8 | 3 | 12 | 1 |
+| `prediction-path-image-based` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `prediction-path-wsclean` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `bda-averaging` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
+| `multi-sector-mosaic` | skipped | 0 | 0 | 0 | 0 | - | - | - | - |
+| `screens` | skipped | 0 | 0 | 0 | 0 | - | - | - | - |
 
 ## Current Strengthened Saved-Reference Run
 

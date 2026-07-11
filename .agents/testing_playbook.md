@@ -83,6 +83,14 @@ calibration strategy changes, or changes to FITS, h5parm, or sky-model products:
 python scripts/dev/run_saved_cwl_equivalence.py --run-root /tmp/rapthor-equivalence --stop-on-failure
 ```
 
+After an equivalence gate finishes, archive the compact evidence by default
+under `docs/source/development/equivalence_runs/`: saved-reference report pairs,
+branch/option-matrix summaries, per-scenario compact reports, manifests, and
+only the short command logs needed to explain the result. Update the
+equivalence-runs README/history in the same change. Keep raw run products,
+FITS/MS/h5parm files, full logs, visual-comparison PNGs, and Dask reports in
+ignored run roots or CI artifacts.
+
 Use the demo when checking end-to-end runtime bootstrapping or orchestration:
 
 ```bash

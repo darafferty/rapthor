@@ -70,6 +70,9 @@ For every comparison:
 * keep large FITS, Measurement Sets, h5parm products, and full logs outside git
 * store compact reports, manifests, and selected command logs under
   ``docs/source/development/equivalence_runs/``
+* archive those compact reports by default before treating the gate as
+  complete; use a dated, descriptive directory name and update the
+  equivalence-runs README/history so the result is discoverable
 
 The comparison is invalid if either run fails, required products are missing, or
 the scenario does not actually exercise comparable scientific work on both
@@ -174,8 +177,13 @@ Commit compact, reviewable evidence:
 * input parset and strategy snapshots
 * short command logs when they explain a result
 
+For saved-reference reruns, archive ``equivalence-report.json`` and
+``equivalence-report.md``. For branch-vs-master and option-matrix reruns,
+archive the summary report plus each active scenario's compact branch report and
+manifest. For repeatability gates, archive the repeatability summary and only
+the per-pair reports needed to explain the decision.
+
 Keep bulky raw artifacts out of git: Measurement Sets, FITS products, h5parm
 files, full logs, Dask/PyBDSF reports, generated visual-comparison PNGs, and
 temporary run directories. Store those in ignored run roots, ``/tmp``, or CI
 artifacts.
-
