@@ -51,9 +51,9 @@ Accepted performance and task-boundary evidence:
   (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`). It is neutral
   for the default single-sector benchmark and faster for many-sector mosaics.
 - Accepted task splits so far:
-  image-sector `filter_skymodel`, image diagnostics, optional image
-  post-processing tasks, calibration post-processing, and calibration
-  image-based/WSClean prediction setup.
+  image-sector preparation, image-sector `filter_skymodel`, image diagnostics,
+  optional image post-processing tasks, calibration post-processing, and
+  calibration image-based/WSClean prediction setup.
 - Task observability polish is in place: shared task run-name/tag helpers,
   readable calibration chunk names (`solve_chunk_*`, `screen_chunk_*`),
   tool/runtime tags, task-runtime JSONL records, task-aware command/profile
@@ -66,11 +66,15 @@ Accepted performance and task-boundary evidence:
   stable external command counts, and the expected new visible task groups
   (`make_predict_region_task`, `wsclean_predict_facet_info_task`,
   `wsclean_predict_chunk_task`) in `ci-benchmark-wsclean-predict`.
-- The image-sector preparation split is implemented and focused tests pass. It
+- The image-sector preparation split is accepted. Benchmark
+  `runs/benchmark-20260711-105033` completed with return code `0` for
+  `ci-benchmark` and `ci-benchmark-image-products`. On the closest same-runner
+  reference (`runs/benchmark-20260711-061530`, `lcs126`), default wall time
+  changed by about `+3.1%`, command time changed by about `-6.1%`, command
+  count stayed fixed, and the Dask gap stayed effectively unchanged. The split
   exposes per-observation DP3 preparation, concatenation, WSClean imaging,
   WSClean image finishing, optional residual-visibilities production, and the
-  prepared-output join as separate tasks. It still needs benchmark acceptance
-  before it is treated as an accepted task-boundary change.
+  prepared-output join as separate tasks.
 - WSClean-rendered model mosaics are the preferred path when sector sky-model
   inputs exist. Sparse FITS mapping remains a fallback for products that cannot
   be rendered by WSClean.
@@ -91,27 +95,25 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Benchmark and accept/reject the image-sector preparation split.**
-   The split is implemented and focused tests are green. Run the next benchmark
-   before further task-splitting work so we can check command totals, wall time,
-   task-duration visibility, and image-products behavior against the previous
-   baseline.
-
-   - automatic for this batch: `ci-benchmark`
-   - automatic for this batch: `ci-benchmark-image-products`
-   - leave `ci-benchmark-wsclean-predict` targeted unless WSClean-predict
-     inputs were touched
-   - keep targeted/manual only: many-sector mosaic scenarios
-
-   Accept if image-products command totals and scientific outputs are stable
-   and the new task groups expose useful timing without increasing wall time
-   outside normal variance.
-
-2. **Review standalone prediction parallelism.**
+1. **Review standalone prediction parallelism.**
    `postprocess` currently waits for all `predict_model_data` tasks. Review
    whether model outputs can be grouped by observation or target so each
    post-processing task starts as soon as its own model-data inputs are
    available, while preserving DI add-model and DD subtract-model semantics.
+
+   Performance guidance from the latest benchmarks:
+
+   - Do not optimize the image-sector preparation join, concatenation, or
+     finish tasks now; after the split they are visible and small.
+   - Keep `filter_skymodel` as the primary image-side optimization target. It
+     remains the largest command cost in both `ci-benchmark` and
+     `ci-benchmark-image-products`.
+   - Keep WSClean image runs as a resource/concurrency target. They are now
+     visible as `image_sector_wsclean_task` and are the second-largest
+     image-side command cost.
+   - Treat `collect_h5parms_task` and calibration chunk timing jumps in the
+     latest run as runner/noise candidates until repeated benchmarks confirm
+     they are real; their external command totals did not show matching growth.
 
    Benchmark after this batch:
 
@@ -121,7 +123,7 @@ Do these in order unless a regression blocks progress.
    - run `ci-benchmark-wsclean-predict` only if calibration prediction setup or
      WSClean-predict paths are touched
 
-3. **Keep mosaic science coverage explicit, but targeted.**
+2. **Keep mosaic science coverage explicit, but targeted.**
    The `multi-sector-mosaic` option-matrix scenario protects sector imaging,
    regridding, and mosaic assembly, but branch-vs-master equivalence is blocked
    because `master` fails before imaging commands run with the generated CWL
@@ -141,20 +143,20 @@ Do these in order unless a regression blocks progress.
    sector regridding, or scalability scheduling. When they are used, run them
    as targeted paired scenarios and archive compact evidence.
 
-4. **Build the scalability/performance equivalence gate.**
+3. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-5. **Guard the science-equivalence contract.**
+4. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-6. **Polish runtime UX and contributor docs after the next scalability result.**
+5. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -267,6 +269,7 @@ Most relevant benchmark reports:
 - `docs/source/development/benchmark_baselines/2026-07-08-post-split-filter-skymodel-profile.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-pre-calibration-postprocess-split.md`
 - `docs/source/development/benchmark_baselines/2026-07-11-wsclean-predict-task-split-confirmation.md`
+- `docs/source/development/benchmark_baselines/2026-07-11-image-prepare-task-split-confirmation.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-thread-wsclean-model-benchmark.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-shape-mosaic-method-comparison.md`
 
