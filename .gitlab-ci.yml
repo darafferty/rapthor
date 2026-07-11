@@ -286,6 +286,7 @@ run_benchmark_comparison:
     RAPTHOR_BENCHMARK_REPETITIONS: "1"
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
       --scenario ci-benchmark
+      --scenario ci-benchmark-calibration-postprocess
       --scenario ci-benchmark-wsclean-predict
     VECLIB_MAXIMUM_THREADS: "1"
   script:

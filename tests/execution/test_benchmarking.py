@@ -55,6 +55,7 @@ def load_benchmark_script():
 def test_default_benchmark_scenarios_build_demo_commands():
     scenarios = benchmark_scenarios_by_id()
     scenario = scenarios["ci-benchmark"]
+    calibration_scenario = scenarios["ci-benchmark-calibration-postprocess"]
     many_sector_scenario = scenarios["ci-benchmark-many-sector-mosaic"]
     sparse_fallback_scenario = scenarios["ci-benchmark-many-sector-mosaic-sparse-fallback"]
 
@@ -63,6 +64,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
 
     assert set(scenarios) == {
         "ci-benchmark",
+        "ci-benchmark-calibration-postprocess",
         "ci-benchmark-image-products",
         "ci-benchmark-many-sector-mosaic",
         "ci-benchmark-many-sector-mosaic-sparse-fallback",
@@ -76,6 +78,14 @@ def test_default_benchmark_scenarios_build_demo_commands():
     assert command[command.index("--cpus-per-task") + 1] == "30"
     assert command[command.index("--max-threads") + 1] == "30"
     assert "--no-keep-server" in command
+    assert calibration_scenario.parset_overrides == (
+        ParsetOverride(
+            "global",
+            "strategy",
+            "examples/generated/prefect_demo_rich/"
+            "prefect_demo_benchmark_calibration_postprocess_strategy.py",
+        ),
+    )
     assert (
         "/repo/examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset"
         in many_sector_command
@@ -88,6 +98,7 @@ def test_default_benchmark_scenarios_build_demo_commands():
 
 def test_hidden_path_benchmark_scenarios_materialize_parset_overrides(tmp_path):
     scenario = benchmark_scenarios_by_id()["ci-benchmark-image-products"]
+    calibration_scenario = benchmark_scenarios_by_id()["ci-benchmark-calibration-postprocess"]
     sparse_fallback_scenario = benchmark_scenarios_by_id()[
         "ci-benchmark-many-sector-mosaic-sparse-fallback"
     ]
@@ -119,8 +130,10 @@ prefect_task_runner = local_dask
     multi_sector_parset_path.write_text(base_parset, encoding="utf-8")
 
     command = scenario.command(repo_root, tmp_path / "run")
+    calibration_command = calibration_scenario.command(repo_root, tmp_path / "run")
     sparse_fallback_command = sparse_fallback_scenario.command(repo_root, tmp_path / "run")
     scenario_parset = Path(command[2])
+    calibration_parset = Path(calibration_command[2])
     sparse_fallback_parset = Path(sparse_fallback_command[2])
 
     assert scenario_parset.name == ("prefect_demo_benchmark.ci-benchmark-image-products.parset")
@@ -132,6 +145,11 @@ prefect_task_runner = local_dask
     assert "save_image_cube = True" in text
     assert "make_quv_images = True" in text
     assert "compress_final_images = True" in text
+    assert calibration_parset.name == (
+        "prefect_demo_benchmark.ci-benchmark-calibration-postprocess.parset"
+    )
+    calibration_text = calibration_parset.read_text(encoding="utf-8")
+    assert "prefect_demo_benchmark_calibration_postprocess_strategy.py" in calibration_text
     assert sparse_fallback_parset.name == (
         "prefect_demo_multisector_benchmark.ci-benchmark-many-sector-mosaic-sparse-fallback.parset"
     )

@@ -31,6 +31,9 @@ BENCHMARK_PARSET_FILENAME = "prefect_demo_benchmark.parset"
 MULTI_SECTOR_BENCHMARK_PARSET_FILENAME = "prefect_demo_multisector_benchmark.parset"
 BENCHMARK_STRATEGY_FILENAME = "prefect_demo_benchmark_strategy.py"
 BENCHMARK_NORMALIZE_STRATEGY_FILENAME = "prefect_demo_benchmark_normalize_strategy.py"
+BENCHMARK_CALIBRATION_POSTPROCESS_STRATEGY_FILENAME = (
+    "prefect_demo_benchmark_calibration_postprocess_strategy.py"
+)
 BENCHMARK_STRATEGY_TEXT = """\
 \"\"\"Shared demo and CI benchmark strategy for the generated dataset.\"\"\"
 
@@ -99,6 +102,42 @@ BENCHMARK_NORMALIZE_STRATEGY_TEXT = (
 strategy_steps[0]["do_normalize"] = True
 """
 )
+BENCHMARK_CALIBRATION_POSTPROCESS_STRATEGY_TEXT = """\
+\"\"\"Calibration-only CI benchmark strategy for solution post-processing.\"\"\"
+
+COMMON_SETTINGS = {
+    "do_calibrate": True,
+    "do_image": False,
+    "do_normalize": False,
+    "do_check": False,
+    "peel_outliers": False,
+    "peel_bright_sources": False,
+    "fast_timestep_sec": 20.0,
+    "medium_timestep_sec": 40.0,
+    "slow_timestep_sec": 80.0,
+    "fulljones_timestep_sec": 80.0,
+    "max_normalization_delta": 0.3,
+    "scale_normalization_delta": True,
+    "solve_min_uv_lambda": 80,
+    "target_flux": 0.6,
+    "max_directions": 5,
+    "max_distance": None,
+    "regroup_model": True,
+    "auto_mask": 5.0,
+    "auto_mask_nmiter": 1,
+    "channel_width_hz": 48828.125,
+    "threshisl": 3.0,
+    "threshpix": 5.0,
+    "max_nmiter": 6,
+    "calibration_strategy": {
+        "di": [],
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+    },
+}
+
+
+strategy_steps = [COMMON_SETTINGS]
+"""
 
 
 @dataclass(frozen=True)
@@ -287,6 +326,10 @@ def write_benchmark_strategy(path: Path) -> None:
 
 def write_benchmark_normalize_strategy(path: Path) -> None:
     path.write_text(BENCHMARK_NORMALIZE_STRATEGY_TEXT, encoding="utf-8")
+
+
+def write_benchmark_calibration_postprocess_strategy(path: Path) -> None:
+    path.write_text(BENCHMARK_CALIBRATION_POSTPROCESS_STRATEGY_TEXT, encoding="utf-8")
 
 
 def extend_ms_times(ms_path: Path, n_time_slots: int) -> int:
@@ -695,6 +738,9 @@ def main() -> None:
     multi_sector_benchmark_parset_path = output_dir / MULTI_SECTOR_BENCHMARK_PARSET_FILENAME
     benchmark_strategy_path = output_dir / BENCHMARK_STRATEGY_FILENAME
     benchmark_normalize_strategy_path = output_dir / BENCHMARK_NORMALIZE_STRATEGY_FILENAME
+    benchmark_calibration_postprocess_strategy_path = (
+        output_dir / BENCHMARK_CALIBRATION_POSTPROCESS_STRATEGY_FILENAME
+    )
     demo_strategy_path = args.strategy or benchmark_strategy_path
     if args.strategy is not None and not args.strategy.exists():
         raise SystemExit(f"Strategy file does not exist: {args.strategy}")
@@ -731,6 +777,13 @@ def main() -> None:
     write_benchmark_strategy(benchmark_strategy_path)
     print(f"Writing normalization benchmark strategy to {benchmark_normalize_strategy_path}")
     write_benchmark_normalize_strategy(benchmark_normalize_strategy_path)
+    print(
+        "Writing calibration post-process benchmark strategy to "
+        f"{benchmark_calibration_postprocess_strategy_path}"
+    )
+    write_benchmark_calibration_postprocess_strategy(
+        benchmark_calibration_postprocess_strategy_path
+    )
 
     n_time_slots = prepare_synthetic_ms(
         args.template_ms,
@@ -768,6 +821,10 @@ def main() -> None:
     print(f"Benchmark parset: {benchmark_parset_path}")
     print(f"Benchmark strategy: {benchmark_strategy_path}")
     print(f"Benchmark normalization strategy: {benchmark_normalize_strategy_path}")
+    print(
+        "Benchmark calibration post-process strategy: "
+        f"{benchmark_calibration_postprocess_strategy_path}"
+    )
     if args.include_multi_sector:
         print(f"Multi-sector benchmark parset: {multi_sector_benchmark_parset_path}")
     print("Run with:")

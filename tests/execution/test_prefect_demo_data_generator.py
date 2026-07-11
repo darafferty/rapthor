@@ -276,6 +276,30 @@ def test_generated_benchmark_normalize_strategy_enables_first_cycle_normalizatio
     assert all(step["do_normalize"] is False for step in strategy.strategy_steps[1:])
 
 
+def test_generated_calibration_postprocess_strategy_is_calibration_only(tmp_path):
+    module = load_generator_script()
+    strategy_path = tmp_path / "prefect_demo_benchmark_calibration_postprocess_strategy.py"
+
+    module.write_benchmark_calibration_postprocess_strategy(strategy_path)
+
+    spec = importlib.util.spec_from_file_location(
+        "prefect_demo_benchmark_calibration_postprocess_strategy", strategy_path
+    )
+    strategy = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = strategy
+    spec.loader.exec_module(strategy)
+
+    assert len(strategy.strategy_steps) == 1
+    step = strategy.strategy_steps[0]
+    assert step["do_calibrate"] is True
+    assert step["do_image"] is False
+    assert step["calibration_strategy"] == {
+        "di": [],
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+    }
+    assert step["regroup_model"] is True
+
+
 def test_checked_in_demo_parset_uses_prefect_settings_only():
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(REPO_ROOT / "examples" / "prefect_demo.parset")

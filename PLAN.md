@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-10.
+Status snapshot: 2026-07-11.
 
 ## Goal
 
@@ -102,6 +102,11 @@ Completed and accepted:
   neutral for the default single-sector benchmark and about 30% faster for
   many-sector mosaics; WSClean-rendered model mosaics are faster than the
   sparse FITS fallback in both worker shapes.
+- The pre-calibration-postprocess-split benchmark is captured in
+  `docs/source/development/benchmark_baselines/2026-07-10-pre-calibration-postprocess-split.md`.
+  It preserves the before-split evidence for `finalize_solutions_task`: four
+  task calls and about 19.6-19.9 seconds of aggregate task time across the
+  automatic `ci-benchmark` and `ci-benchmark-wsclean-predict` runs.
 
 Keep in mind:
 
@@ -231,13 +236,17 @@ Do these in order unless a regression blocks progress.
    `docs/source/development/benchmark_baselines/`.
 
    The next benchmark should compare the calibration post-processing split
-   against the accepted hidden-path baseline, especially the WSClean-predict
-   calibration scenario where solution plotting/combination is visible.
+   against the accepted hidden-path baseline and the
+   `2026-07-10-pre-calibration-postprocess-split` report. It should confirm
+   that `process_solutions_task`, `plot_solutions_task`, and
+   `combine_h5parms_task` are visible, that `finalize_solutions_task` is thin,
+   and that command counts/totals remain within normal CI variance.
 
    The automatic CI benchmark should use the preferred `4x15` shape
    (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`) and stay
    focused enough to finish before tests. For the calibration split work, run
-   `ci-benchmark` and `ci-benchmark-wsclean-predict` automatically. Add
+   `ci-benchmark`, `ci-benchmark-calibration-postprocess`, and
+   `ci-benchmark-wsclean-predict` automatically. Add
    `ci-benchmark-image-products`, `ci-benchmark-many-sector-mosaic`, or
    `ci-benchmark-many-sector-mosaic-sparse-fallback` only for targeted runs
    when changing image products, mosaic behavior, or scalability scheduling.
@@ -354,6 +363,7 @@ Most relevant benchmark reports:
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-resource-profiles.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-filter-skymodel-only-profile.md`
 - `docs/source/development/benchmark_baselines/2026-07-08-post-split-filter-skymodel-profile.md`
+- `docs/source/development/benchmark_baselines/2026-07-10-pre-calibration-postprocess-split.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-thread-wsclean-model-benchmark.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-shape-mosaic-method-comparison.md`
 

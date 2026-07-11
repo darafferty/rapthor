@@ -235,6 +235,26 @@ def default_benchmark_scenarios() -> tuple[BenchmarkScenario, ...]:
             ),
         ),
         BenchmarkScenario(
+            scenario_id="ci-benchmark-calibration-postprocess",
+            description=(
+                "Generated CI benchmark variant isolating calibration solution "
+                "post-processing: DD phase solves, slow-gain processing, solution "
+                "plotting, and h5parm combination without imaging."
+            ),
+            parset="examples/generated/prefect_demo_rich/prefect_demo_benchmark.parset",
+            local_dask_workers=2,
+            cpus_per_task=30,
+            max_threads=30,
+            parset_overrides=(
+                ParsetOverride(
+                    "global",
+                    "strategy",
+                    "examples/generated/prefect_demo_rich/"
+                    "prefect_demo_benchmark_calibration_postprocess_strategy.py",
+                ),
+            ),
+        ),
+        BenchmarkScenario(
             scenario_id="ci-benchmark-wsclean-predict",
             description=(
                 "Generated CI benchmark variant exercising the WSClean-predict "
