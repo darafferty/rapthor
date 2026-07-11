@@ -72,6 +72,7 @@ container_type = docker
 prefect_task_runner = local_dask
 dask_dashboard_address = :8787
 prefect_stream_output = True
+prefect_run_tags = prefect-demo,simple-demo
 prefect_retries = 0
 prefect_log_commands = True
 prefect_command_profile = time

@@ -754,6 +754,12 @@ The available options are described below under their respective sections.
         should use several local Dask workers without treating them as separate
         cluster nodes.
 
+    prefect_run_tags
+        Optional comma-separated Prefect tags to attach to this Rapthor run and
+        the operation/task runs launched from it (default = ``None``). Use this
+        to group dashboard runs by scenario, demo, benchmark, or manual test
+        purpose, for example ``prefect_run_tags = demo, multi-sector``.
+
     cpus_per_task
         When :term:`batch_system` = ``slurm``, the number of processors per task to
         request (default = 0 = all). By setting this value to the number of processors per

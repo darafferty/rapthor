@@ -549,11 +549,13 @@ def write_parset(
     postage_stamp_preview_count: int = 5,
     postage_stamp_preview_size_px: int = 96,
     fits_preview_clip_percentile: float = 99.9,
+    run_tags: str | None = None,
 ) -> None:
     ms_path = output_dir / ms_filename
     true_sky_path = output_dir / true_sky_filename
     apparent_sky_path = output_dir / apparent_sky_filename
     work_dir = output_dir / work_dir_name
+    run_tags = run_tags or f"prefect-demo,{title.replace(' ', '-')}"
 
     path.write_text(
         textwrap.dedent(
@@ -644,6 +646,7 @@ def write_parset(
             prefect_task_runner = local_dask
             dask_dashboard_address = :8787
             prefect_stream_output = True
+            prefect_run_tags = {run_tags}
             prefect_retries = 0
             prefect_log_commands = True
             prefect_command_profile = time

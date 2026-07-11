@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
+from rapthor.execution.run_names import task_tags
+
 TASK_RUNNERS = ("local_dask", "external_dask", "sync")
 COMMAND_PROFILE_MODES = ("auto", "time", "perf", "off")
 PREFECT_API_MODES = ("auto", "external", "ephemeral")
@@ -66,6 +68,27 @@ def _as_choice(value: Any, name: str, choices: tuple[str, ...]) -> str:
     return parsed
 
 
+def _as_tags(value: Any, name: str) -> tuple[str, ...]:
+    if value in (None, "", "None"):
+        return ()
+    if isinstance(value, str):
+        text = value.strip()
+        if text in {"", "None"}:
+            return ()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        values = [part.strip().strip("'\"") for part in text.split(",")]
+    else:
+        try:
+            values = list(value)
+        except TypeError:
+            values = [value]
+    try:
+        return tuple(task_tags(*values))
+    except Exception as err:
+        raise ValueError(f"{name} must be a comma-separated string or sequence") from err
+
+
 def _cluster_settings(parset: Mapping[str, Any]) -> Mapping[str, Any]:
     return parset.get("cluster_specific", parset.get("cluster", {}))
 
@@ -96,6 +119,7 @@ class ExecutionConfig:
     dask_scheduler: Optional[str] = None
     dask_dashboard_address: Optional[str] = None
     stream_output: bool = True
+    run_tags: tuple[str, ...] = ()
     retries: int = 0
     log_commands: bool = True
     command_profile: str = "auto"
@@ -151,6 +175,7 @@ class ExecutionConfig:
             stream_output=_as_bool(
                 cluster.get("prefect_stream_output", True), "prefect_stream_output"
             ),
+            run_tags=_as_tags(cluster.get("prefect_run_tags"), "prefect_run_tags"),
             retries=_as_non_negative_int(cluster.get("prefect_retries", 0), "prefect_retries"),
             log_commands=_as_bool(
                 cluster.get("prefect_log_commands", True), "prefect_log_commands"

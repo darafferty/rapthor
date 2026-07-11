@@ -1,7 +1,10 @@
 """Prefect task-runner construction helpers."""
 
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Optional
+
+from prefect import tags as prefect_tags
 
 from rapthor.execution.config import ExecutionConfig
 
@@ -203,4 +206,6 @@ def run_flow_with_task_runner(
     if flow_run_name is not None:
         flow_options["flow_run_name"] = flow_run_name
     configured_flow = prefect_flow.with_options(**flow_options)
-    return configured_flow(*flow_args, execution_config=config, **flow_kwargs)
+    tag_context = prefect_tags(*config.run_tags) if config.run_tags else nullcontext()
+    with tag_context:
+        return configured_flow(*flow_args, execution_config=config, **flow_kwargs)

@@ -85,6 +85,18 @@ class FakeFlow:
         return self.configured_flow
 
 
+class FakeTagContext:
+    def __init__(self, calls, tags):
+        self.calls = calls
+        self.tags = tags
+
+    def __enter__(self):
+        self.calls.append(("enter", self.tags))
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.calls.append(("exit", self.tags))
+
+
 def test_sync_task_runner_uses_single_worker_thread_pool():
     runner = build_task_runner(
         ExecutionConfig(task_runner="sync"),
@@ -276,6 +288,29 @@ def test_run_flow_with_task_runner_applies_flow_run_name(monkeypatch):
     )
 
     assert flow.options == {"task_runner": runner, "flow_run_name": "calibrate_dd_2"}
+
+
+def test_run_flow_with_task_runner_applies_prefect_run_tags(monkeypatch):
+    runner = object()
+    config = ExecutionConfig(task_runner="sync", run_tags=("demo", "multi-sector"))
+    flow = FakeFlow()
+    tag_calls = []
+
+    monkeypatch.setattr(
+        "rapthor.execution.task_runner.build_task_runner",
+        lambda execution_config: runner,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.task_runner.prefect_tags",
+        lambda *tags: FakeTagContext(tag_calls, tags),
+    )
+
+    run_flow_with_task_runner(flow, "payload", execution_config=config)
+
+    assert tag_calls == [
+        ("enter", ("demo", "multi-sector")),
+        ("exit", ("demo", "multi-sector")),
+    ]
 
 
 def test_check_dask_scheduler_returns_worker_count():

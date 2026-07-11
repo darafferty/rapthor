@@ -40,6 +40,7 @@ def test_generated_demo_parset_uses_prefect_settings_only(tmp_path):
     assert parser["cluster"]["max_nodes"] == "1"
     assert parser["cluster"]["local_dask_workers"] == "2"
     assert parser["cluster"]["prefect_command_profile"] == "time"
+    assert parser["cluster"]["prefect_run_tags"] == "prefect-demo,rich-demo"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "True"
     assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
     assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
@@ -93,6 +94,7 @@ def test_generated_benchmark_parset_uses_runtime_sized_threads_and_filter_defaul
     assert parser["cluster"]["filter_skymodel_ncores"] == "15"
     assert parser["cluster"]["deconvolution_threads"] == "0"
     assert parser["cluster"]["parallel_gridding_tasks"] == "0"
+    assert parser["cluster"]["prefect_run_tags"] == "prefect-demo,CI-benchmark"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "False"
     assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "False"
     assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"
@@ -180,6 +182,7 @@ def test_generated_multi_sector_benchmark_parset_uses_quadrant_dataset_and_grid(
         "prefect_demo_multisector_apparent_sky.txt"
     )
     assert parser["global"]["dir_working"].endswith("multisector-benchmark-work")
+    assert parser["cluster"]["prefect_run_tags"] == "prefect-demo,CI-multi-sector-benchmark"
     assert parser["imaging"]["grid_width_ra_deg"] == "1.5"
     assert parser["imaging"]["grid_width_dec_deg"] == "1.5"
     assert parser["imaging"]["grid_nsectors_ra"] == "2"
@@ -308,6 +311,7 @@ def test_checked_in_demo_parset_uses_prefect_settings_only():
     assert parser["cluster"]["max_nodes"] == "1"
     assert parser["cluster"]["local_dask_workers"] == "1"
     assert parser["cluster"]["prefect_command_profile"] == "time"
+    assert parser["cluster"]["prefect_run_tags"] == "prefect-demo,simple-demo"
     assert parser["cluster"]["prefect_publish_fits_previews"] == "True"
     assert parser["cluster"]["prefect_publish_postage_stamp_previews"] == "True"
     assert parser["cluster"]["prefect_postage_stamp_preview_count"] == "5"

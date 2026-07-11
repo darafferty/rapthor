@@ -138,6 +138,9 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "dask_scheduler": execution_config.dask_scheduler,
             "dask_dashboard_address": execution_config.dask_dashboard_address,
             "prefect_stream_output": execution_config.stream_output,
+            "prefect_run_tags": (
+                ",".join(execution_config.run_tags) if execution_config.run_tags else None
+            ),
             "prefect_retries": execution_config.retries,
             "prefect_log_commands": execution_config.log_commands,
             "prefect_command_profile": execution_config.command_profile,
@@ -184,6 +187,8 @@ def run_pipeline(
 
     log.info("Setting log level to %s", logging_level.upper())
     hooks.set_logging_level(logging_level)
+    if config.run_tags:
+        log.info("Prefect run tags: %s", ", ".join(config.run_tags))
 
     field = hooks.build_field(parset)
     needs_concatenation = any(len(obs) > 1 for obs in field.epoch_observations)

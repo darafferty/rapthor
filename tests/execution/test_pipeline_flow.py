@@ -680,6 +680,7 @@ def test_run_pipeline_syncs_effective_execution_config_to_operation_parset():
         dask_dashboard_address=":8787",
         local_dask_workers=2,
         cpus_per_task=4,
+        run_tags=("demo", "rich"),
     )
 
     field = run_pipeline(
@@ -692,6 +693,7 @@ def test_run_pipeline_syncs_effective_execution_config_to_operation_parset():
     assert field.parset["cluster_specific"]["prefect_task_runner"] == "external_dask"
     assert field.parset["cluster_specific"]["dask_scheduler"] == "tcp://127.0.0.1:8786"
     assert field.parset["cluster_specific"]["dask_dashboard_address"] == ":8787"
+    assert field.parset["cluster_specific"]["prefect_run_tags"] == "demo,rich"
     assert field.parset["cluster_specific"]["local_dask_workers"] == 2
     assert field.parset["cluster_specific"]["cpus_per_task"] == 4
 

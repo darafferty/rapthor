@@ -81,6 +81,17 @@ explicitly export its API URL before running Rapthor:
 When a Prefect API URL is configured, Rapthor checks it before launch and logs
 the matching dashboard URL.
 
+To make related runs easier to find in the Prefect dashboard, add optional
+run tags in the parset:
+
+.. code-block:: ini
+
+    [cluster]
+    prefect_run_tags = demo, multi-sector
+
+Rapthor attaches these tags to the pipeline, operation, and task runs launched
+with the shared Prefect runner.
+
 To use an existing Dask cluster, either set ``dask_scheduler`` in the parset or
 export ``DASK_SCHEDULER``:
 
