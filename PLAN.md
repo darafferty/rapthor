@@ -115,6 +115,11 @@ Do these in order unless a regression blocks progress.
    - Treat `collect_h5parms_task` and calibration chunk timing jumps in the
      latest run as runner/noise candidates until repeated benchmarks confirm
      they are real; their external command totals did not show matching growth.
+   - Keep WSClean per-facet prediction as a future targeted split. Today
+     `wsclean_predict_chunk_*` is chunk-scattered, while Rapthor loops over
+     frequency bands and facets inside the task. Investigate facet-level tasks
+     only with a targeted benchmark and resource limits, because it can create
+     many WSClean calls.
 
    Benchmark this batch:
 
@@ -237,11 +242,11 @@ Task naming:
 - Prefer established legacy workflow vocabulary when still scientifically
   accurate: `filter_skymodel`, `calculate_image_diagnostics`,
   `combine_h5parms`, `collect_h5parms`, `process_solutions`,
-  `plot_solutions`, `predict_model_data`, `make_mosaic`.
+  `plot_solutions`, `make_mosaic`.
 - Add only the smallest useful discriminator when several sibling tasks of the
   same kind can run in the same flow: `sector_1_filter_skymodel`,
-  `solve_chunk_1`, `screen_chunk_1`, `predict_model_data_1`,
-  `postprocess_1`.
+  `solve_chunk_1`, `screen_chunk_1`, `dp3_predict_chunk_1`,
+  `wsclean_predict_chunk_1`, `postprocess_1`.
 - Prefer scientific labels over numerical suffixes when they are stable and
   meaningful, for example `mosaic_I_image` instead of `mosaic_1`.
 - Keep tool identity in Prefect tags rather than cramming it into every run

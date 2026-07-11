@@ -217,7 +217,7 @@ def wsclean_predict_facet_info_task(
     return result
 
 
-@task(name="wsclean_predict")
+@task(name="wsclean_predict_chunk")
 def wsclean_predict_chunk_task(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
@@ -297,7 +297,7 @@ def _prepare_prediction_payload_with_tasks(
         ).submit(region_future, payload["pipeline_working_dir"])
         prepared_chunk_futures = [
             wsclean_predict_chunk_task.with_options(
-                **task_run_options("wsclean_predict", index + 1, tags=["wsclean"])
+                **task_run_options("wsclean_predict_chunk", index + 1, tags=["wsclean"])
             ).submit(
                 payload,
                 chunk,

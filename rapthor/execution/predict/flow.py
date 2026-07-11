@@ -150,7 +150,7 @@ def run_predict_postprocess(
     return _glob_directory_records(output_patterns, exclude_suffixes=exclude_suffixes)
 
 
-@task(name="predict_model_data")
+@task(name="dp3_predict_chunk")
 def predict_model_data_task(
     predict_task: PredictModelTaskPayload,
     pipeline_working_dir: str,
@@ -232,7 +232,7 @@ def _run_predict_prefect_tasks(
     payload = validate_predict_payload(payload)
     model_outputs = [
         predict_model_data_task.with_options(
-            **task_run_options("predict_model_data", index + 1, tags=["dp3"])
+            **task_run_options("dp3_predict_chunk", index + 1, tags=["dp3"])
         ).submit(
             predict_task,
             payload["pipeline_working_dir"],

@@ -890,8 +890,8 @@ def test_calibrate_flow_submits_wsclean_predict_chunk_tasks(monkeypatch):
         "read_predict_facets",
     ]
     assert [submission["options"]["task_run_name"] for submission in wsclean_task.submissions] == [
-        "wsclean_predict_1",
-        "wsclean_predict_2",
+        "wsclean_predict_chunk_1",
+        "wsclean_predict_chunk_2",
     ]
     assert draw_task.submissions == []
     assert normalization_task.submissions == []
@@ -949,8 +949,8 @@ def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypa
         ]
     }
     assert [submission["options"]["task_run_name"] for submission in model_task.submissions] == [
-        "predict_model_data_1",
-        "predict_model_data_2",
+        "dp3_predict_chunk_1",
+        "dp3_predict_chunk_2",
     ]
     assert model_task.submissions[0]["options"]["tags"] == ["dp3"]
     assert [
