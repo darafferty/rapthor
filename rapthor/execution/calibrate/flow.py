@@ -5,9 +5,14 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.calibrate.collection import (
+    active_solution_product_index,
     collect_screen_solutions,
     collect_strategy_solve_h5parm,
-    process_plot_and_combine_collected_products,
+    combine_processed_solution_products,
+    finalize_processed_solution_products,
+    needs_solution_combination,
+    plot_processed_solve_product,
+    process_collected_solve_product,
 )
 from rapthor.execution.calibrate.contracts import (
     CalibrateChunkPayload,
@@ -81,22 +86,70 @@ def collect_h5parms_task(
     return collected
 
 
-@task(name="finalize_solutions")
-def finalize_solutions_task(
+@task(name="process_solutions")
+def process_solutions_task(
     payload: CalibratePayload,
-    collected_products: list[dict],
+    collected_product: dict,
+) -> dict:
+    """Prefect task wrapper for per-solve calibration solution processing."""
+    assert_serializable_payload(collected_product)
+    with publish_python_logs_to_prefect():
+        result = process_collected_solve_product(payload, collected_product)
+    assert_serializable_payload(result)
+    return result
+
+
+@task(name="plot_solutions")
+def plot_solutions_task(
+    payload: CalibratePayload,
+    processed_product: dict,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Prefect task wrapper for calibration solution processing, plotting, and combining."""
-    assert_serializable_payload(collected_products)
+    """Prefect task wrapper for per-solve calibration solution plots."""
+    assert_serializable_payload(processed_product)
     config = execution_config or ExecutionConfig(task_runner="sync")
     with publish_python_logs_to_prefect():
-        result = process_plot_and_combine_collected_products(
+        result = plot_processed_solve_product(
             payload,
-            collected_products,
+            processed_product,
             config,
             shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(result)
+    return result
+
+
+@task(name="combine_h5parms")
+def combine_h5parms_task(
+    payload: CalibratePayload,
+    processed_products: list[dict],
+) -> dict:
+    """Prefect task wrapper for combining processed calibration h5parms."""
+    assert_serializable_payload(processed_products)
+    with publish_python_logs_to_prefect():
+        result = combine_processed_solution_products(payload, processed_products)
+    assert_serializable_payload(result)
+    return result
+
+
+@task(name="finalize_solutions")
+def finalize_solutions_task(
+    payload: CalibratePayload,
+    processed_products: list[dict],
+    plot_products: list[dict],
+    active_solution: dict,
+) -> dict:
+    """Prefect task wrapper for collecting finalized calibration output records."""
+    assert_serializable_payload(processed_products)
+    assert_serializable_payload(plot_products)
+    assert_serializable_payload(active_solution)
+    with publish_python_logs_to_prefect():
+        result = finalize_processed_solution_products(
+            payload,
+            processed_products,
+            plot_products,
+            active_solution,
         )
     assert_serializable_payload(result)
     return result
@@ -113,6 +166,23 @@ def collect_screen_h5parms_task(
         result = collect_screen_solutions(payload, screen_records)
     assert_serializable_payload(result)
     return result
+
+
+def _solve_task_label(solve_slot: Mapping[str, object]) -> str:
+    solve_type = str(solve_slot["solve_type"])
+    if solve_type == "fast_phase":
+        return "fast_phase"
+    if solve_type == "medium_phase":
+        return f"{solve_slot['solution_label']}_phase"
+    if solve_type == "slow_gains":
+        return "slow_gains"
+    if solve_type == "full_jones":
+        return "full_jones"
+    return f"solve{solve_slot['slot']}"
+
+
+def _solve_task_run_name(action: str, solve_slot: Mapping[str, object]) -> str:
+    return task_run_name(action, _solve_task_label(solve_slot))
 
 
 def _run_calibrate_prefect_tasks(
@@ -157,10 +227,28 @@ def _run_calibrate_prefect_tasks(
         )
         for index, solve_slot in enumerate(payload["chunks"][0]["solve_slots"])
     ]
-    collected_products = [record.result() for record in collected_products]
+    solve_slots = list(payload["chunks"][0]["solve_slots"])
+    processed_products = [
+        process_solutions_task.with_options(
+            task_run_name=_solve_task_run_name("process", solve_slot)
+        ).submit(payload, collected_product)
+        for collected_product, solve_slot in zip(collected_products, solve_slots)
+    ]
+    plot_products = [
+        plot_solutions_task.with_options(
+            task_run_name=_solve_task_run_name("plot", solve_slot)
+        ).submit(payload, processed_product, execution_config=config)
+        for processed_product, solve_slot in zip(processed_products, solve_slots)
+    ]
+    if needs_solution_combination(payload):
+        active_solution = combine_h5parms_task.with_options(
+            task_run_name=task_run_name("combine_h5parms")
+        ).submit(payload, processed_products)
+    else:
+        active_solution = processed_products[active_solution_product_index(payload)]
     return (
         finalize_solutions_task.with_options(task_run_name=task_run_name("finalize_solutions"))
-        .submit(payload, collected_products, execution_config=config)
+        .submit(payload, processed_products, plot_products, active_solution)
         .result()
     )
 

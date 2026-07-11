@@ -502,8 +502,21 @@ def test_image_flow_disambiguates_sector_task_names_for_multiple_sectors(monkeyp
 def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypatch):
     config = ExecutionConfig(task_runner="sync")
     payload = representative_calibrate_payload()
+    payload["chunks"][0]["solve_slots"].append(
+        payload["chunks"][0]["solve_slots"][0]
+        | {
+            "slot": 2,
+            "solve_type": "medium_phase",
+            "solution_label": "medium1",
+            "h5parm": "solve2.h5",
+            "h5parm_path": "/work/calibrate_1/solve2.h5",
+        }
+    )
     calibrate_task = _CapturedTask(
-        lambda index: {"solve1": file_record(f"/work/calibrate_1/solve{index + 1}.h5")}
+        lambda index: {
+            "solve1": file_record(f"/work/calibrate_1/chunk{index + 1}-solve1.h5"),
+            "solve2": file_record(f"/work/calibrate_1/chunk{index + 1}-solve2.h5"),
+        }
     )
     collect_task = _CapturedTask(
         lambda index: {
@@ -512,12 +525,34 @@ def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypa
             "collected_record": file_record(f"/work/calibrate_1/collected_solve{index + 1}.h5"),
         }
     )
+    process_task = _CapturedTask(
+        lambda index: {
+            "solve_key": f"solve{index + 1}",
+            "solve_slot": payload["chunks"][0]["solve_slots"][index],
+            "solution_record": file_record(f"/work/calibrate_1/collected_solve{index + 1}.h5"),
+            "combine_record": file_record(f"/work/calibrate_1/processed_solve{index + 1}.h5"),
+        }
+    )
+    plot_task = _CapturedTask(
+        lambda index: {
+            "solve_key": f"solve{index + 1}",
+            "plots": {
+                ("fast_phase_plots" if index == 0 else "medium1_phase_plots"): [
+                    file_record(f"/work/calibrate_1/solve{index + 1}-phase.png")
+                ]
+            },
+        }
+    )
+    combine_task = _CapturedTask(lambda index: file_record("/work/calibrate_1/combined_phase.h5"))
     finalize_task = _CapturedTask(
         lambda index: {"combined_solutions": file_record("/work/calibrate_1/combined.h5")}
     )
 
     monkeypatch.setattr(calibrate_module, "calibrate_chunk_task", calibrate_task)
     monkeypatch.setattr(calibrate_module, "collect_h5parms_task", collect_task)
+    monkeypatch.setattr(calibrate_module, "process_solutions_task", process_task)
+    monkeypatch.setattr(calibrate_module, "plot_solutions_task", plot_task)
+    monkeypatch.setattr(calibrate_module, "combine_h5parms_task", combine_task)
     monkeypatch.setattr(calibrate_module, "finalize_solutions_task", finalize_task)
 
     result = calibrate_module._run_calibrate_prefect_tasks(payload, execution_config=config)
@@ -530,26 +565,46 @@ def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypa
     ]
     assert [submission["options"]["task_run_name"] for submission in collect_task.submissions] == [
         "collect_h5parms_1",
+        "collect_h5parms_2",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in process_task.submissions] == [
+        "process_fast_phase",
+        "process_medium1_phase",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in plot_task.submissions] == [
+        "plot_fast_phase",
+        "plot_medium1_phase",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in combine_task.submissions] == [
+        "combine_h5parms",
     ]
     assert [submission["options"]["task_run_name"] for submission in finalize_task.submissions] == [
         "finalize_solutions",
     ]
     _assert_worker_submission_is_serializable(calibrate_task.submissions[0], config)
     _assert_worker_submission_is_serializable(collect_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(process_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(plot_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(combine_task.submissions[0], config)
     _assert_worker_submission_is_serializable(finalize_task.submissions[0], config)
     assert collect_task.submissions[0]["args"][0] is payload
     assert collect_task.submissions[0]["args"][1] == [
-        {"solve1": file_record("/work/calibrate_1/solve1.h5")}
-    ]
-    assert collect_task.submissions[0]["args"][2] is payload["chunks"][0]["solve_slots"][0]
-    assert finalize_task.submissions[0]["args"][0] is payload
-    assert finalize_task.submissions[0]["args"][1] == [
         {
-            "solve_key": "solve1",
-            "solve_slot": payload["chunks"][0]["solve_slots"][0],
-            "collected_record": file_record("/work/calibrate_1/collected_solve1.h5"),
+            "solve1": file_record("/work/calibrate_1/chunk1-solve1.h5"),
+            "solve2": file_record("/work/calibrate_1/chunk1-solve2.h5"),
         }
     ]
+    assert collect_task.submissions[0]["args"][2] is payload["chunks"][0]["solve_slots"][0]
+    assert collect_task.submissions[1]["args"][2] is payload["chunks"][0]["solve_slots"][1]
+    assert process_task.submissions[0]["args"][1] is collect_task.futures[0]
+    assert process_task.submissions[1]["args"][1] is collect_task.futures[1]
+    assert plot_task.submissions[0]["args"][1] is process_task.futures[0]
+    assert plot_task.submissions[1]["args"][1] is process_task.futures[1]
+    assert combine_task.submissions[0]["args"][1] == process_task.futures
+    assert finalize_task.submissions[0]["args"][0] is payload
+    assert finalize_task.submissions[0]["args"][1] == process_task.futures
+    assert finalize_task.submissions[0]["args"][2] == plot_task.futures
+    assert finalize_task.submissions[0]["args"][3] is combine_task.futures[0]
 
 
 def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypatch):

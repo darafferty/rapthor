@@ -299,72 +299,102 @@ def collect_strategy_solve_h5parm(
     }
 
 
-def process_plot_and_combine_collected_products(
+def process_collected_solve_product(
     payload: Mapping[str, object],
-    collected_products: list[Mapping[str, object]],
+    collected_product: Mapping[str, object],
+) -> dict:
+    """Prepare a collected solve product for plotting and cross-solve combining."""
+    solve_slot = dict(collected_product["solve_slot"])
+    collected_record = collected_product["collected_record"]
+    solve_type = _solve_type(solve_slot)
+
+    if solve_type == "slow_gains":
+        combine_record = _run_process_gains(collected_record, payload)
+    elif solve_type == "full_jones":
+        combine_record = _run_process_fulljones_gains(collected_record, payload)
+    else:
+        combine_record = collected_record
+
+    return {
+        "solve_key": str(collected_product["solve_key"]),
+        "solve_slot": solve_slot,
+        "solution_record": collected_record,
+        "combine_record": combine_record,
+    }
+
+
+def plot_processed_solve_product(
+    payload: Mapping[str, object],
+    processed_product: Mapping[str, object],
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> dict:
-    """Process, plot, combine, and validate already collected solve h5parms."""
+    """Plot one processed solve product and return the generated plot records."""
+    solve_slot = processed_product["solve_slot"]
+    solve_type = _solve_type(solve_slot)
+    combine_record = processed_product["combine_record"]
     pipeline_working_dir = str(payload["pipeline_working_dir"])
-    solve_slots = list(payload["chunks"][0]["solve_slots"])
     plot_first_dir = _plot_first_direction(payload)
+    plots = {}
 
-    result = {}
-    combine_records = {}
-    collected_by_key = {
-        str(product["solve_key"]): product["collected_record"] for product in collected_products
-    }
-
-    for solve_slot in solve_slots:
-        solve_key = _solve_key(solve_slot)
-        solve_type = _solve_type(solve_slot)
-        collected_record = collected_by_key[solve_key]
-        result[_solution_output_key(solve_slot)] = collected_record
-
-        if solve_type == "slow_gains":
-            combine_record = _run_process_gains(
-                collected_record,
-                payload,
-            )
-            for soltype in ("phase", "amplitude"):
-                root = "slow_amplitude_" if soltype == "amplitude" else "slow_phase_"
-                result[_plot_output_key(solve_slot, soltype)] = run_plot_solutions(
-                    combine_record,
-                    soltype,
-                    pipeline_working_dir,
-                    execution_config,
-                    root=root,
-                    first_dir=plot_first_dir,
-                    shell_operation_cls=shell_operation_cls,
-                )
-        elif solve_type == "full_jones":
-            combine_record = _run_process_fulljones_gains(
-                collected_record,
-                payload,
-            )
-            result[_plot_output_key(solve_slot, "phase")] = run_plot_solutions(
+    if solve_type == "slow_gains":
+        for soltype in ("phase", "amplitude"):
+            root = "slow_amplitude_" if soltype == "amplitude" else "slow_phase_"
+            plots[_plot_output_key(solve_slot, soltype)] = run_plot_solutions(
                 combine_record,
-                "phase",
+                soltype,
                 pipeline_working_dir,
                 execution_config,
-                root=_phase_plot_root(solve_slot),
+                root=root,
                 first_dir=plot_first_dir,
                 shell_operation_cls=shell_operation_cls,
             )
-        else:
-            combine_record = collected_record
-            result[_plot_output_key(solve_slot, "phase")] = run_plot_solutions(
-                collected_record,
-                "phase",
-                pipeline_working_dir,
-                execution_config,
-                root=_phase_plot_root(solve_slot),
-                first_dir=plot_first_dir,
-                shell_operation_cls=shell_operation_cls,
-            )
-        combine_records[solve_key] = combine_record
+    else:
+        plots[_plot_output_key(solve_slot, "phase")] = run_plot_solutions(
+            combine_record,
+            "phase",
+            pipeline_working_dir,
+            execution_config,
+            root=_phase_plot_root(solve_slot),
+            first_dir=plot_first_dir,
+            shell_operation_cls=shell_operation_cls,
+        )
 
+    return {"solve_key": str(processed_product["solve_key"]), "plots": plots}
+
+
+def needs_solution_combination(payload: Mapping[str, object]) -> bool:
+    """Return whether processed solve products need an h5parm combine step."""
+    solve_slots = list(payload["chunks"][0]["solve_slots"])
+    phase_slots = [slot for slot in solve_slots if _is_phase_solve(slot)]
+    slow_slots = [slot for slot in solve_slots if _solve_type(slot) == "slow_gains"]
+    return len(phase_slots) > 1 or (bool(phase_slots) and bool(slow_slots))
+
+
+def active_solution_product_index(payload: Mapping[str, object]) -> int:
+    """Return the active processed-product index when no combine step is needed."""
+    solve_slots = list(payload["chunks"][0]["solve_slots"])
+    solve_priority = (
+        _is_phase_solve,
+        lambda slot: _solve_type(slot) == "slow_gains",
+        lambda slot: _solve_type(slot) == "full_jones",
+    )
+    for is_match in solve_priority:
+        for index, solve_slot in enumerate(solve_slots):
+            if is_match(solve_slot):
+                return index
+    raise ValueError("Calibration produced no active solution product")
+
+
+def combine_processed_solution_products(
+    payload: Mapping[str, object],
+    processed_products: list[Mapping[str, object]],
+) -> dict:
+    """Combine processed solve products into the active h5parm."""
+    solve_slots = list(payload["chunks"][0]["solve_slots"])
+    combine_records = {
+        str(product["solve_key"]): product["combine_record"] for product in processed_products
+    }
     phase_slots = [slot for slot in solve_slots if _is_phase_solve(slot)]
     slow_slots = [slot for slot in solve_slots if _solve_type(slot) == "slow_gains"]
     fulljones_slots = [slot for slot in solve_slots if _solve_type(slot) == "full_jones"]
@@ -394,37 +424,92 @@ def process_plot_and_combine_collected_products(
             raise ValueError("A calibration cycle can contain at most one slow_gains solve")
         slow_record = combine_records[_solve_key(slow_slots[0])]
         if phase_record is None:
-            active_record = slow_record
-        else:
-            final_output = payload["combined_h5parms"].get("final")
-            if final_output is None:
-                raise ValueError("Calibration final combination output is missing")
-            active_record = _run_combine_h5parms(
-                phase_record,
-                slow_record,
-                final_output,
-                _final_phase_plus_slow_gain_combine_mode(payload),
-                payload,
-                f"Combined {_mode_label(payload)} phase and slow-gain h5parm",
-            )
-    elif phase_record is not None:
-        active_record = phase_record
-    elif fulljones_slots:
-        active_record = combine_records[_solve_key(fulljones_slots[0])]
-    else:
-        raise ValueError("Calibration produced no active solution product")
+            return slow_record
+        final_output = payload["combined_h5parms"].get("final")
+        if final_output is None:
+            raise ValueError("Calibration final combination output is missing")
+        return _run_combine_h5parms(
+            phase_record,
+            slow_record,
+            final_output,
+            _final_phase_plus_slow_gain_combine_mode(payload),
+            payload,
+            f"Combined {_mode_label(payload)} phase and slow-gain h5parm",
+        )
 
+    if phase_record is not None:
+        return phase_record
+
+    if fulljones_slots:
+        return combine_records[_solve_key(fulljones_slots[0])]
+
+    raise ValueError("Calibration produced no active solution product")
+
+
+def _active_solution_record(active_solution: Mapping[str, object]) -> dict:
+    if "combine_record" in active_solution:
+        return active_solution["combine_record"]
+    return dict(active_solution)
+
+
+def finalize_processed_solution_products(
+    payload: Mapping[str, object],
+    processed_products: list[Mapping[str, object]],
+    plot_products: list[Mapping[str, object]],
+    active_solution: Mapping[str, object],
+) -> dict:
+    """Collect solution, plot, and active h5parm records into the flow output map."""
+    result = {}
+    for product in processed_products:
+        result[_solution_output_key(product["solve_slot"])] = product["solution_record"]
+
+    for plot_product in plot_products:
+        result.update(plot_product["plots"])
+
+    active_record = _active_solution_record(active_solution)
+    phase_slots = [slot for slot in payload["chunks"][0]["solve_slots"] if _is_phase_solve(slot)]
     if _should_adjust_dd_sources(payload) and len(phase_slots) > 1:
         active_record = adjust_h5parm_sources(
             active_record,
             payload,
             f"Adjusted {_mode_label(payload)} combined h5parm",
         )
-    result["combined_solutions"] = active_record
 
+    result["combined_solutions"] = active_record
     for value in result.values():
         validate_output_record(value)
     return result
+
+
+def process_plot_and_combine_collected_products(
+    payload: Mapping[str, object],
+    collected_products: list[Mapping[str, object]],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    """Process, plot, combine, and validate already collected solve h5parms."""
+    processed_products = [
+        process_collected_solve_product(payload, product) for product in collected_products
+    ]
+    plot_products = [
+        plot_processed_solve_product(
+            payload,
+            product,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        for product in processed_products
+    ]
+    if needs_solution_combination(payload):
+        active_solution = combine_processed_solution_products(payload, processed_products)
+    else:
+        active_solution = processed_products[active_solution_product_index(payload)]
+    return finalize_processed_solution_products(
+        payload,
+        processed_products,
+        plot_products,
+        active_solution,
+    )
 
 
 def collect_plot_and_combine(

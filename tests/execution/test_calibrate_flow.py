@@ -3692,6 +3692,56 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
             events.append("collect-submit")
             return FakeCollectFuture()
 
+    class FakeProcessFuture:
+        def result(self):
+            events.append("process-result")
+            return {
+                "solve_key": "solve1",
+                "solve_slot": payload["chunks"][0]["solve_slots"][0],
+                "solution_record": file_record(tmp_path / "fulljones_solutions.h5"),
+                "combine_record": file_record(tmp_path / "fulljones_solutions.h5"),
+            }
+
+    class FakeProcessTask:
+        def __init__(self, task_run_name):
+            self.task_run_name = task_run_name
+
+        def submit(self, payload_arg, collected_product):
+            events.append(f"task-name-{self.task_run_name}")
+            assert payload_arg is payload
+            assert collected_product.result() == {
+                "solve_key": "solve1",
+                "solve_slot": payload["chunks"][0]["solve_slots"][0],
+                "collected_record": file_record(tmp_path / "fulljones_solutions.h5"),
+            }
+            events.append("process-submit")
+            return FakeProcessFuture()
+
+    class FakePlotFuture:
+        def result(self):
+            events.append("plot-result")
+            return {
+                "solve_key": "solve1",
+                "plots": {"fulljones_phase_plots": []},
+            }
+
+    class FakePlotTask:
+        def __init__(self, task_run_name):
+            self.task_run_name = task_run_name
+
+        def submit(self, payload_arg, processed_product, execution_config=None):
+            events.append(f"task-name-{self.task_run_name}")
+            assert payload_arg is payload
+            assert execution_config == ExecutionConfig(task_runner="sync")
+            assert processed_product.result() == {
+                "solve_key": "solve1",
+                "solve_slot": payload["chunks"][0]["solve_slots"][0],
+                "solution_record": file_record(tmp_path / "fulljones_solutions.h5"),
+                "combine_record": file_record(tmp_path / "fulljones_solutions.h5"),
+            }
+            events.append("plot-submit")
+            return FakePlotFuture()
+
     class FakeFinalizeFuture:
         def result(self):
             events.append("finalize-result")
@@ -3701,17 +3751,12 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         def __init__(self, task_run_name):
             self.task_run_name = task_run_name
 
-        def submit(self, payload_arg, collected_products, execution_config=None):
+        def submit(self, payload_arg, processed_products, plot_products, active_solution):
             events.append(f"task-name-{self.task_run_name}")
             assert payload_arg is payload
-            assert execution_config == ExecutionConfig(task_runner="sync")
-            assert collected_products == [
-                {
-                    "solve_key": "solve1",
-                    "solve_slot": payload["chunks"][0]["solve_slots"][0],
-                    "collected_record": file_record(tmp_path / "fulljones_solutions.h5"),
-                }
-            ]
+            assert len(processed_products) == 1
+            assert len(plot_products) == 1
+            assert active_solution is processed_products[0]
             events.append("finalize-submit")
             return FakeFinalizeFuture()
 
@@ -3720,6 +3765,12 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
 
     def fake_collect_with_options(task_run_name):
         return FakeCollectTask(task_run_name)
+
+    def fake_process_with_options(task_run_name):
+        return FakeProcessTask(task_run_name)
+
+    def fake_plot_with_options(task_run_name):
+        return FakePlotTask(task_run_name)
 
     def fake_finalize_with_options(task_run_name):
         return FakeFinalizeTask(task_run_name)
@@ -3733,6 +3784,16 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         calibrate_module.collect_h5parms_task,
         "with_options",
         fake_collect_with_options,
+    )
+    monkeypatch.setattr(
+        calibrate_module.process_solutions_task,
+        "with_options",
+        fake_process_with_options,
+    )
+    monkeypatch.setattr(
+        calibrate_module.plot_solutions_task,
+        "with_options",
+        fake_plot_with_options,
     )
     monkeypatch.setattr(
         calibrate_module.finalize_solutions_task,
@@ -3755,7 +3816,12 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         "result-1",
         "task-name-collect_h5parms_1",
         "collect-submit",
+        "task-name-process_full_jones",
         "collect-result",
+        "process-submit",
+        "task-name-plot_full_jones",
+        "process-result",
+        "plot-submit",
         "task-name-finalize_solutions",
         "finalize-submit",
         "finalize-result",

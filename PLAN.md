@@ -53,6 +53,12 @@ Completed and accepted:
 - The `calculate_image_diagnostics` task split has been benchmarked and
   accepted. It added the expected four Dask tasks, kept scheduler gap flat, and
   preserved successful command execution.
+- Calibration post-processing has its first task split: per-solve
+  `collect_h5parms` now feeds per-solve `process_solutions` and
+  `plot_solutions` tasks, optional `combine_h5parms`, and a thin
+  `finalize_solutions` task. The processing task performs slow-gain and
+  full-Jones solution processing where needed and otherwise normalizes the
+  product record shape for downstream tasks.
 - Hidden-path benchmark scenario definitions are in place for image products,
   WSClean-predict calibration, and many-sector mosaic work. The many-sector
   scenario uses a dedicated quadrant-balanced generated dataset and a
@@ -208,13 +214,13 @@ Do these in order unless a regression blocks progress.
      Prefect tasks that run after WSClean preparation and before `finalize`;
      next use the hidden-path benchmarks to decide whether any remaining image
      helpers are worth splitting before moving on to calibration
-   - calibration post-processing: `collect_h5parms` is now split into one
-     Prefect task per solve slot, followed by a named `finalize_solutions`
-     task that preserves the existing strategy-aware processing, plotting, and
-     combination logic; next split `process_slow_gains`, full-Jones
-     normalization, `combine_h5parms`, and `plot_solutions` out of
-     `finalize_solutions` in smaller batches
-   - prediction: WSClean-predict loops and sector-model post-processing
+   - calibration post-processing: `collect_h5parms`, per-solve
+     `process_solutions`, per-solve `plot_solutions`, optional
+     `combine_h5parms`, and thin `finalize_solutions` are now separate Prefect
+     task boundaries; next benchmark this batch before splitting more
+     calibration work
+   - prediction: WSClean-predict loops and sector-model post-processing are
+     the next task-split candidates after the calibration split benchmark
    - mosaic: WSClean-rendered model mosaics, per-sector regridding, mosaic
      assembly, and compression
 
@@ -223,6 +229,10 @@ Do these in order unless a regression blocks progress.
    when task count, scheduler gap, wall time, command totals, restart behavior,
    and raw/scientific outputs remain acceptable. Add compact reports under
    `docs/source/development/benchmark_baselines/`.
+
+   The next benchmark should compare the calibration post-processing split
+   against the accepted hidden-path baseline, especially the WSClean-predict
+   calibration scenario where solution plotting/combination is visible.
 
    The automatic CI benchmark should use the preferred `4x15` shape
    (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`) and stay
@@ -318,7 +328,7 @@ Task naming:
   parent flow name.
 - Prefer established legacy workflow vocabulary when still scientifically
   accurate: `filter_skymodel`, `calculate_image_diagnostics`,
-  `combine_h5parms`, `collect_h5parms`, `process_slow_gains`,
+  `combine_h5parms`, `collect_h5parms`, `process_solutions`,
   `plot_solutions`, `predict_model_data`, `make_mosaic`.
 - Add only the smallest useful discriminator when several sibling tasks of the
   same kind can run in the same flow: `sector_1_filter_skymodel`,
