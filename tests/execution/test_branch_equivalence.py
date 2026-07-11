@@ -936,12 +936,88 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
     assert "`current.parset`" in markdown
     assert "## Runtime Summary" in markdown
     assert "12.346" in markdown
-    assert "Current-vs-base median delta: -19.000%" in markdown
+    assert "current-vs-master median delta: -19.000%" in markdown
     assert "## Operation Runtime Summary" in markdown
+    assert "| Operation | master Runs | master Median (s) | current Runs |" in markdown
     assert "`image_1` | 1 | 9.000 | 1 | 7.500 | -16.667%" in markdown
     assert "## Difference Classification" in markdown
     assert "`small_image_residual`" in markdown
     assert "## Adaptations" not in markdown
+
+
+def test_repeatability_pair_markdown_labels_actual_ref_and_repetition(tmp_path):
+    module = load_branch_equivalence_script()
+    report = {
+        "scenario_id": "synthetic:base-rep-01_vs_base-rep-02",
+        "run_root": str(tmp_path),
+        "repeatability_pair": {
+            "pair_id": "base-rep-01_vs_base-rep-02",
+            "reference": "base/rep-01",
+            "current": "base/rep-02",
+        },
+        "base": {
+            "ref": "master",
+            "returncode": 0,
+            "elapsed_seconds": 12.0,
+            "parset_path": "base-rep-01.parset",
+            "work_dir": "base-rep-01-work",
+            "log_path": "base-rep-01.log",
+        },
+        "current": {
+            "ref": "master",
+            "returncode": 0,
+            "elapsed_seconds": 10.0,
+            "parset_path": "base-rep-02.parset",
+            "work_dir": "base-rep-02-work",
+            "log_path": "base-rep-02.log",
+        },
+        "runtime_summary": {
+            "base": {
+                "count": 1,
+                "min_seconds": 12.0,
+                "median_seconds": 12.0,
+                "max_seconds": 12.0,
+            },
+            "current": {
+                "count": 1,
+                "min_seconds": 10.0,
+                "median_seconds": 10.0,
+                "max_seconds": 10.0,
+            },
+            "current_vs_base_median_delta_percent": -1.0 / 6.0,
+        },
+        "operation_timing_summary": {
+            "current_vs_base": {
+                "image_1": {
+                    "base_count": 1,
+                    "base_median_seconds": 9.0,
+                    "current_count": 1,
+                    "current_median_seconds": 7.5,
+                    "current_vs_base_median_delta_percent": -1.0 / 6.0,
+                }
+            },
+        },
+        "comparison": {
+            "passed": True,
+            "metrics": {},
+            "product_statistics": {"fits": []},
+            "failures": [],
+            "warnings": [],
+        },
+    }
+
+    markdown = module._render_markdown_report(report)
+
+    assert "Repeatability pair: `base-rep-01_vs_base-rep-02`" in markdown
+    assert "| master/rep-01 | 1 | 12.000 | 12.000 | 12.000 |" in markdown
+    assert "| master/rep-02 | 1 | 10.000 | 10.000 | 10.000 |" in markdown
+    assert "master/rep-02-vs-master/rep-01 median delta: -16.667%" in markdown
+    assert (
+        "| Operation | master/rep-01 Runs | master/rep-01 Median (s) | master/rep-02 Runs |"
+        in markdown
+    )
+    assert "Current-vs-base median delta" not in markdown
+    assert "Candidate-vs-reference median delta" not in markdown
 
 
 def test_prepare_only_writes_reports_without_running_branches(tmp_path):

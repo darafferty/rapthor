@@ -1448,7 +1448,25 @@ def _format_seconds(value: Any) -> str:
     return f"{number:.3f}"
 
 
-def _extend_operation_timing_summary(lines: list[str], summary: dict[str, Any] | None) -> None:
+def _run_comparison_label(run: dict[str, Any], repetition: str | None = None) -> str:
+    """Return a readable run label for branch or repeatability comparisons."""
+    label = str(run.get("ref") or "run")
+    if repetition:
+        label = f"{label}/{repetition.rsplit('/', maxsplit=1)[-1]}"
+    return label
+
+
+def _comparison_delta_label(left_label: str, right_label: str) -> str:
+    return f"{right_label}-vs-{left_label} median delta"
+
+
+def _extend_operation_timing_summary(
+    lines: list[str],
+    summary: dict[str, Any] | None,
+    *,
+    base_label: str = "Base",
+    current_label: str = "Current",
+) -> None:
     if not summary or not summary.get("current_vs_base"):
         return
 
@@ -1457,8 +1475,8 @@ def _extend_operation_timing_summary(lines: list[str], summary: dict[str, Any] |
             "",
             "## Operation Runtime Summary",
             "",
-            "| Operation | Base Runs | Base Median (s) | Current Runs | "
-            "Current Median (s) | Delta |",
+            f"| Operation | {base_label} Runs | {base_label} Median (s) | "
+            f"{current_label} Runs | {current_label} Median (s) | Delta |",
             "| --- | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
@@ -1591,6 +1609,17 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
                 f"`{run.get('log_path')}` | {snapshot_text} |"
             )
 
+    if pair:
+        runtime_labels = (
+            _run_comparison_label(report["base"], pair["reference"]),
+            _run_comparison_label(report["current"], pair["current"]),
+        )
+    else:
+        runtime_labels = (
+            _run_comparison_label(report["base"]),
+            _run_comparison_label(report["current"]),
+        )
+
     runtime_summary = report.get("runtime_summary")
     if runtime_summary:
         lines.extend(
@@ -1602,24 +1631,30 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
                 "| --- | ---: | ---: | ---: | ---: |",
             ]
         )
-        for side in ("base", "current"):
+        for side, label in zip(("base", "current"), runtime_labels, strict=True):
             stats = runtime_summary.get(side, {})
             lines.append(
                 "| "
-                f"{side} | {stats.get('count', 0)} | "
+                f"{label} | {stats.get('count', 0)} | "
                 f"{_format_seconds(stats.get('min_seconds'))} | "
                 f"{_format_seconds(stats.get('median_seconds'))} | "
                 f"{_format_seconds(stats.get('max_seconds'))} |"
             )
+        delta_label = _comparison_delta_label(*runtime_labels)
         lines.extend(
             [
                 "",
-                "Current-vs-base median delta: "
+                f"{delta_label}: "
                 f"{_format_percent(runtime_summary.get('current_vs_base_median_delta_percent'))}",
             ]
         )
 
-    _extend_operation_timing_summary(lines, report.get("operation_timing_summary"))
+    _extend_operation_timing_summary(
+        lines,
+        report.get("operation_timing_summary"),
+        base_label=runtime_labels[0],
+        current_label=runtime_labels[1],
+    )
 
     lines.extend(
         [
