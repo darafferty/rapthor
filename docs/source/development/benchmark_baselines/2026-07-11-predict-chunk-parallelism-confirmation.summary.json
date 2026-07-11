@@ -1,0 +1,90 @@
+{
+  "source_run": "runs/benchmark-20260711-162920",
+  "commit": "3f20401a315f3c0dc13fcc14e669529278143e8a",
+  "ci_job": "1837311",
+  "pipeline": "201460",
+  "runner": "Shared Runner on lcs126",
+  "decision": "Accepted: standalone prediction dependency split exposes chunked predict/postprocess groups without material overhead.",
+  "resource_shape": {
+    "local_dask_workers": 4,
+    "cpus_per_task": 15,
+    "max_threads": 15,
+    "filter_skymodel_ncores": 15,
+    "prefect_publish_fits_previews": false
+  },
+  "profiles": {
+    "ci-benchmark": {
+      "wall_median_seconds": 341.475,
+      "command_median_seconds": 227.459,
+      "command_count": 47,
+      "dask_duration_median_seconds": 324.06,
+      "dask_compute_median_seconds": 290.3,
+      "dask_gap_median_seconds": 33.76,
+      "task_count": 77,
+      "dominant_commands": {
+        "filter_skymodel_seconds": 105.155,
+        "wsclean_seconds": 93.36,
+        "python3_seconds": 17.828,
+        "dp3_seconds": 5.363,
+        "fpack_seconds": 4.099
+      }
+    },
+    "ci-benchmark-image-products": {
+      "wall_median_seconds": 367.424,
+      "command_median_seconds": 260.188,
+      "command_count": 55,
+      "dask_duration_median_seconds": 354.05,
+      "dask_compute_median_seconds": 319.0,
+      "dask_gap_median_seconds": 35.05,
+      "task_count": 91,
+      "dominant_commands": {
+        "filter_skymodel_seconds": 113.841,
+        "wsclean_seconds": 107.811,
+        "python3_seconds": 18.125,
+        "fpack_seconds": 7.156,
+        "make_catalog_from_image_cube_seconds": 5.975,
+        "dp3_seconds": 5.613
+      }
+    },
+    "ci-benchmark-predict-chunks": {
+      "wall_median_seconds": 330.485,
+      "command_median_seconds": 229.447,
+      "command_count": 57,
+      "dask_duration_median_seconds": 316.91,
+      "dask_compute_median_seconds": 287.87,
+      "dask_gap_median_seconds": 29.04,
+      "task_count": 89,
+      "visible_prediction_task_groups": {
+        "predict_model_data_task": {
+          "count": 4,
+          "total_seconds": 3.899,
+          "median_seconds": 0.484,
+          "max_seconds": 2.502
+        },
+        "predict_postprocess_task": {
+          "count": 4,
+          "total_seconds": 3.196,
+          "median_seconds": 0.248,
+          "max_seconds": 2.472
+        }
+      },
+      "dominant_commands": {
+        "filter_skymodel_seconds": 105.067,
+        "wsclean_seconds": 92.643,
+        "python3_seconds": 17.985,
+        "dp3_seconds": 7.368,
+        "fpack_seconds": 4.08
+      }
+    }
+  },
+  "same_run_predict_chunks_delta_vs_ci_benchmark": {
+    "wall_percent": -3.2,
+    "command_percent": 0.9,
+    "command_count_percent": 21.3,
+    "dask_duration_percent": -2.2,
+    "dask_compute_percent": -0.8,
+    "dask_gap_percent": -14.0,
+    "task_count_percent": 15.6
+  },
+  "next_step": "Move on to image-side bottleneck work. Target filter_skymodel first, then WSClean image resource/concurrency tuning and calibration plotting if repeated benchmarks justify it."
+}

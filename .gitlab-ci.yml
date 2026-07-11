@@ -286,7 +286,6 @@ run_benchmark_comparison:
     RAPTHOR_BENCHMARK_REPETITIONS: "1"
     RAPTHOR_BENCHMARK_SCENARIO_ARGS: >-
       --scenario ci-benchmark
-      --scenario ci-benchmark-predict-chunks
       --scenario ci-benchmark-image-products
     VECLIB_MAXIMUM_THREADS: "1"
   script:

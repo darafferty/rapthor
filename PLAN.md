@@ -75,6 +75,13 @@ Accepted performance and task-boundary evidence:
   exposes per-observation DP3 preparation, concatenation, WSClean imaging,
   WSClean image finishing, optional residual-visibilities production, and the
   prepared-output join as separate tasks.
+- Standalone prediction parallelism is accepted. Benchmark
+  `runs/benchmark-20260711-162920` completed with return code `0` for
+  `ci-benchmark`, `ci-benchmark-image-products`, and
+  `ci-benchmark-predict-chunks`. The targeted chunked-predict scenario exposed
+  the expected extra predict/postprocess work without material overhead:
+  command time changed by about `+0.9%` relative to `ci-benchmark` in the same
+  run, while wall time was not worse.
 - WSClean-rendered model mosaics are the preferred path when sector sky-model
   inputs exist. Sparse FITS mapping remains a fallback for products that cannot
   be rendered by WSClean.
@@ -95,42 +102,44 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Benchmark standalone prediction parallelism.**
-   Implementation is in place: `predict_model_data` futures now stay live, and
-   each `postprocess` task receives only the model-data futures matching its
-   observation and start time. Focused tests cover DI add-model, DD
-   subtract-model, same-MS/different-time filtering, same-time/different-MS
-   filtering, serializable worker payloads, and upstream failure propagation.
+1. **Target the next image-side performance bottlenecks.**
+   Current benchmarks consistently show the largest costs are
+   `filter_skymodel` and WSClean image runs. Treat calibration plotting as a
+   secondary target, and only optimize it if larger/repeated runs keep showing
+   it as a meaningful post-processing cost.
 
-   Performance guidance from the latest benchmarks:
+   Guidance:
 
-   - Do not optimize the image-sector preparation join, concatenation, or
-     finish tasks now; after the split they are visible and small.
-   - Keep `filter_skymodel` as the primary image-side optimization target. It
-     remains the largest command cost in both `ci-benchmark` and
-     `ci-benchmark-image-products`.
-   - Keep WSClean image runs as a resource/concurrency target. They are now
-     visible as `image_sector_wsclean_task` and are the second-largest
-     image-side command cost.
-   - Treat `collect_h5parms_task` and calibration chunk timing jumps in the
-     latest run as runner/noise candidates until repeated benchmarks confirm
-     they are real; their external command totals did not show matching growth.
+   - Start with `filter_skymodel`: profile resource usage, check whether
+     thread/core settings are optimal, and look for algorithmic or I/O wins
+     before changing science behavior.
+   - Keep WSClean image runs as a resource/concurrency target. They are visible
+     as `image_sector_wsclean_task` and are the second-largest image-side
+     command cost.
+   - Do not optimize the image-sector `prepare_chunk`, concatenate, finish,
+     prepare-output, or finalize tasks now; after the split they are visible
+     and small in CI-sized benchmarks.
+   - Treat `collect_h5parms_task` and calibration chunk timing jumps as
+     runner/noise candidates until repeated benchmarks confirm they are real;
+     their external command totals have not shown matching growth.
    - Keep WSClean per-facet prediction as a future targeted split. Today
      `wsclean_predict_chunk_*` is chunk-scattered, while Rapthor loops over
      frequency bands and facets inside the task. Investigate facet-level tasks
      only with a targeted benchmark and resource limits, because it can create
      many WSClean calls.
 
-   Benchmark this batch:
+   Benchmark rule:
 
-   - run automatic: `ci-benchmark`
-   - include targeted: `ci-benchmark-predict-chunks`, which sets
-     `cluster.max_nodes = 2` to force observation chunking and expose multiple
-     `predict_model_data` / `postprocess` dependency groups
-   - use `ci-benchmark-image-products` only if it is already part of the paired
-     CI run
-   - run `ci-benchmark-wsclean-predict` only if calibration prediction setup or
-     WSClean-predict paths are touched
+   - run default automatic coverage: `ci-benchmark`
+   - for the current image-side bottleneck batch, keep
+     `ci-benchmark-image-products` in CI as the targeted companion scenario
+   - otherwise add `ci-benchmark-image-products` only when changing image
+     products, image-sector post-processing, `filter_skymodel`, or WSClean
+     image resource/concurrency behavior
+   - add `ci-benchmark-predict-chunks` only when prediction chunking,
+     predict post-processing dependencies, or related scheduling changes
+   - add `ci-benchmark-wsclean-predict` only when calibration prediction setup
+     or WSClean-predict paths are touched
 
 2. **Keep mosaic science coverage explicit, but targeted.**
    The `multi-sector-mosaic` option-matrix scenario protects sector imaging,
@@ -282,6 +291,7 @@ Most relevant benchmark reports:
 - `docs/source/development/benchmark_baselines/2026-07-10-pre-calibration-postprocess-split.md`
 - `docs/source/development/benchmark_baselines/2026-07-11-wsclean-predict-task-split-confirmation.md`
 - `docs/source/development/benchmark_baselines/2026-07-11-image-prepare-task-split-confirmation.md`
+- `docs/source/development/benchmark_baselines/2026-07-11-predict-chunk-parallelism-confirmation.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-thread-wsclean-model-benchmark.md`
 - `docs/source/development/benchmark_baselines/2026-07-10-worker-shape-mosaic-method-comparison.md`
 
