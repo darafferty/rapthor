@@ -18,7 +18,13 @@ from rapthor.execution.calibrate.contracts import (
     CalibrateChunkPayload,
     CalibratePayload,
 )
-from rapthor.execution.calibrate.prediction import prepare_image_based_predict
+from rapthor.execution.calibrate.prediction import (
+    adjust_prediction_normalization_h5parm,
+    draw_predict_model_images,
+    make_predict_region_file,
+    prepare_wsclean_predict_chunk,
+    wsclean_predict_facet_info,
+)
 from rapthor.execution.calibrate.solves import run_calibrate_chunk, run_calibrate_screen_chunk
 from rapthor.execution.calibrate.validation import validate_calibrate_payload
 from rapthor.execution.config import ExecutionConfig
@@ -168,6 +174,82 @@ def collect_screen_h5parms_task(
     return result
 
 
+@task(name="make_predict_region")
+def make_predict_region_task(payload: CalibratePayload) -> dict:
+    """Prefect task wrapper for preparing a calibration prediction region."""
+    assert_serializable_payload(payload)
+    with publish_python_logs_to_prefect():
+        result = make_predict_region_file(payload)
+    assert_serializable_payload(result)
+    return result
+
+
+@task(name="draw_model")
+def draw_predict_model_task(
+    payload: CalibratePayload,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> list[dict]:
+    """Prefect task wrapper for drawing calibration prediction model images."""
+    assert_serializable_payload(payload)
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    with publish_python_logs_to_prefect():
+        result = draw_predict_model_images(
+            payload,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(result)
+    return result
+
+
+@task(name="read_predict_facets")
+def wsclean_predict_facet_info_task(region_record: Mapping[str, object]) -> dict:
+    """Prefect task wrapper for reading WSClean-predict facet names."""
+    assert_serializable_payload(region_record)
+    with publish_python_logs_to_prefect():
+        result = wsclean_predict_facet_info(region_record)
+    assert_serializable_payload(result)
+    return result
+
+
+@task(name="wsclean_predict")
+def wsclean_predict_chunk_task(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+    chunk_index: int,
+    facet_info: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for one WSClean-predict calibration chunk."""
+    assert_serializable_payload(payload)
+    assert_serializable_payload(chunk)
+    assert_serializable_payload(facet_info)
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    with publish_python_logs_to_prefect():
+        result = prepare_wsclean_predict_chunk(
+            payload,
+            chunk,
+            chunk_index,
+            facet_info,
+            config,
+            shell_operation_cls=shell_operation_cls,
+        )
+    assert_serializable_payload(result)
+    return result
+
+
+@task(name="adjust_normalization_h5parm")
+def adjust_prediction_normalization_h5parm_task(payload: CalibratePayload) -> str:
+    """Prefect task wrapper for prediction-time normalization h5parm adjustment."""
+    assert_serializable_payload(payload)
+    with publish_python_logs_to_prefect():
+        result = adjust_prediction_normalization_h5parm(payload)
+    assert_serializable_payload(result)
+    return result
+
+
 def _solve_task_label(solve_slot: Mapping[str, object]) -> str:
     solve_type = str(solve_slot["solve_type"])
     if solve_type == "fast_phase":
@@ -185,6 +267,69 @@ def _solve_task_run_name(action: str, solve_slot: Mapping[str, object]) -> str:
     return task_run_name(action, _solve_task_label(solve_slot))
 
 
+def _prepare_prediction_payload_with_tasks(
+    payload: CalibratePayload,
+    config: ExecutionConfig,
+) -> CalibratePayload:
+    """Prepare image-based calibration prediction inputs with visible tasks."""
+    if not (payload.get("image_based_predict") or payload.get("wsclean_predict")):
+        return payload
+
+    region_future = make_predict_region_task.with_options(
+        task_run_name=task_run_name("make_predict_region")
+    ).submit(payload)
+
+    model_images_future = None
+    if payload.get("image_based_predict"):
+        model_images_future = draw_predict_model_task.with_options(
+            task_run_name=task_run_name("draw_model")
+        ).submit(payload, execution_config=config)
+
+    facet_info_future = None
+    prepared_chunk_futures = None
+    if payload.get("wsclean_predict"):
+        facet_info_future = wsclean_predict_facet_info_task.with_options(
+            task_run_name=task_run_name("read_predict_facets")
+        ).submit(region_future)
+        prepared_chunk_futures = [
+            wsclean_predict_chunk_task.with_options(
+                task_run_name=task_run_name("wsclean_predict", index + 1)
+            ).submit(
+                payload,
+                chunk,
+                index,
+                facet_info_future,
+                execution_config=config,
+            )
+            for index, chunk in enumerate(payload["chunks"])
+        ]
+
+    normalization_future = None
+    if payload.get("normalize_h5parm"):
+        normalization_future = adjust_prediction_normalization_h5parm_task.with_options(
+            task_run_name=task_run_name("adjust_normalization_h5parm")
+        ).submit(payload)
+
+    prepared_payload = dict(payload)
+    region_record = region_future.result()
+    prepared_payload["predict_regions"] = region_record["path"]
+
+    if model_images_future is not None:
+        model_images = model_images_future.result()
+        prepared_payload["predict_images"] = [record["path"] for record in model_images]
+
+    if facet_info_future is not None and prepared_chunk_futures is not None:
+        facet_info = facet_info_future.result()
+        prepared_payload["modeldatacolumn"] = facet_info["modeldatacolumn"]
+        prepared_payload["chunks"] = [future.result() for future in prepared_chunk_futures]
+
+    if normalization_future is not None:
+        prepared_payload["normalize_h5parm"] = normalization_future.result()
+
+    assert_serializable_payload(prepared_payload)
+    return prepared_payload
+
+
 def _run_calibrate_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
@@ -192,7 +337,7 @@ def _run_calibrate_prefect_tasks(
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_calibrate_payload(payload)
-    payload = prepare_image_based_predict(payload, config)
+    payload = _prepare_prediction_payload_with_tasks(payload, config)
     if payload["calibration_kind"] == "dd_screen":
         screen_records = [
             calibrate_screen_chunk_task.with_options(

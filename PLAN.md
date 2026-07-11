@@ -120,6 +120,12 @@ Completed and accepted:
   newly visible calibration post-processing cost is `plot_solutions_task`
   (about `25.7` seconds aggregate in broad runs); collection, processing,
   combination, and finalization are small.
+- Calibration image-based prediction setup now has visible task boundaries:
+  `make_predict_region`, optional `draw_model`, optional `read_predict_facets`,
+  per-chunk `wsclean_predict`, and optional `adjust_normalization_h5parm`. The
+  solve chunk graph still starts only after the prepared prediction payload is
+  assembled, preserving the existing scientific command sequence while exposing
+  WSClean-predict setup work in the Prefect/Dask dashboard.
 
 Keep in mind:
 
@@ -160,14 +166,13 @@ Do these in order unless a regression blocks progress.
    scripts/dev/generate-prefect-demo-data.py --force --include-multi-sector
    ```
 
-   To re-check the current scenario setup manually, run only this scenario from
-   the option matrix:
+   The option-matrix row is intentionally skipped for branch-vs-master runs, so
+   do not use it as the current-branch smoke command. To re-check the current
+   setup manually, run the current parset directly in the dev container after
+   regenerating the multi-sector demo data:
 
    ```bash
-   scripts/dev/run_branch_option_matrix.py \
-     --matrix docs/source/development/equivalence_runs/2026-07-06-option-matrix/option-matrix.json \
-     --scenario multi-sector-mosaic \
-     --run-root runs/branch-option-matrix-multi-sector-mosaic
+   rapthor docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/current/multi_sector_mosaic.parset
    ```
 
    Preserve compact reports from current-branch and future stored-reference
@@ -189,10 +194,10 @@ Do these in order unless a regression blocks progress.
    renders `MFS-model-pb` with WSClean in all four mosaic cycles and completes
    without the previous Prefect/Dask runtime failure.
 
-   Next, run the option-matrix/current-branch mosaic scenario, compare the
-   WSClean path against the sparse fallback where useful, and preserve compact
-   evidence. Remove or demote the custom sparse mapper only after the demo,
-   science checks, and benchmark comparison prove the WSClean path.
+   Next, rerun the current-branch mosaic scenario, compare the WSClean path
+   against the sparse fallback where useful, and preserve compact evidence.
+   Remove or demote the custom sparse mapper only after the demo, science
+   checks, and benchmark comparison prove the WSClean path.
 
    Intermediate sector `*-MFS-model-pb.fits.fz` products showed horizontal
    stripe artifacts in CARTA. This was a product-level compression issue, not a
@@ -236,11 +241,10 @@ Do these in order unless a regression blocks progress.
      `process_solutions`, per-solve `plot_solutions`, optional
      `combine_h5parms`, and thin `finalize_solutions` are now separate Prefect
      task boundaries and the post-split benchmark accepts this batch
-   - calibration image-based prediction: split `prepare_image_based_predict`
-     into named tasks for region/model preparation and WSClean draw/predict
-     work; the WSClean-predict benchmark shows the extra WSClean commands but
-     they are still hidden inside plain flow helper code rather than visible
-     task groups
+   - calibration image-based prediction: `make_predict_region`, `draw_model`,
+     `read_predict_facets`, per-chunk `wsclean_predict`, and
+     `adjust_normalization_h5parm` are now separate task boundaries; benchmark
+     this batch before splitting the next owner package
    - image-sector preparation/WSClean: split the current large `prepare` task
      only where it exposes meaningful stages such as per-observation DP3
      preparation, concatenation, WSClean imaging, bright-source restoration,
@@ -270,10 +274,10 @@ Do these in order unless a regression blocks progress.
      post-processing task. Treat plotting as a secondary tuning target: split
      slow-gain phase/amplitude plots or make plotting optional only if a
      plotting-specific benchmark or user workflow shows it gates progress.
-   - Calibration WSClean-predict setup is the clearest remaining hidden
-     parallelism opportunity. Today `prepare_image_based_predict` runs before
-     calibration chunks as helper code, so WSClean draw/predict commands are not
-     visible as named task groups and cannot be independently scheduled.
+   - Calibration WSClean-predict setup is now taskized before calibration
+     chunks. The next benchmark should confirm the WSClean draw/predict setup
+     appears as named task groups and that the extra visibility does not
+     increase wall time outside normal CI variance.
    - Standalone prediction has a smaller but cleaner parallelism opportunity:
      `postprocess` currently waits for all `predict_model_data` tasks. Review
      whether model outputs can be grouped by observation/target so each
@@ -293,8 +297,9 @@ Do these in order unless a regression blocks progress.
    and raw/scientific outputs remain acceptable. Add compact reports under
    `docs/source/development/benchmark_baselines/`.
 
-   The post-calibration split benchmark accepts the new calibration task
-   boundaries. Use it as the after-split reference for this batch.
+   The post-calibration post-processing split benchmark accepts the h5parm and
+   plotting task boundaries. Use it as the before-split reference for the
+   calibration image-prediction setup split.
 
    The automatic CI benchmark should use the preferred `4x15` shape
    (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`) and stay
@@ -308,15 +313,14 @@ Do these in order unless a regression blocks progress.
 
    Performance improvement targets from the 2026-07-11 benchmark:
 
-   - First target: taskize calibration image-based/WSClean prediction setup.
-     This should expose WSClean draw/predict work, copied-MS preparation, and
-     per-frequency/per-chunk work in the dashboard and make the WSClean-predict
-     scenario easier to optimize.
-   - Second target: split the large image-sector `prepare` wrapper where it
-     improves observability or multi-observation scaling. A single WSClean image
-     command will not become faster merely because it is a separate task, but
-     per-observation DP3 preparation and concatenation can be made clearer and
-     potentially more parallel.
+   - First validation target: benchmark the calibration image-based/WSClean
+     prediction setup split with `ci-benchmark-wsclean-predict`. Confirm task
+     names, command counts, wall time, Dask gap, and raw/scientific outputs.
+   - Next implementation target: split the large image-sector `prepare` wrapper
+     where it improves observability or multi-observation scaling. A single
+     WSClean image command will not become faster merely because it is a
+     separate task, but per-observation DP3 preparation and concatenation can be
+     made clearer and potentially more parallel.
    - Secondary target: calibration plotting. It is now visible and measurable,
      but it is not the next broad scalability blocker unless it gates a real
      workflow.

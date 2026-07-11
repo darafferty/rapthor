@@ -25,6 +25,14 @@ WSCLEAN_PREDICT_MAX_BANDWIDTH_HZ = 2.0e6
 WSCLEAN_MODEL_STORAGE_MANAGER = "default"
 
 
+def _image_predict_payload(payload: CalibratePayload) -> CalibrateImagePredictPayload:
+    """Return the image-prediction payload or raise a clear contract error."""
+    image_predict = payload.get("image_predict")
+    if not isinstance(image_predict, Mapping):
+        raise ValueError("Image-based prediction payload is missing")
+    return image_predict
+
+
 def _draw_model_options(
     payload: CalibratePayload,
     image_predict: CalibrateImagePredictPayload,
@@ -272,6 +280,70 @@ def _run_wsclean_predict_for_chunk(
     return copied_msin
 
 
+def make_predict_region_file(payload: CalibratePayload) -> dict:
+    """Create the facet region file used by image-based calibration prediction."""
+    return _run_make_region_file(_image_predict_payload(payload))
+
+
+def draw_predict_model_images(
+    payload: CalibratePayload,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> list[dict]:
+    """Draw model images for DP3 image-based calibration prediction."""
+    return _run_draw_model(
+        payload,
+        _image_predict_payload(payload),
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def wsclean_predict_facet_info(region_record: Mapping[str, object]) -> dict:
+    """Return facet names and DP3 model-column token for WSClean prediction."""
+    patch_names = _patch_names_from_region(str(region_record["path"]))
+    return {
+        "patch_names": patch_names,
+        "modeldatacolumn": _patch_list_token(patch_names),
+    }
+
+
+def prepare_wsclean_predict_chunk(
+    payload: CalibratePayload,
+    chunk: Mapping[str, object],
+    chunk_index: int,
+    facet_info: Mapping[str, object],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    """Prepare one copied Measurement Set with WSClean model columns."""
+    copied_msin = _run_wsclean_predict_for_chunk(
+        payload,
+        _image_predict_payload(payload),
+        chunk,
+        chunk_index,
+        [str(name) for name in facet_info["patch_names"]],
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    prepared_chunk = dict(chunk)
+    prepared_chunk["msin"] = copied_msin
+    return prepared_chunk
+
+
+def adjust_prediction_normalization_h5parm(payload: CalibratePayload) -> str:
+    """Adjust a normalization h5parm to the prediction source coordinates."""
+    normalize_h5parm = payload.get("normalize_h5parm")
+    if not normalize_h5parm:
+        raise ValueError("normalize_h5parm is required for normalization adjustment")
+    normalize_record = adjust_h5parm_sources(
+        file_record(str(normalize_h5parm)),
+        payload,
+        "Adjusted normalization h5parm",
+    )
+    return str(normalize_record["path"])
+
+
 def prepare_image_based_predict(
     payload: CalibratePayload,
     execution_config: ExecutionConfig,
@@ -281,49 +353,35 @@ def prepare_image_based_predict(
     if not (payload.get("image_based_predict") or payload.get("wsclean_predict")):
         return payload
 
-    image_predict = payload.get("image_predict")
-    if not isinstance(image_predict, Mapping):
-        raise ValueError("Image-based prediction payload is missing")
-
-    region_file = _run_make_region_file(
-        image_predict,
-    )
+    region_file = make_predict_region_file(payload)
     prepared_payload = dict(payload)
     prepared_payload["predict_regions"] = region_file["path"]
 
     if payload.get("image_based_predict"):
-        model_images = _run_draw_model(
+        model_images = draw_predict_model_images(
             payload,
-            image_predict,
             execution_config,
             shell_operation_cls=shell_operation_cls,
         )
         prepared_payload["predict_images"] = [record["path"] for record in model_images]
 
     if payload.get("wsclean_predict"):
-        patch_names = _patch_names_from_region(region_file["path"])
+        facet_info = wsclean_predict_facet_info(region_file)
         prepared_chunks = []
         for chunk_index, chunk in enumerate(payload["chunks"]):
-            copied_msin = _run_wsclean_predict_for_chunk(
-                payload,
-                image_predict,
-                chunk,
-                chunk_index,
-                patch_names,
-                execution_config,
-                shell_operation_cls=shell_operation_cls,
+            prepared_chunks.append(
+                prepare_wsclean_predict_chunk(
+                    payload,
+                    chunk,
+                    chunk_index,
+                    facet_info,
+                    execution_config,
+                    shell_operation_cls=shell_operation_cls,
+                )
             )
-            prepared_chunk = dict(chunk)
-            prepared_chunk["msin"] = copied_msin
-            prepared_chunks.append(prepared_chunk)
         prepared_payload["chunks"] = prepared_chunks
-        prepared_payload["modeldatacolumn"] = _patch_list_token(patch_names)
+        prepared_payload["modeldatacolumn"] = facet_info["modeldatacolumn"]
 
     if payload.get("normalize_h5parm"):
-        normalize_record = adjust_h5parm_sources(
-            file_record(str(payload["normalize_h5parm"])),
-            payload,
-            "Adjusted normalization h5parm",
-        )
-        prepared_payload["normalize_h5parm"] = normalize_record["path"]
+        prepared_payload["normalize_h5parm"] = adjust_prediction_normalization_h5parm(payload)
     return prepared_payload

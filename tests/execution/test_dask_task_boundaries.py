@@ -607,6 +607,168 @@ def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypa
     assert finalize_task.submissions[0]["args"][3] is combine_task.futures[0]
 
 
+def _calibrate_prediction_payload(payload: dict) -> dict:
+    payload["image_predict"] = {
+        "skymodel": "/data/calibration.skymodel",
+        "model_image_root": "calibration_model",
+        "model_image_ra_dec": ["12:00:00.0", "+45.00.00.0"],
+        "model_image_imsize": [1024, 1024],
+        "model_image_cellsize": 0.001,
+        "model_image_frequency_bandwidth": [150000000.0, 1000000.0],
+        "num_spectral_terms": 1,
+        "model_images": ["/work/calibrate_1/calibration_model-term-0.fits"],
+        "ra_mid": 123.0,
+        "dec_mid": 45.0,
+        "facet_region_width_ra": 2.0,
+        "facet_region_width_dec": 2.5,
+        "facet_region_file": "field_facets_ds9.reg",
+        "facet_region_path": "/work/calibrate_1/field_facets_ds9.reg",
+    }
+    return payload
+
+
+def _minimal_calibrate_task_graph(monkeypatch, payload):
+    calibrate_task = _CapturedTask(
+        lambda index: {"solve1": file_record(f"/work/calibrate_1/chunk{index + 1}-solve1.h5")}
+    )
+    collect_task = _CapturedTask(
+        lambda index: {
+            "solve_key": "solve1",
+            "solve_slot": payload["chunks"][0]["solve_slots"][0],
+            "collected_record": file_record("/work/calibrate_1/collected_solve1.h5"),
+        }
+    )
+    process_task = _CapturedTask(
+        lambda index: {
+            "solve_key": "solve1",
+            "solve_slot": payload["chunks"][0]["solve_slots"][0],
+            "solution_record": file_record("/work/calibrate_1/collected_solve1.h5"),
+            "combine_record": file_record("/work/calibrate_1/processed_solve1.h5"),
+        }
+    )
+    plot_task = _CapturedTask(
+        lambda index: {
+            "solve_key": "solve1",
+            "plots": {"fast_phase_plots": [file_record("/work/calibrate_1/solve1-phase.png")]},
+        }
+    )
+    combine_task = _CapturedTask(lambda index: file_record("/work/calibrate_1/combined.h5"))
+    finalize_task = _CapturedTask(
+        lambda index: {"fast_phase_solutions": file_record("/work/calibrate_1/processed_solve1.h5")}
+    )
+
+    monkeypatch.setattr(calibrate_module, "calibrate_chunk_task", calibrate_task)
+    monkeypatch.setattr(calibrate_module, "collect_h5parms_task", collect_task)
+    monkeypatch.setattr(calibrate_module, "process_solutions_task", process_task)
+    monkeypatch.setattr(calibrate_module, "plot_solutions_task", plot_task)
+    monkeypatch.setattr(calibrate_module, "combine_h5parms_task", combine_task)
+    monkeypatch.setattr(calibrate_module, "finalize_solutions_task", finalize_task)
+    return calibrate_task, collect_task, process_task, plot_task, combine_task, finalize_task
+
+
+def test_calibrate_flow_submits_image_predict_preparation_tasks(monkeypatch):
+    config = ExecutionConfig(task_runner="sync")
+    payload = _calibrate_prediction_payload(representative_calibrate_payload())
+    payload["image_based_predict"] = True
+    region_task = _CapturedTask(lambda index: file_record("/work/calibrate_1/field_facets_ds9.reg"))
+    draw_task = _CapturedTask(
+        lambda index: [file_record("/work/calibrate_1/calibration_model-term-0.fits")]
+    )
+    facet_task = _CapturedTask(lambda index: {"patch_names": ["patch1"], "modeldatacolumn": ""})
+    wsclean_task = _CapturedTask(lambda index: payload["chunks"][index])
+    normalization_task = _CapturedTask(lambda index: "/work/calibrate_1/normalize.h5")
+    calibrate_task, _, _, _, _, finalize_task = _minimal_calibrate_task_graph(monkeypatch, payload)
+    monkeypatch.setattr(calibrate_module, "make_predict_region_task", region_task)
+    monkeypatch.setattr(calibrate_module, "draw_predict_model_task", draw_task)
+    monkeypatch.setattr(calibrate_module, "wsclean_predict_facet_info_task", facet_task)
+    monkeypatch.setattr(calibrate_module, "wsclean_predict_chunk_task", wsclean_task)
+    monkeypatch.setattr(
+        calibrate_module,
+        "adjust_prediction_normalization_h5parm_task",
+        normalization_task,
+    )
+
+    result = calibrate_module._run_calibrate_prefect_tasks(payload, execution_config=config)
+
+    assert result == {"fast_phase_solutions": file_record("/work/calibrate_1/processed_solve1.h5")}
+    assert [submission["options"]["task_run_name"] for submission in region_task.submissions] == [
+        "make_predict_region",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in draw_task.submissions] == [
+        "draw_model",
+    ]
+    assert facet_task.submissions == []
+    assert wsclean_task.submissions == []
+    assert normalization_task.submissions == []
+    prepared_payload = calibrate_task.submissions[0]["args"][0]
+    assert prepared_payload["predict_regions"] == "/work/calibrate_1/field_facets_ds9.reg"
+    assert prepared_payload["predict_images"] == ["/work/calibrate_1/calibration_model-term-0.fits"]
+    _assert_worker_submission_is_serializable(region_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(draw_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(calibrate_task.submissions[0], config)
+    assert finalize_task.submissions[0]["args"][0] is prepared_payload
+
+
+def test_calibrate_flow_submits_wsclean_predict_chunk_tasks(monkeypatch):
+    config = ExecutionConfig(task_runner="sync")
+    payload = _calibrate_prediction_payload(representative_calibrate_payload())
+    payload["wsclean_predict"] = True
+    second_chunk = deepcopy(payload["chunks"][0])
+    second_chunk["msin"] = "/data/obs_2.ms"
+    second_chunk["starttime"] = "59100.0"
+    second_chunk["output_h5parm"] = "solve1_chunk2.h5"
+    second_chunk["output_h5parm_path"] = "/work/calibrate_1/solve1_chunk2.h5"
+    payload["chunks"].append(second_chunk)
+    region_task = _CapturedTask(
+        lambda index: file_record("/work/calibrate_1/predict_field_facets_ds9.reg")
+    )
+    draw_task = _CapturedTask(lambda index: [])
+    facet_task = _CapturedTask(
+        lambda index: {"patch_names": ["patch1", "patch2"], "modeldatacolumn": "[patch1,patch2]"}
+    )
+    wsclean_task = _CapturedTask(
+        lambda index: payload["chunks"][index] | {"msin": f"/work/calibrate_1/predict_{index}.ms"}
+    )
+    normalization_task = _CapturedTask(lambda index: "/work/calibrate_1/normalize.h5")
+    calibrate_task, _, _, _, _, _ = _minimal_calibrate_task_graph(monkeypatch, payload)
+    monkeypatch.setattr(calibrate_module, "make_predict_region_task", region_task)
+    monkeypatch.setattr(calibrate_module, "draw_predict_model_task", draw_task)
+    monkeypatch.setattr(calibrate_module, "wsclean_predict_facet_info_task", facet_task)
+    monkeypatch.setattr(calibrate_module, "wsclean_predict_chunk_task", wsclean_task)
+    monkeypatch.setattr(
+        calibrate_module,
+        "adjust_prediction_normalization_h5parm_task",
+        normalization_task,
+    )
+
+    calibrate_module._run_calibrate_prefect_tasks(payload, execution_config=config)
+
+    assert [submission["options"]["task_run_name"] for submission in region_task.submissions] == [
+        "make_predict_region",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in facet_task.submissions] == [
+        "read_predict_facets",
+    ]
+    assert [submission["options"]["task_run_name"] for submission in wsclean_task.submissions] == [
+        "wsclean_predict_1",
+        "wsclean_predict_2",
+    ]
+    assert draw_task.submissions == []
+    assert normalization_task.submissions == []
+    prepared_payload = calibrate_task.submissions[0]["args"][0]
+    assert prepared_payload["predict_regions"] == "/work/calibrate_1/predict_field_facets_ds9.reg"
+    assert prepared_payload["modeldatacolumn"] == "[patch1,patch2]"
+    assert [chunk["msin"] for chunk in prepared_payload["chunks"]] == [
+        "/work/calibrate_1/predict_0.ms",
+        "/work/calibrate_1/predict_1.ms",
+    ]
+    _assert_worker_submission_is_serializable(region_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(facet_task.submissions[0], config)
+    _assert_worker_submission_is_serializable(wsclean_task.submissions[0], config)
+    assert facet_task.submissions[0]["args"][0] is region_task.futures[0]
+    assert wsclean_task.submissions[0]["args"][3] is facet_task.futures[0]
+
+
 def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypatch):
     config = ExecutionConfig(task_runner="sync")
     payload = representative_predict_payload()
