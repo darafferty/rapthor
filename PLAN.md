@@ -18,116 +18,52 @@ production architecture over unreleased compatibility shims.
 
 The migration/refactor is now in the guarded scalability phase.
 
-Completed and accepted:
+Accepted foundation:
 
-- Execution code is organized by owner package:
+- Owner-package architecture is in place:
   `image`, `calibrate`, `concatenate`, `predict`, `mosaic`, and `pipeline`.
-- Operation adapters are thin; command builders, payload validation, output
-  discovery, migrated helper logic, and flow wiring live under
+  Operation adapters are thin, while command builders, payload validation,
+  output discovery, migrated helper logic, and flow wiring live under
   `rapthor/execution/<owner>/`.
 - Runtime bootstrap, local/external Dask setup, CLI smoke coverage, readable
-  run names, dashboard/report logging, and runtime parset materialization are
+  flow names, dashboard/report logging, and runtime parset materialization are
   in place.
-- Master feature catch-up is complete for the known runtime/product behavior:
-  MS time ordering, reset-directory guards, astrometry-corrected products,
-  per-facet RMS diagnostics, residual visibilities, WSClean prediction,
-  normalization semantics, parallel gridding, and shared-facet behavior.
-- The flexible calibration strategy contract is implemented:
-  `calibration_strategy` controls solve type/order; previous-cycle products
-  may seed matching solves only as optimizer seeds when product role, cycle, and
-  DD direction compatibility are valid.
+- Known master feature catch-up is complete for runtime/product behavior:
+  time ordering, reset-directory guards, astrometry products, per-facet RMS
+  diagnostics, residual visibilities, WSClean prediction, normalization,
+  parallel gridding, and shared-facet behavior.
+- The calibration contract is strategy-driven: `calibration_strategy` controls
+  solve type/order; previous-cycle products may seed matching solves only as
+  optimizer seeds when product role, cycle, and DD direction compatibility are
+  valid.
 - Image-only application semantics are covered: DI scalar phase, DI diagonal
-  slow-gain, and DI full-Jones products are pre-applied; DD products are applied
-  on the fly during imaging when matching directions are available.
+  slow-gain, and DI full-Jones products are pre-applied; DD products are
+  applied on the fly during imaging when matching directions are available.
 - Science-equivalence evidence is summarized in `EQUIVALENCE_REPORT.md`, with
   historical compact reports under `docs/source/development/equivalence_runs/`.
+
+Accepted performance and task-boundary evidence:
+
 - Benchmark scaffolding exists for CI-sized profiling, Dask report parsing,
   command timing, operation-boundary timing, JSON summaries, and Markdown
   reports.
-- Image-sector execution has the accepted task split:
-  `prepare -> filter_skymodel -> calculate_image_diagnostics -> finalize`.
-- Post-split benchmarks support `filter_skymodel_ncores=15` while keeping the
-  global `2x30`, `max_threads=30` resource shape. The default has been promoted
-  and confirmed against the explicit `filter-only-15` profile. Explicit
-  `filter_skymodel_ncores = 0` still means "use `max_threads`".
-- The `calculate_image_diagnostics` task split has been benchmarked and
-  accepted. It added the expected four Dask tasks, kept scheduler gap flat, and
-  preserved successful command execution.
-- Calibration post-processing has its first task split: per-solve
-  `collect_h5parms` now feeds per-solve `process_solutions` and
-  `plot_solutions` tasks, optional `combine_h5parms`, and a thin
-  `finalize_solutions` task. The processing task performs slow-gain and
-  full-Jones solution processing where needed and otherwise normalizes the
-  product record shape for downstream tasks.
-- Hidden-path benchmark scenario definitions are in place for image products,
-  WSClean-predict calibration, and many-sector mosaic work. The many-sector
-  scenario uses a dedicated quadrant-balanced generated dataset and a
-  four-sector grid so it exercises sectorized imaging and mosaicking without
-  depending on source-boundary edge cases. It uses `dde_method = single` so
-  each sector applies the nearest DD solution during imaging; the single-sector
-  benchmark keeps the full-DD facet-imaging coverage.
-- The pre-split hidden-path benchmark baseline is captured and accepted in
-  `docs/source/development/benchmark_baselines/2026-07-09-hidden-path-pre-split-baseline.md`.
-  It covers image-products, WSClean-predict, and many-sector mosaic paths with
-  three successful repeats each on the CI-sized `2x30` resource profile.
-- Sparse model mosaic execution now has focused guards: model-like mosaic
-  products use sparse pixel mapping rather than continuous-image
-  interpolation, preserving zero-valued background inside valid sector
-  footprints and avoiding artificial nonzero-pixel growth.
-- WSClean-rendered model mosaics are now wired for model products that have
-  sector sky-model/component-list inputs. The sparse FITS model mapper remains
-  as a fallback for products without matching sky models until the real
-  multi-sector demo, science checks, and benchmark comparison prove the
-  WSClean path can replace it.
-- The first WSClean model-mosaic multi-sector demo smoke check is captured in
-  `docs/source/development/benchmark_baselines/2026-07-09-wsclean-model-mosaic-demo.md`.
-  `mosaic_1`, `mosaic_2`, and `mosaic_3` rendered `MFS-model-pb` successfully
-  with WSClean, but the full demo failed later in `image_4` with a Prefect/Dask
-  threaded settings-cache `KeyError`.
-- The Prefect/Dask settings-cache runtime failure has a targeted fix: local and
-  Slurm Dask workers now default to one Prefect task-engine thread per worker
-  process, while `cpus_per_task` remains the external-command thread budget.
-  A rerun confirmed separate worker processes for parallel sector tasks, no
-  repeated settings-cache `KeyError`, and successful WSClean model-mosaic
-  rendering through all four cycles. The full multi-sector demo completed after
-  old run artifacts were cleared.
-- The 2026-07-10 CI benchmark is captured in
-  `docs/source/development/benchmark_baselines/2026-07-10-worker-thread-wsclean-model-benchmark.md`.
-  It accepts the worker-thread runtime fix for the default and image-products
-  profiles, keeps the WSClean-predict slowdown as a monitored variance item,
-  and flags the many-sector mosaic wall-time increase for targeted follow-up.
-- The follow-up worker-shape and mosaic-method benchmark is captured in
-  `docs/source/development/benchmark_baselines/2026-07-10-worker-shape-mosaic-method-comparison.md`.
-  All six paired scenarios completed successfully. The `4x15` profile is
-  neutral for the default single-sector benchmark and about 30% faster for
-  many-sector mosaics; WSClean-rendered model mosaics are faster than the
-  sparse FITS fallback in both worker shapes.
-- The pre-calibration-postprocess-split benchmark is captured in
-  `docs/source/development/benchmark_baselines/2026-07-10-pre-calibration-postprocess-split.md`.
-  It preserves the before-split evidence for `finalize_solutions_task`: four
-  task calls and about 19.6-19.9 seconds of aggregate task time across the
-  automatic `ci-benchmark` and `ci-benchmark-wsclean-predict` runs.
-- The post-calibration-postprocess-split benchmark in
-  `runs/benchmark-20260711-061530` completed `ci-benchmark`,
-  `ci-benchmark-calibration-postprocess`, and
-  `ci-benchmark-wsclean-predict`. Broad wall time stayed comparable with the
-  pre-split run (`316.5 -> 322.1` seconds for default,
-  `294.7 -> 291.7` seconds for WSClean-predict), Dask task count increased from
-  `40` to `61`, and Dask gap improved (`53.7 -> 36.1` seconds for default,
-  `56.3 -> 41.3` seconds for WSClean-predict). The split achieved its
-  observability goal: `finalize_solutions_task` dropped from about
-  `19.6-19.9` seconds aggregate to about `0.7` seconds aggregate. The main
-  newly visible calibration post-processing cost is `plot_solutions_task`
-  (about `25.7` seconds aggregate in broad runs); collection, processing,
-  combination, and finalization are small.
-- Calibration image-based prediction setup now has visible task boundaries:
-  `make_predict_region`, optional `draw_model`, optional `read_predict_facets`,
-  per-chunk `wsclean_predict`, and optional `adjust_normalization_h5parm`. The
-  solve chunk graph still starts only after the prepared prediction payload is
-  assembled, preserving the existing scientific command sequence while exposing
-  WSClean-predict setup work in the Prefect/Dask dashboard.
+- The preferred automatic benchmark shape is currently `4x15`
+  (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`). It is neutral
+  for the default single-sector benchmark and faster for many-sector mosaics.
+- Accepted task splits so far:
+  image-sector `filter_skymodel`, image diagnostics, optional image
+  post-processing tasks, calibration post-processing, and calibration
+  image-based/WSClean prediction setup.
+- The calibration post-processing split is accepted. It moved the real work out
+  of `finalize_solutions_task`; plotting is now the main visible
+  post-processing cost and is a secondary tuning target.
+- The calibration image-based/WSClean prediction setup split is implemented and
+  awaiting benchmark confirmation with `ci-benchmark-wsclean-predict`.
+- WSClean-rendered model mosaics are the preferred path when sector sky-model
+  inputs exist. Sparse FITS mapping remains a fallback for products that cannot
+  be rendered by WSClean.
 
-Keep in mind:
+Operating rules:
 
 - Use the prepared dev-container Python environment for formatting, tests,
   demo runs, integration checks, equivalence checks, and benchmarks.
@@ -143,231 +79,121 @@ Keep in mind:
 
 Do these in order unless a regression blocks progress.
 
-1. **Keep targeted mosaic science coverage explicit.**
-   The `multi-sector-mosaic` option-matrix scenario is defined under
-   `docs/source/development/equivalence_runs/2026-07-06-option-matrix/`.
-   It uses the generated quadrant-balanced multi-sector demo data, DD
-   calibration, a 2x2 sector grid, and `dde_method = single` so it protects
-   sector imaging, regridding, and mosaic assembly before more task-boundary
-   refactors.
+1. **Benchmark the calibration prediction setup split.**
+   This is the first validation target before more task splitting. Run the
+   automatic benchmark with only:
 
-   Branch-vs-master equivalence for this exact scenario is currently skipped:
-   `master` fails before imaging commands run because the generated CWL image
-   scatter receives a single `parallel_gridding_tasks` value alongside
-   per-sector lists. The Prefect/Dask branch runs this scenario successfully.
-   Keep the current-branch integration/benchmark coverage active and promote
-   this to a stored-reference mosaic science gate once a stable reference run is
-   captured.
+   - keep: `ci-benchmark`
+   - keep: `ci-benchmark-wsclean-predict`
+   - remove from automatic CI for this batch:
+     `ci-benchmark-calibration-postprocess`, `ci-benchmark-image-products`,
+     `ci-benchmark-many-sector-mosaic`, and
+     `ci-benchmark-many-sector-mosaic-sparse-fallback`
 
-   Before running it, regenerate the demo data if the multi-sector files are
-   missing:
+   Accept the split if command counts, task groups, Dask gap, wall time,
+   return codes, restart behavior, and raw/scientific outputs remain within
+   normal benchmark variance. Archive a compact report under
+   `docs/source/development/benchmark_baselines/`. If this benchmark regresses,
+   fix or revert the prediction setup split before continuing.
+
+2. **Polish task observability before the next split batch.**
+   This is low-risk runtime/reporting work that makes future benchmarks easier
+   to interpret.
+
+   Implement together:
+
+   - add a shared task metadata helper near `rapthor.execution.run_names` for
+     sanitized task run names and Prefect tags
+   - rename ambiguous calibration siblings from `chunk_1`/`chunk_2` to
+     `solve_chunk_1`/`solve_chunk_2`, and from `screen_1` to
+     `screen_chunk_1`
+   - tag tasks by primary tool or runtime: `dp3`, `wsclean`, `python`,
+     `fpack`, `pybdsf`, `casacore`
+   - extend `rapthor-command-metrics` and `rapthor-command-profile-summary` so
+     they include task runtime rows as well as external-command rows
+   - when postage-stamp previews are requested, save the generated PNGs under
+     the corresponding cycle `images/` directory as durable image products as
+     well as publishing Prefect artifacts
+
+   Tests required: task metadata helper tests, flow submission-name/tag tests,
+   command/profile artifact tests, and postage-stamp persistence tests.
+
+   Benchmark after this batch: run `ci-benchmark` and
+   `ci-benchmark-wsclean-predict` once. Do not add image-products or mosaic
+   scenarios unless this work changes image output generation beyond the
+   postage-stamp path. Keep postage-stamp previews disabled in benchmark
+   parsets unless explicitly measuring preview overhead.
+
+3. **Split the large image-sector `prepare` task.**
+   Split only meaningful work that helps observability or multi-observation
+   scaling, such as per-observation DP3 preparation, concatenation, WSClean
+   imaging, bright-source restoration, and residual-visibilities production.
+   Keep tiny helpers, validation, command builders, and output-record assembly
+   as plain Python.
+
+   Tests required: payload serializability, task dependency shape, output
+   records, restart markers, and command records for each new boundary.
+
+   Benchmark after this batch:
+
+   - keep automatic: `ci-benchmark`
+   - add automatic for this batch: `ci-benchmark-image-products`
+   - add targeted only if the split changes WSClean-predict inputs:
+     `ci-benchmark-wsclean-predict`
+   - keep targeted/manual only: many-sector mosaic scenarios
+
+   Accept if image-products command totals and scientific outputs are stable
+   and the new task groups expose useful timing without increasing wall time
+   outside normal variance.
+
+4. **Review standalone prediction parallelism.**
+   `postprocess` currently waits for all `predict_model_data` tasks. Review
+   whether model outputs can be grouped by observation or target so each
+   post-processing task starts as soon as its own model-data inputs are
+   available, while preserving DI add-model and DD subtract-model semantics.
+
+   Benchmark after this batch:
+
+   - keep automatic: `ci-benchmark`
+   - add targeted: a prediction-heavy scenario if one exists or add one before
+     changing behavior
+   - run `ci-benchmark-wsclean-predict` only if calibration prediction setup or
+     WSClean-predict paths are touched
+
+5. **Keep mosaic science coverage explicit, but targeted.**
+   The `multi-sector-mosaic` option-matrix scenario protects sector imaging,
+   regridding, and mosaic assembly, but branch-vs-master equivalence is blocked
+   because `master` fails before imaging commands run with the generated CWL
+   image scatter. Keep current-branch coverage and promote it to a
+   stored-reference mosaic science gate once a stable reference is captured.
+
+   Manual current-branch smoke command after regenerating demo data:
 
    ```bash
    scripts/dev/generate-prefect-demo-data.py --force --include-multi-sector
-   ```
-
-   The option-matrix row is intentionally skipped for branch-vs-master runs, so
-   do not use it as the current-branch smoke command. To re-check the current
-   setup manually, run the current parset directly in the dev container after
-   regenerating the multi-sector demo data:
-
-   ```bash
    rapthor docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/current/multi_sector_mosaic.parset
    ```
 
-   Preserve compact reports from current-branch and future stored-reference
-   runs. The evidence should show that the expected mosaic image types are
-   present, image arrays match within tolerance, WCS/header geometry is stable,
-   finite/NaN masks are equivalent, and beam/axis metadata remains
-   scientifically acceptable. Cover at least `MFS-image`, `MFS-image-pb`,
-   `MFS-image-pb-ast`, `MFS-model-pb`, `MFS-residual`, and `MFS-dirty`, because
-   these products share the mosaic template/regridding path.
+   Benchmark rule: keep `ci-benchmark-many-sector-mosaic` and
+   `ci-benchmark-many-sector-mosaic-sparse-fallback` out of automatic CI unless
+   changing mosaic behavior, WSClean-rendered model mosaics, sparse fallback,
+   sector regridding, or scalability scheduling. When they are used, run them
+   as targeted paired scenarios and archive compact evidence.
 
-   Sparse model mosaics have focused unit and flow guards plus a successful
-   full multi-sector demo using WSClean-rendered model mosaics. Preserve this
-   compact evidence and close the queue item only after the option-matrix or
-   stored-reference mosaic scenario confirms the same product contract outside
-   the ad hoc demo run.
-
-   WSClean-rendered model mosaics are implemented for model products that carry
-   matching sector sky-model/component lists. The full multi-sector demo now
-   renders `MFS-model-pb` with WSClean in all four mosaic cycles and completes
-   without the previous Prefect/Dask runtime failure.
-
-   Next, rerun the current-branch mosaic scenario, compare the WSClean path
-   against the sparse fallback where useful, and preserve compact evidence.
-   Remove or demote the custom sparse mapper only after the demo, science
-   checks, and benchmark comparison prove the WSClean path.
-
-   Intermediate sector `*-MFS-model-pb.fits.fz` products showed horizontal
-   stripe artifacts in CARTA. This was a product-level compression issue, not a
-   preview stretch issue: default `fpack` quantizes/dithers sparse
-   floating-point model images. Sparse sector model products now use lossless
-   `fpack -g -q 0`, while regular image, residual, and dirty products keep the
-   existing default compression. Rerun the multi-sector demo or the mosaic
-   stored-reference scenario when clean sector model products are needed for
-   manual inspection.
-
-   The targeted many-sector comparison has now completed successfully under
-   both `baseline-2x30` and `filter-workers-4x15`. WSClean-rendered model
-   mosaics are faster than the sparse FITS fallback in both worker shapes.
-   `filter-workers-4x15` is neutral for the default single-sector benchmark
-   and about 30% faster for many-sector mosaics because it exposes more
-   independent sector and mosaic work to Dask. Use WSClean as the preferred
-   model-mosaic path and keep sparse FITS mapping as a fallback for products
-   without WSClean-renderable sky-model/component-list inputs. Keep the
-   many-sector and sparse-fallback scenarios available for targeted mosaic or
-   scalability runs, but leave them out of the automatic CI benchmark for now
-   because this code path is used less frequently.
-
-2. **Systematically split large opaque work units into Prefect tasks.**
-   The filter-skymodel and diagnostics benchmarks give enough evidence that
-   meaningful task boundaries improve observability without harming this
-   CI-sized performance shape. Split large steps by owner package, keeping each
-   new task scientifically meaningful, restartable, serializable, and easy to
-   identify in the dashboard. Compare each batch against the accepted
-   pre-split hidden-path baseline and keep the mosaic science coverage from
-   step 1 green when changing mosaic behavior.
-
-   Priority order:
-
-   - image post-processing: `make_image_cube`,
-     `make_catalog_from_image_cube`, `normalize_flux_scale`,
-     `restore_skymodel`, and `compress_images` are now optional per-sector
-     Prefect tasks that run after WSClean preparation and before `finalize`;
-     treat this batch as accepted and revisit only if an image-products
-     benchmark shows another helper is a material bottleneck
-   - calibration post-processing: `collect_h5parms`, per-solve
-     `process_solutions`, per-solve `plot_solutions`, optional
-     `combine_h5parms`, and thin `finalize_solutions` are now separate Prefect
-     task boundaries and the post-split benchmark accepts this batch
-   - calibration image-based prediction: `make_predict_region`, `draw_model`,
-     `read_predict_facets`, per-chunk `wsclean_predict`, and
-     `adjust_normalization_h5parm` are now separate task boundaries; benchmark
-     this batch before splitting the next owner package
-   - dashboard naming and tool tags: before the next task-split batch, replace
-     ambiguous sibling task names such as calibration `chunk_1`/`chunk_2` with
-     intent-bearing names such as `solve_chunk_1`/`solve_chunk_2` and
-     `screen_chunk_1`/`screen_chunk_2`; add a small shared helper for
-     per-submission task metadata so run names and Prefect tags are applied
-     consistently across owner packages
-   - task-runtime artifacts: update the code that publishes
-     `rapthor-command-metrics` and `rapthor-command-profile-summary` so those
-     artifacts show individual Prefect task runtimes alongside external-command
-     runtimes; include task run name, task definition name, tags/tool identity,
-     state, duration, and any associated command records where available
-   - image-sector preparation/WSClean: split the current large `prepare` task
-     only where it exposes meaningful stages such as per-observation DP3
-     preparation, concatenation, WSClean imaging, bright-source restoration,
-     and residual-visibilities production; this is the largest remaining named
-     task group after `filter_skymodel`
-   - standalone prediction: review whether `predict_model_data` and
-     `postprocess` can be grouped by observation/target so post-processing can
-     begin as soon as its own model-data inputs are ready
-   - mosaic: WSClean-rendered model mosaics, per-sector regridding, mosaic
-     assembly, and compression remain targeted work, not part of the automatic
-     benchmark while the many-sector path is less frequently used
-
-   Parallelism review, 2026-07-11:
-
-   - Image-sector work already fans out across sectors. Within each sector,
-     `prepare` gates the rest of the work, then `filter_skymodel`,
-     `make_image_cube`, `restore_skymodel`, `compress_images`, and `finalize`
-     use their real product dependencies. Do not split the cube/catalog/
-     normalization chain further unless the image-products benchmark shows it
-     is a bottleneck. Per-file compression is a possible later split, but only
-     if compression time outweighs the extra scheduling and I/O contention.
-   - Calibration chunks already run in parallel. The new per-solve
-     `collect_h5parms -> process_solutions -> plot_solutions` paths can run
-     independently after chunk fan-in, and `combine_h5parms` does not need to
-     wait for plotting. The post-split benchmark shows `finalize_solutions` is
-     now thin, while `plot_solutions` is the only material visible
-     post-processing task. Treat plotting as a secondary tuning target: split
-     slow-gain phase/amplitude plots or make plotting optional only if a
-     plotting-specific benchmark or user workflow shows it gates progress.
-   - Calibration WSClean-predict setup is now taskized before calibration
-     chunks. The next benchmark should confirm the WSClean draw/predict setup
-     appears as named task groups and that the extra visibility does not
-     increase wall time outside normal CI variance.
-   - Standalone prediction has a smaller but cleaner parallelism opportunity:
-     `postprocess` currently waits for all `predict_model_data` tasks. Review
-     whether model outputs can be grouped by observation/target so each
-     post-processing task starts as soon as its own model-data inputs are
-     available, while preserving DI add-model and DD subtract-model semantics.
-   - Mosaic products already run in parallel behind one shared template.
-     Further split per-sector regridding/rendering/compression inside a mosaic
-     product only if targeted mosaic profiling shows product-level tasks are
-     still too opaque or slow.
-   - Keep finalizer tasks as fan-in/reporting boundaries. They should stay
-     thin and should not introduce artificial serialization before independent
-     work has completed.
-
-3. **Benchmark after each owner-package split batch.**
-   Rerun the relevant hidden-path scenarios after each batch. Keep the split
-   when task count, scheduler gap, wall time, command totals, restart behavior,
-   and raw/scientific outputs remain acceptable. Add compact reports under
-   `docs/source/development/benchmark_baselines/`.
-
-   The post-calibration post-processing split benchmark accepts the h5parm and
-   plotting task boundaries. Use it as the before-split reference for the
-   calibration image-prediction setup split.
-
-   The automatic CI benchmark should use the preferred `4x15` shape
-   (`local_dask_workers=4`, `cpus_per_task=15`, `max_threads=15`) and stay
-   focused enough to finish before tests. For the next task-split batch, run
-   `ci-benchmark` and `ci-benchmark-wsclean-predict` automatically. Keep
-   `ci-benchmark-calibration-postprocess` only for targeted calibration-plotting
-   or h5parm-collection changes; otherwise demote it to save CI time. Add
-   `ci-benchmark-image-products`, `ci-benchmark-many-sector-mosaic`, or
-   `ci-benchmark-many-sector-mosaic-sparse-fallback` only for targeted runs
-   when changing image products, mosaic behavior, or scalability scheduling.
-
-   Performance improvement targets from the 2026-07-11 benchmark:
-
-   - First validation target: benchmark the calibration image-based/WSClean
-     prediction setup split with `ci-benchmark-wsclean-predict`. Confirm task
-     names, command counts, wall time, Dask gap, and raw/scientific outputs.
-   - Before the next split batch, polish task run names and tool tags so the
-     benchmark and dashboard group work by scientific step and external tool
-     rather than by generic labels such as `chunk`.
-   - Extend the command profile artifacts so `rapthor-command-metrics` and
-     `rapthor-command-profile-summary` include task-level runtime information.
-     This should make the dashboard artifacts useful even when a task is mostly
-     Python orchestration, plotting, or fan-in work rather than a single
-     external command.
-   - Persist requested postage-stamp previews as image products as well as
-     Prefect dashboard artifacts. When
-     `prefect_publish_postage_stamp_previews` is enabled, the generated PNGs
-     should also be written under the corresponding cycle's `images/`
-     directory with stable filenames so users can inspect and archive them
-     without needing the Prefect UI.
-   - Next implementation target: split the large image-sector `prepare` wrapper
-     where it improves observability or multi-observation scaling. A single
-     WSClean image command will not become faster merely because it is a
-     separate task, but per-observation DP3 preparation and concatenation can be
-     made clearer and potentially more parallel.
-   - Secondary target: calibration plotting. It is now visible and measurable,
-     but it is not the next broad scalability blocker unless it gates a real
-     workflow.
-   - Defer tiny helpers and already-small task groups such as h5parm
-     collection, solution processing, h5parm combination, finalizers, and
-     standalone predict post-processing until a targeted benchmark shows they
-     matter.
-
-4. **Build the scalability/performance equivalence gate.**
+6. **Build the scalability/performance equivalence gate.**
    Compare current branch and master with identical inputs, resource shape,
    preview settings, run roots, and science checks. Start advisory: fail only
    on infrastructure errors, missing outputs, failed runs, or science
    equivalence failures; report performance as pass/warn/fail bands until
    variance is characterized.
 
-5. **Guard the science-equivalence contract.**
+7. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-6. **Polish runtime UX and contributor docs after the next scalability result.**
+8. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
