@@ -913,6 +913,24 @@ def test_calibrate_flow_submits_wsclean_predict_chunk_tasks(monkeypatch):
 def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypatch):
     config = ExecutionConfig(task_runner="sync")
     payload = representative_predict_payload()
+    second_predict_task = deepcopy(payload["predict_tasks"][0])
+    second_predict_task.update(
+        {
+            "msin": "/data/obs_1.ms",
+            "msout": "obs_1.ms.sector_1_modeldata",
+            "msout_path": "/work/predict_1/obs_1.ms.sector_1_modeldata",
+            "starttime": "50010.0",
+        }
+    )
+    second_postprocess_task = deepcopy(payload["postprocess_tasks"][0])
+    second_postprocess_task.update(
+        {
+            "msobs": "/data/obs_1.ms",
+            "obs_starttime": "50010.0",
+        }
+    )
+    payload["predict_tasks"].append(second_predict_task)
+    payload["postprocess_tasks"].append(second_postprocess_task)
     model_task = _CapturedTask(
         lambda index: directory_record(f"/work/predict_1/model_{index + 1}.ms")
     )
@@ -924,17 +942,26 @@ def test_predict_flow_keeps_model_and_postprocess_worker_payloads_plain(monkeypa
 
     result = predict_module._run_predict_prefect_tasks(payload, execution_config=config)
 
-    assert result == {"msfiles_di_cal": [[directory_record("/work/predict_1/postprocess_1.ms")]]}
+    assert result == {
+        "msfiles_di_cal": [
+            [directory_record("/work/predict_1/postprocess_1.ms")],
+            [directory_record("/work/predict_1/postprocess_2.ms")],
+        ]
+    }
     assert [submission["options"]["task_run_name"] for submission in model_task.submissions] == [
         "predict_model_data_1",
+        "predict_model_data_2",
     ]
     assert model_task.submissions[0]["options"]["tags"] == ["dp3"]
     assert [
         submission["options"]["task_run_name"] for submission in postprocess_task.submissions
     ] == [
         "postprocess_1",
+        "postprocess_2",
     ]
     assert postprocess_task.submissions[0]["options"]["tags"] == ["casacore", "python"]
+    assert postprocess_task.submissions[0]["args"][2] == [model_task.futures[0]]
+    assert postprocess_task.submissions[1]["args"][2] == [model_task.futures[1]]
     _assert_worker_submission_is_serializable(model_task.submissions[0], config)
     _assert_worker_submission_is_serializable(postprocess_task.submissions[0], config)
 

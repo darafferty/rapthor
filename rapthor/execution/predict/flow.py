@@ -191,6 +191,38 @@ def _result_from_postprocess_records(mode: str, outputs: list[list[dict]]) -> di
     return result
 
 
+def _predict_task_matches_postprocess(
+    predict_task: PredictModelTaskPayload,
+    postprocess_task: PredictPostprocessPayload,
+) -> bool:
+    """Return True when a model-data task feeds one observation postprocess task."""
+    model_output_name = os.path.basename(predict_task["msout"])
+    observation_name = os.path.basename(postprocess_task["msobs"])
+    same_msin = predict_task["msin"] == postprocess_task["msobs"]
+    same_output_prefix = model_output_name.startswith(observation_name)
+    same_starttime = predict_task["starttime"] == postprocess_task["obs_starttime"]
+    return (same_msin or same_output_prefix) and same_starttime
+
+
+def _model_output_futures_for_postprocess(
+    postprocess_task: PredictPostprocessPayload,
+    predict_tasks: list[PredictModelTaskPayload],
+    model_output_futures: list[object],
+) -> list[object]:
+    """Select the model-data futures needed by one observation postprocess task."""
+    matched_futures = [
+        future
+        for predict_task, future in zip(predict_tasks, model_output_futures)
+        if _predict_task_matches_postprocess(predict_task, postprocess_task)
+    ]
+    if not matched_futures:
+        raise ValueError(
+            "No predict model-data task matches postprocess observation "
+            f"{postprocess_task['msobs']} at start time {postprocess_task['obs_starttime']}"
+        )
+    return matched_futures
+
+
 def _run_predict_prefect_tasks(
     payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
@@ -208,19 +240,30 @@ def _run_predict_prefect_tasks(
         )
         for index, predict_task in enumerate(payload["predict_tasks"])
     ]
-    model_outputs = [output.result() for output in model_outputs]
     postprocess_outputs = [
         predict_postprocess_task.with_options(
             **task_run_options("postprocess", index + 1, tags=["python", "casacore"])
         ).submit(
             payload["mode"],
             postprocess_task,
-            model_outputs,
+            _model_output_futures_for_postprocess(
+                postprocess_task,
+                payload["predict_tasks"],
+                model_outputs,
+            ),
             payload["pipeline_working_dir"],
         )
         for index, postprocess_task in enumerate(payload["postprocess_tasks"])
     ]
-    postprocess_outputs = [output.result() for output in postprocess_outputs]
+    try:
+        postprocess_outputs = [output.result() for output in postprocess_outputs]
+    except Exception:
+        for model_output in model_outputs:
+            try:
+                model_output.result()
+            except Exception:
+                raise
+        raise
     return _result_from_postprocess_records(payload["mode"], postprocess_outputs)
 
 

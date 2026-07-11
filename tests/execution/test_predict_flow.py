@@ -16,6 +16,7 @@ from rapthor.execution.predict.flow import (
     predict_model_data_task,
 )
 from rapthor.execution.predict.payloads import predict_payload_from_inputs, validate_predict_payload
+from rapthor.lib import miscellaneous as misc
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.predict import Predict
 from tests.execution.conftest import run_flow_for_test
@@ -221,7 +222,7 @@ class SectorStub:
             obs.ms_field = f"{root_filename}{obs.infix}_field"
             obs.ms_predict_di = f"{obs.ms_subtracted_filename}_di.ms"
             obs.parameters["patch_names"] = self.patches
-            obs.parameters["predict_starttime"] = str(obs.starttime)
+            obs.parameters["predict_starttime"] = misc.convert_mjd2mvt(obs.starttime)
             obs.parameters["predict_ntimes"] = obs.numsamples
 
     def get_obs_parameters(self, name):
@@ -543,6 +544,38 @@ def test_validate_predict_payload_normalizes_unset_optional_strings(tmp_path):
     assert validated["predict_tasks"][0]["normalize_h5parm"] is None
 
 
+def test_predict_model_outputs_are_grouped_by_observation_and_starttime():
+    postprocess_task = {
+        "msobs": "/data/obs_0.ms",
+        "data_colname": "DATA",
+        "obs_starttime": "50000.0",
+        "infix": ".selfcal",
+    }
+    predict_tasks = [
+        {
+            "msin": "/data/obs_0.ms",
+            "msout": "obs_0.ms.sector_1_modeldata",
+            "starttime": "50000.0",
+        },
+        {
+            "msin": "/data/obs_0.ms",
+            "msout": "obs_0.ms.sector_1_later_modeldata",
+            "starttime": "50010.0",
+        },
+        {
+            "msin": "/data/obs_1.ms",
+            "msout": "obs_1.ms.sector_1_modeldata",
+            "starttime": "50000.0",
+        },
+    ]
+
+    assert predict_module._model_output_futures_for_postprocess(
+        postprocess_task,
+        predict_tasks,
+        ["first", "same_ms_later_time", "same_time_other_ms"],
+    ) == ["first"]
+
+
 def test_predict_payload_from_inputs_rejects_mismatched_scatter_inputs(tmp_path):
     input_parms = _predict_input_parms()
     input_parms["sector_ntimes"] = [10]
@@ -591,7 +624,6 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
             "msin": "/data/obs_0.ms",
             "msmod_list": [
                 str(tmp_path / "obs_0.ms.sector_1_modeldata"),
-                str(tmp_path / "obs_1.ms.sector_1_modeldata"),
             ],
             "msin_column": "DATA",
             "model_column": "DATA",
@@ -605,7 +637,6 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
         {
             "msin": "/data/obs_1.ms",
             "msmod_list": [
-                str(tmp_path / "obs_0.ms.sector_1_modeldata"),
                 str(tmp_path / "obs_1.ms.sector_1_modeldata"),
             ],
             "msin_column": "DATA",
@@ -667,6 +698,12 @@ def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
         for instance in fake_predict_shell_operation_cls.instances
     ]
     assert [tokens[0] for tokens in command_tokens] == ["DP3", "DP3"]
+    assert [
+        call["model_list"] for call in fake_direct_predict_helpers["subtract_sector_models"]
+    ] == [
+        [str(tmp_path / "obs_0.ms.sector_1_modeldata")],
+        [str(tmp_path / "obs_1.ms.sector_1_modeldata")],
+    ]
     assert fake_direct_predict_helpers["subtract_sector_models"][-1]["peel_outliers"] is True
     assert fake_direct_predict_helpers["subtract_sector_models"][-1]["reweight"] is True
     assert (

@@ -95,11 +95,12 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Review standalone prediction parallelism.**
-   `postprocess` currently waits for all `predict_model_data` tasks. Review
-   whether model outputs can be grouped by observation or target so each
-   post-processing task starts as soon as its own model-data inputs are
-   available, while preserving DI add-model and DD subtract-model semantics.
+1. **Benchmark standalone prediction parallelism.**
+   Implementation is in place: `predict_model_data` futures now stay live, and
+   each `postprocess` task receives only the model-data futures matching its
+   observation and start time. Focused tests cover DI add-model, DD
+   subtract-model, same-MS/different-time filtering, same-time/different-MS
+   filtering, serializable worker payloads, and upstream failure propagation.
 
    Performance guidance from the latest benchmarks:
 
@@ -115,11 +116,14 @@ Do these in order unless a regression blocks progress.
      latest run as runner/noise candidates until repeated benchmarks confirm
      they are real; their external command totals did not show matching growth.
 
-   Benchmark after this batch:
+   Benchmark this batch:
 
-   - keep automatic: `ci-benchmark`
-   - add targeted: a prediction-heavy scenario if one exists or add one before
-     changing behavior
+   - run automatic: `ci-benchmark`
+   - use `ci-benchmark-image-products` only if it is already part of the paired
+     CI run
+   - add a targeted prediction-heavy scenario only if the default report does
+     not expose enough `predict_model_data` and `postprocess` activity to judge
+     scheduler effects
    - run `ci-benchmark-wsclean-predict` only if calibration prediction setup or
      WSClean-predict paths are touched
 
