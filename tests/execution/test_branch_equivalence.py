@@ -10,6 +10,11 @@ from astropy.io import fits
 from PIL import Image
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run_branch_equivalence.py"
+RAPTHOR_LOG = """
+2026-07-04 09:47:29,801 - DEBUG - rapthor:predict_di_1 - \x1b[35mTime for operation: 0:00:01.250000\x1b[0m
+2026-07-04 09:47:29,801 - DEBUG - rapthor:predict_di_1 - \x1b[35m\x1b[35mTime for operation: 0:00:01.250000\x1b[0m\x1b[0m
+2026-07-04 09:48:48,220 - DEBUG - rapthor:image_1 - \x1b[35mTime for operation: 0:01:12.500000\x1b[0m
+"""
 
 
 def load_branch_equivalence_script():
@@ -393,6 +398,56 @@ def test_run_rapthor_with_base_runner_command_uses_isolated_pythonpath(tmp_path,
     assert (tmp_path / "run" / "rapthor-command.log").read_text(encoding="utf-8") == "ok\n"
 
 
+def test_parse_operation_log_deduplicates_colored_operation_timings(tmp_path):
+    module = load_branch_equivalence_script()
+    log_path = tmp_path / "rapthor.log"
+    log_path.write_text(RAPTHOR_LOG, encoding="utf-8")
+
+    timings = module.parse_operation_log(log_path)
+
+    assert [(timing.operation, timing.elapsed_seconds) for timing in timings] == [
+        ("predict_di_1", 1.25),
+        ("image_1", 72.5),
+    ]
+
+
+def test_run_rapthor_collects_operation_timings_from_work_log(tmp_path, monkeypatch):
+    module = load_branch_equivalence_script()
+    command_dir = tmp_path / "bin"
+    command_dir.mkdir()
+    command = command_dir / "rapthor"
+    command.write_text("", encoding="utf-8")
+
+    class Completed:
+        returncode = 0
+        stdout = "stdout only\n"
+
+    def fake_run(*_args, **_kwargs):
+        work_log = tmp_path / "work" / "logs" / "rapthor.log"
+        work_log.parent.mkdir(parents=True)
+        work_log.write_text(RAPTHOR_LOG, encoding="utf-8")
+        return Completed()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    ticks = iter([0.0, 1.0])
+    monkeypatch.setattr(module.time, "perf_counter", lambda: next(ticks))
+    prepared = module.PreparedRun(
+        side="base",
+        ref="master",
+        repo_root=tmp_path / "base",
+        run_dir=tmp_path / "run",
+        parset_path=tmp_path / "input.parset",
+        work_dir=tmp_path / "work",
+    )
+
+    result = module._run_rapthor_from_repo(prepared, runner_command=[str(command)])
+
+    assert [(timing.operation, timing.elapsed_seconds) for timing in result.operation_timings] == [
+        ("predict_di_1", 1.25),
+        ("image_1", 72.5),
+    ]
+
+
 def test_runtime_summary_reports_min_median_max_and_delta(tmp_path):
     module = load_branch_equivalence_script()
     base_runs = [
@@ -425,6 +480,47 @@ def test_runtime_summary_reports_min_median_max_and_delta(tmp_path):
         "max_seconds": 13.0,
     }
     assert summary["current_vs_base_median_delta_percent"] == pytest.approx(-1.0 / 12.0)
+
+
+def test_operation_timing_summary_reports_per_operation_median_delta(tmp_path):
+    module = load_branch_equivalence_script()
+    base_runs = [
+        module.PreparedRun("base", "master", tmp_path, tmp_path, tmp_path, tmp_path),
+        module.PreparedRun("base", "master", tmp_path, tmp_path, tmp_path, tmp_path),
+    ]
+    current_runs = [
+        module.PreparedRun("current", "current", tmp_path, tmp_path, tmp_path, tmp_path),
+        module.PreparedRun("current", "current", tmp_path, tmp_path, tmp_path, tmp_path),
+    ]
+    base_runs[0].operation_timings = [
+        module.OperationTiming("predict_di_1", 10.0),
+        module.OperationTiming("image_1", 100.0),
+    ]
+    base_runs[1].operation_timings = [
+        module.OperationTiming("predict_di_1", 14.0),
+        module.OperationTiming("image_1", 120.0),
+    ]
+    current_runs[0].operation_timings = [
+        module.OperationTiming("predict_di_1", 9.0),
+        module.OperationTiming("image_1", 80.0),
+    ]
+    current_runs[1].operation_timings = [
+        module.OperationTiming("predict_di_1", 11.0),
+        module.OperationTiming("image_1", 100.0),
+    ]
+
+    summary = module._operation_timing_summary({"base": base_runs, "current": current_runs})
+
+    assert summary["base"]["operation_count"] == 2
+    assert summary["base"]["by_operation"]["predict_di_1"]["median_seconds"] == 12.0
+    assert summary["current"]["by_operation"]["image_1"]["median_seconds"] == 90.0
+    assert summary["current_vs_base"]["predict_di_1"] == {
+        "base_count": 2,
+        "base_median_seconds": 12.0,
+        "current_count": 2,
+        "current_median_seconds": 10.0,
+        "current_vs_base_median_delta_percent": pytest.approx(-1.0 / 6.0),
+    }
 
 
 def _write_fits(path, data):
@@ -751,6 +847,39 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
             },
             "current_vs_base_median_delta_percent": -0.19,
         },
+        "operation_timing_summary": {
+            "base": {
+                "operation_count": 1,
+                "by_operation": {
+                    "image_1": {
+                        "count": 1,
+                        "min_seconds": 9.0,
+                        "median_seconds": 9.0,
+                        "max_seconds": 9.0,
+                    }
+                },
+            },
+            "current": {
+                "operation_count": 1,
+                "by_operation": {
+                    "image_1": {
+                        "count": 1,
+                        "min_seconds": 7.5,
+                        "median_seconds": 7.5,
+                        "max_seconds": 7.5,
+                    }
+                },
+            },
+            "current_vs_base": {
+                "image_1": {
+                    "base_count": 1,
+                    "base_median_seconds": 9.0,
+                    "current_count": 1,
+                    "current_median_seconds": 7.5,
+                    "current_vs_base_median_delta_percent": -1.0 / 6.0,
+                }
+            },
+        },
         "comparison": {
             "passed": True,
             "metrics": {"operations": 1},
@@ -778,6 +907,8 @@ def test_branch_markdown_report_lists_prepared_inputs(tmp_path):
     assert "## Runtime Summary" in markdown
     assert "12.346" in markdown
     assert "Current-vs-base median delta: -19.000%" in markdown
+    assert "## Operation Runtime Summary" in markdown
+    assert "`image_1` | 1 | 9.000 | 1 | 7.500 | -16.667%" in markdown
     assert "## Difference Classification" in markdown
     assert "`small_image_residual`" in markdown
     assert "## Adaptations" not in markdown
@@ -818,6 +949,7 @@ def test_prepare_only_writes_reports_without_running_branches(tmp_path):
     assert "adaptations" not in report
     assert report["base"]["parset_path"] == str(base_parset)
     assert report["runtime_summary"]["base"]["count"] == 0
+    assert report["operation_timing_summary"]["current_vs_base"] == {}
     assert report["current"]["parset_path"] == str(current_parset)
     assert report["base"]["input_snapshot"] == {
         "parset": "inputs/base/base.parset",
@@ -857,6 +989,7 @@ def test_repeatability_prepare_only_writes_summary_and_generated_inputs(tmp_path
     assert (run_root / "repeatability-summary.md").is_file()
     assert summary["repetitions"] == 2
     assert summary["runtime_summary"]["current"]["count"] == 0
+    assert summary["operation_timing_summary"]["current_vs_base"] == {}
     assert len(summary["planned_pairs"]) == 6
     assert summary["pair_summaries"] == []
     assert summary["runs"]["base"]["rep-01"]["work_dir"] == str(

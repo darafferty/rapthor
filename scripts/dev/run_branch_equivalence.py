@@ -72,6 +72,10 @@ PYBDSF_DIAGNOSTIC_CATALOG_COLUMNS = {
     "Resid_Isl_rms",
     "Resid_Isl_mean",
 }
+OPERATION_TIMING_RE = re.compile(
+    r"rapthor:(?P<operation>[\w_]+).*Time for operation:\s*"
+    r"(?P<duration>(?:\d+\s+days?,\s+)?\d+:\d{2}:\d{2}(?:\.\d+)?)"
+)
 
 
 def _is_pybdsf_diagnostic_catalog_column(product: str, column: str) -> bool:
@@ -79,6 +83,14 @@ def _is_pybdsf_diagnostic_catalog_column(product: str, column: str) -> bool:
     return product.endswith("source_catalog.fits") and (
         column.startswith("E_") or column in PYBDSF_DIAGNOSTIC_CATALOG_COLUMNS
     )
+
+
+@dataclass
+class OperationTiming:
+    """One operation boundary timing parsed from a Rapthor log."""
+
+    operation: str
+    elapsed_seconds: float
 
 
 @dataclass
@@ -96,6 +108,7 @@ class PreparedRun:
     elapsed_seconds: float | None = None
     log_path: Path | None = None
     input_snapshot: dict[str, str] = field(default_factory=dict)
+    operation_timings: list[OperationTiming] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -399,7 +412,70 @@ def _run_rapthor_from_repo(
     prepared.command = command
     prepared.returncode = completed.returncode
     prepared.log_path = log_path
+    prepared.operation_timings = _operation_timings_for_run(prepared)
     return prepared
+
+
+def _duration_text_to_seconds(value: str) -> float:
+    days = 0
+    time_text = value.strip()
+    day_match = re.match(r"(?P<days>\d+)\s+days?,\s+(?P<time>.*)", time_text)
+    if day_match:
+        days = int(day_match.group("days"))
+        time_text = day_match.group("time")
+
+    hours_text, minutes_text, seconds_text = time_text.split(":")
+    return days * 86400 + int(hours_text) * 3600 + int(minutes_text) * 60 + float(seconds_text)
+
+
+def _strip_ansi(value: str) -> str:
+    return re.sub(r"\x1b\[[0-9;]*m", "", value)
+
+
+def parse_operation_log(operation_log: Path) -> list[OperationTiming]:
+    """Parse Rapthor operation boundary timings from ``rapthor.log``."""
+    if not operation_log.exists():
+        return []
+
+    timings = []
+    seen = set()
+    for line in operation_log.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = OPERATION_TIMING_RE.search(_strip_ansi(line))
+        if not match:
+            continue
+        key = (match.group("operation"), match.group("duration"))
+        if key in seen:
+            continue
+        seen.add(key)
+        timings.append(
+            OperationTiming(
+                operation=match.group("operation"),
+                elapsed_seconds=_duration_text_to_seconds(match.group("duration")),
+            )
+        )
+    return timings
+
+
+def _operation_log_candidates(prepared: PreparedRun) -> list[Path]:
+    candidates = [prepared.work_dir / "logs" / "rapthor.log"]
+    if prepared.log_path is not None:
+        candidates.append(prepared.log_path)
+
+    unique_candidates = []
+    seen = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        unique_candidates.append(candidate)
+    return unique_candidates
+
+
+def _operation_timings_for_run(prepared: PreparedRun) -> list[OperationTiming]:
+    for log_path in _operation_log_candidates(prepared):
+        if log_path.is_file():
+            return parse_operation_log(log_path)
+    return []
 
 
 def _rapthor_path_prefixes(repo_root: Path) -> tuple[Path, Path]:
@@ -947,14 +1023,18 @@ def _median(values: Sequence[float]) -> float | None:
     return (sorted_values[midpoint - 1] + sorted_values[midpoint]) / 2.0
 
 
-def _runtime_stats(prepared_runs: Sequence[PreparedRun]) -> dict[str, Any]:
-    values = _elapsed_values(prepared_runs)
+def _value_stats(values: Sequence[float]) -> dict[str, Any]:
+    finite_values = [float(value) for value in values if math.isfinite(float(value))]
     return {
-        "count": len(values),
-        "min_seconds": min(values) if values else None,
-        "median_seconds": _median(values),
-        "max_seconds": max(values) if values else None,
+        "count": len(finite_values),
+        "min_seconds": min(finite_values) if finite_values else None,
+        "median_seconds": _median(finite_values),
+        "max_seconds": max(finite_values) if finite_values else None,
     }
+
+
+def _runtime_stats(prepared_runs: Sequence[PreparedRun]) -> dict[str, Any]:
+    return _value_stats(_elapsed_values(prepared_runs))
 
 
 def _runtime_summary(
@@ -968,6 +1048,57 @@ def _runtime_summary(
         delta_percent = (float(current_median) - float(base_median)) / float(base_median)
     summary["current_vs_base_median_delta_percent"] = delta_percent
     return summary
+
+
+def _operation_timings_by_operation(
+    prepared_runs: Sequence[PreparedRun],
+) -> dict[str, list[float]]:
+    grouped: dict[str, list[float]] = {}
+    for prepared in prepared_runs:
+        for timing in prepared.operation_timings:
+            value = float(timing.elapsed_seconds)
+            if not math.isfinite(value):
+                continue
+            grouped.setdefault(timing.operation, []).append(value)
+    return grouped
+
+
+def _operation_timing_summary(
+    runs_by_side: dict[str, Sequence[PreparedRun]],
+) -> dict[str, Any]:
+    by_side = {}
+    for side, prepared_runs in runs_by_side.items():
+        grouped = _operation_timings_by_operation(prepared_runs)
+        by_side[side] = {
+            "operation_count": len(grouped),
+            "by_operation": {
+                operation: _value_stats(values) for operation, values in sorted(grouped.items())
+            },
+        }
+
+    base_operations = by_side.get("base", {}).get("by_operation", {})
+    current_operations = by_side.get("current", {}).get("by_operation", {})
+    comparison = {}
+    for operation in sorted(set(base_operations) | set(current_operations)):
+        base_stats = base_operations.get(operation, {})
+        current_stats = current_operations.get(operation, {})
+        base_median = base_stats.get("median_seconds")
+        current_median = current_stats.get("median_seconds")
+        delta_percent = None
+        if base_median not in (None, 0) and current_median is not None:
+            delta_percent = (float(current_median) - float(base_median)) / float(base_median)
+        comparison[operation] = {
+            "base_count": base_stats.get("count", 0),
+            "base_median_seconds": base_median,
+            "current_count": current_stats.get("count", 0),
+            "current_median_seconds": current_median,
+            "current_vs_base_median_delta_percent": delta_percent,
+        }
+
+    return {
+        **by_side,
+        "current_vs_base": comparison,
+    }
 
 
 def _comparison_as_dict(comparison: saved_equivalence.ComparisonResult) -> dict[str, Any]:
@@ -1315,6 +1446,31 @@ def _format_seconds(value: Any) -> str:
     return f"{number:.3f}"
 
 
+def _extend_operation_timing_summary(lines: list[str], summary: dict[str, Any] | None) -> None:
+    if not summary or not summary.get("current_vs_base"):
+        return
+
+    lines.extend(
+        [
+            "",
+            "## Operation Runtime Summary",
+            "",
+            "| Operation | Base Runs | Base Median (s) | Current Runs | "
+            "Current Median (s) | Delta |",
+            "| --- | ---: | ---: | ---: | ---: | ---: |",
+        ]
+    )
+    for operation, stats in summary["current_vs_base"].items():
+        lines.append(
+            "| "
+            f"`{operation}` | {stats.get('base_count', 0)} | "
+            f"{_format_seconds(stats.get('base_median_seconds'))} | "
+            f"{stats.get('current_count', 0)} | "
+            f"{_format_seconds(stats.get('current_median_seconds'))} | "
+            f"{_format_percent(stats.get('current_vs_base_median_delta_percent'))} |"
+        )
+
+
 def _max_finite_metric(metrics: list[dict[str, Any]], key: str) -> float | None:
     values = []
     for metric in metrics:
@@ -1461,6 +1617,8 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
             ]
         )
 
+    _extend_operation_timing_summary(lines, report.get("operation_timing_summary"))
+
     lines.extend(
         [
             "",
@@ -1594,6 +1752,9 @@ def _write_reports(
         "base": _run_as_dict(base),
         "current": _run_as_dict(current),
         "runtime_summary": _runtime_summary({"base": [base], "current": [current]}),
+        "operation_timing_summary": _operation_timing_summary(
+            {"base": [base], "current": [current]}
+        ),
         "comparison": _comparison_as_dict(comparison),
     }
     (run_root / "branch-equivalence-report.json").write_text(
@@ -1645,6 +1806,9 @@ def _write_pair_report(
         "base": _run_as_dict(reference),
         "current": _run_as_dict(current),
         "runtime_summary": _runtime_summary({"base": [reference], "current": [current]}),
+        "operation_timing_summary": _operation_timing_summary(
+            {"base": [reference], "current": [current]}
+        ),
         "comparison": _comparison_as_dict(comparison),
     }
     json_path = pair_dir / "branch-equivalence-report.json"
@@ -1721,6 +1885,8 @@ def _render_repeatability_summary(report: dict[str, Any]) -> str:
                 f"{_format_percent(runtime_summary.get('current_vs_base_median_delta_percent'))}",
             ]
         )
+
+    _extend_operation_timing_summary(lines, report.get("operation_timing_summary"))
 
     lines.extend(
         [
@@ -1800,6 +1966,9 @@ def _write_repeatability_summary(
         "repetitions": repetitions,
         "runs": _repeatability_runs_payload(runs_by_side),
         "runtime_summary": _runtime_summary(
+            {side: list(runs.values()) for side, runs in runs_by_side.items()}
+        ),
+        "operation_timing_summary": _operation_timing_summary(
             {side: list(runs.values()) for side, runs in runs_by_side.items()}
         ),
         "planned_pairs": planned_pairs,

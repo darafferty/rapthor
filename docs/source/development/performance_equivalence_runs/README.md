@@ -40,6 +40,7 @@ python3 scripts/dev/run_branch_equivalence.py \
   --base-install-spec .
 ```
 
-The runner writes elapsed wall-clock seconds for each branch repetition and a
-runtime summary with min, median, max, and current-vs-base median delta. Archive
-the compact JSON/Markdown report here after the full gate completes.
+The runner writes elapsed wall-clock seconds for each branch repetition, parses
+operation boundary timings from each run's `rapthor.log`, and reports
+min/median/max plus current-vs-base median deltas. Archive the compact
+JSON/Markdown report here after the full gate completes.

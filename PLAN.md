@@ -134,6 +134,9 @@ Do these in order unless a regression blocks progress.
 
    - `scripts/dev/run_branch_equivalence.py` now records elapsed seconds for
      each branch run and writes runtime min/median/max summaries.
+   - The same runner parses `rapthor.log` operation-boundary timings and writes
+     per-operation base/current median deltas to the compact JSON/Markdown
+     reports.
    - The `phase-only-core` prepare-only smoke has been validated with
      `--repeatability-repetitions 3`; it writes the expected 15 planned pairs.
    - Baseline run instructions live in
