@@ -702,8 +702,8 @@ def test_calibrate_flow_submits_plain_payloads_and_readable_chunk_names(monkeypa
     ]
     assert calibrate_task.submissions[0]["options"]["tags"] == ["dp3"]
     assert [submission["options"]["task_run_name"] for submission in collect_task.submissions] == [
-        "collect_h5parms_1",
-        "collect_h5parms_2",
+        "collect_fast_phase",
+        "collect_medium1_phase",
     ]
     assert [submission["options"]["task_run_name"] for submission in process_task.submissions] == [
         "process_fast_phase",

@@ -3814,7 +3814,7 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
         "submit-fulljones_gain_1.h5parm",
         "result-0",
         "result-1",
-        "task-name-collect_h5parms_1",
+        "task-name-collect_full_jones",
         "collect-submit",
         "task-name-process_full_jones",
         "collect-result",

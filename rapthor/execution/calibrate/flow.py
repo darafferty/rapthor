@@ -367,14 +367,14 @@ def _run_calibrate_prefect_tasks(
     solve_records = [record.result() for record in solve_records]
     collected_products = [
         collect_h5parms_task.with_options(
-            **task_run_options("collect_h5parms", index + 1, tags=["python"])
+            **task_run_options(_solve_task_run_name("collect", solve_slot), tags=["python"])
         ).submit(
             payload,
             solve_records,
             solve_slot,
             execution_config=config,
         )
-        for index, solve_slot in enumerate(payload["chunks"][0]["solve_slots"])
+        for solve_slot in payload["chunks"][0]["solve_slots"]
     ]
     solve_slots = list(payload["chunks"][0]["solve_slots"])
     processed_products = [
