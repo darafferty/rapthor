@@ -24,29 +24,6 @@ class SlurmClusterSpec:
     memory_per_node_gb: int
 
 
-def _positive_int(value: Optional[str], name: str) -> Optional[int]:
-    if value in (None, ""):
-        return None
-    try:
-        parsed = int(value)
-    except ValueError as err:
-        raise ValueError(f"{name} must be an integer") from err
-    if parsed < 1:
-        raise ValueError(f"{name} must be >= 1")
-    return parsed
-
-
-def _first_positive_int(
-    environ: Mapping[str, str],
-    names: tuple[str, ...],
-) -> Optional[int]:
-    for name in names:
-        parsed = _positive_int(environ.get(name), name)
-        if parsed is not None:
-            return parsed
-    return None
-
-
 def slurm_cluster_spec(
     execution_config: ExecutionConfig,
     environ: Optional[Mapping[str, str]] = None,
@@ -118,3 +95,26 @@ def collect_slurm_config_issues(
         )
 
     return issues
+
+
+def _positive_int(value: Optional[str], name: str) -> Optional[int]:
+    if value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except ValueError as err:
+        raise ValueError(f"{name} must be an integer") from err
+    if parsed < 1:
+        raise ValueError(f"{name} must be >= 1")
+    return parsed
+
+
+def _first_positive_int(
+    environ: Mapping[str, str],
+    names: tuple[str, ...],
+) -> Optional[int]:
+    for name in names:
+        parsed = _positive_int(environ.get(name), name)
+        if parsed is not None:
+            return parsed
+    return None

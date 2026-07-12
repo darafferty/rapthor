@@ -35,6 +35,98 @@ from rapthor.execution.resources import (
 from rapthor.execution.shell import run_external_command
 
 
+def run_or_reuse_wsclean_images(
+    sector: ImageSectorPayload,
+    concat_record: Mapping[str, str],
+    mask_record: Mapping[str, str],
+    region_record: Optional[Mapping[str, str]],
+    image_name: str,
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> tuple[dict, dict, bool]:
+    """Run WSClean when required image products are missing."""
+    nonpb_image_patterns = mfs_non_pb_image_patterns(image_name, pipeline_working_dir)
+    pb_image_patterns = mfs_pb_image_patterns(image_name, pipeline_working_dir)
+    nonpb_image = optional_first_existing_file(nonpb_image_patterns)
+    pb_image = optional_first_existing_file(pb_image_patterns)
+    residual_missing = False
+    if sector["make_residual_visibilities"]:
+        if sector["residual_path"] is None:
+            raise ValueError("Residual visibility path is required when residuals are requested")
+        residual_missing = not os.path.isdir(str(sector["residual_path"]))
+    if nonpb_image is not None and pb_image is not None and not residual_missing:
+        return nonpb_image, pb_image, False
+
+    if sector["apply_screens"]:
+        _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
+
+    temp_dir = os.path.join(pipeline_working_dir, f"{image_name}_wsclean_tmp")
+    wsclean_command = _select_wsclean_command_for_sector(
+        sector, concat_record, mask_record, region_record, temp_dir
+    )
+    wsclean_environment = _wsclean_environment_for_sector(sector, execution_config)
+    try:
+        os.makedirs(temp_dir, exist_ok=True)
+        run_external_command(
+            wsclean_command,
+            pipeline_working_dir,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+            environment=wsclean_environment,
+        )
+    finally:
+        cleanup_directory(temp_dir)
+
+    return (
+        first_existing_file(nonpb_image_patterns, "WSClean non-PB image"),
+        first_existing_file(pb_image_patterns, "WSClean PB image"),
+        True,
+    )
+
+
+def restore_bright_source_images(
+    sector: ImageSectorPayload,
+    nonpb_image: dict,
+    pb_image: dict,
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> tuple[dict, dict]:
+    """Restore bright-source models into PB and non-PB images when requested."""
+    if not sector["peel_bright_sources"]:
+        return nonpb_image, pb_image
+    pb_image = _restore_bright_source_image(
+        pb_image,
+        str(sector["bright_skymodel_pb"]),
+        pipeline_working_dir,
+        execution_config,
+        int(sector["max_threads"]),
+        "Bright-source restored PB image",
+        shell_operation_cls=shell_operation_cls,
+    )
+    nonpb_image = _restore_bright_source_image(
+        nonpb_image,
+        str(sector["bright_skymodel_pb"]),
+        pipeline_working_dir,
+        execution_config,
+        int(sector["max_threads"]),
+        "Bright-source restored non-PB image",
+        shell_operation_cls=shell_operation_cls,
+    )
+    return nonpb_image, pb_image
+
+
+def check_wsclean_beams(
+    image_records: tuple[dict, dict],
+    sector: ImageSectorPayload,
+) -> None:
+    """Run beam checks for newly created WSClean images."""
+    for image_record in image_records:
+        ensure_image_beam(image_record["path"], float(sector["taper_arcsec"]))
+        require_file(image_record["path"], "Beam-checked image")
+
+
 def _restore_bright_source_image(
     image_record: Mapping[str, str],
     bright_skymodel_pb: str,
@@ -179,95 +271,3 @@ def _select_wsclean_command_for_sector(
             mpi_nnodes=int(sector["mpi_nnodes"]), options=common_options
         )
     return build_wsclean_no_dde_command(common_options)
-
-
-def run_or_reuse_wsclean_images(
-    sector: ImageSectorPayload,
-    concat_record: Mapping[str, str],
-    mask_record: Mapping[str, str],
-    region_record: Optional[Mapping[str, str]],
-    image_name: str,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> tuple[dict, dict, bool]:
-    """Run WSClean when required image products are missing."""
-    nonpb_image_patterns = mfs_non_pb_image_patterns(image_name, pipeline_working_dir)
-    pb_image_patterns = mfs_pb_image_patterns(image_name, pipeline_working_dir)
-    nonpb_image = optional_first_existing_file(nonpb_image_patterns)
-    pb_image = optional_first_existing_file(pb_image_patterns)
-    residual_missing = False
-    if sector["make_residual_visibilities"]:
-        if sector["residual_path"] is None:
-            raise ValueError("Residual visibility path is required when residuals are requested")
-        residual_missing = not os.path.isdir(str(sector["residual_path"]))
-    if nonpb_image is not None and pb_image is not None and not residual_missing:
-        return nonpb_image, pb_image, False
-
-    if sector["apply_screens"]:
-        _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
-
-    temp_dir = os.path.join(pipeline_working_dir, f"{image_name}_wsclean_tmp")
-    wsclean_command = _select_wsclean_command_for_sector(
-        sector, concat_record, mask_record, region_record, temp_dir
-    )
-    wsclean_environment = _wsclean_environment_for_sector(sector, execution_config)
-    try:
-        os.makedirs(temp_dir, exist_ok=True)
-        run_external_command(
-            wsclean_command,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-            environment=wsclean_environment,
-        )
-    finally:
-        cleanup_directory(temp_dir)
-
-    return (
-        first_existing_file(nonpb_image_patterns, "WSClean non-PB image"),
-        first_existing_file(pb_image_patterns, "WSClean PB image"),
-        True,
-    )
-
-
-def restore_bright_source_images(
-    sector: ImageSectorPayload,
-    nonpb_image: dict,
-    pb_image: dict,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> tuple[dict, dict]:
-    """Restore bright-source models into PB and non-PB images when requested."""
-    if not sector["peel_bright_sources"]:
-        return nonpb_image, pb_image
-    pb_image = _restore_bright_source_image(
-        pb_image,
-        str(sector["bright_skymodel_pb"]),
-        pipeline_working_dir,
-        execution_config,
-        int(sector["max_threads"]),
-        "Bright-source restored PB image",
-        shell_operation_cls=shell_operation_cls,
-    )
-    nonpb_image = _restore_bright_source_image(
-        nonpb_image,
-        str(sector["bright_skymodel_pb"]),
-        pipeline_working_dir,
-        execution_config,
-        int(sector["max_threads"]),
-        "Bright-source restored non-PB image",
-        shell_operation_cls=shell_operation_cls,
-    )
-    return nonpb_image, pb_image
-
-
-def check_wsclean_beams(
-    image_records: tuple[dict, dict],
-    sector: ImageSectorPayload,
-) -> None:
-    """Run beam checks for newly created WSClean images."""
-    for image_record in image_records:
-        ensure_image_beam(image_record["path"], float(sector["taper_arcsec"]))
-        require_file(image_record["path"], "Beam-checked image")

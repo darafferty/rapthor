@@ -15,6 +15,35 @@ from rapthor.execution.payloads import (
 )
 
 
+def validate_image_payload(payload: Mapping[str, object]) -> ImagePayload:
+    supported_modes = {
+        "facet_full_stokes",
+        "facet_stokes_i",
+        "no_dde_full_stokes",
+        "no_dde_stokes_i",
+        "screens_full_stokes",
+        "screens_stokes_i",
+    }
+    mode = str(payload["mode"])
+    if mode not in supported_modes:
+        raise ValueError("Only no-DD, facet, and screen image payloads are supported")
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    raw_sectors = payload.get("sectors", [])
+    if not isinstance(raw_sectors, list):
+        raise ValueError("sectors must be a list")
+    sectors = []
+    for index, sector in enumerate(raw_sectors):
+        if not isinstance(sector, Mapping):
+            raise ValueError(f"sectors[{index}] must be a mapping")
+        sectors.append(_validate_image_sector(sector, index))
+    return {
+        "mode": mode,
+        "use_mpi": bool(payload.get("use_mpi", False)),
+        "pipeline_working_dir": pipeline_working_dir,
+        "sectors": sectors,
+    }
+
+
 def _validate_prepare_task(
     prepare_task: Mapping[str, object],
     sector_index: int,
@@ -97,32 +126,3 @@ def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSec
         f"sectors[{index}].obs_ntimes",
     )
     return validated_sector
-
-
-def validate_image_payload(payload: Mapping[str, object]) -> ImagePayload:
-    supported_modes = {
-        "facet_full_stokes",
-        "facet_stokes_i",
-        "no_dde_full_stokes",
-        "no_dde_stokes_i",
-        "screens_full_stokes",
-        "screens_stokes_i",
-    }
-    mode = str(payload["mode"])
-    if mode not in supported_modes:
-        raise ValueError("Only no-DD, facet, and screen image payloads are supported")
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    raw_sectors = payload.get("sectors", [])
-    if not isinstance(raw_sectors, list):
-        raise ValueError("sectors must be a list")
-    sectors = []
-    for index, sector in enumerate(raw_sectors):
-        if not isinstance(sector, Mapping):
-            raise ValueError(f"sectors[{index}] must be a mapping")
-        sectors.append(_validate_image_sector(sector, index))
-    return {
-        "mode": mode,
-        "use_mpi": bool(payload.get("use_mpi", False)),
-        "pipeline_working_dir": pipeline_working_dir,
-        "sectors": sectors,
-    }

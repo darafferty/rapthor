@@ -8,12 +8,6 @@ _CYCLE_SUFFIX = re.compile(r"_(\d+)$")
 _RUN_NAME_SAFE_CHARACTERS = re.compile(r"[^A-Za-z0-9_.-]+")
 
 
-def _safe_run_name_part(value: object) -> str:
-    text = str(value).strip()
-    text = _RUN_NAME_SAFE_CHARACTERS.sub("_", text)
-    return text.strip("_")
-
-
 def operation_basename(payload: Mapping[str, object]) -> str:
     """Return the operation directory name from a flow payload."""
     pipeline_working_dir = str(payload.get("pipeline_working_dir", ""))
@@ -69,3 +63,9 @@ def task_run_options(
     if task_tag_values:
         options["tags"] = task_tag_values
     return options
+
+
+def _safe_run_name_part(value: object) -> str:
+    text = str(value).strip()
+    text = _RUN_NAME_SAFE_CHARACTERS.sub("_", text)
+    return text.strip("_")

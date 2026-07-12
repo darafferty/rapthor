@@ -27,53 +27,6 @@ class ConcatenatePayload(TypedDict):
     epochs: list[ConcatenateEpochPayload]
 
 
-def _validate_input_filenames(input_filenames: object, index: int) -> list[str]:
-    return validate_string_list(
-        input_filenames,
-        f"epochs[{index}].input_filenames",
-        allow_empty=False,
-    )
-
-
-def _validate_unique_output_paths(epochs: list[ConcatenateEpochPayload]) -> None:
-    output_paths = [epoch["output_path"] for epoch in epochs]
-    if len(output_paths) != len(set(output_paths)):
-        raise ValueError("epoch output paths must be unique")
-
-
-def validate_concatenate_payload(payload: Mapping[str, object]) -> ConcatenatePayload:
-    """Validate a Concatenate payload received by a flow or worker."""
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    data_colname = str(payload["data_colname"])
-    raw_epochs = payload.get("epochs", [])
-    if not isinstance(raw_epochs, list):
-        raise ValueError("epochs must be a list")
-    epochs: list[ConcatenateEpochPayload] = []
-    for index, epoch in enumerate(raw_epochs):
-        if not isinstance(epoch, Mapping):
-            raise ValueError(f"epochs[{index}] must be a mapping")
-        input_filenames = _validate_input_filenames(epoch.get("input_filenames"), index)
-        output_filename = validate_basename(
-            epoch.get("output_filename"), f"epochs[{index}].output_filename"
-        )
-        expected_output_path = os.path.join(pipeline_working_dir, output_filename)
-        if str(epoch.get("output_path")) != expected_output_path:
-            raise ValueError(f"epochs[{index}].output_path must be {expected_output_path}")
-        epochs.append(
-            {
-                "input_filenames": input_filenames,
-                "output_filename": output_filename,
-                "output_path": expected_output_path,
-            }
-        )
-    _validate_unique_output_paths(epochs)
-    return {
-        "pipeline_working_dir": pipeline_working_dir,
-        "data_colname": data_colname,
-        "epochs": epochs,
-    }
-
-
 def concatenate_payload_from_inputs(
     input_parms: Mapping[str, object],
     pipeline_working_dir: object,
@@ -114,3 +67,50 @@ def concatenate_payload_from_inputs(
     _validate_unique_output_paths(epochs)
     assert_serializable_payload(payload)
     return payload
+
+
+def validate_concatenate_payload(payload: Mapping[str, object]) -> ConcatenatePayload:
+    """Validate a Concatenate payload received by a flow or worker."""
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    data_colname = str(payload["data_colname"])
+    raw_epochs = payload.get("epochs", [])
+    if not isinstance(raw_epochs, list):
+        raise ValueError("epochs must be a list")
+    epochs: list[ConcatenateEpochPayload] = []
+    for index, epoch in enumerate(raw_epochs):
+        if not isinstance(epoch, Mapping):
+            raise ValueError(f"epochs[{index}] must be a mapping")
+        input_filenames = _validate_input_filenames(epoch.get("input_filenames"), index)
+        output_filename = validate_basename(
+            epoch.get("output_filename"), f"epochs[{index}].output_filename"
+        )
+        expected_output_path = os.path.join(pipeline_working_dir, output_filename)
+        if str(epoch.get("output_path")) != expected_output_path:
+            raise ValueError(f"epochs[{index}].output_path must be {expected_output_path}")
+        epochs.append(
+            {
+                "input_filenames": input_filenames,
+                "output_filename": output_filename,
+                "output_path": expected_output_path,
+            }
+        )
+    _validate_unique_output_paths(epochs)
+    return {
+        "pipeline_working_dir": pipeline_working_dir,
+        "data_colname": data_colname,
+        "epochs": epochs,
+    }
+
+
+def _validate_input_filenames(input_filenames: object, index: int) -> list[str]:
+    return validate_string_list(
+        input_filenames,
+        f"epochs[{index}].input_filenames",
+        allow_empty=False,
+    )
+
+
+def _validate_unique_output_paths(epochs: list[ConcatenateEpochPayload]) -> None:
+    output_paths = [epoch["output_path"] for epoch in epochs]
+    if len(output_paths) != len(set(output_paths)):
+        raise ValueError("epoch output paths must be unique")

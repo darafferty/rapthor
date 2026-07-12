@@ -36,6 +36,69 @@ from rapthor.execution.image.wsclean import (
 from rapthor.execution.outputs import file_records_for_patterns
 
 
+def run_image_sector(
+    sector: ImageSectorPayload,
+    pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run one imaging sector sequentially."""
+    prepared = prepare_image_sector(
+        sector,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    filtered = filter_image_sector_skymodel(
+        sector,
+        prepared,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    diagnostics_result = calculate_image_sector_diagnostics(
+        sector,
+        prepared,
+        filtered,
+        pipeline_working_dir,
+    )
+    image_cube_result = make_image_sector_cubes(sector, pipeline_working_dir)
+    catalog_result = make_image_sector_cube_catalog(
+        sector,
+        image_cube_result,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    normalization_result = normalize_image_sector_flux_scale(
+        sector,
+        prepared,
+        catalog_result,
+    )
+    restored_model_result = restore_image_sector_skymodel(sector, prepared, filtered)
+    compression_result = compress_image_sector_products(
+        sector,
+        prepared,
+        diagnostics_result,
+        pipeline_working_dir,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return finalize_image_sector(
+        sector,
+        prepared,
+        filtered,
+        diagnostics_result,
+        pipeline_working_dir,
+        image_cube_result=image_cube_result,
+        catalog_result=catalog_result,
+        normalization_result=normalization_result,
+        restored_model_result=restored_model_result,
+        compression_result=compression_result,
+        execution_config=execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
 def prepare_image_sector(
     sector: ImageSectorPayload,
     pipeline_working_dir: str,
@@ -394,24 +457,6 @@ def restore_image_sector_skymodel(
     }
 
 
-def _sector_image_records_with_astrometry(
-    sector: ImageSectorPayload,
-    prepared: Mapping[str, object],
-    diagnostics_result: Mapping[str, object],
-) -> tuple[list[dict], list[dict]]:
-    """Return sector image records after adding astrometry-corrected images."""
-    sector_images = list(prepared["sector_images"])
-    if "I" in str(sector["pol"]).upper():
-        sector_images.append(
-            make_astrometry_corrected_image_record(
-                prepared["pb_image"],
-                prepared["region_record"],
-                diagnostics_result["offsets"],
-            )
-        )
-    return sector_images, list(prepared["extra_images"])
-
-
 def compress_image_sector_products(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
@@ -565,64 +610,19 @@ def finalize_image_sector(
     return result
 
 
-def run_image_sector(
+def _sector_image_records_with_astrometry(
     sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run one imaging sector sequentially."""
-    prepared = prepare_image_sector(
-        sector,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    filtered = filter_image_sector_skymodel(
-        sector,
-        prepared,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    diagnostics_result = calculate_image_sector_diagnostics(
-        sector,
-        prepared,
-        filtered,
-        pipeline_working_dir,
-    )
-    image_cube_result = make_image_sector_cubes(sector, pipeline_working_dir)
-    catalog_result = make_image_sector_cube_catalog(
-        sector,
-        image_cube_result,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    normalization_result = normalize_image_sector_flux_scale(
-        sector,
-        prepared,
-        catalog_result,
-    )
-    restored_model_result = restore_image_sector_skymodel(sector, prepared, filtered)
-    compression_result = compress_image_sector_products(
-        sector,
-        prepared,
-        diagnostics_result,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return finalize_image_sector(
-        sector,
-        prepared,
-        filtered,
-        diagnostics_result,
-        pipeline_working_dir,
-        image_cube_result=image_cube_result,
-        catalog_result=catalog_result,
-        normalization_result=normalization_result,
-        restored_model_result=restored_model_result,
-        compression_result=compression_result,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
+    prepared: Mapping[str, object],
+    diagnostics_result: Mapping[str, object],
+) -> tuple[list[dict], list[dict]]:
+    """Return sector image records after adding astrometry-corrected images."""
+    sector_images = list(prepared["sector_images"])
+    if "I" in str(sector["pol"]).upper():
+        sector_images.append(
+            make_astrometry_corrected_image_record(
+                prepared["pb_image"],
+                prepared["region_record"],
+                diagnostics_result["offsets"],
+            )
+        )
+    return sector_images, list(prepared["extra_images"])

@@ -27,6 +27,38 @@ class RapthorLogFilter(logging.Filter):
         )
 
 
+@contextmanager
+def publish_python_logs_to_prefect(level: object = None) -> Iterator[None]:
+    """Forward Rapthor Python logging records to the active Prefect run.
+
+    The handler is inserted before Rapthor's console handler so API logs keep the
+    original uncoloured message even though the console handler mutates records
+    while adding ANSI colours.
+    """
+    global _active_contexts, _api_handler
+
+    if not in_prefect_run_context():
+        yield
+        return
+
+    with _handler_lock:
+        if _api_handler is None or _api_handler not in logging.root.handlers:
+            _api_handler = _install_api_handler(_logging_level(level))
+        else:
+            _api_handler.setLevel(min(_api_handler.level, _logging_level(level)))
+        _active_contexts += 1
+
+    try:
+        yield
+    finally:
+        with _handler_lock:
+            _active_contexts -= 1
+            if _active_contexts == 0 and _api_handler is not None:
+                handler = _api_handler
+                _api_handler = None
+                _remove_api_handler(handler)
+
+
 def _load_api_log_handler():
     from prefect.logging.handlers import APILogHandler
 
@@ -72,35 +104,3 @@ def _remove_api_handler(handler: logging.Handler) -> None:
         handler.close()
     except Exception:
         pass
-
-
-@contextmanager
-def publish_python_logs_to_prefect(level: object = None) -> Iterator[None]:
-    """Forward Rapthor Python logging records to the active Prefect run.
-
-    The handler is inserted before Rapthor's console handler so API logs keep the
-    original uncoloured message even though the console handler mutates records
-    while adding ANSI colours.
-    """
-    global _active_contexts, _api_handler
-
-    if not in_prefect_run_context():
-        yield
-        return
-
-    with _handler_lock:
-        if _api_handler is None or _api_handler not in logging.root.handlers:
-            _api_handler = _install_api_handler(_logging_level(level))
-        else:
-            _api_handler.setLevel(min(_api_handler.level, _logging_level(level)))
-        _active_contexts += 1
-
-    try:
-        yield
-    finally:
-        with _handler_lock:
-            _active_contexts -= 1
-            if _active_contexts == 0 and _api_handler is not None:
-                handler = _api_handler
-                _api_handler = None
-                _remove_api_handler(handler)

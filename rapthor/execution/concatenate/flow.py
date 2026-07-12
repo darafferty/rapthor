@@ -20,51 +20,30 @@ from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
 
 
-def run_concatenate_epoch(
-    epoch: ConcatenateEpochPayload,
-    data_colname: str,
-    pipeline_working_dir: str,
+def concatenate_flow(
+    payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run concatenation for one epoch and return a directory output record."""
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    input_filenames = epoch["input_filenames"]
-    output_path = epoch["output_path"]
-    command = select_concatenation_command(input_filenames, output_path, data_colname)
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        config,
-        name="concatenate_epoch",
-        shell_operation_cls=shell_operation_cls,
+):
+    """Prefect entry point for Concatenate."""
+    return run_flow_with_task_runner(
+        _concatenate_flow,
+        payload,
+        flow_run_name=operation_run_name(payload, "concatenate"),
+        execution_config=execution_config,
     )
-    return require_directory(output_path, "Concatenate output")
 
 
-@task(name="epoch")
-def concatenate_epoch_task(
-    epoch: ConcatenateEpochPayload,
-    data_colname: str,
-    pipeline_working_dir: str,
+@flow(name="concatenate")
+def _concatenate_flow(
+    payload: Mapping[str, object],
     execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Prefect task wrapper for one epoch concatenation."""
-    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
-        return run_concatenate_epoch(
-            epoch,
-            data_colname,
-            pipeline_working_dir,
+):
+    """Prefect implementation for Concatenate."""
+    with publish_python_logs_to_prefect():
+        return _run_concatenate_prefect_tasks(
+            payload,
             execution_config=execution_config,
-            shell_operation_cls=shell_operation_cls,
         )
-
-
-def _result_from_epoch_records(outputs: list[dict]) -> dict:
-    result = {"concatenated_filenames": outputs}
-    validate_output_record(result["concatenated_filenames"])
-    return result
 
 
 def _run_concatenate_prefect_tasks(
@@ -89,27 +68,48 @@ def _run_concatenate_prefect_tasks(
     return _result_from_epoch_records(outputs)
 
 
-@flow(name="concatenate")
-def _concatenate_flow(
-    payload: Mapping[str, object],
+@task(name="epoch")
+def concatenate_epoch_task(
+    epoch: ConcatenateEpochPayload,
+    data_colname: str,
+    pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect implementation for Concatenate."""
-    with publish_python_logs_to_prefect():
-        return _run_concatenate_prefect_tasks(
-            payload,
+    shell_operation_cls=None,
+) -> dict:
+    """Prefect task wrapper for one epoch concatenation."""
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        return run_concatenate_epoch(
+            epoch,
+            data_colname,
+            pipeline_working_dir,
             execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
         )
 
 
-def concatenate_flow(
-    payload: Mapping[str, object],
+def run_concatenate_epoch(
+    epoch: ConcatenateEpochPayload,
+    data_colname: str,
+    pipeline_working_dir: str,
     execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect entry point for Concatenate."""
-    return run_flow_with_task_runner(
-        _concatenate_flow,
-        payload,
-        flow_run_name=operation_run_name(payload, "concatenate"),
-        execution_config=execution_config,
+    shell_operation_cls=None,
+) -> dict:
+    """Run concatenation for one epoch and return a directory output record."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    input_filenames = epoch["input_filenames"]
+    output_path = epoch["output_path"]
+    command = select_concatenation_command(input_filenames, output_path, data_colname)
+    run_external_command(
+        command,
+        pipeline_working_dir,
+        config,
+        name="concatenate_epoch",
+        shell_operation_cls=shell_operation_cls,
     )
+    return require_directory(output_path, "Concatenate output")
+
+
+def _result_from_epoch_records(outputs: list[dict]) -> dict:
+    result = {"concatenated_filenames": outputs}
+    validate_output_record(result["concatenated_filenames"])
+    return result

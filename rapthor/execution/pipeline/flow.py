@@ -52,118 +52,41 @@ class PipelineLifecycleHooks:
     make_report: Callable[[object], None]
 
 
-def default_pipeline_operation_factories() -> PipelineOperationFactories:
-    """Return the production operation constructors."""
-    from rapthor.operations.calibrate.base import Calibrate
-    from rapthor.operations.concatenate import Concatenate
-    from rapthor.operations.image.base import Image
-    from rapthor.operations.image.initial import ImageInitial
-    from rapthor.operations.image.normalize import ImageNormalize
-    from rapthor.operations.mosaic import Mosaic
-    from rapthor.operations.predict import Predict
-
-    return PipelineOperationFactories(
-        predict=Predict,
-        calibrate=Calibrate,
-        image=Image,
-        mosaic=Mosaic,
-        image_normalize=ImageNormalize,
-        concatenate=Concatenate,
-        image_initial=ImageInitial,
+def pipeline_flow(
+    parset_file: object,
+    logging_level: str = "info",
+    operation_factories: Optional[PipelineOperationFactories] = None,
+    lifecycle_hooks: Optional[PipelineLifecycleHooks] = None,
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect entry point for top-level pipeline orchestration."""
+    return run_flow_with_task_runner(
+        _pipeline_flow,
+        parset_file,
+        logging_level=logging_level,
+        operation_factories=operation_factories,
+        lifecycle_hooks=lifecycle_hooks,
+        execution_config=execution_config,
     )
 
 
-def default_pipeline_lifecycle_hooks() -> PipelineLifecycleHooks:
-    """Return the production pipeline collaborators."""
-    from rapthor import _logging
-    from rapthor.execution.pipeline.lifecycle import chunk_observations, do_final_pass, make_report
-    from rapthor.lib.field import Field
-    from rapthor.lib.parset import parset_read
-    from rapthor.lib.strategy import set_strategy, validate_strategy
-
-    return PipelineLifecycleHooks(
-        read_parset=parset_read,
-        set_logging_level=_logging.set_level,
-        build_field=Field,
-        set_strategy=set_strategy,
-        validate_strategy=validate_strategy,
-        preflight_execution=run_pipeline_preflight,
-        chunk_observations=chunk_observations,
-        do_final_pass=do_final_pass,
-        make_report=make_report,
-    )
-
-
-def run_pipeline_preflight(
-    field: object,
-    strategy_steps: list[dict],
-    execution_config: ExecutionConfig,
-    requested_features: set[str],
-) -> None:
-    """Run the default pipeline-level preflight."""
-    preflight_execution(
-        execution_config,
-        requested_features=requested_features,
-        supported_features=SUPPORTED_PIPELINE_FEATURES,
-    )
-
-
-def _do_calibrate_mode(strategy: dict) -> dict[str, bool]:
-    return calibration_mode_flags(strategy)
-
-
-def _run_operation(factory: Callable, *args) -> object:
-    operation = factory(*args)
-    operation.run()
-    publish_plot_artifacts_for_field(getattr(operation, "field", None), publish_index=False)
-    publish_fits_image_artifacts_for_field(getattr(operation, "field", None))
-    publish_command_metrics_artifact_for_field(getattr(operation, "field", None))
-    return operation
-
-
-def _run_required_operation(factory: Optional[Callable], name: str, *args) -> object:
-    if factory is None:
-        raise ValueError(f"No operation factory configured for {name!r}")
-    return _run_operation(factory, *args)
-
-
-def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionConfig) -> None:
-    """Write effective runtime settings back into the operation parset."""
-    cluster = parset.setdefault("cluster_specific", {})
-    cluster.update(
-        {
-            "prefect_task_runner": execution_config.task_runner,
-            "prefect_api_mode": execution_config.prefect_api_mode,
-            "prefect_api_url": execution_config.prefect_api_url,
-            "dask_scheduler": execution_config.dask_scheduler,
-            "dask_dashboard_address": execution_config.dask_dashboard_address,
-            "prefect_stream_output": execution_config.stream_output,
-            "prefect_run_tags": (
-                ",".join(execution_config.run_tags) if execution_config.run_tags else None
-            ),
-            "prefect_retries": execution_config.retries,
-            "prefect_log_commands": execution_config.log_commands,
-            "prefect_command_profile": execution_config.command_profile,
-            "prefect_publish_fits_previews": execution_config.publish_fits_previews,
-            "prefect_publish_postage_stamp_previews": (
-                execution_config.publish_postage_stamp_previews
-            ),
-            "prefect_postage_stamp_preview_count": execution_config.postage_stamp_preview_count,
-            "prefect_postage_stamp_preview_size_px": (
-                execution_config.postage_stamp_preview_size_px
-            ),
-            "prefect_fits_preview_clip_percentile": (execution_config.fits_preview_clip_percentile),
-            "batch_system": execution_config.batch_system,
-            "max_nodes": execution_config.max_nodes,
-            "local_dask_workers": execution_config.local_dask_workers,
-            "cpus_per_task": execution_config.cpus_per_task,
-            "mem_per_node_gb": execution_config.mem_per_node_gb,
-            "use_container": execution_config.use_container,
-            "container_type": execution_config.container_type,
-            "local_scratch_dir": execution_config.local_scratch_dir,
-            "global_scratch_dir": execution_config.global_scratch_dir,
-        }
-    )
+@flow(name="pipeline")
+def _pipeline_flow(
+    parset_file: object,
+    logging_level: str = "info",
+    operation_factories: Optional[PipelineOperationFactories] = None,
+    lifecycle_hooks: Optional[PipelineLifecycleHooks] = None,
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect implementation for top-level pipeline orchestration."""
+    with publish_python_logs_to_prefect(logging_level):
+        return run_pipeline(
+            parset_file,
+            logging_level=logging_level,
+            operation_factories=operation_factories,
+            lifecycle_hooks=lifecycle_hooks,
+            execution_config=execution_config,
+        )
 
 
 def run_pipeline(
@@ -391,38 +314,115 @@ def run_pipeline_steps(
     return field
 
 
-@flow(name="pipeline")
-def _pipeline_flow(
-    parset_file: object,
-    logging_level: str = "info",
-    operation_factories: Optional[PipelineOperationFactories] = None,
-    lifecycle_hooks: Optional[PipelineLifecycleHooks] = None,
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect implementation for top-level pipeline orchestration."""
-    with publish_python_logs_to_prefect(logging_level):
-        return run_pipeline(
-            parset_file,
-            logging_level=logging_level,
-            operation_factories=operation_factories,
-            lifecycle_hooks=lifecycle_hooks,
-            execution_config=execution_config,
-        )
+def default_pipeline_operation_factories() -> PipelineOperationFactories:
+    """Return the production operation constructors."""
+    from rapthor.operations.calibrate.base import Calibrate
+    from rapthor.operations.concatenate import Concatenate
+    from rapthor.operations.image.base import Image
+    from rapthor.operations.image.initial import ImageInitial
+    from rapthor.operations.image.normalize import ImageNormalize
+    from rapthor.operations.mosaic import Mosaic
+    from rapthor.operations.predict import Predict
 
-
-def pipeline_flow(
-    parset_file: object,
-    logging_level: str = "info",
-    operation_factories: Optional[PipelineOperationFactories] = None,
-    lifecycle_hooks: Optional[PipelineLifecycleHooks] = None,
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect entry point for top-level pipeline orchestration."""
-    return run_flow_with_task_runner(
-        _pipeline_flow,
-        parset_file,
-        logging_level=logging_level,
-        operation_factories=operation_factories,
-        lifecycle_hooks=lifecycle_hooks,
-        execution_config=execution_config,
+    return PipelineOperationFactories(
+        predict=Predict,
+        calibrate=Calibrate,
+        image=Image,
+        mosaic=Mosaic,
+        image_normalize=ImageNormalize,
+        concatenate=Concatenate,
+        image_initial=ImageInitial,
     )
+
+
+def default_pipeline_lifecycle_hooks() -> PipelineLifecycleHooks:
+    """Return the production pipeline collaborators."""
+    from rapthor import _logging
+    from rapthor.execution.pipeline.lifecycle import chunk_observations, do_final_pass, make_report
+    from rapthor.lib.field import Field
+    from rapthor.lib.parset import parset_read
+    from rapthor.lib.strategy import set_strategy, validate_strategy
+
+    return PipelineLifecycleHooks(
+        read_parset=parset_read,
+        set_logging_level=_logging.set_level,
+        build_field=Field,
+        set_strategy=set_strategy,
+        validate_strategy=validate_strategy,
+        preflight_execution=run_pipeline_preflight,
+        chunk_observations=chunk_observations,
+        do_final_pass=do_final_pass,
+        make_report=make_report,
+    )
+
+
+def run_pipeline_preflight(
+    field: object,
+    strategy_steps: list[dict],
+    execution_config: ExecutionConfig,
+    requested_features: set[str],
+) -> None:
+    """Run the default pipeline-level preflight."""
+    preflight_execution(
+        execution_config,
+        requested_features=requested_features,
+        supported_features=SUPPORTED_PIPELINE_FEATURES,
+    )
+
+
+def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionConfig) -> None:
+    """Write effective runtime settings back into the operation parset."""
+    cluster = parset.setdefault("cluster_specific", {})
+    cluster.update(
+        {
+            "prefect_task_runner": execution_config.task_runner,
+            "prefect_api_mode": execution_config.prefect_api_mode,
+            "prefect_api_url": execution_config.prefect_api_url,
+            "dask_scheduler": execution_config.dask_scheduler,
+            "dask_dashboard_address": execution_config.dask_dashboard_address,
+            "prefect_stream_output": execution_config.stream_output,
+            "prefect_run_tags": (
+                ",".join(execution_config.run_tags) if execution_config.run_tags else None
+            ),
+            "prefect_retries": execution_config.retries,
+            "prefect_log_commands": execution_config.log_commands,
+            "prefect_command_profile": execution_config.command_profile,
+            "prefect_publish_fits_previews": execution_config.publish_fits_previews,
+            "prefect_publish_postage_stamp_previews": (
+                execution_config.publish_postage_stamp_previews
+            ),
+            "prefect_postage_stamp_preview_count": execution_config.postage_stamp_preview_count,
+            "prefect_postage_stamp_preview_size_px": (
+                execution_config.postage_stamp_preview_size_px
+            ),
+            "prefect_fits_preview_clip_percentile": (execution_config.fits_preview_clip_percentile),
+            "batch_system": execution_config.batch_system,
+            "max_nodes": execution_config.max_nodes,
+            "local_dask_workers": execution_config.local_dask_workers,
+            "cpus_per_task": execution_config.cpus_per_task,
+            "mem_per_node_gb": execution_config.mem_per_node_gb,
+            "use_container": execution_config.use_container,
+            "container_type": execution_config.container_type,
+            "local_scratch_dir": execution_config.local_scratch_dir,
+            "global_scratch_dir": execution_config.global_scratch_dir,
+        }
+    )
+
+
+def _run_required_operation(factory: Optional[Callable], name: str, *args) -> object:
+    if factory is None:
+        raise ValueError(f"No operation factory configured for {name!r}")
+    return _run_operation(factory, *args)
+
+
+def _run_operation(factory: Callable, *args) -> object:
+    operation = factory(*args)
+    operation.run()
+    publish_plot_artifacts_for_field(getattr(operation, "field", None), publish_index=False)
+    publish_fits_image_artifacts_for_field(getattr(operation, "field", None))
+    publish_command_metrics_artifact_for_field(getattr(operation, "field", None))
+    return operation
+
+
+def _do_calibrate_mode(strategy: dict) -> dict[str, bool]:
+    return calibration_mode_flags(strategy)

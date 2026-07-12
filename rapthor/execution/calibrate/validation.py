@@ -16,6 +16,41 @@ from rapthor.execution.payloads import (
 )
 
 
+def validate_calibrate_payload(payload: Mapping[str, object]) -> CalibratePayload:
+    """Validate an incoming Calibrate flow payload and return its typed shape."""
+    mode = str(payload["mode"])
+    if mode not in {"di", "dd"}:
+        raise ValueError("mode must be 'di' or 'dd'")
+    calibration_kind = str(payload["calibration_kind"])
+    supported_kinds = {
+        "di_fast_phase",
+        "di_calibration",
+        "di_fulljones",
+        "di_phase_slow",
+        "di_scalar_phase",
+        "di_slow",
+        "dd_fast_phase",
+        "dd_calibration",
+        "dd_phase",
+        "dd_phase_slow",
+        "dd_screen",
+        "dd_slow",
+    }
+    if calibration_kind not in supported_kinds:
+        raise ValueError("Unsupported calibration kind")
+    _ = str(payload["pipeline_working_dir"])
+    raw_chunks = payload.get("chunks", [])
+    if not isinstance(raw_chunks, list) or not raw_chunks:
+        raise ValueError("chunks must be a non-empty list")
+    for index, chunk in enumerate(raw_chunks):
+        if not isinstance(chunk, Mapping):
+            raise ValueError(f"chunks[{index}] must be a mapping")
+        _validate_calibrate_chunk(chunk, index, screen=calibration_kind == "dd_screen")
+    if payload.get("image_based_predict") or payload.get("wsclean_predict"):
+        _validate_calibrate_image_predict(payload.get("image_predict"))
+    return payload
+
+
 def _validate_calibrate_solve_slot(
     solve_slot: Mapping[str, object],
     chunk_index: int,
@@ -92,38 +127,3 @@ def _validate_calibrate_image_predict(
     validate_basename(image_predict["facet_region_file"], "image_predict.facet_region_file")
     _ = str(image_predict["facet_region_path"])
     return image_predict
-
-
-def validate_calibrate_payload(payload: Mapping[str, object]) -> CalibratePayload:
-    """Validate an incoming Calibrate flow payload and return its typed shape."""
-    mode = str(payload["mode"])
-    if mode not in {"di", "dd"}:
-        raise ValueError("mode must be 'di' or 'dd'")
-    calibration_kind = str(payload["calibration_kind"])
-    supported_kinds = {
-        "di_fast_phase",
-        "di_calibration",
-        "di_fulljones",
-        "di_phase_slow",
-        "di_scalar_phase",
-        "di_slow",
-        "dd_fast_phase",
-        "dd_calibration",
-        "dd_phase",
-        "dd_phase_slow",
-        "dd_screen",
-        "dd_slow",
-    }
-    if calibration_kind not in supported_kinds:
-        raise ValueError("Unsupported calibration kind")
-    _ = str(payload["pipeline_working_dir"])
-    raw_chunks = payload.get("chunks", [])
-    if not isinstance(raw_chunks, list) or not raw_chunks:
-        raise ValueError("chunks must be a non-empty list")
-    for index, chunk in enumerate(raw_chunks):
-        if not isinstance(chunk, Mapping):
-            raise ValueError(f"chunks[{index}] must be a mapping")
-        _validate_calibrate_chunk(chunk, index, screen=calibration_kind == "dd_screen")
-    if payload.get("image_based_predict") or payload.get("wsclean_predict"):
-        _validate_calibrate_image_predict(payload.get("image_predict"))
-    return payload

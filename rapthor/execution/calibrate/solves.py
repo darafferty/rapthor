@@ -23,9 +23,61 @@ SOLVE_TYPE_LABELS = {
 }
 
 
-def _solve_type_label(solve_type: object) -> str:
-    """Return a human-readable solve type for logs and output errors."""
-    return SOLVE_TYPE_LABELS.get(str(solve_type), str(solve_type).replace("_", " "))
+def run_calibrate_chunk(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run one calibration chunk."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    command = build_calibrate_chunk_command(payload, chunk)
+    run_external_command(
+        command,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    output_records = {}
+    for slot in chunk["solve_slots"]:
+        label = (
+            f"{str(payload['mode']).upper()} solve{slot['slot']} "
+            f"{_solve_type_label(slot['solve_type'])} h5parm"
+        )
+        output_records[f"solve{slot['slot']}"] = require_file(str(slot["h5parm_path"]), label)
+    return output_records
+
+
+def run_calibrate_screen_chunk(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+    execution_config: Optional[ExecutionConfig] = None,
+    shell_operation_cls=None,
+) -> dict:
+    """Run one IDGCal screen-generation chunk."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    options = _idgcal_screen_options_for_chunk(payload, chunk)
+    if payload.get("has_slow_gain_solve"):
+        command = build_idgcal_solve_phase_and_gain_command(options)
+    else:
+        command = build_idgcal_solve_phase_command(options)
+    run_external_command(
+        command,
+        pipeline_working_dir,
+        config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return require_file(str(chunk["output_h5parm_path"]), "IDGCal screen h5parm")
+
+
+def build_calibrate_chunk_command(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+) -> list[str]:
+    """Build the DP3 calibration command for one calibration chunk."""
+    return build_calibration_solve_command(_calibration_options_for_chunk(payload, chunk))
 
 
 def initialsolutions_soltab(solve_type: str) -> str:
@@ -37,9 +89,39 @@ def initialsolutions_soltab(solve_type: str) -> str:
     return "[phase000]"
 
 
-def _uses_external_prediction(payload: CalibratePayload) -> bool:
-    """Return whether calibration model data is prepared before the solve command."""
-    return bool(payload.get("image_based_predict") or payload.get("wsclean_predict"))
+def _calibration_options_for_chunk(
+    payload: CalibratePayload,
+    chunk: CalibrateChunkPayload,
+) -> CalibrationSolveOptions:
+    return CalibrationSolveOptions(
+        msin=str(chunk["msin"]),
+        data_colname=str(payload["data_colname"]),
+        starttime=str(chunk["starttime"]),
+        ntimes=int(chunk["ntimes"]),
+        steps=str(payload["dp3_steps"]),
+        solve_slots=_solve_slots_for_chunk(payload, chunk),
+        num_threads=int(payload["max_threads"]),
+        modeldatacolumn=None
+        if payload.get("modeldatacolumn") is None
+        else str(payload["modeldatacolumn"]),
+        applycal_steps=payload.get("applycal_steps"),
+        applycal_h5parm=payload.get("applycal_h5parm"),
+        fulljones_h5parm=payload.get("fulljones_h5parm"),
+        normalize_h5parm=payload.get("normalize_h5parm"),
+        timebase=payload.get("bda_timebase"),
+        maxinterval=chunk.get("bda_maxinterval"),
+        frequencybase=payload.get("bda_frequencybase"),
+        minchannels=chunk.get("bda_minchannels"),
+        onebeamperpatch=payload.get("onebeamperpatch"),
+        parallelbaselines=payload.get("parallelbaselines"),
+        sagecalpredict=payload.get("sagecalpredict"),
+        sourcedb=None if _uses_external_prediction(payload) else payload.get("sourcedb"),
+        directions=None if _uses_external_prediction(payload) else payload.get("directions"),
+        predict_regions=payload.get("predict_regions"),
+        predict_images=payload.get("predict_images")
+        if payload.get("image_based_predict")
+        else None,
+    )
 
 
 def _solve_slots_for_chunk(
@@ -98,49 +180,6 @@ def _solve_slots_for_chunk(
     return solve_slots
 
 
-def _calibration_options_for_chunk(
-    payload: CalibratePayload,
-    chunk: CalibrateChunkPayload,
-) -> CalibrationSolveOptions:
-    return CalibrationSolveOptions(
-        msin=str(chunk["msin"]),
-        data_colname=str(payload["data_colname"]),
-        starttime=str(chunk["starttime"]),
-        ntimes=int(chunk["ntimes"]),
-        steps=str(payload["dp3_steps"]),
-        solve_slots=_solve_slots_for_chunk(payload, chunk),
-        num_threads=int(payload["max_threads"]),
-        modeldatacolumn=None
-        if payload.get("modeldatacolumn") is None
-        else str(payload["modeldatacolumn"]),
-        applycal_steps=payload.get("applycal_steps"),
-        applycal_h5parm=payload.get("applycal_h5parm"),
-        fulljones_h5parm=payload.get("fulljones_h5parm"),
-        normalize_h5parm=payload.get("normalize_h5parm"),
-        timebase=payload.get("bda_timebase"),
-        maxinterval=chunk.get("bda_maxinterval"),
-        frequencybase=payload.get("bda_frequencybase"),
-        minchannels=chunk.get("bda_minchannels"),
-        onebeamperpatch=payload.get("onebeamperpatch"),
-        parallelbaselines=payload.get("parallelbaselines"),
-        sagecalpredict=payload.get("sagecalpredict"),
-        sourcedb=None if _uses_external_prediction(payload) else payload.get("sourcedb"),
-        directions=None if _uses_external_prediction(payload) else payload.get("directions"),
-        predict_regions=payload.get("predict_regions"),
-        predict_images=payload.get("predict_images")
-        if payload.get("image_based_predict")
-        else None,
-    )
-
-
-def build_calibrate_chunk_command(
-    payload: CalibratePayload,
-    chunk: CalibrateChunkPayload,
-) -> list[str]:
-    """Build the DP3 calibration command for one calibration chunk."""
-    return build_calibration_solve_command(_calibration_options_for_chunk(payload, chunk))
-
-
 def _idgcal_screen_options_for_chunk(
     payload: CalibratePayload,
     chunk: CalibrateChunkPayload,
@@ -162,50 +201,11 @@ def _idgcal_screen_options_for_chunk(
     )
 
 
-def run_calibrate_chunk(
-    payload: CalibratePayload,
-    chunk: CalibrateChunkPayload,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run one calibration chunk."""
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    command = build_calibrate_chunk_command(payload, chunk)
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    output_records = {}
-    for slot in chunk["solve_slots"]:
-        label = (
-            f"{str(payload['mode']).upper()} solve{slot['slot']} "
-            f"{_solve_type_label(slot['solve_type'])} h5parm"
-        )
-        output_records[f"solve{slot['slot']}"] = require_file(str(slot["h5parm_path"]), label)
-    return output_records
+def _uses_external_prediction(payload: CalibratePayload) -> bool:
+    """Return whether calibration model data is prepared before the solve command."""
+    return bool(payload.get("image_based_predict") or payload.get("wsclean_predict"))
 
 
-def run_calibrate_screen_chunk(
-    payload: CalibratePayload,
-    chunk: CalibrateChunkPayload,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run one IDGCal screen-generation chunk."""
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    options = _idgcal_screen_options_for_chunk(payload, chunk)
-    if payload.get("has_slow_gain_solve"):
-        command = build_idgcal_solve_phase_and_gain_command(options)
-    else:
-        command = build_idgcal_solve_phase_command(options)
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return require_file(str(chunk["output_h5parm_path"]), "IDGCal screen h5parm")
+def _solve_type_label(solve_type: object) -> str:
+    """Return a human-readable solve type for logs and output errors."""
+    return SOLVE_TYPE_LABELS.get(str(solve_type), str(solve_type).replace("_", " "))

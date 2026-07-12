@@ -38,6 +38,591 @@ class ArtifactWriters:
     markdown: Callable[..., object]
 
 
+def publish_file_artifacts(
+    file_paths: list[Path],
+    root_dir: Path,
+    *,
+    include_root_name: bool = False,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
+    publish_index: bool = False,
+) -> list[dict]:
+    """Publish plot files as Prefect artifacts."""
+    files = sorted(Path(path) for path in file_paths if Path(path).is_file())
+    if not files:
+        return []
+    if not in_run_context():
+        return []
+
+    writers = artifact_writers or _prefect_artifact_writers()
+    records = []
+    root_dir = Path(root_dir)
+    for plot_file in files:
+        relative_path = _relative_artifact_path(plot_file, root_dir, include_root_name)
+        artifact_key = _plot_artifact_key(relative_path)
+        description = f"Rapthor plot output: {relative_path}"
+        artifact_url = _data_url(plot_file)
+        file_url = _local_file_url(plot_file)
+
+        if _is_image_artifact(plot_file):
+            artifact_id = writers.image(
+                image_url=artifact_url,
+                key=artifact_key,
+                description=description,
+            )
+            artifact_type = "image"
+        elif _is_json_artifact(plot_file):
+            artifact_id = writers.markdown(
+                markdown=_json_markdown(plot_file, relative_path),
+                key=artifact_key,
+                description=description,
+            )
+            artifact_type = "markdown"
+        else:
+            artifact_id = writers.link(
+                link=artifact_url,
+                link_text=relative_path,
+                key=artifact_key,
+                description=description,
+            )
+            artifact_type = "link"
+
+        records.append(
+            {
+                "artifact_id": artifact_id,
+                "artifact_key": artifact_key,
+                "artifact_type": artifact_type,
+                "file_url": file_url,
+                "path": str(plot_file),
+                "relative_path": relative_path,
+            }
+        )
+
+    if publish_index:
+        writers.markdown(
+            markdown=_plot_index_markdown(root_dir, records),
+            key="rapthor-plot-index",
+            description="Index of Rapthor plot artifacts for this run.",
+        )
+    log.info("Published %d Rapthor plot artifacts from %s", len(records), root_dir)
+    return records
+
+
+def publish_fits_image_artifacts(
+    file_records: list[Mapping[str, object]],
+    root_dir: Path,
+    *,
+    clip_percentile: float = 99.9,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
+    preview_dir: Optional[Path] = None,
+) -> list[dict]:
+    """Render FITS image records to PNG previews and publish them as image artifacts."""
+    fits_paths = [path for path in _file_record_paths(file_records) if _is_fits_artifact(path)]
+    if not fits_paths or not in_run_context():
+        return []
+
+    root_dir = Path(root_dir)
+    preview_dir = Path(preview_dir or root_dir / ".rapthor-artifacts" / "fits-previews")
+    writers = artifact_writers or _prefect_artifact_writers()
+    records = []
+    for fits_path in sorted(fits_paths):
+        relative_path = _relative_artifact_path(fits_path, root_dir, include_root_name=True)
+        try:
+            png_path = render_fits_png(
+                fits_path,
+                preview_dir,
+                root_dir=root_dir,
+                clip_percentile=clip_percentile,
+            )
+        except Exception as err:
+            log.warning("Failed to render FITS preview for %s: %s", fits_path, err)
+            continue
+        if png_path is None:
+            continue
+
+        artifact_key = _fits_preview_artifact_key(relative_path)
+        artifact_id = writers.image(
+            image_url=_data_url(png_path),
+            key=artifact_key,
+            description=f"Rapthor FITS preview: {relative_path}",
+        )
+        records.append(
+            {
+                "artifact_id": artifact_id,
+                "artifact_key": artifact_key,
+                "artifact_type": "fits-preview",
+                "fits_path": str(fits_path),
+                "path": str(png_path),
+                "relative_path": relative_path,
+                "clip_percentile": float(clip_percentile),
+            }
+        )
+
+    if records:
+        log.info("Published %d Rapthor FITS preview artifacts from %s", len(records), root_dir)
+    return records
+
+
+def publish_fits_postage_stamp_artifacts(
+    image_record: Mapping[str, object],
+    source_catalog_record: Mapping[str, object],
+    root_dir: Path,
+    *,
+    max_sources: int = 5,
+    stamp_size_px: int = 96,
+    clip_percentile: float = 99.9,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
+    preview_dir: Optional[Path] = None,
+) -> list[dict]:
+    """Render small previews around the brightest catalog sources and publish if possible."""
+    if (
+        image_record.get("class") != "File"
+        or source_catalog_record.get("class") != "File"
+        or max_sources <= 0
+    ):
+        return []
+
+    root_dir = Path(root_dir)
+    image_path = Path(str(image_record["path"]))
+    source_catalog_path = Path(str(source_catalog_record["path"]))
+    preview_dir = Path(preview_dir or _default_postage_stamp_dir(root_dir))
+    try:
+        stamp_records = render_fits_postage_stamp_pngs(
+            image_path,
+            source_catalog_path,
+            preview_dir,
+            root_dir=root_dir,
+            max_sources=max_sources,
+            stamp_size_px=stamp_size_px,
+            clip_percentile=clip_percentile,
+        )
+    except Exception as err:
+        log.warning(
+            "Failed to render FITS postage-stamp previews for %s using %s: %s",
+            image_path,
+            source_catalog_path,
+            err,
+        )
+        return []
+
+    if not stamp_records:
+        return []
+
+    relative_path = _relative_artifact_path(image_path, root_dir, include_root_name=True)
+    should_publish = in_run_context()
+    writers = (artifact_writers or _prefect_artifact_writers()) if should_publish else None
+    records = []
+    for stamp_record in stamp_records:
+        source_rank = int(stamp_record["source_rank"])
+        source_relative_path = f"{relative_path}:source-{source_rank:02d}"
+        artifact_key = _artifact_key(POSTAGE_STAMP_ARTIFACT_KEY_PREFIX, source_relative_path)
+        record = {
+            "artifact_key": artifact_key,
+            "artifact_type": "fits-postage-stamp-preview",
+            "fits_path": str(image_path),
+            "fits_paths": stamp_record["fits_paths"],
+            "path": str(stamp_record["path"]),
+            "relative_path": source_relative_path,
+            "source_catalog_path": str(source_catalog_path),
+            "source_rank": source_rank,
+            "source_ra_deg": stamp_record["source_ra_deg"],
+            "source_dec_deg": stamp_record["source_dec_deg"],
+            "source_coordinate_text": stamp_record["source_coordinate_text"],
+            "source_flux": stamp_record["source_flux"],
+            "source_flux_column": stamp_record["source_flux_column"],
+            "clip_percentile": stamp_record["clip_percentile"],
+            "display_vmin": stamp_record["display_vmin"],
+            "display_vmax": stamp_record["display_vmax"],
+        }
+        if writers is not None:
+            artifact_id = writers.image(
+                image_url=_data_url(stamp_record["path"]),
+                key=artifact_key,
+                description=f"Rapthor FITS postage-stamp preview: {source_relative_path}",
+            )
+            record["artifact_id"] = artifact_id
+        records.append(record)
+
+    action = "Published" if should_publish else "Rendered"
+    log.info("%s %d Rapthor FITS postage-stamp previews from %s", action, len(records), root_dir)
+    return records
+
+
+def publish_plot_artifacts(
+    plots_dir: Path,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
+    publish_index: bool = True,
+) -> list[dict]:
+    """Publish every file below a Rapthor ``plots`` directory as a Prefect artifact."""
+    plots_dir = Path(plots_dir)
+    return publish_file_artifacts(
+        _plot_files(plots_dir),
+        plots_dir,
+        artifact_writers=artifact_writers,
+        in_run_context=in_run_context,
+        publish_index=publish_index,
+    )
+
+
+def publish_plot_file_records(
+    file_records: list[Mapping[str, object]],
+    root_dir: Path,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
+) -> list[dict]:
+    """Publish newly produced plot file records immediately."""
+    paths = _file_record_paths(file_records)
+    return publish_file_artifacts(
+        paths,
+        Path(root_dir),
+        include_root_name=True,
+        artifact_writers=artifact_writers,
+        in_run_context=in_run_context,
+    )
+
+
+def publish_plot_artifacts_for_field(field: object, publish_index: bool = True) -> list[dict]:
+    """Publish plot artifacts for a completed Rapthor field, if possible."""
+    parset = getattr(field, "parset", {})
+    if not isinstance(parset, dict):
+        return []
+
+    working_dir = parset.get("dir_working")
+    if not working_dir:
+        return []
+
+    return publish_plot_artifacts(Path(working_dir) / "plots", publish_index=publish_index)
+
+
+def publish_fits_image_artifacts_for_field(field: object) -> list[dict]:
+    """Publish FITS preview artifacts for finalized image products, if possible."""
+    parset = getattr(field, "parset", {})
+    if not isinstance(parset, dict):
+        return []
+
+    cluster = parset.get("cluster_specific", parset.get("cluster", {}))
+    if not isinstance(cluster, Mapping) or not _bool_setting_is_enabled(
+        cluster.get("prefect_publish_fits_previews")
+    ):
+        return []
+
+    working_dir = parset.get("dir_working")
+    if not working_dir:
+        return []
+
+    images_dir = Path(working_dir) / "images"
+    if not images_dir.is_dir():
+        return []
+
+    records = [
+        {"class": "File", "path": str(path)}
+        for path in sorted(images_dir.rglob("*"))
+        if path.is_file() and _is_fits_artifact(path)
+    ]
+    return publish_fits_image_artifacts(
+        records,
+        images_dir,
+        clip_percentile=float(cluster.get("prefect_fits_preview_clip_percentile", 99.9)),
+    )
+
+
+def publish_command_metrics_artifact(
+    working_dir: Path,
+    *,
+    artifact_writers: Optional[ArtifactWriters] = None,
+    in_run_context: Callable[[], bool] = in_prefect_run_context,
+) -> Optional[object]:
+    """Publish a Markdown summary of external-command timings, if available."""
+    working_dir = Path(working_dir)
+    records = _command_metric_records(working_dir)
+    task_records = _task_metric_records(working_dir)
+    if not records and not task_records:
+        return None
+    if not in_run_context():
+        return None
+
+    writers = artifact_writers or _prefect_artifact_writers()
+    artifact_id = writers.markdown(
+        markdown=_command_metrics_markdown(working_dir, records, task_records),
+        key=COMMAND_METRICS_ARTIFACT_KEY,
+        description="Rapthor task and external-command timing summary.",
+    )
+    try:
+        chart_path = render_command_profile_chart(working_dir, records, task_records)
+    except Exception as err:
+        log.warning("Failed to render command profile chart for %s: %s", working_dir, err)
+    else:
+        if chart_path is not None:
+            writers.image(
+                image_url=_data_url(chart_path),
+                key=COMMAND_PROFILE_SUMMARY_ARTIFACT_KEY,
+                description="Rapthor task and external-command CPU, memory, I/O, and timing summary.",
+            )
+    for flamegraph in _command_flamegraph_records(records):
+        writers.image(
+            image_url=_data_url(flamegraph["path"]),
+            key=flamegraph["artifact_key"],
+            description=flamegraph["description"],
+        )
+    log.info("Published Rapthor command timing artifact from %s", _command_log_path(working_dir))
+    return artifact_id
+
+
+def publish_command_metrics_artifact_for_field(field: object) -> Optional[object]:
+    """Publish command timing metrics for a completed Rapthor field, if possible."""
+    parset = getattr(field, "parset", {})
+    if not isinstance(parset, dict):
+        return None
+
+    working_dir = parset.get("dir_working")
+    if not working_dir:
+        return None
+    return publish_command_metrics_artifact(Path(working_dir))
+
+
+def render_fits_png(
+    fits_path: Path,
+    output_dir: Path,
+    *,
+    root_dir: Optional[Path] = None,
+    clip_percentile: float = 99.9,
+) -> Optional[Path]:
+    """Render a FITS image to a PNG preview and return the PNG path."""
+    fits_path = Path(fits_path)
+    if not _is_fits_artifact(fits_path) or not fits_path.is_file():
+        return None
+
+    data = _load_fits_image_data(fits_path)
+    if data is None:
+        return None
+
+    import matplotlib
+
+    if matplotlib.get_backend().lower() != "agg":
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    root_dir = Path(root_dir or fits_path.parent)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    png_path = _fits_preview_path(fits_path, root_dir, output_dir)
+
+    lower_percentile, upper_percentile = _clip_percentiles(clip_percentile)
+    vmin, vmax = _image_limits(
+        data,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+    )
+    fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
+    image = ax.imshow(data, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
+    ax.set_title(fits_path.name, fontsize=8)
+    ax.set_axis_off()
+    fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+    fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
+    plt.close(fig)
+    return png_path
+
+
+def render_fits_postage_stamp_pngs(
+    fits_path: Path,
+    source_catalog_path: Path,
+    output_dir: Path,
+    *,
+    root_dir: Optional[Path] = None,
+    max_sources: int = 5,
+    stamp_size_px: int = 96,
+    clip_percentile: float = 99.9,
+) -> list[dict]:
+    """Render PNG postage stamps around the brightest catalog sources."""
+    fits_path = Path(fits_path)
+    source_catalog_path = Path(source_catalog_path)
+    if (
+        max_sources <= 0
+        or stamp_size_px <= 0
+        or not _is_fits_artifact(fits_path)
+        or not fits_path.is_file()
+    ):
+        return []
+
+    loaded = _load_fits_image_data_and_header(fits_path)
+    if loaded is None:
+        return []
+    data, header = loaded
+
+    sources = _bright_catalog_sources(source_catalog_path, max_sources)
+    if not sources:
+        return []
+
+    import matplotlib
+    import numpy as np
+    from astropy.wcs import WCS
+
+    if matplotlib.get_backend().lower() != "agg":
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    root_dir = Path(root_dir or fits_path.parent)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    wcs = WCS(header).celestial
+    half_size = max(1, stamp_size_px // 2)
+    height, width = data.shape
+    lower_percentile, upper_percentile = _clip_percentiles(clip_percentile)
+    vmin, vmax = _image_limits(
+        data,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+    )
+    records = []
+    for rank, source in enumerate(sources, start=1):
+        try:
+            x_value, y_value = wcs.world_to_pixel_values(
+                source["ra_deg"],
+                source["dec_deg"],
+            )
+        except Exception as err:
+            log.debug("Could not project source %s in %s: %s", source, fits_path, err)
+            continue
+        if not np.isfinite(x_value) or not np.isfinite(y_value):
+            continue
+
+        x_center = int(round(float(x_value)))
+        y_center = int(round(float(y_value)))
+        if x_center < 0 or x_center >= width or y_center < 0 or y_center >= height:
+            continue
+
+        x_min = max(0, x_center - half_size)
+        x_max = min(width, x_center + half_size + 1)
+        y_min = max(0, y_center - half_size)
+        y_max = min(height, y_center + half_size + 1)
+        stamp = data[y_min:y_max, x_min:x_max]
+        if stamp.size == 0:
+            continue
+
+        png_path = _fits_postage_stamp_path(fits_path, root_dir, output_dir, rank)
+        coordinate_text = _source_coordinate_text(source, header)
+        fig, ax = plt.subplots(figsize=(3.4, 3.4), dpi=150)
+        image = ax.imshow(stamp, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
+        ax.scatter([x_center - x_min], [y_center - y_min], marker="+", color="cyan", s=80)
+        ax.set_title(
+            (f"{_postage_stamp_label(fits_path)} source {rank}\n{coordinate_text}"),
+            fontsize=7,
+        )
+        ax.set_axis_off()
+        fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+        fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
+        plt.close(fig)
+        records.append(
+            {
+                "path": png_path,
+                "fits_paths": [str(fits_path)],
+                "clip_percentile": float(clip_percentile),
+                "display_vmin": vmin,
+                "display_vmax": vmax,
+                "source_rank": rank,
+                "catalog_index": source["catalog_index"],
+                "source_ra_deg": source["ra_deg"],
+                "source_dec_deg": source["dec_deg"],
+                "source_coordinate_text": coordinate_text,
+                "source_flux": source["flux"],
+                "source_flux_column": source["flux_column"],
+            }
+        )
+    return records
+
+
+def render_command_profile_chart(
+    working_dir: Path,
+    records: list[dict],
+    task_records: Optional[list[dict]] = None,
+) -> Optional[Path]:
+    """Render CPU, memory, I/O, and duration summaries for commands and tasks."""
+    command_records = [
+        record
+        for record in records
+        if isinstance(record.get("duration_seconds"), (int, float)) or _resource_metrics(record)
+    ]
+    task_records = [
+        record
+        for record in (task_records or [])
+        if isinstance(record.get("duration_seconds"), (int, float))
+    ]
+    chart_records = [
+        {**record, "_profile_label": _record_label(record), "_profile_type": "command"}
+        for record in command_records
+    ] + [
+        {**record, "_profile_label": _task_record_label(record), "_profile_type": "task"}
+        for record in task_records
+    ]
+    if not chart_records:
+        return None
+
+    top_records = sorted(
+        chart_records,
+        key=lambda record: float(record.get("duration_seconds") or 0.0),
+        reverse=True,
+    )[:20]
+    top_records.reverse()
+    labels = [f"{record['_profile_label']} ({record['_profile_type']})" for record in top_records]
+    y_positions = list(range(len(top_records)))
+
+    import matplotlib
+
+    if matplotlib.get_backend().lower() != "agg":
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, max(7, len(top_records) * 0.36)), dpi=120)
+    plots = [
+        (
+            axes[0][0],
+            [float(record.get("duration_seconds") or 0.0) for record in top_records],
+            "Duration (s)",
+            "#4c78a8",
+        ),
+        (
+            axes[0][1],
+            [_numeric_metric(record, "cpu_percent") for record in top_records],
+            "CPU (%)",
+            "#f58518",
+        ),
+        (
+            axes[1][0],
+            [_numeric_metric(record, "max_rss_kb") / (1024.0 * 1024.0) for record in top_records],
+            "Peak RSS (GB)",
+            "#54a24b",
+        ),
+        (
+            axes[1][1],
+            [
+                _numeric_metric(record, "file_system_inputs")
+                + _numeric_metric(record, "file_system_outputs")
+                for record in top_records
+            ],
+            "Filesystem I/O count",
+            "#e45756",
+        ),
+    ]
+
+    for ax, values, title, color in plots:
+        ax.barh(y_positions, values, color=color)
+        ax.set_title(title, fontsize=10)
+        ax.set_yticks(y_positions)
+        ax.set_yticklabels(labels, fontsize=7)
+        ax.grid(axis="x", alpha=0.25)
+
+    fig.suptitle("Rapthor command and task profile summary", fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    chart_path = _command_profile_chart_path(Path(working_dir))
+    chart_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(chart_path, bbox_inches="tight")
+    plt.close(fig)
+    return chart_path
+
+
 def _prefect_artifact_writers() -> ArtifactWriters:
     from prefect.artifacts import (
         create_image_artifact,
@@ -56,13 +641,6 @@ def _plot_files(plots_dir: Path) -> list[Path]:
     if not plots_dir.is_dir():
         return []
     return sorted(path for path in plots_dir.rglob("*") if path.is_file())
-
-
-def _slug(value: str, max_length: int = 80) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
-    if not slug:
-        return "file"
-    return slug[:max_length].strip("-") or "file"
 
 
 def _plot_artifact_key(relative_path: str) -> str:
@@ -234,49 +812,6 @@ def _source_coordinate_text(source: Mapping[str, object], header) -> str:
     return f"RA {ra_text}, Dec {dec_text}"
 
 
-def render_fits_png(
-    fits_path: Path,
-    output_dir: Path,
-    *,
-    root_dir: Optional[Path] = None,
-    clip_percentile: float = 99.9,
-) -> Optional[Path]:
-    """Render a FITS image to a PNG preview and return the PNG path."""
-    fits_path = Path(fits_path)
-    if not _is_fits_artifact(fits_path) or not fits_path.is_file():
-        return None
-
-    data = _load_fits_image_data(fits_path)
-    if data is None:
-        return None
-
-    import matplotlib
-
-    if matplotlib.get_backend().lower() != "agg":
-        matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    root_dir = Path(root_dir or fits_path.parent)
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    png_path = _fits_preview_path(fits_path, root_dir, output_dir)
-
-    lower_percentile, upper_percentile = _clip_percentiles(clip_percentile)
-    vmin, vmax = _image_limits(
-        data,
-        lower_percentile=lower_percentile,
-        upper_percentile=upper_percentile,
-    )
-    fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
-    image = ax.imshow(data, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
-    ax.set_title(fits_path.name, fontsize=8)
-    ax.set_axis_off()
-    fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
-    fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
-    plt.close(fig)
-    return png_path
-
-
 def _catalog_column(columns: Mapping[str, str], names: list[str]) -> Optional[str]:
     for name in names:
         if name.lower() in columns:
@@ -316,114 +851,6 @@ def _bright_catalog_sources(source_catalog_path: Path, max_sources: int) -> list
         }
         for index in selected_indices
     ]
-
-
-def render_fits_postage_stamp_pngs(
-    fits_path: Path,
-    source_catalog_path: Path,
-    output_dir: Path,
-    *,
-    root_dir: Optional[Path] = None,
-    max_sources: int = 5,
-    stamp_size_px: int = 96,
-    clip_percentile: float = 99.9,
-) -> list[dict]:
-    """Render PNG postage stamps around the brightest catalog sources."""
-    fits_path = Path(fits_path)
-    source_catalog_path = Path(source_catalog_path)
-    if (
-        max_sources <= 0
-        or stamp_size_px <= 0
-        or not _is_fits_artifact(fits_path)
-        or not fits_path.is_file()
-    ):
-        return []
-
-    loaded = _load_fits_image_data_and_header(fits_path)
-    if loaded is None:
-        return []
-    data, header = loaded
-
-    sources = _bright_catalog_sources(source_catalog_path, max_sources)
-    if not sources:
-        return []
-
-    import matplotlib
-    import numpy as np
-    from astropy.wcs import WCS
-
-    if matplotlib.get_backend().lower() != "agg":
-        matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    root_dir = Path(root_dir or fits_path.parent)
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    wcs = WCS(header).celestial
-    half_size = max(1, stamp_size_px // 2)
-    height, width = data.shape
-    lower_percentile, upper_percentile = _clip_percentiles(clip_percentile)
-    vmin, vmax = _image_limits(
-        data,
-        lower_percentile=lower_percentile,
-        upper_percentile=upper_percentile,
-    )
-    records = []
-    for rank, source in enumerate(sources, start=1):
-        try:
-            x_value, y_value = wcs.world_to_pixel_values(
-                source["ra_deg"],
-                source["dec_deg"],
-            )
-        except Exception as err:
-            log.debug("Could not project source %s in %s: %s", source, fits_path, err)
-            continue
-        if not np.isfinite(x_value) or not np.isfinite(y_value):
-            continue
-
-        x_center = int(round(float(x_value)))
-        y_center = int(round(float(y_value)))
-        if x_center < 0 or x_center >= width or y_center < 0 or y_center >= height:
-            continue
-
-        x_min = max(0, x_center - half_size)
-        x_max = min(width, x_center + half_size + 1)
-        y_min = max(0, y_center - half_size)
-        y_max = min(height, y_center + half_size + 1)
-        stamp = data[y_min:y_max, x_min:x_max]
-        if stamp.size == 0:
-            continue
-
-        png_path = _fits_postage_stamp_path(fits_path, root_dir, output_dir, rank)
-        coordinate_text = _source_coordinate_text(source, header)
-        fig, ax = plt.subplots(figsize=(3.4, 3.4), dpi=150)
-        image = ax.imshow(stamp, origin="lower", cmap="inferno", vmin=vmin, vmax=vmax)
-        ax.scatter([x_center - x_min], [y_center - y_min], marker="+", color="cyan", s=80)
-        ax.set_title(
-            (f"{_postage_stamp_label(fits_path)} source {rank}\n{coordinate_text}"),
-            fontsize=7,
-        )
-        ax.set_axis_off()
-        fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
-        fig.savefig(png_path, bbox_inches="tight", pad_inches=0.04)
-        plt.close(fig)
-        records.append(
-            {
-                "path": png_path,
-                "fits_paths": [str(fits_path)],
-                "clip_percentile": float(clip_percentile),
-                "display_vmin": vmin,
-                "display_vmax": vmax,
-                "source_rank": rank,
-                "catalog_index": source["catalog_index"],
-                "source_ra_deg": source["ra_deg"],
-                "source_dec_deg": source["dec_deg"],
-                "source_coordinate_text": coordinate_text,
-                "source_flux": source["flux"],
-                "source_flux_column": source["flux_column"],
-            }
-        )
-    return records
 
 
 def _json_markdown(path: Path, relative_path: str) -> str:
@@ -691,95 +1118,6 @@ def _command_profile_chart_path(working_dir: Path) -> Path:
     return working_dir / "logs" / "command-profile-summary.png"
 
 
-def render_command_profile_chart(
-    working_dir: Path,
-    records: list[dict],
-    task_records: Optional[list[dict]] = None,
-) -> Optional[Path]:
-    """Render CPU, memory, I/O, and duration summaries for commands and tasks."""
-    command_records = [
-        record
-        for record in records
-        if isinstance(record.get("duration_seconds"), (int, float)) or _resource_metrics(record)
-    ]
-    task_records = [
-        record
-        for record in (task_records or [])
-        if isinstance(record.get("duration_seconds"), (int, float))
-    ]
-    chart_records = [
-        {**record, "_profile_label": _record_label(record), "_profile_type": "command"}
-        for record in command_records
-    ] + [
-        {**record, "_profile_label": _task_record_label(record), "_profile_type": "task"}
-        for record in task_records
-    ]
-    if not chart_records:
-        return None
-
-    top_records = sorted(
-        chart_records,
-        key=lambda record: float(record.get("duration_seconds") or 0.0),
-        reverse=True,
-    )[:20]
-    top_records.reverse()
-    labels = [f"{record['_profile_label']} ({record['_profile_type']})" for record in top_records]
-    y_positions = list(range(len(top_records)))
-
-    import matplotlib
-
-    if matplotlib.get_backend().lower() != "agg":
-        matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    fig, axes = plt.subplots(2, 2, figsize=(14, max(7, len(top_records) * 0.36)), dpi=120)
-    plots = [
-        (
-            axes[0][0],
-            [float(record.get("duration_seconds") or 0.0) for record in top_records],
-            "Duration (s)",
-            "#4c78a8",
-        ),
-        (
-            axes[0][1],
-            [_numeric_metric(record, "cpu_percent") for record in top_records],
-            "CPU (%)",
-            "#f58518",
-        ),
-        (
-            axes[1][0],
-            [_numeric_metric(record, "max_rss_kb") / (1024.0 * 1024.0) for record in top_records],
-            "Peak RSS (GB)",
-            "#54a24b",
-        ),
-        (
-            axes[1][1],
-            [
-                _numeric_metric(record, "file_system_inputs")
-                + _numeric_metric(record, "file_system_outputs")
-                for record in top_records
-            ],
-            "Filesystem I/O count",
-            "#e45756",
-        ),
-    ]
-
-    for ax, values, title, color in plots:
-        ax.barh(y_positions, values, color=color)
-        ax.set_title(title, fontsize=10)
-        ax.set_yticks(y_positions)
-        ax.set_yticklabels(labels, fontsize=7)
-        ax.grid(axis="x", alpha=0.25)
-
-    fig.suptitle("Rapthor command and task profile summary", fontsize=12)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
-    chart_path = _command_profile_chart_path(Path(working_dir))
-    chart_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(chart_path, bbox_inches="tight")
-    plt.close(fig)
-    return chart_path
-
-
 def _tag_text(value: object) -> str:
     if isinstance(value, (list, tuple, set)):
         return ", ".join(str(item) for item in value)
@@ -894,271 +1232,12 @@ def _command_metrics_markdown(
     return "\n".join(lines)
 
 
-def publish_file_artifacts(
-    file_paths: list[Path],
-    root_dir: Path,
-    *,
-    include_root_name: bool = False,
-    artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = in_prefect_run_context,
-    publish_index: bool = False,
-) -> list[dict]:
-    """Publish plot files as Prefect artifacts."""
-    files = sorted(Path(path) for path in file_paths if Path(path).is_file())
-    if not files:
-        return []
-    if not in_run_context():
-        return []
-
-    writers = artifact_writers or _prefect_artifact_writers()
-    records = []
-    root_dir = Path(root_dir)
-    for plot_file in files:
-        relative_path = _relative_artifact_path(plot_file, root_dir, include_root_name)
-        artifact_key = _plot_artifact_key(relative_path)
-        description = f"Rapthor plot output: {relative_path}"
-        artifact_url = _data_url(plot_file)
-        file_url = _local_file_url(plot_file)
-
-        if _is_image_artifact(plot_file):
-            artifact_id = writers.image(
-                image_url=artifact_url,
-                key=artifact_key,
-                description=description,
-            )
-            artifact_type = "image"
-        elif _is_json_artifact(plot_file):
-            artifact_id = writers.markdown(
-                markdown=_json_markdown(plot_file, relative_path),
-                key=artifact_key,
-                description=description,
-            )
-            artifact_type = "markdown"
-        else:
-            artifact_id = writers.link(
-                link=artifact_url,
-                link_text=relative_path,
-                key=artifact_key,
-                description=description,
-            )
-            artifact_type = "link"
-
-        records.append(
-            {
-                "artifact_id": artifact_id,
-                "artifact_key": artifact_key,
-                "artifact_type": artifact_type,
-                "file_url": file_url,
-                "path": str(plot_file),
-                "relative_path": relative_path,
-            }
-        )
-
-    if publish_index:
-        writers.markdown(
-            markdown=_plot_index_markdown(root_dir, records),
-            key="rapthor-plot-index",
-            description="Index of Rapthor plot artifacts for this run.",
-        )
-    log.info("Published %d Rapthor plot artifacts from %s", len(records), root_dir)
-    return records
-
-
 def _file_record_paths(file_records: list[Mapping[str, object]]) -> list[Path]:
     return [
         Path(str(record["path"]))
         for record in file_records
         if record.get("class") == "File" and record.get("path")
     ]
-
-
-def publish_fits_image_artifacts(
-    file_records: list[Mapping[str, object]],
-    root_dir: Path,
-    *,
-    clip_percentile: float = 99.9,
-    artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = in_prefect_run_context,
-    preview_dir: Optional[Path] = None,
-) -> list[dict]:
-    """Render FITS image records to PNG previews and publish them as image artifacts."""
-    fits_paths = [path for path in _file_record_paths(file_records) if _is_fits_artifact(path)]
-    if not fits_paths or not in_run_context():
-        return []
-
-    root_dir = Path(root_dir)
-    preview_dir = Path(preview_dir or root_dir / ".rapthor-artifacts" / "fits-previews")
-    writers = artifact_writers or _prefect_artifact_writers()
-    records = []
-    for fits_path in sorted(fits_paths):
-        relative_path = _relative_artifact_path(fits_path, root_dir, include_root_name=True)
-        try:
-            png_path = render_fits_png(
-                fits_path,
-                preview_dir,
-                root_dir=root_dir,
-                clip_percentile=clip_percentile,
-            )
-        except Exception as err:
-            log.warning("Failed to render FITS preview for %s: %s", fits_path, err)
-            continue
-        if png_path is None:
-            continue
-
-        artifact_key = _fits_preview_artifact_key(relative_path)
-        artifact_id = writers.image(
-            image_url=_data_url(png_path),
-            key=artifact_key,
-            description=f"Rapthor FITS preview: {relative_path}",
-        )
-        records.append(
-            {
-                "artifact_id": artifact_id,
-                "artifact_key": artifact_key,
-                "artifact_type": "fits-preview",
-                "fits_path": str(fits_path),
-                "path": str(png_path),
-                "relative_path": relative_path,
-                "clip_percentile": float(clip_percentile),
-            }
-        )
-
-    if records:
-        log.info("Published %d Rapthor FITS preview artifacts from %s", len(records), root_dir)
-    return records
-
-
-def publish_fits_postage_stamp_artifacts(
-    image_record: Mapping[str, object],
-    source_catalog_record: Mapping[str, object],
-    root_dir: Path,
-    *,
-    max_sources: int = 5,
-    stamp_size_px: int = 96,
-    clip_percentile: float = 99.9,
-    artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = in_prefect_run_context,
-    preview_dir: Optional[Path] = None,
-) -> list[dict]:
-    """Render small previews around the brightest catalog sources and publish if possible."""
-    if (
-        image_record.get("class") != "File"
-        or source_catalog_record.get("class") != "File"
-        or max_sources <= 0
-    ):
-        return []
-
-    root_dir = Path(root_dir)
-    image_path = Path(str(image_record["path"]))
-    source_catalog_path = Path(str(source_catalog_record["path"]))
-    preview_dir = Path(preview_dir or _default_postage_stamp_dir(root_dir))
-    try:
-        stamp_records = render_fits_postage_stamp_pngs(
-            image_path,
-            source_catalog_path,
-            preview_dir,
-            root_dir=root_dir,
-            max_sources=max_sources,
-            stamp_size_px=stamp_size_px,
-            clip_percentile=clip_percentile,
-        )
-    except Exception as err:
-        log.warning(
-            "Failed to render FITS postage-stamp previews for %s using %s: %s",
-            image_path,
-            source_catalog_path,
-            err,
-        )
-        return []
-
-    if not stamp_records:
-        return []
-
-    relative_path = _relative_artifact_path(image_path, root_dir, include_root_name=True)
-    should_publish = in_run_context()
-    writers = (artifact_writers or _prefect_artifact_writers()) if should_publish else None
-    records = []
-    for stamp_record in stamp_records:
-        source_rank = int(stamp_record["source_rank"])
-        source_relative_path = f"{relative_path}:source-{source_rank:02d}"
-        artifact_key = _artifact_key(POSTAGE_STAMP_ARTIFACT_KEY_PREFIX, source_relative_path)
-        record = {
-            "artifact_key": artifact_key,
-            "artifact_type": "fits-postage-stamp-preview",
-            "fits_path": str(image_path),
-            "fits_paths": stamp_record["fits_paths"],
-            "path": str(stamp_record["path"]),
-            "relative_path": source_relative_path,
-            "source_catalog_path": str(source_catalog_path),
-            "source_rank": source_rank,
-            "source_ra_deg": stamp_record["source_ra_deg"],
-            "source_dec_deg": stamp_record["source_dec_deg"],
-            "source_coordinate_text": stamp_record["source_coordinate_text"],
-            "source_flux": stamp_record["source_flux"],
-            "source_flux_column": stamp_record["source_flux_column"],
-            "clip_percentile": stamp_record["clip_percentile"],
-            "display_vmin": stamp_record["display_vmin"],
-            "display_vmax": stamp_record["display_vmax"],
-        }
-        if writers is not None:
-            artifact_id = writers.image(
-                image_url=_data_url(stamp_record["path"]),
-                key=artifact_key,
-                description=f"Rapthor FITS postage-stamp preview: {source_relative_path}",
-            )
-            record["artifact_id"] = artifact_id
-        records.append(record)
-
-    action = "Published" if should_publish else "Rendered"
-    log.info("%s %d Rapthor FITS postage-stamp previews from %s", action, len(records), root_dir)
-    return records
-
-
-def publish_plot_artifacts(
-    plots_dir: Path,
-    artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = in_prefect_run_context,
-    publish_index: bool = True,
-) -> list[dict]:
-    """Publish every file below a Rapthor ``plots`` directory as a Prefect artifact."""
-    plots_dir = Path(plots_dir)
-    return publish_file_artifacts(
-        _plot_files(plots_dir),
-        plots_dir,
-        artifact_writers=artifact_writers,
-        in_run_context=in_run_context,
-        publish_index=publish_index,
-    )
-
-
-def publish_plot_file_records(
-    file_records: list[Mapping[str, object]],
-    root_dir: Path,
-    artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = in_prefect_run_context,
-) -> list[dict]:
-    """Publish newly produced plot file records immediately."""
-    paths = _file_record_paths(file_records)
-    return publish_file_artifacts(
-        paths,
-        Path(root_dir),
-        include_root_name=True,
-        artifact_writers=artifact_writers,
-        in_run_context=in_run_context,
-    )
-
-
-def publish_plot_artifacts_for_field(field: object, publish_index: bool = True) -> list[dict]:
-    """Publish plot artifacts for a completed Rapthor field, if possible."""
-    parset = getattr(field, "parset", {})
-    if not isinstance(parset, dict):
-        return []
-
-    working_dir = parset.get("dir_working")
-    if not working_dir:
-        return []
-
-    return publish_plot_artifacts(Path(working_dir) / "plots", publish_index=publish_index)
 
 
 def _bool_setting_is_enabled(value: object, *, default: bool = False) -> bool:
@@ -1171,87 +1250,8 @@ def _bool_setting_is_enabled(value: object, *, default: bool = False) -> bool:
     return bool(value)
 
 
-def publish_fits_image_artifacts_for_field(field: object) -> list[dict]:
-    """Publish FITS preview artifacts for finalized image products, if possible."""
-    parset = getattr(field, "parset", {})
-    if not isinstance(parset, dict):
-        return []
-
-    cluster = parset.get("cluster_specific", parset.get("cluster", {}))
-    if not isinstance(cluster, Mapping) or not _bool_setting_is_enabled(
-        cluster.get("prefect_publish_fits_previews")
-    ):
-        return []
-
-    working_dir = parset.get("dir_working")
-    if not working_dir:
-        return []
-
-    images_dir = Path(working_dir) / "images"
-    if not images_dir.is_dir():
-        return []
-
-    records = [
-        {"class": "File", "path": str(path)}
-        for path in sorted(images_dir.rglob("*"))
-        if path.is_file() and _is_fits_artifact(path)
-    ]
-    return publish_fits_image_artifacts(
-        records,
-        images_dir,
-        clip_percentile=float(cluster.get("prefect_fits_preview_clip_percentile", 99.9)),
-    )
-
-
-def publish_command_metrics_artifact(
-    working_dir: Path,
-    *,
-    artifact_writers: Optional[ArtifactWriters] = None,
-    in_run_context: Callable[[], bool] = in_prefect_run_context,
-) -> Optional[object]:
-    """Publish a Markdown summary of external-command timings, if available."""
-    working_dir = Path(working_dir)
-    records = _command_metric_records(working_dir)
-    task_records = _task_metric_records(working_dir)
-    if not records and not task_records:
-        return None
-    if not in_run_context():
-        return None
-
-    writers = artifact_writers or _prefect_artifact_writers()
-    artifact_id = writers.markdown(
-        markdown=_command_metrics_markdown(working_dir, records, task_records),
-        key=COMMAND_METRICS_ARTIFACT_KEY,
-        description="Rapthor task and external-command timing summary.",
-    )
-    try:
-        chart_path = render_command_profile_chart(working_dir, records, task_records)
-    except Exception as err:
-        log.warning("Failed to render command profile chart for %s: %s", working_dir, err)
-    else:
-        if chart_path is not None:
-            writers.image(
-                image_url=_data_url(chart_path),
-                key=COMMAND_PROFILE_SUMMARY_ARTIFACT_KEY,
-                description="Rapthor task and external-command CPU, memory, I/O, and timing summary.",
-            )
-    for flamegraph in _command_flamegraph_records(records):
-        writers.image(
-            image_url=_data_url(flamegraph["path"]),
-            key=flamegraph["artifact_key"],
-            description=flamegraph["description"],
-        )
-    log.info("Published Rapthor command timing artifact from %s", _command_log_path(working_dir))
-    return artifact_id
-
-
-def publish_command_metrics_artifact_for_field(field: object) -> Optional[object]:
-    """Publish command timing metrics for a completed Rapthor field, if possible."""
-    parset = getattr(field, "parset", {})
-    if not isinstance(parset, dict):
-        return None
-
-    working_dir = parset.get("dir_working")
-    if not working_dir:
-        return None
-    return publish_command_metrics_artifact(Path(working_dir))
+def _slug(value: str, max_length: int = 80) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    if not slug:
+        return "file"
+    return slug[:max_length].strip("-") or "file"

@@ -36,6 +36,269 @@ SOLUTION_LABELS_BY_SOLVE_TYPE = {
 }
 
 
+def calibrate_payload_from_inputs(
+    mode: str,
+    input_parms: Mapping[str, object],
+    pipeline_working_dir: object,
+) -> CalibratePayload:
+    """Create a serializable Calibrate flow payload from operation inputs."""
+    calibration_kind = _supported_calibration_kind(mode, input_parms)
+    dp3_steps = parse_steps(input_parms.get("dp3_steps"))
+    image_based_predict = bool(input_parms.get("generate_screens")) or _uses_image_based_predict(
+        dp3_steps
+    )
+    wsclean_predict = _uses_wsclean_predict(input_parms)
+
+    pipeline_dir = str(pipeline_working_dir)
+    filenames = input_parms.get("timechunk_filename", [])
+    starttimes = input_parms.get("starttime", [])
+    ntimes = input_parms.get("ntimes", [])
+
+    if calibration_kind == "dd_screen":
+        output_h5parms = input_parms.get("output_idgcal_h5parm", [])
+        solint_fast = input_parms.get("solint_solve1_timestep", [])
+        scatter_inputs = [filenames, starttimes, ntimes, output_h5parms, solint_fast]
+        has_slow_gain_solve = bool(input_parms.get("has_slow_gain_solve", False))
+        solint_slow = input_parms.get("solint_slow_timestep", [])
+        if has_slow_gain_solve:
+            scatter_inputs.append(solint_slow)
+        if not all(isinstance(value, list) for value in scatter_inputs):
+            raise ValueError("Screen-generation scatter inputs must be lists")
+        chunk_count = len(output_h5parms)
+        if any(len(value) != chunk_count for value in scatter_inputs):
+            raise ValueError("Screen-generation scatter inputs must have the same length")
+
+        combined = validate_basename(input_parms.get("combined_h5parms"), "combined_h5parms")
+        chunks: list[CalibrateChunkPayload] = []
+        for index in range(chunk_count):
+            h5parm = validate_basename(
+                _scatter_value(output_h5parms, index, "output_idgcal_h5parm"),
+                f"output_idgcal_h5parm[{index}]",
+            )
+            chunk = {
+                "msin": directory_record_path(filenames[index]),
+                "starttime": str(starttimes[index]),
+                "ntimes": int(ntimes[index]),
+                "output_h5parm": h5parm,
+                "output_h5parm_path": os.path.join(pipeline_dir, h5parm),
+                "solint_fast": int(_scatter_value(solint_fast, index, "solint_solve1_timestep")),
+            }
+            if has_slow_gain_solve:
+                chunk["solint_slow"] = int(
+                    _scatter_value(solint_slow, index, "solint_slow_timestep")
+                )
+            chunks.append(chunk)
+
+        payload: CalibratePayload = {
+            "mode": mode,
+            "calibration_kind": calibration_kind,
+            "pipeline_working_dir": pipeline_dir,
+            "image_based_predict": True,
+            "wsclean_predict": False,
+            "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
+            "max_threads": int(input_parms["max_threads"]),
+            "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
+            "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
+            "has_slow_gain_solve": has_slow_gain_solve,
+            "combined_h5parm": {
+                "filename": combined,
+                "path": os.path.join(pipeline_dir, combined),
+            },
+            "chunks": chunks,
+        }
+        assert_serializable_payload(payload)
+        return payload
+
+    solve_slots = _solve_slots_for_kind(calibration_kind, input_parms)
+    solve_types = {slot: _solve_type_from_slot(input_parms, slot) for slot in solve_slots}
+    phase_solve_count = sum(
+        solve_type in {"fast_phase", "medium_phase"} for solve_type in solve_types.values()
+    )
+    slow_solve_count = sum(solve_type == "slow_gains" for solve_type in solve_types.values())
+    first_solve_slot = solve_slots[0]
+    first_output_key = f"output_solve{first_solve_slot}_h5parm"
+    first_output_h5parms = input_parms.get(first_output_key, [])
+    scatter_inputs = [filenames, starttimes, ntimes, first_output_h5parms]
+    for slot in solve_slots:
+        if slot != first_solve_slot:
+            scatter_inputs.append(input_parms.get(f"output_solve{slot}_h5parm", []))
+    if not all(isinstance(value, list) for value in scatter_inputs):
+        raise ValueError("Calibration scatter inputs must be lists")
+    chunk_count = len(first_output_h5parms)
+    if any(len(value) != chunk_count for value in scatter_inputs):
+        raise ValueError("Calibration scatter inputs must have the same length")
+
+    collected_h5parms = {}
+    for slot in solve_slots:
+        collected = validate_basename(
+            input_parms.get(f"collected_solve{slot}_h5parm"),
+            f"collected_solve{slot}_h5parm",
+        )
+        collected_h5parms[f"solve{slot}"] = {
+            "filename": collected,
+            "path": os.path.join(pipeline_dir, collected),
+        }
+    combined_h5parm = None
+    if calibration_kind == "di_scalar_phase":
+        combined = validate_basename(
+            input_parms.get(_phase_combination_input_key(2)),
+            _phase_combination_input_key(2),
+        )
+        combined_h5parm = {"filename": combined, "path": os.path.join(pipeline_dir, combined)}
+
+    combined_h5parms = {}
+    for phase_index in range(2, phase_solve_count + 1):
+        input_key = _phase_combination_input_key(phase_index)
+        combined = validate_basename(
+            input_parms.get(input_key),
+            input_key,
+        )
+        combined_h5parms[_phase_combination_key(phase_index)] = {
+            "filename": combined,
+            "path": os.path.join(pipeline_dir, combined),
+        }
+    if (
+        (phase_solve_count >= 1 and slow_solve_count > 0)
+        or phase_solve_count >= 4
+        or calibration_kind in {"dd_phase_slow", "di_phase_slow"}
+    ):
+        combined = validate_basename(
+            input_parms.get("combined_h5parms"),
+            "combined_h5parms",
+        )
+        combined_h5parms["final"] = {
+            "filename": combined,
+            "path": os.path.join(pipeline_dir, combined),
+        }
+
+    modeldatacolumn = input_parms.get("modeldatacolumn")
+    if modeldatacolumn is not None and (
+        not isinstance(modeldatacolumn, str) or not modeldatacolumn
+    ):
+        raise ValueError("modeldatacolumn must be a non-empty string or None")
+
+    chunks: list[CalibrateChunkPayload] = []
+    uses_modeldatacolumn = (
+        modeldatacolumn is not None and not image_based_predict and not wsclean_predict
+    )
+    for index in range(chunk_count):
+        chunk_solve_slots: list[CalibrateSolveSlotPayload] = []
+        for slot in solve_slots:
+            solve_type = solve_types[slot]
+            keepmodel = None
+            reusemodel = None
+            slot_modeldatacolumns = None
+            if slot == first_solve_slot:
+                keepmodel = "True"
+                if image_based_predict:
+                    reusemodel = "[predict.*]"
+            else:
+                if image_based_predict:
+                    reusemodel = "[predict.*]"
+                elif wsclean_predict:
+                    slot_modeldatacolumns = modeldatacolumn
+                elif uses_modeldatacolumn and not (mode == "di" and slow_solve_count == 0):
+                    slot_modeldatacolumns = modeldatacolumn
+                else:
+                    reusemodel = f"[solve{first_solve_slot}.*]"
+            if calibration_kind == "dd_phase_slow" and _keeps_model_for_phase_slow(
+                slot,
+                first_solve_slot,
+                solve_type,
+            ):
+                keepmodel = "true"
+            chunk_solve_slots.append(
+                _solve_slot_from_inputs(
+                    input_parms,
+                    pipeline_dir,
+                    slot=slot,
+                    index=index,
+                    keepmodel=keepmodel,
+                    reusemodel=reusemodel,
+                    modeldatacolumns=slot_modeldatacolumns,
+                )
+            )
+        chunk = {
+            "msin": directory_record_path(filenames[index]),
+            "starttime": str(starttimes[index]),
+            "ntimes": int(ntimes[index]),
+            "output_h5parm": chunk_solve_slots[0]["h5parm"],
+            "output_h5parm_path": chunk_solve_slots[0]["h5parm_path"],
+            "solve1_solint": chunk_solve_slots[0]["solint"],
+            "solve1_nchan": chunk_solve_slots[0]["nchan"],
+            "solve_slots": chunk_solve_slots,
+        }
+        if "bda_maxinterval" in input_parms:
+            chunk["bda_maxinterval"] = _scatter_value(
+                input_parms["bda_maxinterval"], index, "bda_maxinterval"
+            )
+        if "bda_minchannels" in input_parms:
+            chunk["bda_minchannels"] = _scatter_value(
+                input_parms["bda_minchannels"], index, "bda_minchannels"
+            )
+        chunks.append(chunk)
+
+    payload: CalibratePayload = {
+        "mode": mode,
+        "calibration_kind": calibration_kind,
+        "pipeline_working_dir": pipeline_dir,
+        "data_colname": str(input_parms["data_colname"]),
+        "modeldatacolumn": modeldatacolumn,
+        "dp3_steps": str(input_parms["dp3_steps"]),
+        "image_based_predict": image_based_predict,
+        "wsclean_predict": wsclean_predict,
+        "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
+        **_solver_payload_from_inputs(input_parms),
+        "collected_h5parms": collected_h5parms,
+        "combined_h5parm": combined_h5parm,
+        "combined_h5parms": combined_h5parms,
+        "calibrator_patch_names": [
+            str(name) for name in input_parms.get("calibrator_patch_names", [])
+        ],
+        "calibrator_fluxes": [float(flux) for flux in input_parms.get("calibrator_fluxes", [])],
+        "chunks": chunks,
+    }
+    if "smoothnessconstraint_fulljones" in input_parms:
+        payload["smoothnessconstraint_fulljones"] = float(
+            input_parms["smoothnessconstraint_fulljones"]
+        )
+    payload.update(
+        {
+            "applycal_steps": input_parms.get("applycal_steps"),
+            "applycal_h5parm": optional_file_path(
+                input_parms.get("applycal_h5parm"), "applycal_h5parm"
+            ),
+            "fulljones_h5parm": optional_file_path(
+                input_parms.get("fulljones_h5parm"), "fulljones_h5parm"
+            ),
+            "normalize_h5parm": optional_file_path(
+                input_parms.get("normalize_h5parm"), "normalize_h5parm"
+            ),
+            "bda_timebase": input_parms.get("bda_timebase"),
+            "bda_frequencybase": input_parms.get("bda_frequencybase"),
+            "onebeamperpatch": input_parms.get("onebeamperpatch"),
+            "parallelbaselines": input_parms.get("parallelbaselines"),
+            "sagecalpredict": input_parms.get("sagecalpredict"),
+            "sourcedb": optional_file_path(
+                input_parms.get("calibration_skymodel_file"), "calibration_skymodel_file"
+            ),
+            "directions": None
+            if input_parms.get("solve_directions") is None
+            else [str(direction) for direction in input_parms["solve_directions"]],
+            "has_slow_gain_solve": any(
+                solve_type == "slow_gains" for solve_type in solve_types.values()
+            ),
+            "solution_combine_mode": input_parms.get("solution_combine_mode"),
+            "max_normalization_delta": input_parms.get("max_normalization_delta"),
+            "scale_normalization_delta": input_parms.get("scale_normalization_delta"),
+            "phase_center_ra": input_parms.get("phase_center_ra"),
+            "phase_center_dec": input_parms.get("phase_center_dec"),
+        }
+    )
+    assert_serializable_payload(payload)
+    return payload
+
+
 def _plain_payload_value(value: object) -> object:
     """Convert array-like scatter values to plain Python containers."""
     if hasattr(value, "tolist") and not isinstance(value, (str, bytes)):
@@ -482,266 +745,3 @@ def _image_predict_payload_from_inputs(
         "facet_region_file": region_filename,
         "facet_region_path": os.path.join(pipeline_dir, region_filename),
     }
-
-
-def calibrate_payload_from_inputs(
-    mode: str,
-    input_parms: Mapping[str, object],
-    pipeline_working_dir: object,
-) -> CalibratePayload:
-    """Create a serializable Calibrate flow payload from operation inputs."""
-    calibration_kind = _supported_calibration_kind(mode, input_parms)
-    dp3_steps = parse_steps(input_parms.get("dp3_steps"))
-    image_based_predict = bool(input_parms.get("generate_screens")) or _uses_image_based_predict(
-        dp3_steps
-    )
-    wsclean_predict = _uses_wsclean_predict(input_parms)
-
-    pipeline_dir = str(pipeline_working_dir)
-    filenames = input_parms.get("timechunk_filename", [])
-    starttimes = input_parms.get("starttime", [])
-    ntimes = input_parms.get("ntimes", [])
-
-    if calibration_kind == "dd_screen":
-        output_h5parms = input_parms.get("output_idgcal_h5parm", [])
-        solint_fast = input_parms.get("solint_solve1_timestep", [])
-        scatter_inputs = [filenames, starttimes, ntimes, output_h5parms, solint_fast]
-        has_slow_gain_solve = bool(input_parms.get("has_slow_gain_solve", False))
-        solint_slow = input_parms.get("solint_slow_timestep", [])
-        if has_slow_gain_solve:
-            scatter_inputs.append(solint_slow)
-        if not all(isinstance(value, list) for value in scatter_inputs):
-            raise ValueError("Screen-generation scatter inputs must be lists")
-        chunk_count = len(output_h5parms)
-        if any(len(value) != chunk_count for value in scatter_inputs):
-            raise ValueError("Screen-generation scatter inputs must have the same length")
-
-        combined = validate_basename(input_parms.get("combined_h5parms"), "combined_h5parms")
-        chunks: list[CalibrateChunkPayload] = []
-        for index in range(chunk_count):
-            h5parm = validate_basename(
-                _scatter_value(output_h5parms, index, "output_idgcal_h5parm"),
-                f"output_idgcal_h5parm[{index}]",
-            )
-            chunk = {
-                "msin": directory_record_path(filenames[index]),
-                "starttime": str(starttimes[index]),
-                "ntimes": int(ntimes[index]),
-                "output_h5parm": h5parm,
-                "output_h5parm_path": os.path.join(pipeline_dir, h5parm),
-                "solint_fast": int(_scatter_value(solint_fast, index, "solint_solve1_timestep")),
-            }
-            if has_slow_gain_solve:
-                chunk["solint_slow"] = int(
-                    _scatter_value(solint_slow, index, "solint_slow_timestep")
-                )
-            chunks.append(chunk)
-
-        payload: CalibratePayload = {
-            "mode": mode,
-            "calibration_kind": calibration_kind,
-            "pipeline_working_dir": pipeline_dir,
-            "image_based_predict": True,
-            "wsclean_predict": False,
-            "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
-            "max_threads": int(input_parms["max_threads"]),
-            "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
-            "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
-            "has_slow_gain_solve": has_slow_gain_solve,
-            "combined_h5parm": {
-                "filename": combined,
-                "path": os.path.join(pipeline_dir, combined),
-            },
-            "chunks": chunks,
-        }
-        assert_serializable_payload(payload)
-        return payload
-
-    solve_slots = _solve_slots_for_kind(calibration_kind, input_parms)
-    solve_types = {slot: _solve_type_from_slot(input_parms, slot) for slot in solve_slots}
-    phase_solve_count = sum(
-        solve_type in {"fast_phase", "medium_phase"} for solve_type in solve_types.values()
-    )
-    slow_solve_count = sum(solve_type == "slow_gains" for solve_type in solve_types.values())
-    first_solve_slot = solve_slots[0]
-    first_output_key = f"output_solve{first_solve_slot}_h5parm"
-    first_output_h5parms = input_parms.get(first_output_key, [])
-    scatter_inputs = [filenames, starttimes, ntimes, first_output_h5parms]
-    for slot in solve_slots:
-        if slot != first_solve_slot:
-            scatter_inputs.append(input_parms.get(f"output_solve{slot}_h5parm", []))
-    if not all(isinstance(value, list) for value in scatter_inputs):
-        raise ValueError("Calibration scatter inputs must be lists")
-    chunk_count = len(first_output_h5parms)
-    if any(len(value) != chunk_count for value in scatter_inputs):
-        raise ValueError("Calibration scatter inputs must have the same length")
-
-    collected_h5parms = {}
-    for slot in solve_slots:
-        collected = validate_basename(
-            input_parms.get(f"collected_solve{slot}_h5parm"),
-            f"collected_solve{slot}_h5parm",
-        )
-        collected_h5parms[f"solve{slot}"] = {
-            "filename": collected,
-            "path": os.path.join(pipeline_dir, collected),
-        }
-    combined_h5parm = None
-    if calibration_kind == "di_scalar_phase":
-        combined = validate_basename(
-            input_parms.get(_phase_combination_input_key(2)),
-            _phase_combination_input_key(2),
-        )
-        combined_h5parm = {"filename": combined, "path": os.path.join(pipeline_dir, combined)}
-
-    combined_h5parms = {}
-    for phase_index in range(2, phase_solve_count + 1):
-        input_key = _phase_combination_input_key(phase_index)
-        combined = validate_basename(
-            input_parms.get(input_key),
-            input_key,
-        )
-        combined_h5parms[_phase_combination_key(phase_index)] = {
-            "filename": combined,
-            "path": os.path.join(pipeline_dir, combined),
-        }
-    if (
-        (phase_solve_count >= 1 and slow_solve_count > 0)
-        or phase_solve_count >= 4
-        or calibration_kind in {"dd_phase_slow", "di_phase_slow"}
-    ):
-        combined = validate_basename(
-            input_parms.get("combined_h5parms"),
-            "combined_h5parms",
-        )
-        combined_h5parms["final"] = {
-            "filename": combined,
-            "path": os.path.join(pipeline_dir, combined),
-        }
-
-    modeldatacolumn = input_parms.get("modeldatacolumn")
-    if modeldatacolumn is not None and (
-        not isinstance(modeldatacolumn, str) or not modeldatacolumn
-    ):
-        raise ValueError("modeldatacolumn must be a non-empty string or None")
-
-    chunks: list[CalibrateChunkPayload] = []
-    uses_modeldatacolumn = (
-        modeldatacolumn is not None and not image_based_predict and not wsclean_predict
-    )
-    for index in range(chunk_count):
-        chunk_solve_slots: list[CalibrateSolveSlotPayload] = []
-        for slot in solve_slots:
-            solve_type = solve_types[slot]
-            keepmodel = None
-            reusemodel = None
-            slot_modeldatacolumns = None
-            if slot == first_solve_slot:
-                keepmodel = "True"
-                if image_based_predict:
-                    reusemodel = "[predict.*]"
-            else:
-                if image_based_predict:
-                    reusemodel = "[predict.*]"
-                elif wsclean_predict:
-                    slot_modeldatacolumns = modeldatacolumn
-                elif uses_modeldatacolumn and not (mode == "di" and slow_solve_count == 0):
-                    slot_modeldatacolumns = modeldatacolumn
-                else:
-                    reusemodel = f"[solve{first_solve_slot}.*]"
-            if calibration_kind == "dd_phase_slow" and _keeps_model_for_phase_slow(
-                slot,
-                first_solve_slot,
-                solve_type,
-            ):
-                keepmodel = "true"
-            chunk_solve_slots.append(
-                _solve_slot_from_inputs(
-                    input_parms,
-                    pipeline_dir,
-                    slot=slot,
-                    index=index,
-                    keepmodel=keepmodel,
-                    reusemodel=reusemodel,
-                    modeldatacolumns=slot_modeldatacolumns,
-                )
-            )
-        chunk = {
-            "msin": directory_record_path(filenames[index]),
-            "starttime": str(starttimes[index]),
-            "ntimes": int(ntimes[index]),
-            "output_h5parm": chunk_solve_slots[0]["h5parm"],
-            "output_h5parm_path": chunk_solve_slots[0]["h5parm_path"],
-            "solve1_solint": chunk_solve_slots[0]["solint"],
-            "solve1_nchan": chunk_solve_slots[0]["nchan"],
-            "solve_slots": chunk_solve_slots,
-        }
-        if "bda_maxinterval" in input_parms:
-            chunk["bda_maxinterval"] = _scatter_value(
-                input_parms["bda_maxinterval"], index, "bda_maxinterval"
-            )
-        if "bda_minchannels" in input_parms:
-            chunk["bda_minchannels"] = _scatter_value(
-                input_parms["bda_minchannels"], index, "bda_minchannels"
-            )
-        chunks.append(chunk)
-
-    payload: CalibratePayload = {
-        "mode": mode,
-        "calibration_kind": calibration_kind,
-        "pipeline_working_dir": pipeline_dir,
-        "data_colname": str(input_parms["data_colname"]),
-        "modeldatacolumn": modeldatacolumn,
-        "dp3_steps": str(input_parms["dp3_steps"]),
-        "image_based_predict": image_based_predict,
-        "wsclean_predict": wsclean_predict,
-        "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
-        **_solver_payload_from_inputs(input_parms),
-        "collected_h5parms": collected_h5parms,
-        "combined_h5parm": combined_h5parm,
-        "combined_h5parms": combined_h5parms,
-        "calibrator_patch_names": [
-            str(name) for name in input_parms.get("calibrator_patch_names", [])
-        ],
-        "calibrator_fluxes": [float(flux) for flux in input_parms.get("calibrator_fluxes", [])],
-        "chunks": chunks,
-    }
-    if "smoothnessconstraint_fulljones" in input_parms:
-        payload["smoothnessconstraint_fulljones"] = float(
-            input_parms["smoothnessconstraint_fulljones"]
-        )
-    payload.update(
-        {
-            "applycal_steps": input_parms.get("applycal_steps"),
-            "applycal_h5parm": optional_file_path(
-                input_parms.get("applycal_h5parm"), "applycal_h5parm"
-            ),
-            "fulljones_h5parm": optional_file_path(
-                input_parms.get("fulljones_h5parm"), "fulljones_h5parm"
-            ),
-            "normalize_h5parm": optional_file_path(
-                input_parms.get("normalize_h5parm"), "normalize_h5parm"
-            ),
-            "bda_timebase": input_parms.get("bda_timebase"),
-            "bda_frequencybase": input_parms.get("bda_frequencybase"),
-            "onebeamperpatch": input_parms.get("onebeamperpatch"),
-            "parallelbaselines": input_parms.get("parallelbaselines"),
-            "sagecalpredict": input_parms.get("sagecalpredict"),
-            "sourcedb": optional_file_path(
-                input_parms.get("calibration_skymodel_file"), "calibration_skymodel_file"
-            ),
-            "directions": None
-            if input_parms.get("solve_directions") is None
-            else [str(direction) for direction in input_parms["solve_directions"]],
-            "has_slow_gain_solve": any(
-                solve_type == "slow_gains" for solve_type in solve_types.values()
-            ),
-            "solution_combine_mode": input_parms.get("solution_combine_mode"),
-            "max_normalization_delta": input_parms.get("max_normalization_delta"),
-            "scale_normalization_delta": input_parms.get("scale_normalization_delta"),
-            "phase_center_ra": input_parms.get("phase_center_ra"),
-            "phase_center_dec": input_parms.get("phase_center_dec"),
-        }
-    )
-    assert_serializable_payload(payload)
-    return payload

@@ -25,6 +25,214 @@ WSCLEAN_PREDICT_MAX_BANDWIDTH_HZ = 2.0e6
 WSCLEAN_MODEL_STORAGE_MANAGER = "default"
 
 
+def prepare_image_based_predict(
+    payload: CalibratePayload,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> CalibratePayload:
+    """Prepare model-image inputs when calibration uses image-based prediction."""
+    if not (payload.get("image_based_predict") or payload.get("wsclean_predict")):
+        return payload
+
+    region_file = make_predict_region_file(payload)
+    prepared_payload = dict(payload)
+    prepared_payload["predict_regions"] = region_file["path"]
+
+    if payload.get("image_based_predict"):
+        model_images = draw_predict_model_images(
+            payload,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        prepared_payload["predict_images"] = [record["path"] for record in model_images]
+
+    if payload.get("wsclean_predict"):
+        facet_info = wsclean_predict_facet_info(region_file)
+        prepared_chunks = []
+        for chunk_index, chunk in enumerate(payload["chunks"]):
+            prepared_chunks.append(
+                prepare_wsclean_predict_chunk(
+                    payload,
+                    chunk,
+                    chunk_index,
+                    facet_info,
+                    execution_config,
+                    shell_operation_cls=shell_operation_cls,
+                )
+            )
+        prepared_payload["chunks"] = prepared_chunks
+        prepared_payload["modeldatacolumn"] = facet_info["modeldatacolumn"]
+
+    if payload.get("normalize_h5parm"):
+        prepared_payload["normalize_h5parm"] = adjust_prediction_normalization_h5parm(payload)
+    return prepared_payload
+
+
+def make_predict_region_file(payload: CalibratePayload) -> dict:
+    """Create the facet region file used by image-based calibration prediction."""
+    return _run_make_region_file(_image_predict_payload(payload))
+
+
+def draw_predict_model_images(
+    payload: CalibratePayload,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> list[dict]:
+    """Draw model images for DP3 image-based calibration prediction."""
+    return _run_draw_model(
+        payload,
+        _image_predict_payload(payload),
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def wsclean_predict_facet_info(region_record: Mapping[str, object]) -> dict:
+    """Return facet names and DP3 model-column token for WSClean prediction."""
+    patch_names = _patch_names_from_region(str(region_record["path"]))
+    return {
+        "patch_names": patch_names,
+        "modeldatacolumn": _patch_list_token(patch_names),
+    }
+
+
+def prepare_wsclean_predict_chunk(
+    payload: CalibratePayload,
+    chunk: Mapping[str, object],
+    chunk_index: int,
+    facet_info: Mapping[str, object],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> dict:
+    """Prepare one copied Measurement Set with WSClean model columns."""
+    copied_msin = _run_wsclean_predict_for_chunk(
+        payload,
+        _image_predict_payload(payload),
+        chunk,
+        chunk_index,
+        [str(name) for name in facet_info["patch_names"]],
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    prepared_chunk = dict(chunk)
+    prepared_chunk["msin"] = copied_msin
+    return prepared_chunk
+
+
+def adjust_prediction_normalization_h5parm(payload: CalibratePayload) -> str:
+    """Adjust a normalization h5parm to the prediction source coordinates."""
+    normalize_h5parm = payload.get("normalize_h5parm")
+    if not normalize_h5parm:
+        raise ValueError("normalize_h5parm is required for normalization adjustment")
+    normalize_record = adjust_h5parm_sources(
+        file_record(str(normalize_h5parm)),
+        payload,
+        "Adjusted normalization h5parm",
+    )
+    return str(normalize_record["path"])
+
+
+def _run_make_region_file(
+    image_predict: CalibrateImagePredictPayload,
+) -> dict:
+    make_ds9_region_from_skymodel(
+        str(image_predict["skymodel"]),
+        float(image_predict["ra_mid"]),
+        float(image_predict["dec_mid"]),
+        float(image_predict["facet_region_width_ra"]),
+        float(image_predict["facet_region_width_dec"]),
+        str(image_predict["facet_region_path"]),
+        enclose_names=False,
+    )
+    return require_file(str(image_predict["facet_region_path"]), "Calibration region file")
+
+
+def _run_draw_model(
+    payload: CalibratePayload,
+    image_predict: CalibrateImagePredictPayload,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> list[dict]:
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    command = build_draw_model_command(_draw_model_options(payload, image_predict))
+    run_external_command(
+        command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return [require_file(path, "Calibration model image") for path in image_predict["model_images"]]
+
+
+def _run_wsclean_predict_for_chunk(
+    payload: CalibratePayload,
+    image_predict: CalibrateImagePredictPayload,
+    chunk: Mapping[str, object],
+    chunk_index: int,
+    patch_names: list[str],
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+) -> str:
+    """Draw narrow-band WSClean models and predict facets into a copied MS."""
+    pipeline_dir = str(payload["pipeline_working_dir"])
+    copied_msin = _copy_measurement_set_for_wsclean_predict(
+        str(chunk["msin"]),
+        pipeline_dir,
+        chunk_index,
+    )
+    frequency_chunks = _frequency_chunks_for_ms(
+        copied_msin,
+        list(image_predict["model_image_frequency_bandwidth"]),
+    )
+    time_frequency_smearing = bool(
+        payload.get("correctfreqsmearing") or payload.get("correcttimesmearing")
+    )
+
+    for frequency_index, frequency_chunk in enumerate(frequency_chunks):
+        model_root = os.path.join(
+            pipeline_dir,
+            f"wsclean_predict_chunk_{chunk_index + 1}_band_{frequency_index + 1}",
+        )
+        draw_command = build_draw_model_command(
+            _wsclean_draw_model_options(
+                payload,
+                image_predict,
+                model_root=model_root,
+                frequency_bandwidth=list(frequency_chunk["frequency_bandwidth"]),
+            )
+        )
+        run_external_command(
+            draw_command,
+            pipeline_dir,
+            execution_config,
+            shell_operation_cls=shell_operation_cls,
+        )
+        _ensure_wsclean_model_fits(model_root)
+
+        for patch_name in patch_names:
+            predict_command = build_wsclean_predict_command(
+                WscleanPredictOptions(
+                    msin=copied_msin,
+                    region_file=str(image_predict["facet_region_path"]),
+                    model_column=str(patch_name),
+                    facet=str(patch_name),
+                    model_root=model_root,
+                    channel_range=frequency_chunk["channel_range"],
+                    model_storage_manager=WSCLEAN_MODEL_STORAGE_MANAGER,
+                    num_threads=int(payload["max_threads"]),
+                    apply_time_frequency_smearing=time_frequency_smearing,
+                )
+            )
+            run_external_command(
+                predict_command,
+                pipeline_dir,
+                execution_config,
+                shell_operation_cls=shell_operation_cls,
+            )
+
+    return copied_msin
+
+
 def _image_predict_payload(payload: CalibratePayload) -> CalibrateImagePredictPayload:
     """Return the image-prediction payload or raise a clear contract error."""
     image_predict = payload.get("image_predict")
@@ -68,38 +276,6 @@ def _wsclean_draw_model_options(
     )
 
 
-def _run_draw_model(
-    payload: CalibratePayload,
-    image_predict: CalibrateImagePredictPayload,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> list[dict]:
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    command = build_draw_model_command(_draw_model_options(payload, image_predict))
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return [require_file(path, "Calibration model image") for path in image_predict["model_images"]]
-
-
-def _run_make_region_file(
-    image_predict: CalibrateImagePredictPayload,
-) -> dict:
-    make_ds9_region_from_skymodel(
-        str(image_predict["skymodel"]),
-        float(image_predict["ra_mid"]),
-        float(image_predict["dec_mid"]),
-        float(image_predict["facet_region_width_ra"]),
-        float(image_predict["facet_region_width_dec"]),
-        str(image_predict["facet_region_path"]),
-        enclose_names=False,
-    )
-    return require_file(str(image_predict["facet_region_path"]), "Calibration region file")
-
-
 def _patch_names_from_region(region_file: str) -> list[str]:
     """Return facet names from a DS9 region file in WSClean column order."""
     from lsmtool.facet import read_ds9_region_file
@@ -114,15 +290,6 @@ def _patch_names_from_region(region_file: str) -> list[str]:
 def _patch_list_token(patch_names: list[str]) -> str:
     """Return patch names in the DP3 model-column list syntax."""
     return "[" + ",".join(str(name) for name in patch_names) + "]"
-
-
-def _make_tree_writable(path: Path) -> None:
-    """Ensure a copied Measurement Set can accept new model-data columns."""
-    for item in [path, *path.rglob("*")]:
-        try:
-            item.chmod(item.stat().st_mode | stat.S_IWUSR)
-        except OSError:
-            pass
 
 
 def _copy_measurement_set_for_wsclean_predict(msin: str, pipeline_dir: str, index: int) -> str:
@@ -211,177 +378,10 @@ def _ensure_wsclean_model_fits(model_root: str) -> None:
     require_file(str(predict_model), "WSClean predict model image link")
 
 
-def _run_wsclean_predict_for_chunk(
-    payload: CalibratePayload,
-    image_predict: CalibrateImagePredictPayload,
-    chunk: Mapping[str, object],
-    chunk_index: int,
-    patch_names: list[str],
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> str:
-    """Draw narrow-band WSClean models and predict facets into a copied MS."""
-    pipeline_dir = str(payload["pipeline_working_dir"])
-    copied_msin = _copy_measurement_set_for_wsclean_predict(
-        str(chunk["msin"]),
-        pipeline_dir,
-        chunk_index,
-    )
-    frequency_chunks = _frequency_chunks_for_ms(
-        copied_msin,
-        list(image_predict["model_image_frequency_bandwidth"]),
-    )
-    time_frequency_smearing = bool(
-        payload.get("correctfreqsmearing") or payload.get("correcttimesmearing")
-    )
-
-    for frequency_index, frequency_chunk in enumerate(frequency_chunks):
-        model_root = os.path.join(
-            pipeline_dir,
-            f"wsclean_predict_chunk_{chunk_index + 1}_band_{frequency_index + 1}",
-        )
-        draw_command = build_draw_model_command(
-            _wsclean_draw_model_options(
-                payload,
-                image_predict,
-                model_root=model_root,
-                frequency_bandwidth=list(frequency_chunk["frequency_bandwidth"]),
-            )
-        )
-        run_external_command(
-            draw_command,
-            pipeline_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        _ensure_wsclean_model_fits(model_root)
-
-        for patch_name in patch_names:
-            predict_command = build_wsclean_predict_command(
-                WscleanPredictOptions(
-                    msin=copied_msin,
-                    region_file=str(image_predict["facet_region_path"]),
-                    model_column=str(patch_name),
-                    facet=str(patch_name),
-                    model_root=model_root,
-                    channel_range=frequency_chunk["channel_range"],
-                    model_storage_manager=WSCLEAN_MODEL_STORAGE_MANAGER,
-                    num_threads=int(payload["max_threads"]),
-                    apply_time_frequency_smearing=time_frequency_smearing,
-                )
-            )
-            run_external_command(
-                predict_command,
-                pipeline_dir,
-                execution_config,
-                shell_operation_cls=shell_operation_cls,
-            )
-
-    return copied_msin
-
-
-def make_predict_region_file(payload: CalibratePayload) -> dict:
-    """Create the facet region file used by image-based calibration prediction."""
-    return _run_make_region_file(_image_predict_payload(payload))
-
-
-def draw_predict_model_images(
-    payload: CalibratePayload,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> list[dict]:
-    """Draw model images for DP3 image-based calibration prediction."""
-    return _run_draw_model(
-        payload,
-        _image_predict_payload(payload),
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-
-
-def wsclean_predict_facet_info(region_record: Mapping[str, object]) -> dict:
-    """Return facet names and DP3 model-column token for WSClean prediction."""
-    patch_names = _patch_names_from_region(str(region_record["path"]))
-    return {
-        "patch_names": patch_names,
-        "modeldatacolumn": _patch_list_token(patch_names),
-    }
-
-
-def prepare_wsclean_predict_chunk(
-    payload: CalibratePayload,
-    chunk: Mapping[str, object],
-    chunk_index: int,
-    facet_info: Mapping[str, object],
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    """Prepare one copied Measurement Set with WSClean model columns."""
-    copied_msin = _run_wsclean_predict_for_chunk(
-        payload,
-        _image_predict_payload(payload),
-        chunk,
-        chunk_index,
-        [str(name) for name in facet_info["patch_names"]],
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    prepared_chunk = dict(chunk)
-    prepared_chunk["msin"] = copied_msin
-    return prepared_chunk
-
-
-def adjust_prediction_normalization_h5parm(payload: CalibratePayload) -> str:
-    """Adjust a normalization h5parm to the prediction source coordinates."""
-    normalize_h5parm = payload.get("normalize_h5parm")
-    if not normalize_h5parm:
-        raise ValueError("normalize_h5parm is required for normalization adjustment")
-    normalize_record = adjust_h5parm_sources(
-        file_record(str(normalize_h5parm)),
-        payload,
-        "Adjusted normalization h5parm",
-    )
-    return str(normalize_record["path"])
-
-
-def prepare_image_based_predict(
-    payload: CalibratePayload,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> CalibratePayload:
-    """Prepare model-image inputs when calibration uses image-based prediction."""
-    if not (payload.get("image_based_predict") or payload.get("wsclean_predict")):
-        return payload
-
-    region_file = make_predict_region_file(payload)
-    prepared_payload = dict(payload)
-    prepared_payload["predict_regions"] = region_file["path"]
-
-    if payload.get("image_based_predict"):
-        model_images = draw_predict_model_images(
-            payload,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        prepared_payload["predict_images"] = [record["path"] for record in model_images]
-
-    if payload.get("wsclean_predict"):
-        facet_info = wsclean_predict_facet_info(region_file)
-        prepared_chunks = []
-        for chunk_index, chunk in enumerate(payload["chunks"]):
-            prepared_chunks.append(
-                prepare_wsclean_predict_chunk(
-                    payload,
-                    chunk,
-                    chunk_index,
-                    facet_info,
-                    execution_config,
-                    shell_operation_cls=shell_operation_cls,
-                )
-            )
-        prepared_payload["chunks"] = prepared_chunks
-        prepared_payload["modeldatacolumn"] = facet_info["modeldatacolumn"]
-
-    if payload.get("normalize_h5parm"):
-        prepared_payload["normalize_h5parm"] = adjust_prediction_normalization_h5parm(payload)
-    return prepared_payload
+def _make_tree_writable(path: Path) -> None:
+    """Ensure a copied Measurement Set can accept new model-data columns."""
+    for item in [path, *path.rglob("*")]:
+        try:
+            item.chmod(item.stat().st_mode | stat.S_IWUSR)
+        except OSError:
+            pass

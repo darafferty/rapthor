@@ -6,16 +6,6 @@ from typing import Optional
 log = logging.getLogger("rapthor:calibrate:plotting")
 
 
-def _load_plotting_backend():
-    import matplotlib as mpl
-
-    mpl.use("Agg")
-    from losoto.h5parm import h5parm
-    from losoto.operations import plot
-
-    return h5parm, plot
-
-
 def plot_solutions(
     h5file: str,
     soltype: str,
@@ -100,3 +90,13 @@ def _plot_axes(solution_table) -> Optional[list[str]]:
     if has_frequency_axis:
         return ["freq"]
     return None
+
+
+def _load_plotting_backend():
+    import matplotlib as mpl
+
+    mpl.use("Agg")
+    from losoto.h5parm import h5parm
+    from losoto.operations import plot
+
+    return h5parm, plot

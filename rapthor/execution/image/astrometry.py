@@ -51,31 +51,6 @@ def validate_astrometry_corrections(corrections: Mapping[str, object]) -> Mappin
     return corrections
 
 
-def _load_corrections(corrections_file: Optional[PathInput]) -> Optional[Mapping[str, object]]:
-    if corrections_file is None:
-        return None
-
-    corrections_path = Path(corrections_file)
-    with corrections_path.open("r") as fp:
-        corrections = json.load(fp)
-    if not corrections or not corrections.get("facet_name"):
-        return None
-    return validate_astrometry_corrections(corrections)
-
-
-def _copy_uncorrected_image(input_image: Path, output_image: Path, overwrite: bool) -> Path:
-    output_image.parent.mkdir(parents=True, exist_ok=True)
-    if not output_image.exists() or overwrite:
-        shutil.copy(input_image, output_image)
-    return output_image
-
-
-def _compressed_output_path(output_image: Path) -> Path:
-    if output_image.suffix == ".fz":
-        return output_image
-    return output_image.with_suffix(output_image.suffix + ".fz")
-
-
 def correct_astrometry_image(
     input_image: PathInput,
     region_file: Optional[PathInput],
@@ -149,6 +124,31 @@ def make_astrometry_corrected_image_record(
     offsets_file = None if offsets_record is None else offsets_record["path"]
     output_path = correct_astrometry_image(pb_image["path"], region_file, offsets_file)
     return require_file(str(output_path), "Astrometry-corrected PB image")
+
+
+def _load_corrections(corrections_file: Optional[PathInput]) -> Optional[Mapping[str, object]]:
+    if corrections_file is None:
+        return None
+
+    corrections_path = Path(corrections_file)
+    with corrections_path.open("r") as fp:
+        corrections = json.load(fp)
+    if not corrections or not corrections.get("facet_name"):
+        return None
+    return validate_astrometry_corrections(corrections)
+
+
+def _copy_uncorrected_image(input_image: Path, output_image: Path, overwrite: bool) -> Path:
+    output_image.parent.mkdir(parents=True, exist_ok=True)
+    if not output_image.exists() or overwrite:
+        shutil.copy(input_image, output_image)
+    return output_image
+
+
+def _compressed_output_path(output_image: Path) -> Path:
+    if output_image.suffix == ".fz":
+        return output_image
+    return output_image.with_suffix(output_image.suffix + ".fz")
 
 
 def _apply_astrometry_corrections(

@@ -56,6 +56,32 @@ def chunk_observations(field, steps, data_fraction):
     field.chunk_observations(chunk_time)
 
 
+def make_report(field, outfile=None):
+    """
+    Make a summary report of QA metrics for the run.
+
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    outfile : str
+        The filename of the output file
+    """
+    output_lines = []
+    output_lines.extend(_selfcal_report_lines(field))
+    output_lines.append("\n")
+    output_lines.extend(_calibration_report_lines(field))
+    output_lines.append("\n")
+    for sector in field.imaging_sectors:
+        output_lines.extend(_image_report_lines(sector))
+        output_lines.append("\n")
+
+    if outfile is None:
+        outfile = os.path.join(field.parset["dir_working"], "logs", "diagnostics.txt")
+    with open(outfile, "w") as f:
+        f.writelines(output_lines)
+
+
 def _calibration_solve_time(field, steps):
     if not steps or not any(step["do_calibrate"] for step in steps):
         return None
@@ -102,32 +128,6 @@ def _set_observation_data_fractions(field, data_fraction, solve_time):
                 min_fraction,
             )
             obs.data_fraction = min_fraction
-
-
-def make_report(field, outfile=None):
-    """
-    Make a summary report of QA metrics for the run.
-
-    Parameters
-    ----------
-    field : Field object
-        The Field object for this run
-    outfile : str
-        The filename of the output file
-    """
-    output_lines = []
-    output_lines.extend(_selfcal_report_lines(field))
-    output_lines.append("\n")
-    output_lines.extend(_calibration_report_lines(field))
-    output_lines.append("\n")
-    for sector in field.imaging_sectors:
-        output_lines.extend(_image_report_lines(sector))
-        output_lines.append("\n")
-
-    if outfile is None:
-        outfile = os.path.join(field.parset["dir_working"], "logs", "diagnostics.txt")
-    with open(outfile, "w") as f:
-        f.writelines(output_lines)
 
 
 def _selfcal_report_lines(field):

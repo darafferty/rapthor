@@ -69,29 +69,6 @@ def channel_image_patterns(image_name: str, stokes: str, pipeline_working_dir: s
     return [os.path.join(pipeline_working_dir, f"{image_name}-0???-{stokes}-image-pb.fits")]
 
 
-def _is_sparse_model_image(path: str) -> bool:
-    """Return whether ``path`` is a sparse WSClean model image."""
-    return os.path.basename(path).endswith("model-pb.fits")
-
-
-def _compress_images(
-    images: list[str],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    *,
-    lossless: bool = False,
-    shell_operation_cls=None,
-) -> None:
-    if not images:
-        return
-    run_external_command(
-        build_compress_sector_images_command(images, lossless=lossless),
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-
-
 def compress_image_records(
     image_name: str,
     sector_images: list[dict],
@@ -230,18 +207,6 @@ def source_list_records(
     return skymodel_nonpb, skymodel_pb
 
 
-def _current_process_is_daemon() -> bool:
-    """Return whether the current process is a daemonic worker."""
-    return bool(multiprocessing.current_process().daemon)
-
-
-def _filter_skymodel_needs_subprocess(source_finder: str, ncores: int) -> bool:
-    """Return whether source filtering should be isolated from the task process."""
-    if _current_process_is_daemon():
-        return True
-    return source_finder.lower() == "bdsf" and ncores != 1
-
-
 def filter_skymodel_products(
     sector: ImageSectorPayload,
     image_name: str,
@@ -362,3 +327,38 @@ def make_filtered_model_image(
         Path(str(sector["filtered_model_image_path"])),
     )
     return require_file(str(sector["filtered_model_image_path"]), "Filtered skymodel image")
+
+
+def _is_sparse_model_image(path: str) -> bool:
+    """Return whether ``path`` is a sparse WSClean model image."""
+    return os.path.basename(path).endswith("model-pb.fits")
+
+
+def _compress_images(
+    images: list[str],
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    *,
+    lossless: bool = False,
+    shell_operation_cls=None,
+) -> None:
+    if not images:
+        return
+    run_external_command(
+        build_compress_sector_images_command(images, lossless=lossless),
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def _current_process_is_daemon() -> bool:
+    """Return whether the current process is a daemonic worker."""
+    return bool(multiprocessing.current_process().daemon)
+
+
+def _filter_skymodel_needs_subprocess(source_finder: str, ncores: int) -> bool:
+    """Return whether source filtering should be isolated from the task process."""
+    if _current_process_is_daemon():
+        return True
+    return source_finder.lower() == "bdsf" and ncores != 1

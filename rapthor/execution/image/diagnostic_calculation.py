@@ -44,6 +44,202 @@ PHOTOMETRY_BACKUP_SURVEY = "NVSS"
 # ---------------------------------------------------------------------------- #
 
 
+def calculate_image_diagnostics(
+    flat_noise_image,
+    flat_noise_rms_image,
+    true_sky_image,
+    true_sky_rms_image,
+    input_catalog,
+    obs_ms,
+    obs_starttime,
+    obs_ntimes,
+    diagnostics_file,
+    output_root,
+    facet_region_file=None,
+    allow_internet_access=True,
+    photometry_comparison_skymodel=None,
+    photometry_comparison_surveys=None,
+    photometry_backup_survey=PHOTOMETRY_BACKUP_SURVEY,
+    astrometry_comparison_skymodel=None,
+    min_number=5,
+):
+    """
+    Calculate various image diagnostics.
+
+    Parameters
+    ----------
+    flat_noise_image : str
+        Filename of the flat-noise image
+    flat_noise_rms_image : str
+        Filename of the background RMS image derived from the flat-noise image
+    true_sky_image : str
+        Filename of the true-sky image
+    true_sky_rms_image : str
+        Filename of the background RMS image derived from the true-sky image
+    input_catalog : str
+        Filename of the input PyBDSF FITS catalog derived from the input image
+    obs_ms : list of str
+        List of MS files to use to derive the theoretical image noise and
+        other properties of the observation
+    obs_starttime : list of str
+        List of start times in casacore MVTime format for each input MS
+    obs_ntimes : list of int
+        List of nuber of time slots for each input MS
+    diagnostics_file : str
+        Filename of the input JSON file containing image diagnostics derived
+        by the sky model filtering script
+    output_root : str
+        Root of the filename for the output files
+    facet_region_file : str, optional
+        Filename of the facet region file (in ds9 format) that defines the
+        facets used in imaging
+    allow_internet_access : bool, optional
+        Whether to allow internet access for downloading sky models when they
+        are not available locally. If False, the diagnostics relying on
+        internet access will be skipped if no skymodel path is provided for the
+        comparison skymodels.
+    photometry_comparison_skymodel : str, optional
+        Filename of the sky model to use for the photometry (flux scale)
+        comparison (in makesourcedb format). If not given, models are
+        downloaded from the surveys defined by photometry_comparison_surveys
+    photometry_comparison_surveys : list, optional
+        A list giving the names of surveys to use for the photometry comparison
+        (each must be one of the VO services supported by LSMTool: see
+        https://lsmtool.readthedocs.io/en/latest/lsmtool.html#lsmtool.load for
+        the supported services). If not given, the list is set to
+        ['TGSS', 'LOTSS']
+    photometry_backup_survey : str, optional
+        Survey name to use if the queries fail for all surveys given by
+        comparison_surveys (as with comparison_surveys, the survey name must be
+        one of the VO services supported by LSMTool). Ideally, a survey with
+        full sky coverage should be used for this purpose
+    astrometry_comparison_skymodel : str, optional
+        Filename of the sky model to use for the astrometry comparison (in
+        makesourcedb format). If not given, a Pan-STARRS model is downloaded
+    min_number : int, optional
+        Minimum number of matched sources required for the comparisons
+    """
+    # Select the best MS
+    if isinstance(obs_ms, str):
+        obs_ms = misc.string2list(obs_ms)
+
+    if isinstance(obs_starttime, str):
+        obs_starttime = misc.string2list(obs_starttime)
+
+    if isinstance(obs_ntimes, str):
+        obs_ntimes = misc.string2list(obs_ntimes)
+        obs_ntimes = [int(ntimes) for ntimes in obs_ntimes]
+
+    if len(obs_ms) > 1:
+        ms_times = []
+        for ms in obs_ms:
+            tab = pt.table(ms, ack=False)
+            ms_times.append(np.mean(tab.getcol("TIME")))
+            tab.close()
+        ms_times_sorted = sorted(ms_times)
+        mid_time = ms_times_sorted[int(len(ms_times) / 2)]
+        beam_ind = ms_times.index(mid_time)
+    else:
+        beam_ind = 0
+
+    # Read in the images and diagnostics
+    img_flat_noise = FITSImage(flat_noise_image)
+    rms_img_flat_noise = FITSImage(flat_noise_rms_image)
+    img_true_sky = FITSImage(true_sky_image)
+    rms_img_true_sky = FITSImage(true_sky_rms_image)
+    with open(diagnostics_file, "r") as fp:
+        diagnostics_output = json.load(fp)
+
+    # Collect some diagnostic numbers from the images. Note: we ensure all
+    # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
+    obs_list = []
+    for ms, starttime, ntimes in zip(obs_ms, obs_starttime, obs_ntimes, strict=True):
+        starttime_mjd = misc.convert_mvt2mjd(starttime)  # MJD sec
+        endtime_mjd = starttime_mjd + ntimes * Observation(ms).timepersample  # MJD sec
+        obs_list.append(Observation(ms, starttime_mjd, endtime_mjd))
+    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(
+        obs_list, use_lotss_estimate=True
+    )  # Jy/beam
+    dynamic_range_global_true_sky = float(img_true_sky.max_value / rms_img_true_sky.min_value)
+    dynamic_range_local_true_sky = float(
+        np.nanmax(rms_img_flat_noise.img_data / rms_img_true_sky.img_data)
+    )
+    dynamic_range_global_flat_noise = float(img_flat_noise.max_value / rms_img_flat_noise.min_value)
+    dynamic_range_local_flat_noise = float(
+        np.nanmax(img_flat_noise.img_data / rms_img_flat_noise.img_data)
+    )
+    diagnostics_output.update(
+        {
+            "theoretical_rms": theoretical_rms,
+            "unflagged_data_fraction": unflagged_fraction,
+            "min_rms_true_sky": rms_img_true_sky.min_value,
+            "max_rms_true_sky": rms_img_true_sky.max_value,
+            "mean_rms_true_sky": rms_img_true_sky.mean_value,
+            "median_rms_true_sky": rms_img_true_sky.median_value,
+            "dynamic_range_global_true_sky": dynamic_range_global_true_sky,
+            "dynamic_range_local_true_sky": dynamic_range_local_true_sky,
+            "min_rms_flat_noise": rms_img_flat_noise.min_value,
+            "max_rms_flat_noise": rms_img_flat_noise.max_value,
+            "mean_rms_flat_noise": rms_img_flat_noise.mean_value,
+            "median_rms_flat_noise": rms_img_flat_noise.median_value,
+            "dynamic_range_global_flat_noise": dynamic_range_global_flat_noise,
+            "dynamic_range_local_flat_noise": dynamic_range_local_flat_noise,
+            "freq": img_true_sky.freq,
+            "beam_fwhm": img_true_sky.beam,
+        }
+    )
+
+    if not allow_internet_access:
+        photometry_comparison_surveys = ()
+        photometry_backup_survey = None
+
+    # Do the photometry check and update the ouput dict
+    result = check_photometry(
+        obs_list[beam_ind],
+        input_catalog,
+        img_true_sky.freq,
+        min_number,
+        comparison_skymodel=photometry_comparison_skymodel,
+        comparison_surveys=photometry_comparison_surveys,
+        backup_survey=photometry_backup_survey,
+    )
+    diagnostics_output.update(result)
+
+    # Do the astrometry check and update the ouput dict
+    result = check_astrometry(
+        obs_list[beam_ind],
+        input_catalog,
+        img_true_sky,
+        facet_region_file,
+        min_number,
+        output_root,
+        comparison_skymodel=astrometry_comparison_skymodel,
+        allow_internet_access=allow_internet_access,
+    )
+    diagnostics_output.update(result)
+
+    facets_rms = compute_facet_rms_noise(
+        facet_region_file,
+        rms_img_flat_noise,
+        rms_img_true_sky,
+    )
+    if facets_rms:
+        diagnostics_output["facets_rms"] = facets_rms
+
+    # Write out the full diagnostics
+    with open(output_root + ".image_diagnostics.json", "w") as fp:
+        json.dump(diagnostics_output, fp)
+
+    # Adjust plot filenames as needed to include output_root (those generated by LSMTool
+    # lack it)
+    diagnostic_plots = list(Path(".").glob("*.pdf"))
+    for src_filename in diagnostic_plots:
+        if not src_filename.name.startswith(output_root):
+            dst_filename = Path(f"{output_root}.{src_filename.name}")
+            dst_filename.unlink(missing_ok=True)
+            shutil.move(src_filename, dst_filename)
+
+
 @contextlib.contextmanager
 def safe_load_skymodel(skymodel, message, post, **kws):
     """
@@ -461,23 +657,6 @@ def compare_photometry_survey(catalog, survey, comparison_skymodel, freq):
     return {}
 
 
-def _rename_plots(survey, filepath=Path(".")):
-    """
-    Append survey name to the diagnostic plots generated by LSMTool and remove
-    other, unneeded plots.
-    """
-    for plot in [
-        "flux_ratio_vs_distance",
-        "flux_ratio_vs_flux",
-        "flux_ratio_sky",
-    ]:
-        (filepath / f"{plot}.pdf").rename(filepath / f"{plot}_{survey}.pdf")
-
-    # other plots not related to photometry check
-    for plot in ["positional_offsets_sky"]:
-        (filepath / f"{plot}.pdf").unlink(missing_ok=True)
-
-
 def check_astrometry(
     obs,
     input_catalog,
@@ -653,16 +832,6 @@ def filter_skymodel_for_photometry(catalog, obs, freq, max_major_axis=10 / 3600)
     return catalog[major_axis < max_major_axis]
 
 
-def _compute_image_stats(image: np.ndarray) -> dict:
-    return {
-        "mean": float(np.nanmean(image)),
-        "median": float(np.nanmedian(image)),
-        "std": float(np.nanstd(image)),
-        "min": float(np.nanmin(image)),
-        "max": float(np.nanmax(image)),
-    }
-
-
 def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_sky) -> dict:
     """Compute facet-level RMS statistics from flat-noise and true-sky RMS maps."""
     if not facet_region_file or str(facet_region_file).lower() == "none":
@@ -691,197 +860,28 @@ def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_
     return facets_summary
 
 
-def calculate_image_diagnostics(
-    flat_noise_image,
-    flat_noise_rms_image,
-    true_sky_image,
-    true_sky_rms_image,
-    input_catalog,
-    obs_ms,
-    obs_starttime,
-    obs_ntimes,
-    diagnostics_file,
-    output_root,
-    facet_region_file=None,
-    allow_internet_access=True,
-    photometry_comparison_skymodel=None,
-    photometry_comparison_surveys=None,
-    photometry_backup_survey=PHOTOMETRY_BACKUP_SURVEY,
-    astrometry_comparison_skymodel=None,
-    min_number=5,
-):
+def _rename_plots(survey, filepath=Path(".")):
     """
-    Calculate various image diagnostics.
-
-    Parameters
-    ----------
-    flat_noise_image : str
-        Filename of the flat-noise image
-    flat_noise_rms_image : str
-        Filename of the background RMS image derived from the flat-noise image
-    true_sky_image : str
-        Filename of the true-sky image
-    true_sky_rms_image : str
-        Filename of the background RMS image derived from the true-sky image
-    input_catalog : str
-        Filename of the input PyBDSF FITS catalog derived from the input image
-    obs_ms : list of str
-        List of MS files to use to derive the theoretical image noise and
-        other properties of the observation
-    obs_starttime : list of str
-        List of start times in casacore MVTime format for each input MS
-    obs_ntimes : list of int
-        List of nuber of time slots for each input MS
-    diagnostics_file : str
-        Filename of the input JSON file containing image diagnostics derived
-        by the sky model filtering script
-    output_root : str
-        Root of the filename for the output files
-    facet_region_file : str, optional
-        Filename of the facet region file (in ds9 format) that defines the
-        facets used in imaging
-    allow_internet_access : bool, optional
-        Whether to allow internet access for downloading sky models when they
-        are not available locally. If False, the diagnostics relying on
-        internet access will be skipped if no skymodel path is provided for the
-        comparison skymodels.
-    photometry_comparison_skymodel : str, optional
-        Filename of the sky model to use for the photometry (flux scale)
-        comparison (in makesourcedb format). If not given, models are
-        downloaded from the surveys defined by photometry_comparison_surveys
-    photometry_comparison_surveys : list, optional
-        A list giving the names of surveys to use for the photometry comparison
-        (each must be one of the VO services supported by LSMTool: see
-        https://lsmtool.readthedocs.io/en/latest/lsmtool.html#lsmtool.load for
-        the supported services). If not given, the list is set to
-        ['TGSS', 'LOTSS']
-    photometry_backup_survey : str, optional
-        Survey name to use if the queries fail for all surveys given by
-        comparison_surveys (as with comparison_surveys, the survey name must be
-        one of the VO services supported by LSMTool). Ideally, a survey with
-        full sky coverage should be used for this purpose
-    astrometry_comparison_skymodel : str, optional
-        Filename of the sky model to use for the astrometry comparison (in
-        makesourcedb format). If not given, a Pan-STARRS model is downloaded
-    min_number : int, optional
-        Minimum number of matched sources required for the comparisons
+    Append survey name to the diagnostic plots generated by LSMTool and remove
+    other, unneeded plots.
     """
-    # Select the best MS
-    if isinstance(obs_ms, str):
-        obs_ms = misc.string2list(obs_ms)
+    for plot in [
+        "flux_ratio_vs_distance",
+        "flux_ratio_vs_flux",
+        "flux_ratio_sky",
+    ]:
+        (filepath / f"{plot}.pdf").rename(filepath / f"{plot}_{survey}.pdf")
 
-    if isinstance(obs_starttime, str):
-        obs_starttime = misc.string2list(obs_starttime)
+    # other plots not related to photometry check
+    for plot in ["positional_offsets_sky"]:
+        (filepath / f"{plot}.pdf").unlink(missing_ok=True)
 
-    if isinstance(obs_ntimes, str):
-        obs_ntimes = misc.string2list(obs_ntimes)
-        obs_ntimes = [int(ntimes) for ntimes in obs_ntimes]
 
-    if len(obs_ms) > 1:
-        ms_times = []
-        for ms in obs_ms:
-            tab = pt.table(ms, ack=False)
-            ms_times.append(np.mean(tab.getcol("TIME")))
-            tab.close()
-        ms_times_sorted = sorted(ms_times)
-        mid_time = ms_times_sorted[int(len(ms_times) / 2)]
-        beam_ind = ms_times.index(mid_time)
-    else:
-        beam_ind = 0
-
-    # Read in the images and diagnostics
-    img_flat_noise = FITSImage(flat_noise_image)
-    rms_img_flat_noise = FITSImage(flat_noise_rms_image)
-    img_true_sky = FITSImage(true_sky_image)
-    rms_img_true_sky = FITSImage(true_sky_rms_image)
-    with open(diagnostics_file, "r") as fp:
-        diagnostics_output = json.load(fp)
-
-    # Collect some diagnostic numbers from the images. Note: we ensure all
-    # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
-    obs_list = []
-    for ms, starttime, ntimes in zip(obs_ms, obs_starttime, obs_ntimes, strict=True):
-        starttime_mjd = misc.convert_mvt2mjd(starttime)  # MJD sec
-        endtime_mjd = starttime_mjd + ntimes * Observation(ms).timepersample  # MJD sec
-        obs_list.append(Observation(ms, starttime_mjd, endtime_mjd))
-    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(
-        obs_list, use_lotss_estimate=True
-    )  # Jy/beam
-    dynamic_range_global_true_sky = float(img_true_sky.max_value / rms_img_true_sky.min_value)
-    dynamic_range_local_true_sky = float(
-        np.nanmax(rms_img_flat_noise.img_data / rms_img_true_sky.img_data)
-    )
-    dynamic_range_global_flat_noise = float(img_flat_noise.max_value / rms_img_flat_noise.min_value)
-    dynamic_range_local_flat_noise = float(
-        np.nanmax(img_flat_noise.img_data / rms_img_flat_noise.img_data)
-    )
-    diagnostics_output.update(
-        {
-            "theoretical_rms": theoretical_rms,
-            "unflagged_data_fraction": unflagged_fraction,
-            "min_rms_true_sky": rms_img_true_sky.min_value,
-            "max_rms_true_sky": rms_img_true_sky.max_value,
-            "mean_rms_true_sky": rms_img_true_sky.mean_value,
-            "median_rms_true_sky": rms_img_true_sky.median_value,
-            "dynamic_range_global_true_sky": dynamic_range_global_true_sky,
-            "dynamic_range_local_true_sky": dynamic_range_local_true_sky,
-            "min_rms_flat_noise": rms_img_flat_noise.min_value,
-            "max_rms_flat_noise": rms_img_flat_noise.max_value,
-            "mean_rms_flat_noise": rms_img_flat_noise.mean_value,
-            "median_rms_flat_noise": rms_img_flat_noise.median_value,
-            "dynamic_range_global_flat_noise": dynamic_range_global_flat_noise,
-            "dynamic_range_local_flat_noise": dynamic_range_local_flat_noise,
-            "freq": img_true_sky.freq,
-            "beam_fwhm": img_true_sky.beam,
-        }
-    )
-
-    if not allow_internet_access:
-        photometry_comparison_surveys = ()
-        photometry_backup_survey = None
-
-    # Do the photometry check and update the ouput dict
-    result = check_photometry(
-        obs_list[beam_ind],
-        input_catalog,
-        img_true_sky.freq,
-        min_number,
-        comparison_skymodel=photometry_comparison_skymodel,
-        comparison_surveys=photometry_comparison_surveys,
-        backup_survey=photometry_backup_survey,
-    )
-    diagnostics_output.update(result)
-
-    # Do the astrometry check and update the ouput dict
-    result = check_astrometry(
-        obs_list[beam_ind],
-        input_catalog,
-        img_true_sky,
-        facet_region_file,
-        min_number,
-        output_root,
-        comparison_skymodel=astrometry_comparison_skymodel,
-        allow_internet_access=allow_internet_access,
-    )
-    diagnostics_output.update(result)
-
-    facets_rms = compute_facet_rms_noise(
-        facet_region_file,
-        rms_img_flat_noise,
-        rms_img_true_sky,
-    )
-    if facets_rms:
-        diagnostics_output["facets_rms"] = facets_rms
-
-    # Write out the full diagnostics
-    with open(output_root + ".image_diagnostics.json", "w") as fp:
-        json.dump(diagnostics_output, fp)
-
-    # Adjust plot filenames as needed to include output_root (those generated by LSMTool
-    # lack it)
-    diagnostic_plots = list(Path(".").glob("*.pdf"))
-    for src_filename in diagnostic_plots:
-        if not src_filename.name.startswith(output_root):
-            dst_filename = Path(f"{output_root}.{src_filename.name}")
-            dst_filename.unlink(missing_ok=True)
-            shutil.move(src_filename, dst_filename)
+def _compute_image_stats(image: np.ndarray) -> dict:
+    return {
+        "mean": float(np.nanmean(image)),
+        "median": float(np.nanmedian(image)),
+        "std": float(np.nanstd(image)),
+        "min": float(np.nanmin(image)),
+        "max": float(np.nanmax(image)),
+    }

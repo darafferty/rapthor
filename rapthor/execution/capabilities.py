@@ -31,8 +31,27 @@ ToolResolver = Callable[[str], Optional[str]]
 SchedulerChecker = Callable[[str], object]
 
 
-def _as_set(values: Optional[Iterable[str]]) -> Set[str]:
-    return set(values or ())
+def preflight_execution(
+    execution_config: ExecutionConfig,
+    requested_features: Optional[Iterable[str]] = None,
+    supported_features: Optional[Iterable[str]] = None,
+    required_tools: Optional[Iterable[str]] = None,
+    resource_requests: Optional[Iterable[ResourceRequest]] = None,
+    tool_resolver: ToolResolver = shutil.which,
+    scheduler_checker: Optional[SchedulerChecker] = None,
+) -> None:
+    """Run execution preflight checks and raise if any fail."""
+    issues = collect_preflight_issues(
+        execution_config=execution_config,
+        requested_features=requested_features,
+        supported_features=supported_features,
+        required_tools=required_tools,
+        resource_requests=resource_requests,
+        tool_resolver=tool_resolver,
+        scheduler_checker=scheduler_checker,
+    )
+    if issues:
+        raise PreflightError(issues)
 
 
 def collect_preflight_issues(
@@ -112,24 +131,5 @@ def collect_preflight_issues(
     return issues
 
 
-def preflight_execution(
-    execution_config: ExecutionConfig,
-    requested_features: Optional[Iterable[str]] = None,
-    supported_features: Optional[Iterable[str]] = None,
-    required_tools: Optional[Iterable[str]] = None,
-    resource_requests: Optional[Iterable[ResourceRequest]] = None,
-    tool_resolver: ToolResolver = shutil.which,
-    scheduler_checker: Optional[SchedulerChecker] = None,
-) -> None:
-    """Run execution preflight checks and raise if any fail."""
-    issues = collect_preflight_issues(
-        execution_config=execution_config,
-        requested_features=requested_features,
-        supported_features=supported_features,
-        required_tools=required_tools,
-        resource_requests=resource_requests,
-        tool_resolver=tool_resolver,
-        scheduler_checker=scheduler_checker,
-    )
-    if issues:
-        raise PreflightError(issues)
+def _as_set(values: Optional[Iterable[str]]) -> Set[str]:
+    return set(values or ())

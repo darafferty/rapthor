@@ -182,6 +182,36 @@ def predict_payload_from_inputs(
     return payload
 
 
+def validate_predict_payload(payload: Mapping[str, object]) -> PredictPayload:
+    """Validate a Predict payload received by a flow or worker."""
+    mode = str(payload["mode"])
+    if mode not in {"di", "dd"}:
+        raise ValueError("mode must be 'di' or 'dd'")
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    raw_predict_tasks = payload.get("predict_tasks", [])
+    raw_postprocess_tasks = payload.get("postprocess_tasks", [])
+    if not isinstance(raw_predict_tasks, list):
+        raise ValueError("predict_tasks must be a list")
+    if not isinstance(raw_postprocess_tasks, list):
+        raise ValueError("postprocess_tasks must be a list")
+    predict_tasks = []
+    for index, predict_task in enumerate(raw_predict_tasks):
+        if not isinstance(predict_task, Mapping):
+            raise ValueError(f"predict_tasks[{index}] must be a mapping")
+        predict_tasks.append(_validate_predict_model_task(predict_task, index))
+    postprocess_tasks = []
+    for index, postprocess_task in enumerate(raw_postprocess_tasks):
+        if not isinstance(postprocess_task, Mapping):
+            raise ValueError(f"postprocess_tasks[{index}] must be a mapping")
+        postprocess_tasks.append(_validate_predict_postprocess_task(mode, postprocess_task, index))
+    return {
+        "mode": mode,
+        "pipeline_working_dir": pipeline_working_dir,
+        "predict_tasks": predict_tasks,
+        "postprocess_tasks": postprocess_tasks,
+    }
+
+
 def _validate_predict_model_task(
     predict_task: Mapping[str, object],
     index: int,
@@ -236,33 +266,3 @@ def _validate_predict_postprocess_task(
             "reweight": bool(postprocess_task["reweight"]),
         }
     return task
-
-
-def validate_predict_payload(payload: Mapping[str, object]) -> PredictPayload:
-    """Validate a Predict payload received by a flow or worker."""
-    mode = str(payload["mode"])
-    if mode not in {"di", "dd"}:
-        raise ValueError("mode must be 'di' or 'dd'")
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    raw_predict_tasks = payload.get("predict_tasks", [])
-    raw_postprocess_tasks = payload.get("postprocess_tasks", [])
-    if not isinstance(raw_predict_tasks, list):
-        raise ValueError("predict_tasks must be a list")
-    if not isinstance(raw_postprocess_tasks, list):
-        raise ValueError("postprocess_tasks must be a list")
-    predict_tasks = []
-    for index, predict_task in enumerate(raw_predict_tasks):
-        if not isinstance(predict_task, Mapping):
-            raise ValueError(f"predict_tasks[{index}] must be a mapping")
-        predict_tasks.append(_validate_predict_model_task(predict_task, index))
-    postprocess_tasks = []
-    for index, postprocess_task in enumerate(raw_postprocess_tasks):
-        if not isinstance(postprocess_task, Mapping):
-            raise ValueError(f"postprocess_tasks[{index}] must be a mapping")
-        postprocess_tasks.append(_validate_predict_postprocess_task(mode, postprocess_task, index))
-    return {
-        "mode": mode,
-        "pipeline_working_dir": pipeline_working_dir,
-        "predict_tasks": predict_tasks,
-        "postprocess_tasks": postprocess_tasks,
-    }

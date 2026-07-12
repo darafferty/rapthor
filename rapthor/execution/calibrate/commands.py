@@ -194,11 +194,6 @@ class WscleanPredictOptions:
     apply_time_frequency_smearing: bool = False
 
 
-def parse_steps(steps: object) -> list[str]:
-    """Parse a DP3 steps token into individual step names."""
-    return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
-
-
 def build_calibration_solve_command(options: CalibrationSolveOptions) -> list[str]:
     """Build the DP3 calibration solve command for one calibration chunk."""
     command = ["DP3", *CALIBRATION_SOLVE_ARGUMENTS]
@@ -301,42 +296,6 @@ def build_wsclean_predict_command(options: WscleanPredictOptions) -> list[str]:
     return command
 
 
-def _first_model_image(model_images: list[str]) -> str:
-    if not isinstance(model_images, list) or not model_images:
-        raise ValueError("model_images must be a non-empty list")
-    return str(model_images[0])
-
-
-def _idgcal_solve_command(
-    dp3_arguments: list[str],
-    options: IdgcalScreenSolveOptions,
-    *,
-    include_amplitude: bool,
-) -> list[str]:
-    if include_amplitude and options.solint_amplitude is None:
-        raise ValueError("solint_amplitude is required for phase-and-gain IDGCal solves")
-    command = [
-        "DP3",
-        *dp3_arguments,
-        f"msin={options.msin}",
-        f"msin.starttime={options.starttime}",
-        f"msin.ntimes={options.ntimes}",
-        f"solve.h5parm={options.h5parm}",
-        f"solve.solintphase={options.solint_phase}",
-    ]
-    if include_amplitude:
-        command.append(f"solve.solintamplitude={options.solint_amplitude}")
-    command.extend(
-        [
-            f"solve.modelimage={_first_model_image(options.model_images)}",
-            f"solve.maxiter={options.maxiter}",
-            f"solve.antennaconstraint={options.antennaconstraint}",
-            f"numthreads={options.num_threads}",
-        ]
-    )
-    return command
-
-
 def build_idgcal_solve_phase_command(options: IdgcalScreenSolveOptions) -> list[str]:
     """Build the DP3/IDGCal phase-screen solve command for one chunk."""
     return _idgcal_solve_command(IDGCAL_PHASE_ARGUMENTS, options, include_amplitude=False)
@@ -373,4 +332,45 @@ def build_plot_solutions_command(
         command.append(f"--root={root}")
     if first_dir:
         command.append("--first-dir")
+    return command
+
+
+def parse_steps(steps: object) -> list[str]:
+    """Parse a DP3 steps token into individual step names."""
+    return [step.strip() for step in str(steps).strip("[]").split(",") if step.strip()]
+
+
+def _first_model_image(model_images: list[str]) -> str:
+    if not isinstance(model_images, list) or not model_images:
+        raise ValueError("model_images must be a non-empty list")
+    return str(model_images[0])
+
+
+def _idgcal_solve_command(
+    dp3_arguments: list[str],
+    options: IdgcalScreenSolveOptions,
+    *,
+    include_amplitude: bool,
+) -> list[str]:
+    if include_amplitude and options.solint_amplitude is None:
+        raise ValueError("solint_amplitude is required for phase-and-gain IDGCal solves")
+    command = [
+        "DP3",
+        *dp3_arguments,
+        f"msin={options.msin}",
+        f"msin.starttime={options.starttime}",
+        f"msin.ntimes={options.ntimes}",
+        f"solve.h5parm={options.h5parm}",
+        f"solve.solintphase={options.solint_phase}",
+    ]
+    if include_amplitude:
+        command.append(f"solve.solintamplitude={options.solint_amplitude}")
+    command.extend(
+        [
+            f"solve.modelimage={_first_model_image(options.model_images)}",
+            f"solve.maxiter={options.maxiter}",
+            f"solve.antennaconstraint={options.antennaconstraint}",
+            f"numthreads={options.num_threads}",
+        ]
+    )
     return command

@@ -27,37 +27,105 @@ from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import directory_record, validate_output_record
 
 
-def _run_command_and_validate_directory(
-    command: list[str],
-    output_path: str,
+def predict_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+) -> dict:
+    """Prefect entry point for Predict."""
+    return run_flow_with_task_runner(
+        _predict_flow,
+        payload,
+        flow_run_name=operation_run_name(payload, "predict", mode=payload.get("mode")),
+        execution_config=execution_config,
+    )
+
+
+@flow(name="predict")
+def _predict_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+) -> dict:
+    """Prefect implementation for Predict."""
+    with publish_python_logs_to_prefect():
+        return _run_predict_prefect_tasks(payload, execution_config=execution_config)
+
+
+def _run_predict_prefect_tasks(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+) -> dict:
+    assert_serializable_payload(payload)
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    payload = validate_predict_payload(payload)
+    model_outputs = [
+        predict_model_data_task.with_options(
+            **task_run_options("dp3_predict_chunk", index + 1, tags=["dp3"])
+        ).submit(
+            predict_task,
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, predict_task in enumerate(payload["predict_tasks"])
+    ]
+    postprocess_outputs = [
+        predict_postprocess_task.with_options(
+            **task_run_options("postprocess", index + 1, tags=["python", "casacore"])
+        ).submit(
+            payload["mode"],
+            postprocess_task,
+            _model_output_futures_for_postprocess(
+                postprocess_task,
+                payload["predict_tasks"],
+                model_outputs,
+            ),
+            payload["pipeline_working_dir"],
+        )
+        for index, postprocess_task in enumerate(payload["postprocess_tasks"])
+    ]
+    try:
+        postprocess_outputs = [output.result() for output in postprocess_outputs]
+    except Exception:
+        for model_output in model_outputs:
+            try:
+                model_output.result()
+            except Exception:
+                raise
+        raise
+    return _result_from_postprocess_records(payload["mode"], postprocess_outputs)
+
+
+@task(name="dp3_predict_chunk")
+def predict_model_data_task(
+    predict_task: PredictModelTaskPayload,
     pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
+    execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return require_directory(output_path, "Predict output")
-
-
-def _glob_directory_records(
-    patterns: list[str],
-    exclude_suffixes: tuple[str, ...] = (),
-) -> list[dict]:
-    records = []
-    for pattern in patterns:
-        for path in sorted(glob.glob(pattern)):
-            if os.path.isdir(path) and not path.endswith(exclude_suffixes):
-                records.append(directory_record(path))
-    if not records:
-        patterns_text = ", ".join(patterns)
-        raise FileNotFoundError(
-            f"Predict post-processing outputs were not created: {patterns_text}"
+    """Prefect task wrapper for one DP3 prediction."""
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        return run_predict_model_data(
+            predict_task,
+            pipeline_working_dir,
+            execution_config=execution_config,
+            shell_operation_cls=shell_operation_cls,
         )
-    return records
+
+
+@task(name="postprocess")
+def predict_postprocess_task(
+    mode: str,
+    postprocess_task: PredictPostprocessPayload,
+    model_outputs: list[dict],
+    pipeline_working_dir: str,
+) -> list[dict]:
+    """Prefect task wrapper for DI add or DD subtract post-processing."""
+    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
+        return run_predict_postprocess(
+            mode,
+            postprocess_task,
+            model_outputs,
+            pipeline_working_dir,
+        )
 
 
 def run_predict_model_data(
@@ -150,60 +218,6 @@ def run_predict_postprocess(
     return _glob_directory_records(output_patterns, exclude_suffixes=exclude_suffixes)
 
 
-@task(name="dp3_predict_chunk")
-def predict_model_data_task(
-    predict_task: PredictModelTaskPayload,
-    pipeline_working_dir: str,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Prefect task wrapper for one DP3 prediction."""
-    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
-        return run_predict_model_data(
-            predict_task,
-            pipeline_working_dir,
-            execution_config=execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-
-
-@task(name="postprocess")
-def predict_postprocess_task(
-    mode: str,
-    postprocess_task: PredictPostprocessPayload,
-    model_outputs: list[dict],
-    pipeline_working_dir: str,
-) -> list[dict]:
-    """Prefect task wrapper for DI add or DD subtract post-processing."""
-    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
-        return run_predict_postprocess(
-            mode,
-            postprocess_task,
-            model_outputs,
-            pipeline_working_dir,
-        )
-
-
-def _result_from_postprocess_records(mode: str, outputs: list[list[dict]]) -> dict:
-    key = "msfiles_di_cal" if mode == "di" else "subtract_models"
-    result = {key: outputs}
-    validate_output_record(result[key])
-    return result
-
-
-def _predict_task_matches_postprocess(
-    predict_task: PredictModelTaskPayload,
-    postprocess_task: PredictPostprocessPayload,
-) -> bool:
-    """Return True when a model-data task feeds one observation postprocess task."""
-    model_output_name = os.path.basename(predict_task["msout"])
-    observation_name = os.path.basename(postprocess_task["msobs"])
-    same_msin = predict_task["msin"] == postprocess_task["msobs"]
-    same_output_prefix = model_output_name.startswith(observation_name)
-    same_starttime = predict_task["starttime"] == postprocess_task["obs_starttime"]
-    return (same_msin or same_output_prefix) and same_starttime
-
-
 def _model_output_futures_for_postprocess(
     postprocess_task: PredictPostprocessPayload,
     predict_tasks: list[PredictModelTaskPayload],
@@ -223,68 +237,54 @@ def _model_output_futures_for_postprocess(
     return matched_futures
 
 
-def _run_predict_prefect_tasks(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
+def _predict_task_matches_postprocess(
+    predict_task: PredictModelTaskPayload,
+    postprocess_task: PredictPostprocessPayload,
+) -> bool:
+    """Return True when a model-data task feeds one observation postprocess task."""
+    model_output_name = os.path.basename(predict_task["msout"])
+    observation_name = os.path.basename(postprocess_task["msobs"])
+    same_msin = predict_task["msin"] == postprocess_task["msobs"]
+    same_output_prefix = model_output_name.startswith(observation_name)
+    same_starttime = predict_task["starttime"] == postprocess_task["obs_starttime"]
+    return (same_msin or same_output_prefix) and same_starttime
+
+
+def _result_from_postprocess_records(mode: str, outputs: list[list[dict]]) -> dict:
+    key = "msfiles_di_cal" if mode == "di" else "subtract_models"
+    result = {key: outputs}
+    validate_output_record(result[key])
+    return result
+
+
+def _run_command_and_validate_directory(
+    command: list[str],
+    output_path: str,
+    pipeline_working_dir: str,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
 ) -> dict:
-    assert_serializable_payload(payload)
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    payload = validate_predict_payload(payload)
-    model_outputs = [
-        predict_model_data_task.with_options(
-            **task_run_options("dp3_predict_chunk", index + 1, tags=["dp3"])
-        ).submit(
-            predict_task,
-            payload["pipeline_working_dir"],
-            execution_config=config,
-        )
-        for index, predict_task in enumerate(payload["predict_tasks"])
-    ]
-    postprocess_outputs = [
-        predict_postprocess_task.with_options(
-            **task_run_options("postprocess", index + 1, tags=["python", "casacore"])
-        ).submit(
-            payload["mode"],
-            postprocess_task,
-            _model_output_futures_for_postprocess(
-                postprocess_task,
-                payload["predict_tasks"],
-                model_outputs,
-            ),
-            payload["pipeline_working_dir"],
-        )
-        for index, postprocess_task in enumerate(payload["postprocess_tasks"])
-    ]
-    try:
-        postprocess_outputs = [output.result() for output in postprocess_outputs]
-    except Exception:
-        for model_output in model_outputs:
-            try:
-                model_output.result()
-            except Exception:
-                raise
-        raise
-    return _result_from_postprocess_records(payload["mode"], postprocess_outputs)
-
-
-@flow(name="predict")
-def _predict_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect implementation for Predict."""
-    with publish_python_logs_to_prefect():
-        return _run_predict_prefect_tasks(payload, execution_config=execution_config)
-
-
-def predict_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect entry point for Predict."""
-    return run_flow_with_task_runner(
-        _predict_flow,
-        payload,
-        flow_run_name=operation_run_name(payload, "predict", mode=payload.get("mode")),
-        execution_config=execution_config,
+    run_external_command(
+        command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
     )
+    return require_directory(output_path, "Predict output")
+
+
+def _glob_directory_records(
+    patterns: list[str],
+    exclude_suffixes: tuple[str, ...] = (),
+) -> list[dict]:
+    records = []
+    for pattern in patterns:
+        for path in sorted(glob.glob(pattern)):
+            if os.path.isdir(path) and not path.endswith(exclude_suffixes):
+                records.append(directory_record(path))
+    if not records:
+        patterns_text = ", ".join(patterns)
+        raise FileNotFoundError(
+            f"Predict post-processing outputs were not created: {patterns_text}"
+        )
+    return records

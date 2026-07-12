@@ -17,6 +17,420 @@ from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
 
 
+def image_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect entry point for imaging."""
+    return run_flow_with_task_runner(
+        _image_flow,
+        payload,
+        flow_run_name=operation_run_name(payload, "image"),
+        execution_config=execution_config,
+    )
+
+
+@flow(name="image")
+def _image_flow(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+):
+    """Prefect implementation for imaging."""
+    with publish_python_logs_to_prefect():
+        return _run_image_prefect_tasks(payload, execution_config=execution_config)
+
+
+def _run_image_prefect_tasks(
+    payload: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
+) -> dict:
+    assert_serializable_payload(payload)
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    payload = validate_image_payload(payload)
+    (
+        prepared_record_futures,
+        concat_sector_futures,
+        wsclean_sector_futures,
+        finished_wsclean_sector_futures,
+        residual_visibilities_sector_futures,
+        prepared_sector_futures,
+        filtered_sector_futures,
+        diagnostics_sector_futures,
+        image_cube_sector_futures,
+        catalog_sector_futures,
+        normalization_sector_futures,
+        restored_model_sector_futures,
+        compression_sector_futures,
+        finalized_sector_futures,
+    ) = _submit_split_image_sector_tasks(payload, config)
+    sector_outputs = _collect_image_sector_results(
+        prepared_record_futures,
+        concat_sector_futures,
+        wsclean_sector_futures,
+        finished_wsclean_sector_futures,
+        residual_visibilities_sector_futures,
+        prepared_sector_futures,
+        filtered_sector_futures,
+        diagnostics_sector_futures,
+        image_cube_sector_futures,
+        catalog_sector_futures,
+        normalization_sector_futures,
+        restored_model_sector_futures,
+        compression_sector_futures,
+        finalized_sector_futures,
+    )
+    return _result_from_sector_records(sector_outputs)
+
+
+def _submit_split_image_sector_tasks(
+    payload: Mapping[str, object],
+    config: ExecutionConfig,
+):
+    sectors = list(payload["sectors"])
+
+    def sector_step_name(index: int, *steps: object) -> str:
+        if len(sectors) == 1:
+            return task_run_name(*steps)
+        sector = sectors[index]
+        return task_run_name(sector.get("image_name") or f"sector_{index + 1}", *steps)
+
+    prepared_record_futures = [
+        [
+            image_sector_prepare_visibility_task.with_options(
+                **task_run_options(
+                    sector_step_name(index, "prepare_chunk", task_index + 1),
+                    tags=["dp3"],
+                )
+            ).submit(
+                sector,
+                prepare_task,
+                payload["pipeline_working_dir"],
+                execution_config=config,
+            )
+            for task_index, prepare_task in enumerate(sector["prepare_tasks"])
+        ]
+        for index, sector in enumerate(sectors)
+    ]
+    concat_sector_futures = [
+        image_sector_concatenate_task.with_options(
+            **task_run_options(
+                sector_step_name(index, "concatenate_visibilities"),
+                tags=["casacore"],
+            )
+        ).submit(
+            sector,
+            prepared_record_futures[index],
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    wsclean_sector_futures = [
+        image_sector_wsclean_task.with_options(
+            **task_run_options(sector_step_name(index, "wsclean_image"), tags=["wsclean"])
+        ).submit(
+            sector,
+            concat_sector_futures[index],
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    finished_wsclean_sector_futures = [
+        image_sector_finish_wsclean_task.with_options(
+            **task_run_options(
+                sector_step_name(index, "finish_wsclean_images"),
+                tags=["wsclean"] if bool(sector.get("peel_bright_sources", False)) else ["python"],
+            )
+        ).submit(
+            sector,
+            wsclean_sector_futures[index],
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    residual_visibilities_sector_futures = [
+        (
+            image_sector_residual_visibilities_task.with_options(
+                **task_run_options(
+                    sector_step_name(index, "make_residual_visibilities"),
+                    tags=["dp3"],
+                )
+            ).submit(
+                sector,
+                concat_sector_futures[index],
+                finished_wsclean_sector_futures[index],
+                payload["pipeline_working_dir"],
+                execution_config=config,
+            )
+            if bool(sector.get("make_residual_visibilities", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    prepared_sector_futures = [
+        image_sector_prepare_outputs_task.with_options(
+            **task_run_options(sector_step_name(index, "prepare_outputs"), tags=["python"])
+        ).submit(
+            prepared_record_futures[index],
+            concat_sector_futures[index],
+            finished_wsclean_sector_futures[index],
+            payload["pipeline_working_dir"],
+            residual_visibilities_sector_futures[index],
+        )
+        for index, _sector in enumerate(sectors)
+    ]
+    filtered_sector_futures = [
+        image_sector_filter_skymodel_task.with_options(
+            **task_run_options(sector_step_name(index, "filter_skymodel"), tags=["python"])
+        ).submit(
+            sector,
+            prepared_sector_futures[index],
+            payload["pipeline_working_dir"],
+            execution_config=config,
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    diagnostics_sector_futures = [
+        image_sector_diagnostics_task.with_options(
+            **task_run_options(
+                sector_step_name(index, "calculate_image_diagnostics"),
+                tags=["python"],
+            )
+        ).submit(
+            sector,
+            prepared_sector_futures[index],
+            filtered_sector_futures[index],
+            payload["pipeline_working_dir"],
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    image_cube_sector_futures = [
+        (
+            image_sector_make_image_cube_task.with_options(
+                **task_run_options(sector_step_name(index, "make_image_cube"), tags=["python"])
+            ).submit(
+                sector,
+                prepared_sector_futures[index],
+                payload["pipeline_working_dir"],
+            )
+            if bool(sector.get("make_image_cube", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    catalog_sector_futures = [
+        (
+            image_sector_make_catalog_from_image_cube_task.with_options(
+                **task_run_options(
+                    sector_step_name(index, "make_catalog_from_image_cube"),
+                    tags=["pybdsf"],
+                )
+            ).submit(
+                sector,
+                image_cube_sector_futures[index],
+                payload["pipeline_working_dir"],
+                execution_config=config,
+            )
+            if bool(sector.get("normalize_flux_scale", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    normalization_sector_futures = [
+        (
+            image_sector_normalize_flux_scale_task.with_options(
+                **task_run_options(
+                    sector_step_name(index, "normalize_flux_scale"),
+                    tags=["python"],
+                )
+            ).submit(
+                sector,
+                prepared_sector_futures[index],
+                catalog_sector_futures[index],
+                payload["pipeline_working_dir"],
+            )
+            if bool(sector.get("normalize_flux_scale", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    restored_model_sector_futures = [
+        (
+            image_sector_restore_skymodel_task.with_options(
+                **task_run_options(sector_step_name(index, "restore_skymodel"), tags=["python"])
+            ).submit(
+                sector,
+                prepared_sector_futures[index],
+                filtered_sector_futures[index],
+                payload["pipeline_working_dir"],
+            )
+            if bool(sector.get("save_filtered_model_image", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    compression_sector_futures = [
+        (
+            image_sector_compress_images_task.with_options(
+                **task_run_options(sector_step_name(index, "compress_images"), tags=["fpack"])
+            ).submit(
+                sector,
+                prepared_sector_futures[index],
+                diagnostics_sector_futures[index],
+                payload["pipeline_working_dir"],
+                execution_config=config,
+            )
+            if bool(sector.get("compress_images", False))
+            else None
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    finalized_sector_futures = [
+        image_sector_finalize_task.with_options(
+            **task_run_options(sector_step_name(index, "finalize"), tags=["python"])
+        ).submit(
+            sector,
+            prepared_sector_futures[index],
+            filtered_sector_futures[index],
+            diagnostics_sector_futures[index],
+            payload["pipeline_working_dir"],
+            image_cube_sector_futures[index],
+            catalog_sector_futures[index],
+            normalization_sector_futures[index],
+            restored_model_sector_futures[index],
+            compression_sector_futures[index],
+            execution_config=config,
+        )
+        for index, sector in enumerate(sectors)
+    ]
+    return (
+        prepared_record_futures,
+        concat_sector_futures,
+        wsclean_sector_futures,
+        finished_wsclean_sector_futures,
+        residual_visibilities_sector_futures,
+        prepared_sector_futures,
+        filtered_sector_futures,
+        diagnostics_sector_futures,
+        image_cube_sector_futures,
+        catalog_sector_futures,
+        normalization_sector_futures,
+        restored_model_sector_futures,
+        compression_sector_futures,
+        finalized_sector_futures,
+    )
+
+
+def _collect_image_sector_results(
+    prepared_record_futures,
+    concat_sector_futures,
+    wsclean_sector_futures,
+    finished_wsclean_sector_futures,
+    residual_visibilities_sector_futures,
+    prepared_sector_futures,
+    filtered_sector_futures,
+    diagnostics_sector_futures,
+    image_cube_sector_futures,
+    catalog_sector_futures,
+    normalization_sector_futures,
+    restored_model_sector_futures,
+    compression_sector_futures,
+    finalized_sector_futures,
+) -> list[dict]:
+    try:
+        return [output.result() for output in finalized_sector_futures]
+    except UnfinishedRun:
+        for sector_prepared_records in prepared_record_futures:
+            for prepared_record in sector_prepared_records:
+                prepared_record.result()
+        for concat_sector in concat_sector_futures:
+            concat_sector.result()
+        for wsclean_sector in wsclean_sector_futures:
+            wsclean_sector.result()
+        for finished_wsclean_sector in finished_wsclean_sector_futures:
+            finished_wsclean_sector.result()
+        for residual_visibilities_sector in residual_visibilities_sector_futures:
+            if residual_visibilities_sector is not None:
+                residual_visibilities_sector.result()
+        for prepared_sector in prepared_sector_futures:
+            prepared_sector.result()
+        for filtered_sector in filtered_sector_futures:
+            filtered_sector.result()
+        for diagnostics_sector in diagnostics_sector_futures:
+            diagnostics_sector.result()
+        for image_cube_sector in image_cube_sector_futures:
+            if image_cube_sector is not None:
+                image_cube_sector.result()
+        for catalog_sector in catalog_sector_futures:
+            if catalog_sector is not None:
+                catalog_sector.result()
+        for normalization_sector in normalization_sector_futures:
+            if normalization_sector is not None:
+                normalization_sector.result()
+        for restored_model_sector in restored_model_sector_futures:
+            if restored_model_sector is not None:
+                restored_model_sector.result()
+        for compression_sector in compression_sector_futures:
+            if compression_sector is not None:
+                compression_sector.result()
+        raise
+
+
+def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
+    result = {
+        "filtered_skymodel_true_sky": [
+            sector["filtered_skymodel_true_sky"] for sector in sector_outputs
+        ],
+        "filtered_skymodel_apparent_sky": [
+            sector["filtered_skymodel_apparent_sky"] for sector in sector_outputs
+        ],
+        "pybdsf_catalog": [sector["pybdsf_catalog"] for sector in sector_outputs],
+        "sector_diagnostics": [sector["sector_diagnostics"] for sector in sector_outputs],
+        "sector_offsets": [sector["sector_offsets"] for sector in sector_outputs],
+        "sector_diagnostic_plots": [sector["sector_diagnostic_plots"] for sector in sector_outputs],
+        "visibilities": [sector["visibilities"] for sector in sector_outputs],
+        "sector_I_images": [sector["sector_I_images"] for sector in sector_outputs],
+        "sector_extra_images": [sector["sector_extra_images"] for sector in sector_outputs],
+        "source_filtering_mask": [sector["source_filtering_mask"] for sector in sector_outputs],
+    }
+    if any(sector["sector_skymodels"] is not None for sector in sector_outputs):
+        result["sector_skymodels"] = [sector["sector_skymodels"] for sector in sector_outputs]
+    if any("sector_region_file" in sector for sector in sector_outputs):
+        result["sector_region_file"] = [
+            sector.get("sector_region_file") for sector in sector_outputs
+        ]
+    if any("sector_skymodel_image_fits" in sector for sector in sector_outputs):
+        result["sector_skymodel_image_fits"] = [
+            sector.get("sector_skymodel_image_fits") for sector in sector_outputs
+        ]
+    if any("sector_image_cubes" in sector for sector in sector_outputs):
+        result["sector_image_cubes"] = [
+            sector.get("sector_image_cubes") for sector in sector_outputs
+        ]
+        result["sector_image_cube_beams"] = [
+            sector.get("sector_image_cube_beams") for sector in sector_outputs
+        ]
+        result["sector_image_cube_frequencies"] = [
+            sector.get("sector_image_cube_frequencies") for sector in sector_outputs
+        ]
+    if any("sector_normalize_h5parm" in sector for sector in sector_outputs):
+        result["sector_source_catalog"] = [
+            sector.get("sector_source_catalog") for sector in sector_outputs
+        ]
+        result["sector_normalize_h5parm"] = [
+            sector.get("sector_normalize_h5parm") for sector in sector_outputs
+        ]
+    if any("residual_visibilities" in sector for sector in sector_outputs):
+        result["residual_visibilities"] = [
+            sector.get("residual_visibilities") for sector in sector_outputs
+        ]
+    for value in result.values():
+        validate_output_record(value, allow_none=True)
+    return result
+
+
 @task(name="sector")
 def image_sector_task(
     sector: ImageSectorPayload,
@@ -355,417 +769,3 @@ def image_sector_finalize_task(
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
         )
-
-
-def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
-    result = {
-        "filtered_skymodel_true_sky": [
-            sector["filtered_skymodel_true_sky"] for sector in sector_outputs
-        ],
-        "filtered_skymodel_apparent_sky": [
-            sector["filtered_skymodel_apparent_sky"] for sector in sector_outputs
-        ],
-        "pybdsf_catalog": [sector["pybdsf_catalog"] for sector in sector_outputs],
-        "sector_diagnostics": [sector["sector_diagnostics"] for sector in sector_outputs],
-        "sector_offsets": [sector["sector_offsets"] for sector in sector_outputs],
-        "sector_diagnostic_plots": [sector["sector_diagnostic_plots"] for sector in sector_outputs],
-        "visibilities": [sector["visibilities"] for sector in sector_outputs],
-        "sector_I_images": [sector["sector_I_images"] for sector in sector_outputs],
-        "sector_extra_images": [sector["sector_extra_images"] for sector in sector_outputs],
-        "source_filtering_mask": [sector["source_filtering_mask"] for sector in sector_outputs],
-    }
-    if any(sector["sector_skymodels"] is not None for sector in sector_outputs):
-        result["sector_skymodels"] = [sector["sector_skymodels"] for sector in sector_outputs]
-    if any("sector_region_file" in sector for sector in sector_outputs):
-        result["sector_region_file"] = [
-            sector.get("sector_region_file") for sector in sector_outputs
-        ]
-    if any("sector_skymodel_image_fits" in sector for sector in sector_outputs):
-        result["sector_skymodel_image_fits"] = [
-            sector.get("sector_skymodel_image_fits") for sector in sector_outputs
-        ]
-    if any("sector_image_cubes" in sector for sector in sector_outputs):
-        result["sector_image_cubes"] = [
-            sector.get("sector_image_cubes") for sector in sector_outputs
-        ]
-        result["sector_image_cube_beams"] = [
-            sector.get("sector_image_cube_beams") for sector in sector_outputs
-        ]
-        result["sector_image_cube_frequencies"] = [
-            sector.get("sector_image_cube_frequencies") for sector in sector_outputs
-        ]
-    if any("sector_normalize_h5parm" in sector for sector in sector_outputs):
-        result["sector_source_catalog"] = [
-            sector.get("sector_source_catalog") for sector in sector_outputs
-        ]
-        result["sector_normalize_h5parm"] = [
-            sector.get("sector_normalize_h5parm") for sector in sector_outputs
-        ]
-    if any("residual_visibilities" in sector for sector in sector_outputs):
-        result["residual_visibilities"] = [
-            sector.get("residual_visibilities") for sector in sector_outputs
-        ]
-    for value in result.values():
-        validate_output_record(value, allow_none=True)
-    return result
-
-
-def _submit_split_image_sector_tasks(
-    payload: Mapping[str, object],
-    config: ExecutionConfig,
-):
-    sectors = list(payload["sectors"])
-
-    def sector_step_name(index: int, *steps: object) -> str:
-        if len(sectors) == 1:
-            return task_run_name(*steps)
-        sector = sectors[index]
-        return task_run_name(sector.get("image_name") or f"sector_{index + 1}", *steps)
-
-    prepared_record_futures = [
-        [
-            image_sector_prepare_visibility_task.with_options(
-                **task_run_options(
-                    sector_step_name(index, "prepare_chunk", task_index + 1),
-                    tags=["dp3"],
-                )
-            ).submit(
-                sector,
-                prepare_task,
-                payload["pipeline_working_dir"],
-                execution_config=config,
-            )
-            for task_index, prepare_task in enumerate(sector["prepare_tasks"])
-        ]
-        for index, sector in enumerate(sectors)
-    ]
-    concat_sector_futures = [
-        image_sector_concatenate_task.with_options(
-            **task_run_options(
-                sector_step_name(index, "concatenate_visibilities"),
-                tags=["casacore"],
-            )
-        ).submit(
-            sector,
-            prepared_record_futures[index],
-            payload["pipeline_working_dir"],
-            execution_config=config,
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    wsclean_sector_futures = [
-        image_sector_wsclean_task.with_options(
-            **task_run_options(sector_step_name(index, "wsclean_image"), tags=["wsclean"])
-        ).submit(
-            sector,
-            concat_sector_futures[index],
-            payload["pipeline_working_dir"],
-            execution_config=config,
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    finished_wsclean_sector_futures = [
-        image_sector_finish_wsclean_task.with_options(
-            **task_run_options(
-                sector_step_name(index, "finish_wsclean_images"),
-                tags=["wsclean"] if bool(sector.get("peel_bright_sources", False)) else ["python"],
-            )
-        ).submit(
-            sector,
-            wsclean_sector_futures[index],
-            payload["pipeline_working_dir"],
-            execution_config=config,
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    residual_visibilities_sector_futures = [
-        (
-            image_sector_residual_visibilities_task.with_options(
-                **task_run_options(
-                    sector_step_name(index, "make_residual_visibilities"),
-                    tags=["dp3"],
-                )
-            ).submit(
-                sector,
-                concat_sector_futures[index],
-                finished_wsclean_sector_futures[index],
-                payload["pipeline_working_dir"],
-                execution_config=config,
-            )
-            if bool(sector.get("make_residual_visibilities", False))
-            else None
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    prepared_sector_futures = [
-        image_sector_prepare_outputs_task.with_options(
-            **task_run_options(sector_step_name(index, "prepare_outputs"), tags=["python"])
-        ).submit(
-            prepared_record_futures[index],
-            concat_sector_futures[index],
-            finished_wsclean_sector_futures[index],
-            payload["pipeline_working_dir"],
-            residual_visibilities_sector_futures[index],
-        )
-        for index, _sector in enumerate(sectors)
-    ]
-    filtered_sector_futures = [
-        image_sector_filter_skymodel_task.with_options(
-            **task_run_options(sector_step_name(index, "filter_skymodel"), tags=["python"])
-        ).submit(
-            sector,
-            prepared_sector_futures[index],
-            payload["pipeline_working_dir"],
-            execution_config=config,
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    diagnostics_sector_futures = [
-        image_sector_diagnostics_task.with_options(
-            **task_run_options(
-                sector_step_name(index, "calculate_image_diagnostics"),
-                tags=["python"],
-            )
-        ).submit(
-            sector,
-            prepared_sector_futures[index],
-            filtered_sector_futures[index],
-            payload["pipeline_working_dir"],
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    image_cube_sector_futures = [
-        (
-            image_sector_make_image_cube_task.with_options(
-                **task_run_options(sector_step_name(index, "make_image_cube"), tags=["python"])
-            ).submit(
-                sector,
-                prepared_sector_futures[index],
-                payload["pipeline_working_dir"],
-            )
-            if bool(sector.get("make_image_cube", False))
-            else None
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    catalog_sector_futures = [
-        (
-            image_sector_make_catalog_from_image_cube_task.with_options(
-                **task_run_options(
-                    sector_step_name(index, "make_catalog_from_image_cube"),
-                    tags=["pybdsf"],
-                )
-            ).submit(
-                sector,
-                image_cube_sector_futures[index],
-                payload["pipeline_working_dir"],
-                execution_config=config,
-            )
-            if bool(sector.get("normalize_flux_scale", False))
-            else None
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    normalization_sector_futures = [
-        (
-            image_sector_normalize_flux_scale_task.with_options(
-                **task_run_options(
-                    sector_step_name(index, "normalize_flux_scale"),
-                    tags=["python"],
-                )
-            ).submit(
-                sector,
-                prepared_sector_futures[index],
-                catalog_sector_futures[index],
-                payload["pipeline_working_dir"],
-            )
-            if bool(sector.get("normalize_flux_scale", False))
-            else None
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    restored_model_sector_futures = [
-        (
-            image_sector_restore_skymodel_task.with_options(
-                **task_run_options(sector_step_name(index, "restore_skymodel"), tags=["python"])
-            ).submit(
-                sector,
-                prepared_sector_futures[index],
-                filtered_sector_futures[index],
-                payload["pipeline_working_dir"],
-            )
-            if bool(sector.get("save_filtered_model_image", False))
-            else None
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    compression_sector_futures = [
-        (
-            image_sector_compress_images_task.with_options(
-                **task_run_options(sector_step_name(index, "compress_images"), tags=["fpack"])
-            ).submit(
-                sector,
-                prepared_sector_futures[index],
-                diagnostics_sector_futures[index],
-                payload["pipeline_working_dir"],
-                execution_config=config,
-            )
-            if bool(sector.get("compress_images", False))
-            else None
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    finalized_sector_futures = [
-        image_sector_finalize_task.with_options(
-            **task_run_options(sector_step_name(index, "finalize"), tags=["python"])
-        ).submit(
-            sector,
-            prepared_sector_futures[index],
-            filtered_sector_futures[index],
-            diagnostics_sector_futures[index],
-            payload["pipeline_working_dir"],
-            image_cube_sector_futures[index],
-            catalog_sector_futures[index],
-            normalization_sector_futures[index],
-            restored_model_sector_futures[index],
-            compression_sector_futures[index],
-            execution_config=config,
-        )
-        for index, sector in enumerate(sectors)
-    ]
-    return (
-        prepared_record_futures,
-        concat_sector_futures,
-        wsclean_sector_futures,
-        finished_wsclean_sector_futures,
-        residual_visibilities_sector_futures,
-        prepared_sector_futures,
-        filtered_sector_futures,
-        diagnostics_sector_futures,
-        image_cube_sector_futures,
-        catalog_sector_futures,
-        normalization_sector_futures,
-        restored_model_sector_futures,
-        compression_sector_futures,
-        finalized_sector_futures,
-    )
-
-
-def _collect_image_sector_results(
-    prepared_record_futures,
-    concat_sector_futures,
-    wsclean_sector_futures,
-    finished_wsclean_sector_futures,
-    residual_visibilities_sector_futures,
-    prepared_sector_futures,
-    filtered_sector_futures,
-    diagnostics_sector_futures,
-    image_cube_sector_futures,
-    catalog_sector_futures,
-    normalization_sector_futures,
-    restored_model_sector_futures,
-    compression_sector_futures,
-    finalized_sector_futures,
-) -> list[dict]:
-    try:
-        return [output.result() for output in finalized_sector_futures]
-    except UnfinishedRun:
-        for sector_prepared_records in prepared_record_futures:
-            for prepared_record in sector_prepared_records:
-                prepared_record.result()
-        for concat_sector in concat_sector_futures:
-            concat_sector.result()
-        for wsclean_sector in wsclean_sector_futures:
-            wsclean_sector.result()
-        for finished_wsclean_sector in finished_wsclean_sector_futures:
-            finished_wsclean_sector.result()
-        for residual_visibilities_sector in residual_visibilities_sector_futures:
-            if residual_visibilities_sector is not None:
-                residual_visibilities_sector.result()
-        for prepared_sector in prepared_sector_futures:
-            prepared_sector.result()
-        for filtered_sector in filtered_sector_futures:
-            filtered_sector.result()
-        for diagnostics_sector in diagnostics_sector_futures:
-            diagnostics_sector.result()
-        for image_cube_sector in image_cube_sector_futures:
-            if image_cube_sector is not None:
-                image_cube_sector.result()
-        for catalog_sector in catalog_sector_futures:
-            if catalog_sector is not None:
-                catalog_sector.result()
-        for normalization_sector in normalization_sector_futures:
-            if normalization_sector is not None:
-                normalization_sector.result()
-        for restored_model_sector in restored_model_sector_futures:
-            if restored_model_sector is not None:
-                restored_model_sector.result()
-        for compression_sector in compression_sector_futures:
-            if compression_sector is not None:
-                compression_sector.result()
-        raise
-
-
-def _run_image_prefect_tasks(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-) -> dict:
-    assert_serializable_payload(payload)
-    config = execution_config or ExecutionConfig(task_runner="sync")
-    payload = validate_image_payload(payload)
-    (
-        prepared_record_futures,
-        concat_sector_futures,
-        wsclean_sector_futures,
-        finished_wsclean_sector_futures,
-        residual_visibilities_sector_futures,
-        prepared_sector_futures,
-        filtered_sector_futures,
-        diagnostics_sector_futures,
-        image_cube_sector_futures,
-        catalog_sector_futures,
-        normalization_sector_futures,
-        restored_model_sector_futures,
-        compression_sector_futures,
-        finalized_sector_futures,
-    ) = _submit_split_image_sector_tasks(payload, config)
-    sector_outputs = _collect_image_sector_results(
-        prepared_record_futures,
-        concat_sector_futures,
-        wsclean_sector_futures,
-        finished_wsclean_sector_futures,
-        residual_visibilities_sector_futures,
-        prepared_sector_futures,
-        filtered_sector_futures,
-        diagnostics_sector_futures,
-        image_cube_sector_futures,
-        catalog_sector_futures,
-        normalization_sector_futures,
-        restored_model_sector_futures,
-        compression_sector_futures,
-        finalized_sector_futures,
-    )
-    return _result_from_sector_records(sector_outputs)
-
-
-@flow(name="image")
-def _image_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect implementation for imaging."""
-    with publish_python_logs_to_prefect():
-        return _run_image_prefect_tasks(payload, execution_config=execution_config)
-
-
-def image_flow(
-    payload: Mapping[str, object],
-    execution_config: Optional[ExecutionConfig] = None,
-):
-    """Prefect entry point for imaging."""
-    return run_flow_with_task_runner(
-        _image_flow,
-        payload,
-        flow_run_name=operation_run_name(payload, "image"),
-        execution_config=execution_config,
-    )

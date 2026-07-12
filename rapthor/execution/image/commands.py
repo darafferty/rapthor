@@ -107,13 +107,6 @@ class WscleanScreenOptions:
     aterm_config: str = ATERM_CONFIG_FILENAME
 
 
-def _strip_wrapping_shell_quotes(value: str) -> str:
-    """Remove caller-supplied grouping quotes before `shlex.join` applies shell quoting."""
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-        return value[1:-1]
-    return value
-
-
 def build_aterm_config_content(h5parm: str) -> str:
     """Build the a-term configuration file content used by screen imaging."""
     return (
@@ -214,43 +207,6 @@ def build_make_residual_visibilities_command(
         "combine.buffername=MODEL_DATA",
         "combine.operation=subtract",
         f"numthreads={numthreads}",
-    ]
-
-
-def _wsclean_command_base(update_model_required: bool = False) -> list[str]:
-    command = ["wsclean"]
-    if not update_model_required:
-        command.append("-no-update-model-required")
-    command.extend(["-local-rms", "-join-channels"])
-    return command
-
-
-def _wsclean_common_options(options: WscleanOptions) -> list[tuple[str, object]]:
-    return [
-        ("-name", options.name),
-        ("-fits-mask", options.mask),
-        ("-size", options.imsize),
-        ("-niter", options.niter),
-        ("-nmiter", options.nmiter),
-        ("-minuv-l", options.min_uv_lambda),
-        ("-maxuv-l", options.max_uv_lambda),
-        ("-mgain", options.mgain),
-        ("-pol", options.pol),
-        ("-scale", options.cellsize_deg),
-        ("-channels-out", options.channels_out),
-        ("-deconvolution-channels", options.deconvolution_channels),
-        ("-fit-spectral-pol", options.fit_spectral_pol),
-        ("-taper-gaussian", options.taper_arcsec),
-        ("-local-rms-strength", options.local_rms_strength),
-        ("-local-rms-window", options.local_rms_window),
-        ("-local-rms-method", options.local_rms_method),
-        ("-abs-mem", options.memory_gb),
-        ("-auto-mask", options.auto_mask),
-        ("-auto-mask-nmiter", options.auto_mask_nmiter),
-        ("-idg-mode", options.idg_mode),
-        ("-j", options.num_threads),
-        ("-deconvolution-threads", options.num_deconvolution_threads),
-        ("-dd-psf-grid", options.dd_psf_grid),
     ]
 
 
@@ -404,12 +360,6 @@ def build_mpi_wsclean_launch_command(mpi_nnodes: int) -> list[str]:
     ]
 
 
-def _mpi_wsclean_command(wsclean_command: list[str], mpi_nnodes: int) -> list[str]:
-    if not wsclean_command or wsclean_command[0] != "wsclean":
-        raise ValueError("MPI WSClean wrapping requires a serial wsclean command")
-    return build_mpi_wsclean_launch_command(mpi_nnodes) + wsclean_command[1:]
-
-
 def build_wsclean_mpi_no_dde_command(mpi_nnodes: int, options: WscleanOptions) -> list[str]:
     """Build the MPI no-DD WSClean command for one imaging sector."""
     return _mpi_wsclean_command(build_wsclean_no_dde_command(options), mpi_nnodes)
@@ -490,3 +440,53 @@ def build_make_catalog_from_image_cube_command(
         f"--threshpix={threshpix}",
         f"--ncores={ncores}",
     )
+
+
+def _strip_wrapping_shell_quotes(value: str) -> str:
+    """Remove caller-supplied grouping quotes before `shlex.join` applies shell quoting."""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def _wsclean_command_base(update_model_required: bool = False) -> list[str]:
+    command = ["wsclean"]
+    if not update_model_required:
+        command.append("-no-update-model-required")
+    command.extend(["-local-rms", "-join-channels"])
+    return command
+
+
+def _wsclean_common_options(options: WscleanOptions) -> list[tuple[str, object]]:
+    return [
+        ("-name", options.name),
+        ("-fits-mask", options.mask),
+        ("-size", options.imsize),
+        ("-niter", options.niter),
+        ("-nmiter", options.nmiter),
+        ("-minuv-l", options.min_uv_lambda),
+        ("-maxuv-l", options.max_uv_lambda),
+        ("-mgain", options.mgain),
+        ("-pol", options.pol),
+        ("-scale", options.cellsize_deg),
+        ("-channels-out", options.channels_out),
+        ("-deconvolution-channels", options.deconvolution_channels),
+        ("-fit-spectral-pol", options.fit_spectral_pol),
+        ("-taper-gaussian", options.taper_arcsec),
+        ("-local-rms-strength", options.local_rms_strength),
+        ("-local-rms-window", options.local_rms_window),
+        ("-local-rms-method", options.local_rms_method),
+        ("-abs-mem", options.memory_gb),
+        ("-auto-mask", options.auto_mask),
+        ("-auto-mask-nmiter", options.auto_mask_nmiter),
+        ("-idg-mode", options.idg_mode),
+        ("-j", options.num_threads),
+        ("-deconvolution-threads", options.num_deconvolution_threads),
+        ("-dd-psf-grid", options.dd_psf_grid),
+    ]
+
+
+def _mpi_wsclean_command(wsclean_command: list[str], mpi_nnodes: int) -> list[str]:
+    if not wsclean_command or wsclean_command[0] != "wsclean":
+        raise ValueError("MPI WSClean wrapping requires a serial wsclean command")
+    return build_mpi_wsclean_launch_command(mpi_nnodes) + wsclean_command[1:]

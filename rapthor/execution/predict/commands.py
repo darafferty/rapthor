@@ -5,24 +5,6 @@ from typing import Optional
 from rapthor.execution.commands import bool_token, bracketed_list_token
 
 
-def _predict_type(sagecalpredict: bool, h5parm: Optional[str]) -> str:
-    if sagecalpredict:
-        return "sagecalpredict"
-    if h5parm is None:
-        return "predict"
-    return "h5parmpredict"
-
-
-def _applycal_step_names(applycal_steps: Optional[str]) -> list[str]:
-    """Return DP3 applycal step names from a bracketed parset token."""
-    if applycal_steps is None:
-        return []
-    steps = applycal_steps.strip()
-    if steps.startswith("[") and steps.endswith("]"):
-        steps = steps[1:-1]
-    return [step.strip() for step in steps.split(",") if step.strip()]
-
-
 def build_predict_model_data_command(
     msin: str,
     data_colname: str,
@@ -111,3 +93,21 @@ def build_predict_model_data_command(
         ]
     )
     return command
+
+
+def _predict_type(sagecalpredict: bool, h5parm: Optional[str]) -> str:
+    if sagecalpredict:
+        return "sagecalpredict"
+    if h5parm is None:
+        return "predict"
+    return "h5parmpredict"
+
+
+def _applycal_step_names(applycal_steps: Optional[str]) -> list[str]:
+    """Return DP3 applycal step names from a bracketed parset token."""
+    if applycal_steps is None:
+        return []
+    steps = applycal_steps.strip()
+    if steps.startswith("[") and steps.endswith("]"):
+        steps = steps[1:-1]
+    return [step.strip() for step in steps.split(",") if step.strip()]

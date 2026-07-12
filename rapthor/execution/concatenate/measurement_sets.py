@@ -134,6 +134,11 @@ def concat_time_command(msfiles: list[str], output_file: str) -> list[str]:
     ]
 
 
+def copy_measurement_set_command(input_file: str, output_file: str) -> list[str]:
+    """Build the copy command used for a single Measurement Set input."""
+    return ["cp", "-r", "-L", "--no-preserve=mode", input_file, output_file]
+
+
 def _taql_string(value: object) -> str:
     """Return a quoted TaQL string literal for table and output paths."""
     return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
@@ -165,11 +170,6 @@ def _validate_concat_inputs(
         shutil.rmtree(output_file)
         return
     raise FileExistsError("The output Measurement Set exists and overwrite=False")
-
-
-def copy_measurement_set_command(input_file: str, output_file: str) -> list[str]:
-    """Build the copy command used for a single Measurement Set input."""
-    return ["cp", "-r", "-L", "--no-preserve=mode", input_file, output_file]
 
 
 def _frequency_ordered_ms_list(msfiles: list[str]) -> np.ndarray:

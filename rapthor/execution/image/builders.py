@@ -17,26 +17,6 @@ from rapthor.lib.records import (
 )
 
 
-def _pol_token(pol: object) -> str:
-    if isinstance(pol, str):
-        return pol
-    if isinstance(pol, list):
-        return "".join(str(value) for value in pol)
-    raise ValueError("pol must be a string or list")
-
-
-def _is_stokes_i(pol: str) -> bool:
-    return pol.upper() == "I"
-
-
-def _optional_file_record_paths(records: object, label: str) -> Optional[list[str]]:
-    if not records:
-        return None
-    if not isinstance(records, list):
-        raise ValueError(f"{label} must be a list of File records")
-    return [file_record_path(record) for record in records]
-
-
 def image_payload_from_inputs(
     input_parms: Mapping[str, object],
     pipeline_working_dir: object,
@@ -462,3 +442,23 @@ def image_payload_from_inputs(
     }
     assert_serializable_payload(payload)
     return payload
+
+
+def _pol_token(pol: object) -> str:
+    if isinstance(pol, str):
+        return pol
+    if isinstance(pol, list):
+        return "".join(str(value) for value in pol)
+    raise ValueError("pol must be a string or list")
+
+
+def _is_stokes_i(pol: str) -> bool:
+    return pol.upper() == "I"
+
+
+def _optional_file_record_paths(records: object, label: str) -> Optional[list[str]]:
+    if not records:
+        return None
+    if not isinstance(records, list):
+        raise ValueError(f"{label} must be a list of File records")
+    return [file_record_path(record) for record in records]

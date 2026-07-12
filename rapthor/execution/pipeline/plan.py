@@ -36,34 +36,6 @@ SUPPORTED_PIPELINE_FEATURES = frozenset(
 )
 
 
-def _truthy(value: object) -> bool:
-    if isinstance(value, str):
-        return value.strip().lower() in {"true", "yes", "1", "on"}
-    return bool(value)
-
-
-def _parset_get(parset: dict, section: str, key: str, default: object = None) -> object:
-    section_values = parset.get(section, {})
-    if isinstance(section_values, dict):
-        return section_values.get(key, default)
-    return default
-
-
-def _enabled_calibration_modes(strategy: dict) -> list[str]:
-    return [mode for mode, solves in strategy.items() if mode in {"di", "dd"} and solves]
-
-
-def calibration_mode_flags(strategy: dict) -> dict[str, bool]:
-    """Return enabled calibration modes while preserving strategy order."""
-    calibration_modes = ["di", "dd"]
-    if not any(mode in strategy for mode in calibration_modes):
-        raise ValueError(
-            f"Calibration strategy {strategy} does not contain any of the "
-            f"calibration modes {calibration_modes}"
-        )
-    return {mode: bool(strategy.get(mode, [])) for mode in strategy.keys()}
-
-
 def collect_pipeline_features(field: object, strategy_steps: list[dict], parset: dict) -> set[str]:
     """Return feature names requested by a pipeline run."""
     features = set()
@@ -126,3 +98,31 @@ def collect_pipeline_features(field: object, strategy_steps: list[dict], parset:
         features.add("final_cycle")
 
     return features
+
+
+def calibration_mode_flags(strategy: dict) -> dict[str, bool]:
+    """Return enabled calibration modes while preserving strategy order."""
+    calibration_modes = ["di", "dd"]
+    if not any(mode in strategy for mode in calibration_modes):
+        raise ValueError(
+            f"Calibration strategy {strategy} does not contain any of the "
+            f"calibration modes {calibration_modes}"
+        )
+    return {mode: bool(strategy.get(mode, [])) for mode in strategy.keys()}
+
+
+def _truthy(value: object) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "yes", "1", "on"}
+    return bool(value)
+
+
+def _parset_get(parset: dict, section: str, key: str, default: object = None) -> object:
+    section_values = parset.get(section, {})
+    if isinstance(section_values, dict):
+        return section_values.get(key, default)
+    return default
+
+
+def _enabled_calibration_modes(strategy: dict) -> list[str]:
+    return [mode for mode, solves in strategy.items() if mode in {"di", "dd"} and solves]

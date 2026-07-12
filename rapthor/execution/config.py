@@ -13,102 +13,6 @@ DASK_SCHEDULER_ENV = "DASK_SCHEDULER"
 PREFECT_API_URL_ENV = "PREFECT_API_URL"
 
 
-def _optional_str(value: Any) -> Optional[str]:
-    if value in (None, "", "None"):
-        return None
-    return str(value)
-
-
-def _as_bool(value: Any, name: str) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"true", "yes", "1", "on"}:
-            return True
-        if normalized in {"false", "no", "0", "off"}:
-            return False
-    raise ValueError(f"{name} must be a boolean value")
-
-
-def _as_non_negative_int(value: Any, name: str) -> int:
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError) as err:
-        raise ValueError(f"{name} must be an integer") from err
-    if parsed < 0:
-        raise ValueError(f"{name} must be >= 0")
-    return parsed
-
-
-def _as_positive_int(value: Any, name: str) -> int:
-    parsed = _as_non_negative_int(value, name)
-    if parsed <= 0:
-        raise ValueError(f"{name} must be > 0")
-    return parsed
-
-
-def _as_clip_percentile(value: Any, name: str) -> float:
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError) as err:
-        raise ValueError(f"{name} must be a number") from err
-    if not 50.0 < parsed <= 100.0:
-        raise ValueError(f"{name} must be > 50 and <= 100")
-    return parsed
-
-
-def _as_choice(value: Any, name: str, choices: tuple[str, ...]) -> str:
-    if value is None:
-        return choices[0]
-    parsed = str(value).strip().lower()
-    if parsed not in choices:
-        allowed = ", ".join(map(repr, choices))
-        raise ValueError(f"{name} must be one of {allowed}")
-    return parsed
-
-
-def _as_tags(value: Any, name: str) -> tuple[str, ...]:
-    if value in (None, "", "None"):
-        return ()
-    if isinstance(value, str):
-        text = value.strip()
-        if text in {"", "None"}:
-            return ()
-        if text.startswith("[") and text.endswith("]"):
-            text = text[1:-1]
-        values = [part.strip().strip("'\"") for part in text.split(",")]
-    else:
-        try:
-            values = list(value)
-        except TypeError:
-            values = [value]
-    try:
-        return tuple(task_tags(*values))
-    except Exception as err:
-        raise ValueError(f"{name} must be a comma-separated string or sequence") from err
-
-
-def _cluster_settings(parset: Mapping[str, Any]) -> Mapping[str, Any]:
-    return parset.get("cluster_specific", parset.get("cluster", {}))
-
-
-def dask_scheduler_from_environment(
-    environ: Optional[Mapping[str, str]] = None,
-) -> Optional[str]:
-    """Return the scheduler address exported by Slurm launch scripts, if any."""
-    environment = os.environ if environ is None else environ
-    return _optional_str(environment.get(DASK_SCHEDULER_ENV))
-
-
-def prefect_api_url_from_environment(
-    environ: Optional[Mapping[str, str]] = None,
-) -> Optional[str]:
-    """Return the Prefect API URL exported for this process, if any."""
-    environment = os.environ if environ is None else environ
-    return _optional_str(environment.get(PREFECT_API_URL_ENV))
-
-
 @dataclass(frozen=True)
 class ExecutionConfig:
     """Runtime settings for the Prefect/Dask execution path."""
@@ -247,3 +151,99 @@ class ExecutionConfig:
     def command_threads_per_task(self) -> int:
         """Return the external-command thread budget for one task."""
         return max(1, self.cpus_per_task or 1)
+
+
+def dask_scheduler_from_environment(
+    environ: Optional[Mapping[str, str]] = None,
+) -> Optional[str]:
+    """Return the scheduler address exported by Slurm launch scripts, if any."""
+    environment = os.environ if environ is None else environ
+    return _optional_str(environment.get(DASK_SCHEDULER_ENV))
+
+
+def prefect_api_url_from_environment(
+    environ: Optional[Mapping[str, str]] = None,
+) -> Optional[str]:
+    """Return the Prefect API URL exported for this process, if any."""
+    environment = os.environ if environ is None else environ
+    return _optional_str(environment.get(PREFECT_API_URL_ENV))
+
+
+def _optional_str(value: Any) -> Optional[str]:
+    if value in (None, "", "None"):
+        return None
+    return str(value)
+
+
+def _as_bool(value: Any, name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "yes", "1", "on"}:
+            return True
+        if normalized in {"false", "no", "0", "off"}:
+            return False
+    raise ValueError(f"{name} must be a boolean value")
+
+
+def _as_non_negative_int(value: Any, name: str) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"{name} must be an integer") from err
+    if parsed < 0:
+        raise ValueError(f"{name} must be >= 0")
+    return parsed
+
+
+def _as_positive_int(value: Any, name: str) -> int:
+    parsed = _as_non_negative_int(value, name)
+    if parsed <= 0:
+        raise ValueError(f"{name} must be > 0")
+    return parsed
+
+
+def _as_clip_percentile(value: Any, name: str) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"{name} must be a number") from err
+    if not 50.0 < parsed <= 100.0:
+        raise ValueError(f"{name} must be > 50 and <= 100")
+    return parsed
+
+
+def _as_choice(value: Any, name: str, choices: tuple[str, ...]) -> str:
+    if value is None:
+        return choices[0]
+    parsed = str(value).strip().lower()
+    if parsed not in choices:
+        allowed = ", ".join(map(repr, choices))
+        raise ValueError(f"{name} must be one of {allowed}")
+    return parsed
+
+
+def _as_tags(value: Any, name: str) -> tuple[str, ...]:
+    if value in (None, "", "None"):
+        return ()
+    if isinstance(value, str):
+        text = value.strip()
+        if text in {"", "None"}:
+            return ()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        values = [part.strip().strip("'\"") for part in text.split(",")]
+    else:
+        try:
+            values = list(value)
+        except TypeError:
+            values = [value]
+    try:
+        return tuple(task_tags(*values))
+    except Exception as err:
+        raise ValueError(f"{name} must be a comma-separated string or sequence") from err
+
+
+def _cluster_settings(parset: Mapping[str, Any]) -> Mapping[str, Any]:
+    return parset.get("cluster_specific", parset.get("cluster", {}))

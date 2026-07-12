@@ -33,99 +33,6 @@ class MosaicPayload(TypedDict):
     mosaic_products: list[MosaicProductPayload]
 
 
-def _validate_unique_mosaic_paths(mosaic_products: list[MosaicProductPayload]) -> None:
-    """Reject payloads that would write two products to the same mosaic."""
-    mosaic_paths = [mosaic_product["mosaic_path"] for mosaic_product in mosaic_products]
-    if len(mosaic_paths) != len(set(mosaic_paths)):
-        raise ValueError("mosaic paths must be unique")
-
-
-def _validate_shared_template_path(mosaic_products: list[MosaicProductPayload]) -> None:
-    """Require all mosaic products to use the same shared template."""
-    template_paths = {mosaic_product["template_image_path"] for mosaic_product in mosaic_products}
-    if len(template_paths) > 1:
-        raise ValueError("mosaic products must share one template path")
-
-
-def validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
-    """Validate a Mosaic payload received by a flow or worker."""
-    pipeline_working_dir = str(payload["pipeline_working_dir"])
-    compress_images = bool(payload.get("compress_images", False))
-    skip_processing = bool(payload.get("skip_processing", False))
-    raw_mosaic_products = payload.get("mosaic_products", [])
-    if not isinstance(raw_mosaic_products, list):
-        raise ValueError("mosaic_products must be a list")
-    mosaic_products: list[MosaicProductPayload] = []
-    for index, mosaic_product in enumerate(raw_mosaic_products):
-        if not isinstance(mosaic_product, Mapping):
-            raise ValueError(f"mosaic_products[{index}] must be a mapping")
-        template_filename = validate_basename(
-            mosaic_product.get("template_image_filename"), "template_image_filename"
-        )
-        mosaic_filename = validate_basename(
-            mosaic_product.get("mosaic_filename"), "mosaic_filename"
-        )
-        expected_template_path = os.path.join(pipeline_working_dir, template_filename)
-        expected_mosaic_path = os.path.join(pipeline_working_dir, mosaic_filename)
-        if str(mosaic_product.get("template_image_path")) != expected_template_path:
-            raise ValueError(
-                f"mosaic_products[{index}].template_image_path must be {expected_template_path}"
-            )
-        if str(mosaic_product.get("mosaic_path")) != expected_mosaic_path:
-            raise ValueError(f"mosaic_products[{index}].mosaic_path must be {expected_mosaic_path}")
-        sector_images = validate_string_list(
-            mosaic_product.get("sector_image_filenames"),
-            f"mosaic_products[{index}].sector_image_filenames",
-        )
-        sector_vertices = validate_string_list(
-            mosaic_product.get("sector_vertices_filenames"),
-            f"mosaic_products[{index}].sector_vertices_filenames",
-        )
-        sector_model_skymodels = _validate_optional_string_list(
-            mosaic_product.get("sector_model_skymodel_filenames"),
-            f"mosaic_products[{index}].sector_model_skymodel_filenames",
-        )
-        regridded_images = validate_string_list(
-            mosaic_product.get("regridded_image_filenames"),
-            f"mosaic_products[{index}].regridded_image_filenames",
-        )
-        if len(sector_images) != len(sector_vertices) or len(sector_images) != len(
-            regridded_images
-        ):
-            raise ValueError(f"mosaic_products[{index}] input and regridded lists must match")
-        if sector_model_skymodels is not None and len(sector_model_skymodels) != len(sector_images):
-            raise ValueError(
-                f"mosaic_products[{index}].sector_model_skymodel_filenames "
-                "must match sector_image_filenames"
-            )
-        mosaic_products.append(
-            {
-                "sector_image_filenames": sector_images,
-                "sector_vertices_filenames": sector_vertices,
-                "sector_model_skymodel_filenames": sector_model_skymodels,
-                "template_image_filename": template_filename,
-                "template_image_path": expected_template_path,
-                "regridded_image_filenames": [
-                    validate_basename(
-                        regridded_image,
-                        (f"mosaic_products[{index}].regridded_image_filenames[{regridded_index}]"),
-                    )
-                    for regridded_index, regridded_image in enumerate(regridded_images)
-                ],
-                "mosaic_filename": mosaic_filename,
-                "mosaic_path": expected_mosaic_path,
-            }
-        )
-    _validate_unique_mosaic_paths(mosaic_products)
-    _validate_shared_template_path(mosaic_products)
-    return {
-        "pipeline_working_dir": pipeline_working_dir,
-        "compress_images": compress_images,
-        "skip_processing": skip_processing,
-        "mosaic_products": mosaic_products,
-    }
-
-
 def mosaic_payload_from_inputs(
     input_parms: Mapping[str, object],
     pipeline_working_dir: object,
@@ -231,6 +138,99 @@ def mosaic_payload_from_inputs(
     _validate_shared_template_path(mosaic_products)
     assert_serializable_payload(payload)
     return payload
+
+
+def validate_mosaic_payload(payload: Mapping[str, object]) -> MosaicPayload:
+    """Validate a Mosaic payload received by a flow or worker."""
+    pipeline_working_dir = str(payload["pipeline_working_dir"])
+    compress_images = bool(payload.get("compress_images", False))
+    skip_processing = bool(payload.get("skip_processing", False))
+    raw_mosaic_products = payload.get("mosaic_products", [])
+    if not isinstance(raw_mosaic_products, list):
+        raise ValueError("mosaic_products must be a list")
+    mosaic_products: list[MosaicProductPayload] = []
+    for index, mosaic_product in enumerate(raw_mosaic_products):
+        if not isinstance(mosaic_product, Mapping):
+            raise ValueError(f"mosaic_products[{index}] must be a mapping")
+        template_filename = validate_basename(
+            mosaic_product.get("template_image_filename"), "template_image_filename"
+        )
+        mosaic_filename = validate_basename(
+            mosaic_product.get("mosaic_filename"), "mosaic_filename"
+        )
+        expected_template_path = os.path.join(pipeline_working_dir, template_filename)
+        expected_mosaic_path = os.path.join(pipeline_working_dir, mosaic_filename)
+        if str(mosaic_product.get("template_image_path")) != expected_template_path:
+            raise ValueError(
+                f"mosaic_products[{index}].template_image_path must be {expected_template_path}"
+            )
+        if str(mosaic_product.get("mosaic_path")) != expected_mosaic_path:
+            raise ValueError(f"mosaic_products[{index}].mosaic_path must be {expected_mosaic_path}")
+        sector_images = validate_string_list(
+            mosaic_product.get("sector_image_filenames"),
+            f"mosaic_products[{index}].sector_image_filenames",
+        )
+        sector_vertices = validate_string_list(
+            mosaic_product.get("sector_vertices_filenames"),
+            f"mosaic_products[{index}].sector_vertices_filenames",
+        )
+        sector_model_skymodels = _validate_optional_string_list(
+            mosaic_product.get("sector_model_skymodel_filenames"),
+            f"mosaic_products[{index}].sector_model_skymodel_filenames",
+        )
+        regridded_images = validate_string_list(
+            mosaic_product.get("regridded_image_filenames"),
+            f"mosaic_products[{index}].regridded_image_filenames",
+        )
+        if len(sector_images) != len(sector_vertices) or len(sector_images) != len(
+            regridded_images
+        ):
+            raise ValueError(f"mosaic_products[{index}] input and regridded lists must match")
+        if sector_model_skymodels is not None and len(sector_model_skymodels) != len(sector_images):
+            raise ValueError(
+                f"mosaic_products[{index}].sector_model_skymodel_filenames "
+                "must match sector_image_filenames"
+            )
+        mosaic_products.append(
+            {
+                "sector_image_filenames": sector_images,
+                "sector_vertices_filenames": sector_vertices,
+                "sector_model_skymodel_filenames": sector_model_skymodels,
+                "template_image_filename": template_filename,
+                "template_image_path": expected_template_path,
+                "regridded_image_filenames": [
+                    validate_basename(
+                        regridded_image,
+                        (f"mosaic_products[{index}].regridded_image_filenames[{regridded_index}]"),
+                    )
+                    for regridded_index, regridded_image in enumerate(regridded_images)
+                ],
+                "mosaic_filename": mosaic_filename,
+                "mosaic_path": expected_mosaic_path,
+            }
+        )
+    _validate_unique_mosaic_paths(mosaic_products)
+    _validate_shared_template_path(mosaic_products)
+    return {
+        "pipeline_working_dir": pipeline_working_dir,
+        "compress_images": compress_images,
+        "skip_processing": skip_processing,
+        "mosaic_products": mosaic_products,
+    }
+
+
+def _validate_unique_mosaic_paths(mosaic_products: list[MosaicProductPayload]) -> None:
+    """Reject payloads that would write two products to the same mosaic."""
+    mosaic_paths = [mosaic_product["mosaic_path"] for mosaic_product in mosaic_products]
+    if len(mosaic_paths) != len(set(mosaic_paths)):
+        raise ValueError("mosaic paths must be unique")
+
+
+def _validate_shared_template_path(mosaic_products: list[MosaicProductPayload]) -> None:
+    """Require all mosaic products to use the same shared template."""
+    template_paths = {mosaic_product["template_image_path"] for mosaic_product in mosaic_products}
+    if len(template_paths) > 1:
+        raise ValueError("mosaic products must share one template path")
 
 
 def _validate_optional_string_list(values: object, name: str) -> Optional[list[str]]:

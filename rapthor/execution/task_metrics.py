@@ -52,36 +52,6 @@ def current_prefect_task_metadata() -> dict[str, object]:
     return metadata
 
 
-def _task_log_record(
-    pipeline_working_dir: object,
-    *,
-    started_at: datetime,
-    finished_at: datetime,
-    duration_seconds: float,
-    status: str,
-    error: Optional[str] = None,
-    task_metadata: Optional[Mapping[str, object]] = None,
-) -> dict[str, object]:
-    workdir = Path(str(pipeline_working_dir))
-    record: dict[str, object] = {
-        "backend": "prefect",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "operation": workdir.name,
-        "pipeline_working_dir": str(workdir),
-        "started_at": started_at.isoformat(),
-        "finished_at": finished_at.isoformat(),
-        "duration_seconds": round(duration_seconds, 6),
-        "status": status,
-    }
-    if task_metadata:
-        record.update(
-            {key: value for key, value in task_metadata.items() if value not in (None, "", [])}
-        )
-    if error:
-        record["error"] = error
-    return record
-
-
 def write_task_log_record(
     pipeline_working_dir: Optional[object],
     *,
@@ -142,3 +112,33 @@ def record_task_runtime(pipeline_working_dir: Optional[object]) -> Iterator[None
             status="completed",
             task_metadata=metadata,
         )
+
+
+def _task_log_record(
+    pipeline_working_dir: object,
+    *,
+    started_at: datetime,
+    finished_at: datetime,
+    duration_seconds: float,
+    status: str,
+    error: Optional[str] = None,
+    task_metadata: Optional[Mapping[str, object]] = None,
+) -> dict[str, object]:
+    workdir = Path(str(pipeline_working_dir))
+    record: dict[str, object] = {
+        "backend": "prefect",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "operation": workdir.name,
+        "pipeline_working_dir": str(workdir),
+        "started_at": started_at.isoformat(),
+        "finished_at": finished_at.isoformat(),
+        "duration_seconds": round(duration_seconds, 6),
+        "status": status,
+    }
+    if task_metadata:
+        record.update(
+            {key: value for key, value in task_metadata.items() if value not in (None, "", [])}
+        )
+    if error:
+        record["error"] = error
+    return record
