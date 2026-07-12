@@ -1,0 +1,127 @@
+flowchart LR
+    classDef flow fill:#e7f6ec,stroke:#2f855a,color:#1d2d3f
+    classDef task fill:#f0fff4,stroke:#2f855a,color:#1d2d3f
+    classDef runtime fill:#eee8ff,stroke:#6b46c1,color:#1d2d3f
+    classDef external fill:#ffe5e8,stroke:#c53030,color:#1d2d3f
+    classDef product fill:#eaf8f0,stroke:#2f855a,color:#1d2d3f
+    classDef input fill:#eaf3ff,stroke:#2b5c99,color:#1d2d3f
+
+    user["User runs: rapthor input.parset"]
+    bootstrap["runtime bootstrap"]
+    pipeline_flow["pipeline_flow"]
+
+    subgraph operation_flows["Operation-level Prefect flows"]
+        concatenate_flow["concatenate_flow"]
+        calibrate_flow["calibrate_flow"]
+        predict_flow["predict_flow"]
+        image_flow["image_flow"]
+        mosaic_flow["mosaic_flow"]
+    end
+
+    subgraph tasks["Prefect tasks and task bodies"]
+        concatenate_tasks["concatenate chunks"]
+        calibration_tasks["draw model, solve chunks, collect/process h5parms"]
+        predict_tasks["dp3 predict chunks, wsclean predict facets, postprocess"]
+        image_tasks["prepare chunks, filter skymodel, image sector, diagnostics"]
+        mosaic_tasks["mosaic image products"]
+    end
+
+    subgraph task_runtime["Task runtime"]
+        prefect["Prefect engine"]
+        dask_runner["Dask task runner"]
+        workers["local or external Dask workers"]
+        shell_runner["shell runner and module adapters"]
+    end
+
+    subgraph leaf_work["Leaf work"]
+        dp3["DP3"]
+        wsclean["WSClean"]
+        losoto["LoSoTo plotting"]
+        pybdsf["PyBDSF / LSMTool"]
+        fpack["fpack"]
+        python_helpers["execution-owned Python helpers"]
+    end
+
+    subgraph observability["Observability"]
+        prefect_ui["Prefect dashboard"]
+        dask_ui["Dask dashboard"]
+        command_logs["commands.jsonl, logs, profiles, metrics"]
+        artifacts["Prefect artifacts"]
+    end
+
+    products["Pipeline products and output records"]
+
+    user -->|configure| bootstrap
+    bootstrap -->|start| pipeline_flow
+    pipeline_flow -->|call flow| concatenate_flow
+    pipeline_flow -->|call flow| calibrate_flow
+    pipeline_flow -->|call flow| predict_flow
+    pipeline_flow -->|call flow| image_flow
+    pipeline_flow -->|call flow| mosaic_flow
+
+    concatenate_flow -->|submit task| concatenate_tasks
+    calibrate_flow -->|submit task| calibration_tasks
+    predict_flow -->|submit task| predict_tasks
+    image_flow -->|submit task| image_tasks
+    mosaic_flow -->|submit task| mosaic_tasks
+
+    concatenate_flow -->|state and logs| prefect
+    calibrate_flow -->|state and logs| prefect
+    predict_flow -->|state and logs| prefect
+    image_flow -->|state and logs| prefect
+    mosaic_flow -->|state and logs| prefect
+    prefect -->|visible in| prefect_ui
+    concatenate_tasks -->|execute via| dask_runner
+    calibration_tasks -->|execute via| dask_runner
+    predict_tasks -->|execute via| dask_runner
+    image_tasks -->|execute via| dask_runner
+    mosaic_tasks -->|execute via| dask_runner
+    dask_runner -->|schedule| workers
+    workers -->|visible in| dask_ui
+    workers -->|run Python body| concatenate_tasks
+    workers -->|run Python body| calibration_tasks
+    workers -->|run Python body| predict_tasks
+    workers -->|run Python body| image_tasks
+    workers -->|run Python body| mosaic_tasks
+    concatenate_tasks -->|spawn command| shell_runner
+    calibration_tasks -->|spawn command| shell_runner
+    predict_tasks -->|spawn command| shell_runner
+    image_tasks -->|spawn command| shell_runner
+    mosaic_tasks -->|spawn command| shell_runner
+
+    shell_runner -->|runs| dp3
+    shell_runner -->|runs| wsclean
+    shell_runner -->|runs| losoto
+    shell_runner -->|runs| pybdsf
+    shell_runner -->|runs| fpack
+    concatenate_tasks -->|call directly| python_helpers
+    calibration_tasks -->|call directly| python_helpers
+    predict_tasks -->|call directly| python_helpers
+    image_tasks -->|call directly| python_helpers
+    mosaic_tasks -->|call directly| python_helpers
+
+    dp3 -->|write| products
+    wsclean -->|write| products
+    losoto -->|write| products
+    pybdsf -->|write| products
+    fpack -->|write| products
+    python_helpers -->|write| products
+    concatenate_tasks -->|write output records| products
+    calibration_tasks -->|write output records| products
+    predict_tasks -->|write output records| products
+    image_tasks -->|write output records| products
+    mosaic_tasks -->|write output records| products
+    shell_runner -->|record| command_logs
+    concatenate_tasks -->|publish| artifacts
+    calibration_tasks -->|publish| artifacts
+    predict_tasks -->|publish| artifacts
+    image_tasks -->|publish| artifacts
+    mosaic_tasks -->|publish| artifacts
+
+    class user input
+    class pipeline_flow,concatenate_flow,calibrate_flow,predict_flow,image_flow,mosaic_flow flow
+    class concatenate_tasks,calibration_tasks,predict_tasks,image_tasks,mosaic_tasks task
+    class prefect,dask_runner,workers,shell_runner runtime
+    class dp3,wsclean,losoto,pybdsf,fpack,python_helpers external
+    class prefect_ui,dask_ui,command_logs,artifacts runtime
+    class products product

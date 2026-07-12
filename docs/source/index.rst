@@ -58,6 +58,7 @@ Development
    :maxdepth: 2
 
    development/architecture
+   development/architecture_views
    development/manual_testing_prefect_dask
    development/science_equivalence_contract
    development/performance_equivalence_contract

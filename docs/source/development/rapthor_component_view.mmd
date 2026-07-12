@@ -1,0 +1,114 @@
+flowchart LR
+    classDef interface fill:#eaf3ff,stroke:#2b5c99,color:#1d2d3f
+    classDef domain fill:#fff7cc,stroke:#9b7a00,color:#1d2d3f
+    classDef adapter fill:#fff2df,stroke:#b96c00,color:#1d2d3f
+    classDef execution fill:#e7f6ec,stroke:#2f855a,color:#1d2d3f
+    classDef runtime fill:#eee8ff,stroke:#6b46c1,color:#1d2d3f
+    classDef external fill:#ffe5e8,stroke:#c53030,color:#1d2d3f
+    classDef product fill:#eaf8f0,stroke:#2f855a,color:#1d2d3f
+
+    subgraph user_surface["User interface and configuration"]
+        cli["rapthor CLI"]
+        parset["Parset, strategy, examples"]
+    end
+
+    subgraph domain["Domain model: rapthor.lib"]
+        field["Field state"]
+        observation["Observation and sectors"]
+        strategy["Calibration and imaging strategy"]
+        operation_base["Operation lifecycle"]
+    end
+
+    subgraph operations["Operation adapters: rapthor.operations"]
+        op_concat["Concatenate operation"]
+        op_calibrate["Calibrate operation"]
+        op_predict["Predict operation"]
+        op_image["Image operation"]
+        op_mosaic["Mosaic operation"]
+    end
+
+    subgraph execution_owner["Execution owner packages"]
+        pipeline["pipeline.flow and lifecycle"]
+        payloads["payloads, builders, validation"]
+        commands["command builders"]
+        work_units["task bodies and helpers"]
+        outputs["output discovery"]
+        flows["operation flows"]
+    end
+
+    subgraph runtime["Runtime infrastructure"]
+        bootstrap["runtime bootstrap"]
+        task_runner["task runner and Dask"]
+        shell["shell execution"]
+        artifacts["artifacts, profiles, metrics"]
+        slurm["Slurm adapter"]
+    end
+
+    subgraph external_tools["External tools"]
+        dp3["DP3 / IDGCal"]
+        wsclean["WSClean / WSClean MPI"]
+        losoto["LoSoTo"]
+        pybdsf["PyBDSF / LSMTool"]
+        fpack["fpack"]
+    end
+
+    products["Products: images, mosaics, h5parms, sky models, diagnostics"]
+
+    cli -->|reads| parset
+    parset -->|configures| field
+    parset -->|loads| strategy
+    field -->|owns| observation
+    strategy -->|updates| field
+    operation_base -->|implemented by| op_concat
+    operation_base -->|implemented by| op_calibrate
+    operation_base -->|implemented by| op_predict
+    operation_base -->|implemented by| op_image
+    operation_base -->|implemented by| op_mosaic
+
+    field -->|selects| op_concat
+    field -->|selects| op_calibrate
+    field -->|selects| op_predict
+    field -->|selects| op_image
+    field -->|selects| op_mosaic
+    op_concat -->|build serializable payloads| payloads
+    op_calibrate -->|build serializable payloads| payloads
+    op_predict -->|build serializable payloads| payloads
+    op_image -->|build serializable payloads| payloads
+    op_mosaic -->|build serializable payloads| payloads
+    op_concat -->|submit operation flow| flows
+    op_calibrate -->|submit operation flow| flows
+    op_predict -->|submit operation flow| flows
+    op_image -->|submit operation flow| flows
+    op_mosaic -->|submit operation flow| flows
+    pipeline -->|orders operations| operations
+
+    payloads -->|validated input| flows
+    flows -->|submit tasks| work_units
+    work_units -->|build commands| commands
+    work_units -->|discover records| outputs
+
+    bootstrap -->|selects runtime| task_runner
+    flows -->|use| task_runner
+    work_units -->|run commands through| shell
+    work_units -->|publish| artifacts
+    task_runner -->|optional cluster integration| slurm
+
+    shell -->|runs| dp3
+    shell -->|runs| wsclean
+    shell -->|runs| losoto
+    shell -->|runs| pybdsf
+    shell -->|runs| fpack
+    outputs -->|records| products
+    dp3 -->|write| products
+    wsclean -->|write| products
+    losoto -->|write| products
+    pybdsf -->|write| products
+    fpack -->|write| products
+
+    class cli,parset interface
+    class field,observation,strategy,operation_base domain
+    class op_concat,op_calibrate,op_predict,op_image,op_mosaic adapter
+    class pipeline,payloads,commands,work_units,outputs,flows execution
+    class bootstrap,task_runner,shell,artifacts,slurm runtime
+    class dp3,wsclean,losoto,pybdsf,fpack external
+    class products product

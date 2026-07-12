@@ -70,6 +70,7 @@ docs = [
     "numpydoc",
     "snowballstemmer!=3.0.0",
     "sphinx",
+    "sphinxcontrib-mermaid",
 ]
 dev =  ["ruff", "rapthor[test]", "rapthor[docs]" ]
 
@@ -87,6 +88,7 @@ docs = [
     "numpydoc",
     "snowballstemmer!=3.0.0",
     "sphinx",
+    "sphinxcontrib-mermaid",
 ]
 dev =  [
     "coloredlogs",
@@ -94,6 +96,7 @@ dev =  [
     "ruff",
     "snowballstemmer!=3.0.0",
     "sphinx",
+    "sphinxcontrib-mermaid",
     "tox",
     "mock",
     "pytest",

@@ -5,6 +5,9 @@ This page documents the intended architecture for the post-CWL/Toil
 Prefect/Dask codebase. It is a working guide for refactors, not a claim that
 every module has already reached the target shape.
 
+For component-and-connector diagrams of the current architecture, see
+:doc:`architecture_views`.
+
 Clean Architecture Rule
 -----------------------
 

@@ -1,4 +1,5 @@
 numpydoc
 snowballstemmer!=3.0.0
 sphinx
+sphinxcontrib-mermaid
 extension_helpers

@@ -1,0 +1,72 @@
+flowchart TB
+    classDef user fill:#eaf3ff,stroke:#2b5c99,color:#1d2d3f
+    classDef process fill:#e7f6ec,stroke:#2f855a,color:#1d2d3f
+    classDef runtime fill:#eee8ff,stroke:#6b46c1,color:#1d2d3f
+    classDef slurm fill:#fff2df,stroke:#b96c00,color:#1d2d3f
+    classDef external fill:#ffe5e8,stroke:#c53030,color:#1d2d3f
+    classDef product fill:#eaf8f0,stroke:#2f855a,color:#1d2d3f
+
+    scientist["Scientist or developer"]
+    parset["Parset runtime options"]
+    rapthor_proc["Rapthor process"]
+
+    subgraph local_no_server["Local no-server mode"]
+        ephemeral_prefect["Ephemeral/local Prefect state"]
+        local_dask["Local Dask scheduler and workers"]
+    end
+
+    subgraph persistent_dashboard["Optional persistent dashboard mode"]
+        prefect_api["Prefect API"]
+        prefect_dashboard["Prefect dashboard"]
+    end
+
+    subgraph external_dask["Optional external Dask mode"]
+        dask_scheduler["Dask scheduler"]
+        dask_workers["Dask workers"]
+        dask_dashboard["Dask dashboard"]
+    end
+
+    subgraph slurm_allocation["Production-style Slurm allocation"]
+        slurm_job["Slurm job"]
+        worker_nodes["Allocated nodes"]
+        mpi_wsclean["WSClean MPI ranks"]
+        node_tools["DP3, WSClean, LoSoTo, fpack, PyBDSF"]
+    end
+
+    products["Working directory, logs, profiles, products"]
+    browser["Local browser via direct access or SSH tunnels"]
+
+    scientist -->|runs rapthor input.parset| rapthor_proc
+    scientist -->|edits| parset
+    parset -->|selects runtime shape| rapthor_proc
+
+    rapthor_proc -->|default when no PREFECT_API_URL| ephemeral_prefect
+    rapthor_proc -->|default local execution| local_dask
+
+    rapthor_proc -->|reports state when configured| prefect_api
+    prefect_api -->|serves| prefect_dashboard
+    browser -->|opens| prefect_dashboard
+
+    rapthor_proc -->|connects when configured| dask_scheduler
+    dask_scheduler -->|schedules tasks| dask_workers
+    dask_scheduler -->|serves| dask_dashboard
+    browser -->|opens| dask_dashboard
+
+    rapthor_proc -->|submitted by| slurm_job
+    slurm_job -->|allocates| worker_nodes
+    worker_nodes -->|host| dask_workers
+    worker_nodes -->|launch| mpi_wsclean
+    worker_nodes -->|run| node_tools
+
+    local_dask -->|write| products
+    dask_workers -->|write| products
+    mpi_wsclean -->|write images| products
+    node_tools -->|write command outputs| products
+    rapthor_proc -->|write run metadata| products
+
+    class scientist,browser,parset user
+    class rapthor_proc process
+    class ephemeral_prefect,local_dask,prefect_api,prefect_dashboard,dask_scheduler,dask_workers,dask_dashboard runtime
+    class slurm_job,worker_nodes,mpi_wsclean slurm
+    class node_tools external
+    class products product
