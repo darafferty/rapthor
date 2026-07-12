@@ -751,12 +751,15 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
     result.failures.extend(
         [
             "output-record product basenames differ for calibrate_di_1",
+            "FITS mean differs for field-MFS-model-pb.fits: 1.0 != 0.0",
             "FITS image pixels differ for field-MFS-image-pb.fits: max_abs_delta=2e-5",
             "FITS image pixels differ for field-MFS-model-pb.fits: max_abs_delta=2e-3",
             "FITS table column differs for sector_1.source_catalog.fits:E_Total_flux",
             "FITS table column differs for sector_1.source_catalog.fits:Total_flux",
             "text product differs for sector_1_facets_ds9.reg",
             "DS9 region geometry differs for sector_2_facets_ds9.reg",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val "
+            "(max_abs=9e-06)",
         ]
     )
     result.product_statistics["fits"] = [
@@ -791,6 +794,20 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
         == "repeatability-candidate"
     )
     assert (
+        classified[("sparse_model_image_statistic", "field-MFS-model-pb.fits:mean")]
+        == "repeatability-candidate"
+    )
+    assert (
+        classified[
+            (
+                "small_h5_numeric_difference",
+                "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val "
+                "(max_abs=9e-06)",
+            )
+        ]
+        == "repeatability-candidate"
+    )
+    assert (
         classified[
             ("pybdsf_catalog_diagnostic_column", "sector_1.source_catalog.fits:E_Total_flux")
         ]
@@ -805,7 +822,294 @@ def test_classify_branch_differences_labels_known_residual_families(tmp_path):
         == "semantic-comparison-needed"
     )
     assert classified[("strict_region_geometry", "sector_2_facets_ds9.reg")] == "strict-failure"
-    assert result.metrics["classified_differences"] == 9
+    assert result.metrics["classified_differences"] == 11
+
+
+def _prepared_run(module, side, ref, tmp_path, rep_index, returncode=0, elapsed=10.0):
+    rep_label = f"rep-{rep_index:02d}"
+    return module.PreparedRun(
+        side=side,
+        ref=ref,
+        repo_root=tmp_path,
+        run_dir=tmp_path / side / rep_label,
+        parset_path=tmp_path / side / rep_label / "input.parset",
+        work_dir=tmp_path / "work" / side / rep_label,
+        returncode=returncode,
+        elapsed_seconds=elapsed,
+        log_path=tmp_path / side / rep_label / "rapthor-command.log",
+    )
+
+
+def test_repeatability_gate_passes_cross_branch_pairs_bounded_by_same_branch_scatter(
+    tmp_path,
+):
+    module = load_branch_equivalence_script()
+    runs_by_side = {
+        "base": {
+            1: _prepared_run(module, "base", "master", tmp_path, 1, elapsed=100.0),
+            2: _prepared_run(module, "base", "master", tmp_path, 2, elapsed=120.0),
+        },
+        "current": {
+            1: _prepared_run(module, "current", "current", tmp_path, 1, elapsed=70.0),
+            2: _prepared_run(module, "current", "current", tmp_path, 2, elapsed=80.0),
+        },
+    }
+    runtime_summary = module._runtime_summary(
+        {side: list(runs.values()) for side, runs in runs_by_side.items()}
+    )
+    pair_summaries = [
+        {
+            "pair_id": "base-rep-01_vs_base-rep-02",
+            "group": "base-base",
+            "passed": False,
+            "blocking_classification_count": 1,
+            "max_abs_delta": 0.4,
+            "p99_abs_delta": 0.01,
+            "residual_rms": 0.004,
+            "max_abs_diagnostic_relative_delta": 0.002,
+        },
+        {
+            "pair_id": "current-rep-01_vs_current-rep-02",
+            "group": "current-current",
+            "passed": False,
+            "blocking_classification_count": 0,
+            "max_abs_delta": 0.001,
+            "p99_abs_delta": 1e-5,
+            "residual_rms": 4e-6,
+            "max_abs_diagnostic_relative_delta": 1e-4,
+        },
+        {
+            "pair_id": "base-rep-01_vs_current-rep-01",
+            "group": "base-current",
+            "passed": False,
+            "blocking_classification_count": 0,
+            "max_abs_delta": 0.2,
+            "p99_abs_delta": 0.005,
+            "residual_rms": 0.003,
+            "max_abs_diagnostic_relative_delta": 0.001,
+        },
+    ]
+
+    decision = module._repeatability_gate_decision(
+        runs_by_side=runs_by_side,
+        runtime_summary=runtime_summary,
+        pair_summaries=pair_summaries,
+    )
+
+    assert decision["overall_status"] == "pass"
+    assert decision["run_validity"]["status"] == "pass"
+    assert decision["science_product_validity"]["status"] == "pass"
+    assert decision["science_product_validity"]["repeatability_bounded_pair_count"] == 1
+    assert (
+        decision["pair_statuses"]["base-rep-01_vs_current-rep-01"]["status"]
+        == "repeatability-bounded"
+    )
+    assert decision["performance"]["status"] == "pass"
+
+
+def test_repeatability_gate_bounds_strict_classifications_by_same_branch_scatter(
+    tmp_path,
+):
+    module = load_branch_equivalence_script()
+    runs_by_side = {
+        "base": {
+            1: _prepared_run(module, "base", "master", tmp_path, 1, elapsed=100.0),
+            2: _prepared_run(module, "base", "master", tmp_path, 2, elapsed=100.0),
+        },
+        "current": {
+            1: _prepared_run(module, "current", "current", tmp_path, 1, elapsed=80.0),
+            2: _prepared_run(module, "current", "current", tmp_path, 2, elapsed=80.0),
+        },
+    }
+    runtime_summary = module._runtime_summary(
+        {side: list(runs.values()) for side, runs in runs_by_side.items()}
+    )
+    pair_summaries = [
+        {
+            "pair_id": "base-rep-01_vs_base-rep-02",
+            "group": "base-base",
+            "passed": False,
+            "max_abs_delta": 0.2,
+            "classification_summary": [
+                {
+                    "category": "strict_h5_difference",
+                    "disposition": "strict-failure",
+                    "count": 6,
+                }
+            ],
+        },
+        {
+            "pair_id": "base-rep-01_vs_current-rep-01",
+            "group": "base-current",
+            "passed": False,
+            "max_abs_delta": 0.1,
+            "classification_summary": [
+                {
+                    "category": "strict_h5_difference",
+                    "disposition": "strict-failure",
+                    "count": 6,
+                }
+            ],
+        },
+    ]
+
+    decision = module._repeatability_gate_decision(
+        runs_by_side=runs_by_side,
+        runtime_summary=runtime_summary,
+        pair_summaries=pair_summaries,
+    )
+
+    assert decision["overall_status"] == "pass"
+    assert (
+        decision["pair_statuses"]["base-rep-01_vs_current-rep-01"]["status"]
+        == "repeatability-bounded"
+    )
+    assert (
+        decision["pair_statuses"]["base-rep-01_vs_current-rep-01"]["blocking_classifications"] == []
+    )
+
+
+def test_repeatability_gate_fails_unbounded_strict_classification(tmp_path):
+    module = load_branch_equivalence_script()
+    runs_by_side = {
+        "base": {
+            1: _prepared_run(module, "base", "master", tmp_path, 1, elapsed=100.0),
+            2: _prepared_run(module, "base", "master", tmp_path, 2, elapsed=100.0),
+        },
+        "current": {
+            1: _prepared_run(module, "current", "current", tmp_path, 1, elapsed=90.0),
+            2: _prepared_run(module, "current", "current", tmp_path, 2, elapsed=90.0),
+        },
+    }
+    runtime_summary = module._runtime_summary(
+        {side: list(runs.values()) for side, runs in runs_by_side.items()}
+    )
+    pair_summaries = [
+        {
+            "pair_id": "base-rep-01_vs_base-rep-02",
+            "group": "base-base",
+            "passed": False,
+            "max_abs_delta": 0.2,
+            "classification_summary": [
+                {
+                    "category": "strict_h5_difference",
+                    "disposition": "strict-failure",
+                    "count": 2,
+                }
+            ],
+        },
+        {
+            "pair_id": "base-rep-01_vs_current-rep-01",
+            "group": "base-current",
+            "passed": False,
+            "max_abs_delta": 0.1,
+            "classification_summary": [
+                {
+                    "category": "strict_h5_difference",
+                    "disposition": "strict-failure",
+                    "count": 5,
+                }
+            ],
+        },
+    ]
+
+    decision = module._repeatability_gate_decision(
+        runs_by_side=runs_by_side,
+        runtime_summary=runtime_summary,
+        pair_summaries=pair_summaries,
+    )
+
+    assert decision["overall_status"] == "fail"
+    assert decision["pair_statuses"]["base-rep-01_vs_current-rep-01"][
+        "blocking_classifications"
+    ] == [
+        {
+            "category": "strict_h5_difference",
+            "count": 5,
+            "same_branch_envelope": 2,
+            "allowed_with_margin": 3,
+        }
+    ]
+
+
+def test_repeatability_gate_fails_unbounded_cross_branch_pair(tmp_path):
+    module = load_branch_equivalence_script()
+    runs_by_side = {
+        "base": {
+            1: _prepared_run(module, "base", "master", tmp_path, 1, elapsed=100.0),
+            2: _prepared_run(module, "base", "master", tmp_path, 2, elapsed=100.0),
+        },
+        "current": {
+            1: _prepared_run(module, "current", "current", tmp_path, 1, elapsed=90.0),
+            2: _prepared_run(module, "current", "current", tmp_path, 2, elapsed=90.0),
+        },
+    }
+    runtime_summary = module._runtime_summary(
+        {side: list(runs.values()) for side, runs in runs_by_side.items()}
+    )
+    pair_summaries = [
+        {
+            "pair_id": "base-rep-01_vs_base-rep-02",
+            "group": "base-base",
+            "passed": False,
+            "blocking_classification_count": 0,
+            "max_abs_delta": 0.1,
+        },
+        {
+            "pair_id": "base-rep-01_vs_current-rep-01",
+            "group": "base-current",
+            "passed": False,
+            "blocking_classification_count": 0,
+            "max_abs_delta": 0.3,
+        },
+    ]
+
+    decision = module._repeatability_gate_decision(
+        runs_by_side=runs_by_side,
+        runtime_summary=runtime_summary,
+        pair_summaries=pair_summaries,
+    )
+
+    assert decision["overall_status"] == "fail"
+    assert decision["science_product_validity"]["failed_cross_pairs"] == [
+        "base-rep-01_vs_current-rep-01"
+    ]
+    assert decision["pair_statuses"]["base-rep-01_vs_current-rep-01"]["blocking_metrics"] == [
+        {
+            "metric": "max_abs_delta",
+            "value": 0.3,
+            "same_branch_envelope": 0.1,
+            "allowed_with_margin": 0.10500000000000001,
+        }
+    ]
+
+
+def test_repeatability_gate_fails_run_errors_before_product_decision(tmp_path):
+    module = load_branch_equivalence_script()
+    runs_by_side = {
+        "base": {1: _prepared_run(module, "base", "master", tmp_path, 1, returncode=1)},
+        "current": {1: _prepared_run(module, "current", "current", tmp_path, 1)},
+    }
+    runtime_summary = module._runtime_summary(
+        {side: list(runs.values()) for side, runs in runs_by_side.items()}
+    )
+
+    decision = module._repeatability_gate_decision(
+        runs_by_side=runs_by_side,
+        runtime_summary=runtime_summary,
+        pair_summaries=[
+            {
+                "pair_id": "base-rep-01_vs_current-rep-01",
+                "group": "base-current",
+                "passed": True,
+                "blocking_classification_count": 0,
+            }
+        ],
+    )
+
+    assert decision["overall_status"] == "fail"
+    assert decision["run_validity"]["status"] == "fail"
+    assert decision["run_validity"]["failures"][0]["returncode"] == 1
 
 
 def test_compare_branch_outputs_creates_visual_comparisons(tmp_path):

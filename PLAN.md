@@ -102,78 +102,43 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Make the performance-equivalence gate repeatability-aware and passable.**
-   Do this before further optimisation. The first full advisory baseline has
-   been captured, but the gate cannot produce a defensible pass/fail decision
-   yet because the strict product comparator fails same-branch repeatability
-   pairs as well as branch-vs-branch pairs. The next work is therefore to turn
-   the advisory evidence into a calibrated gate.
+1. **Extend the performance-equivalence gate beyond the phase-only baseline.**
+   The repeatability-aware gate is now implemented and the first formal
+   `phase-only-core` run passes.
 
-   What the gate must prove:
+   Completed:
 
-   - all branch runs complete with return code `0`
-   - required scientific products, records, logs, and diagnostics are present
-   - current-branch outputs remain scientifically acceptable under the science
-     gate contract
-   - branch-vs-branch product differences are no larger than justified by
-     same-branch repeatability scatter, or are explicitly labelled as an
-     intentional/accepted legacy difference
-   - current runtime is faster, neutral, or slower only within the measured
-     repeatability/performance band and with a clear explanation
+   - `scripts/dev/run_branch_equivalence.py` now reports separate run-validity,
+     science/product-validity, and performance decisions.
+   - Same-branch `master`/`master` and current/current pairs define
+     repeatability envelopes before cross-branch product differences are judged.
+   - Cross-branch differences are classified as `pass`, `warn`,
+     `repeatability-bounded`, `accepted-difference`, or `fail`; non-zero runs
+     and missing required products remain hard failures.
+   - Compact Markdown/JSON reports show same-branch envelopes, cross-branch
+     deltas, pair decisions, elapsed run times, and operation-level timing
+     deltas.
+   - The passing `phase-only-core` report is archived as
+     `docs/source/development/performance_equivalence_runs/2026-07-11-phase-only-core-repeatability-gate.md`.
 
-   Current setup status:
+   Phase-only result:
 
-   - `scripts/dev/run_branch_equivalence.py` now records elapsed seconds for
-     each branch run and writes runtime min/median/max summaries.
-   - The same runner parses `rapthor.log` operation-boundary timings and writes
-     per-operation base/current median deltas to the compact JSON/Markdown
-     reports.
-   - The `phase-only-core` prepare-only smoke has been validated with
-     `--repeatability-repetitions 3`; it writes the expected 15 planned pairs.
-   - Baseline run instructions live in
-     `docs/source/development/performance_equivalence_runs/README.md`.
-   - The first full advisory baseline is archived in
-     `docs/source/development/performance_equivalence_runs/2026-07-11-phase-only-core-baseline.md`.
-     All six branch runs completed successfully and the current branch median
-     runtime was about `47.5%` faster than `master`. The strict science
-     comparator still exited failed because same-branch repeatability pairs also
-     fail the current tolerances, so the next gate task is to calibrate
-     pass/warn/fail bands against same-branch scatter before treating this as a
-     formal gate pass.
+   - all six branch runs completed with return code `0`
+   - 9 of 9 `master`/current pairs were repeatability-bounded
+   - current median runtime was `303.160 s` versus `429.557 s` for `master`
+     (`-29.425%`)
+   - all parsed operation medians were faster on the current branch
 
-   Implementation steps to pass the gate:
+   Next gate target:
 
-   - Split the reported decision into `run validity`, `science/product
-     validity`, and `performance decision`. Non-zero return codes, missing
-     outputs, or missing required diagnostics remain hard failures.
-   - Build same-branch repeatability envelopes from `master`-vs-`master` and
-     current-vs-current pairs before judging cross-branch pairs.
-   - Convert existing product classifications into explicit gate decisions:
-     `pass`, `warn`, `repeatability-bounded`, `accepted-difference`, and
-     `fail`.
-   - For FITS image products, judge cross-branch residual RMS, p99 residuals,
-     and diagnostic deltas against same-branch envelopes. Do not let isolated
-     sparse-pixel max deltas fail the gate when p99/RMS and diagnostics are
-     repeatability-bounded.
-   - For model images, document and encode the accepted comparison rule for
-     sparse model products versus WSClean-rendered products. Model-image
-     differences should be warnings or repeatability-bounded only when they do
-     not affect image diagnostics or downstream products.
-   - For h5parm products, keep structure, axes, directions, solution names, and
-     metadata strict. Add a small numeric tolerance only if it is justified by
-     solver repeatability/phase wrapping and covered by a focused test.
-   - Keep output-record auxiliary artifact basename differences as warnings
-     when final scientific product paths and records are otherwise equivalent.
-   - Update compact Markdown/JSON reports so reviewers can see: same-branch
-     envelopes, cross-branch deltas, the final decision band, and why each
-     warning is accepted.
-   - Rerun `phase-only-core` with a short run root under `/tmp`, three
-     repetitions per branch, and archive the compact report. Only then move to
-     `dd-phase-plus-di-fulljones`.
-
-   Do not make additional performance-sensitive pipeline changes until the
-   phase-only performance-equivalence gate can produce a repeatability-aware
-   decision.
+   - run `dd-phase-plus-di-fulljones` with three repetitions per branch before
+     using the gate as broader performance-equivalence evidence
+   - keep run roots short, for example `/tmp/r2` and `/tmp/w2`, because the
+     `master` branch can hit PyBDSF `AF_UNIX path too long` errors under long
+     working directories
+   - if the DD/full-Jones gate passes, treat performance equivalence as
+     established for the current optimisation phase; if it fails, fix or
+     document the specific scenario before continuing broad optimisation
 
 2. **Target the next image-side performance bottlenecks.**
    Current benchmarks consistently show the largest costs are

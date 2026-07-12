@@ -13,6 +13,11 @@ Run the first gate before making further performance-sensitive optimisation
 changes. Start with the phase-only scenario because both branches can run it
 without the known legacy slow-gain combination limitations.
 
+Use short `--run-root` and `--repeatability-work-root` paths, preferably under
+`/tmp`, when comparing against `master`. The legacy `master` helper scripts can
+hit PyBDSF `AF_UNIX path too long` errors when run directories are deeply
+nested.
+
 Prepare-only smoke:
 
 ```bash
@@ -33,7 +38,8 @@ python3 scripts/dev/run_branch_equivalence.py \
   --base-ref master \
   --base-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/base/master_benchmark_phase_only.parset \
   --current-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/current/current_benchmark_phase_only.parset \
-  --run-root runs/performance-gate-phase-only-core-$(date -u +%Y%m%d-%H%M%S) \
+  --run-root /tmp/rapthor-performance-gate-phase-only \
+  --repeatability-work-root /tmp/rapthor-performance-gate-phase-only-work \
   --repeatability-repetitions 3 \
   --setup-base-env \
   --base-system-site-packages \
@@ -44,3 +50,6 @@ The runner writes elapsed wall-clock seconds for each branch repetition, parses
 operation boundary timings from each run's `rapthor.log`, and reports
 min/median/max plus current-vs-base median deltas. Archive the compact
 JSON/Markdown report here after the full gate completes.
+
+The first formal repeatability-aware phase-only gate pass is archived in
+`2026-07-11-phase-only-core-repeatability-gate.md`.

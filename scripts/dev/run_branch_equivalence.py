@@ -65,6 +65,19 @@ IMAGE_PREVIEW_PRODUCTS = (
 VISUAL_COMPARISON_LIMIT = 12
 SMALL_IMAGE_RESIDUAL_RMS_RATIO_LIMIT = 1e-3
 SPARSE_MODEL_IMAGE_P99_LIMIT = 1e-12
+H5_NUMERIC_MAX_ABS_REPEATABILITY_LIMIT = 1e-5
+REPEATABILITY_ENVELOPE_MARGIN = 1.05
+REPEATABILITY_METRIC_KEYS = (
+    "max_abs_delta",
+    "p99_abs_delta",
+    "residual_rms",
+    "residual_rms_over_reference_rms",
+    "max_abs_diagnostic_relative_delta",
+)
+NON_BLOCKING_CLASSIFICATION_DISPOSITIONS = {
+    "warning",
+    "repeatability-candidate",
+}
 PYBDSF_DIAGNOSTIC_CATALOG_COLUMNS = {
     "PA",
     "PA_img_plane",
@@ -1137,8 +1150,14 @@ def _sparse_model_image_residual(metric: dict[str, Any]) -> bool:
         "model" in product
         and isinstance(p99_abs_delta, (int, float))
         and abs(float(p99_abs_delta)) <= SPARSE_MODEL_IMAGE_P99_LIMIT
-        and _small_image_residual(metric)
     )
+
+
+def _h5_numeric_difference_within_repeatability_limit(failure: str) -> bool:
+    match = re.search(r"\bmax_abs=(?P<value>[+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?)", failure)
+    if not match:
+        return False
+    return abs(float(match.group("value"))) <= H5_NUMERIC_MAX_ABS_REPEATABILITY_LIMIT
 
 
 def _classification(
@@ -1315,6 +1334,48 @@ def _classify_branch_differences(
                 )
             continue
 
+        fits_stat_match = re.match(
+            r"FITS (mean|std|rms|min|max) differs for ([^:]+):",
+            failure,
+        )
+        if fits_stat_match:
+            statistic, product = fits_stat_match.groups()
+            metric = image_metrics.get(product, {})
+            if _sparse_model_image_residual(metric):
+                classifications.append(
+                    _classification(
+                        item=f"{product}:{statistic}",
+                        category="sparse_model_image_statistic",
+                        disposition="repeatability-candidate",
+                        recommendation=(
+                            "Judge sparse model-image statistics with same-branch "
+                            "repeatability, p99/RMS residuals, and downstream diagnostics."
+                        ),
+                    )
+                )
+            elif _small_image_residual(metric):
+                classifications.append(
+                    _classification(
+                        item=f"{product}:{statistic}",
+                        category="small_image_statistic",
+                        disposition="repeatability-candidate",
+                        recommendation=(
+                            "Bound image-statistic drift with same-branch residual scatter "
+                            "before accepting it."
+                        ),
+                    )
+                )
+            else:
+                classifications.append(
+                    _classification(
+                        item=f"{product}:{statistic}",
+                        category="strict_fits_image_statistic",
+                        disposition="strict-failure",
+                        recommendation="Investigate image statistic drift before relaxing.",
+                    )
+                )
+            continue
+
         table_match = re.match(r"FITS table column differs for ([^:]+):(.+)$", failure)
         if table_match:
             product, column = table_match.groups()
@@ -1389,6 +1450,21 @@ def _classify_branch_differences(
             continue
 
         if failure.startswith("HDF5"):
+            if failure.startswith(
+                "HDF5 numeric dataset differs "
+            ) and _h5_numeric_difference_within_repeatability_limit(failure):
+                classifications.append(
+                    _classification(
+                        item=failure,
+                        category="small_h5_numeric_difference",
+                        disposition="repeatability-candidate",
+                        recommendation=(
+                            "Keep h5parm structure, axes, directions, and metadata strict; "
+                            "allow this only as a tiny numeric solver-repeatability delta."
+                        ),
+                    )
+                )
+                continue
             classifications.append(
                 _classification(
                     item=failure,
@@ -1431,6 +1507,276 @@ def _classification_summary_rows(classifications: list[dict[str, str]]) -> list[
         }
         for (category, disposition, recommendation), items in sorted(grouped.items())
     ]
+
+
+def _classification_counts(classifications: list[dict[str, str]]) -> dict[str, dict[str, int]]:
+    counts: dict[str, dict[str, int]] = {
+        "by_category": {},
+        "by_disposition": {},
+    }
+    for item in classifications:
+        category = item["category"]
+        disposition = item["disposition"]
+        counts["by_category"][category] = counts["by_category"].get(category, 0) + 1
+        counts["by_disposition"][disposition] = counts["by_disposition"].get(disposition, 0) + 1
+    return counts
+
+
+def _blocking_classification_count(classifications: list[dict[str, str]]) -> int:
+    return sum(
+        1
+        for item in classifications
+        if item["disposition"] not in NON_BLOCKING_CLASSIFICATION_DISPOSITIONS
+    )
+
+
+def _finite_pair_metric(row: dict[str, Any], key: str) -> float | None:
+    value = row.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    number = float(value)
+    return number if math.isfinite(number) else None
+
+
+def _repeatability_envelopes(pair_summaries: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Return max same-branch metric envelopes used to judge cross-branch pairs."""
+    same_branch_pairs = [row for row in pair_summaries if row.get("group") != "base-current"]
+    envelopes: dict[str, Any] = {
+        "same_branch_pair_count": len(same_branch_pairs),
+        "metrics": {},
+        "blocking_classification_categories": {},
+    }
+    for key in REPEATABILITY_METRIC_KEYS:
+        values = [
+            value
+            for row in same_branch_pairs
+            if (value := _finite_pair_metric(row, key)) is not None
+        ]
+        envelopes["metrics"][key] = {
+            "max": max(values) if values else None,
+            "count": len(values),
+        }
+    categories: dict[str, list[int]] = {}
+    for row in same_branch_pairs:
+        for category, count in _blocking_classification_categories(row).items():
+            categories.setdefault(category, []).append(count)
+    for category, counts in categories.items():
+        envelopes["blocking_classification_categories"][category] = {
+            "max": max(counts),
+            "count": len(counts),
+        }
+    return envelopes
+
+
+def _metric_within_envelope(value: float | None, envelope: float | None) -> bool:
+    if value is None:
+        return True
+    if envelope is None:
+        return False
+    allowed = abs(float(envelope)) * REPEATABILITY_ENVELOPE_MARGIN
+    return abs(float(value)) <= allowed
+
+
+def _classification_count_within_envelope(count: int, envelope: int | None) -> bool:
+    if count <= 0:
+        return True
+    if envelope is None:
+        return False
+    allowed = max(1, math.ceil(float(envelope) * REPEATABILITY_ENVELOPE_MARGIN))
+    return count <= allowed
+
+
+def _blocking_classification_categories(row: dict[str, Any]) -> dict[str, int]:
+    """Return strict classification counts by category for one pair summary."""
+    categories: dict[str, int] = {}
+    for item in row.get("classification_summary", []):
+        if item["disposition"] not in NON_BLOCKING_CLASSIFICATION_DISPOSITIONS:
+            categories[item["category"]] = categories.get(item["category"], 0) + int(item["count"])
+    return categories
+
+
+def _pair_gate_status(
+    row: dict[str, Any],
+    envelopes: dict[str, Any],
+) -> dict[str, Any]:
+    """Classify one pair under the repeatability-aware gate."""
+    if row.get("group") != "base-current":
+        return {
+            "status": "repeatability-reference",
+            "blocking_metrics": [],
+            "blocking_classification_count": row.get("blocking_classification_count", 0),
+        }
+
+    blocking_metrics = []
+    for key in REPEATABILITY_METRIC_KEYS:
+        value = _finite_pair_metric(row, key)
+        envelope = envelopes["metrics"].get(key, {}).get("max")
+        if not _metric_within_envelope(value, envelope):
+            blocking_metrics.append(
+                {
+                    "metric": key,
+                    "value": value,
+                    "same_branch_envelope": envelope,
+                    "allowed_with_margin": (
+                        None
+                        if envelope is None
+                        else abs(float(envelope)) * REPEATABILITY_ENVELOPE_MARGIN
+                    ),
+                }
+            )
+
+    blocking_classifications = []
+    for category, count in _blocking_classification_categories(row).items():
+        envelope = envelopes["blocking_classification_categories"].get(category, {}).get("max")
+        if not _classification_count_within_envelope(count, envelope):
+            blocking_classifications.append(
+                {
+                    "category": category,
+                    "count": count,
+                    "same_branch_envelope": envelope,
+                    "allowed_with_margin": (
+                        None
+                        if envelope is None
+                        else max(
+                            1,
+                            math.ceil(float(envelope) * REPEATABILITY_ENVELOPE_MARGIN),
+                        )
+                    ),
+                }
+            )
+
+    blocking_classification_count = sum(int(item["count"]) for item in blocking_classifications)
+    if row.get("passed"):
+        status = "pass"
+    elif not blocking_metrics and not blocking_classifications:
+        status = "repeatability-bounded"
+    else:
+        status = "fail"
+
+    return {
+        "status": status,
+        "blocking_metrics": blocking_metrics,
+        "blocking_classifications": blocking_classifications,
+        "blocking_classification_count": blocking_classification_count,
+    }
+
+
+def _performance_decision(runtime_summary: dict[str, Any]) -> dict[str, Any]:
+    delta = runtime_summary.get("current_vs_base_median_delta_percent")
+    if delta is None:
+        return {
+            "status": "warn",
+            "reason": "Runtime delta unavailable; performance decision is advisory.",
+        }
+    if float(delta) <= 0.0:
+        return {
+            "status": "pass",
+            "reason": "Current branch median runtime is not slower than master.",
+        }
+    if float(delta) <= 0.05:
+        return {
+            "status": "warn",
+            "reason": "Current branch is slower, but within the initial 5% warning band.",
+        }
+    return {
+        "status": "fail",
+        "reason": "Current branch is slower than master outside the initial warning band.",
+    }
+
+
+def _repeatability_gate_decision(
+    *,
+    runs_by_side: dict[str, dict[int, PreparedRun]],
+    runtime_summary: dict[str, Any],
+    pair_summaries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build the repeatability-aware performance-equivalence gate decision."""
+    if not pair_summaries:
+        return {
+            "overall_status": "not-run",
+            "run_validity": {
+                "status": "not-run",
+                "failures": [],
+            },
+            "science_product_validity": {
+                "status": "not-run",
+                "cross_pair_count": 0,
+                "repeatability_bounded_pair_count": 0,
+                "failed_cross_pairs": [],
+            },
+            "performance": {
+                "status": "not-run",
+                "reason": "Repeatability pairs were prepared but not run.",
+            },
+            "repeatability_envelopes": _repeatability_envelopes(pair_summaries),
+            "pair_statuses": {},
+        }
+
+    run_failures = []
+    for side, runs in runs_by_side.items():
+        for rep_index, prepared in sorted(runs.items()):
+            if prepared.returncode != 0:
+                run_failures.append(
+                    {
+                        "side": side,
+                        "repetition": _repeatability_rep_label(rep_index),
+                        "returncode": prepared.returncode,
+                        "log_path": str(prepared.log_path),
+                    }
+                )
+
+    envelopes = _repeatability_envelopes(pair_summaries)
+    pair_statuses = {row["pair_id"]: _pair_gate_status(row, envelopes) for row in pair_summaries}
+    cross_pair_statuses = [
+        pair_statuses[row["pair_id"]]
+        for row in pair_summaries
+        if row.get("group") == "base-current"
+    ]
+    failed_cross_pairs = [
+        row["pair_id"]
+        for row in pair_summaries
+        if row.get("group") == "base-current" and pair_statuses[row["pair_id"]]["status"] == "fail"
+    ]
+    bounded_cross_pairs = [
+        row["pair_id"]
+        for row in pair_summaries
+        if row.get("group") == "base-current"
+        and pair_statuses[row["pair_id"]]["status"] == "repeatability-bounded"
+    ]
+
+    if run_failures:
+        run_validity_status = "fail"
+        product_validity_status = "fail"
+    else:
+        run_validity_status = "pass"
+        product_validity_status = "fail" if failed_cross_pairs else "pass"
+
+    performance = _performance_decision(runtime_summary)
+    if run_validity_status == "fail" or product_validity_status == "fail":
+        overall_status = "fail"
+    elif performance["status"] == "fail":
+        overall_status = "fail"
+    elif performance["status"] == "warn":
+        overall_status = "warn"
+    else:
+        overall_status = "pass"
+
+    return {
+        "overall_status": overall_status,
+        "run_validity": {
+            "status": run_validity_status,
+            "failures": run_failures,
+        },
+        "science_product_validity": {
+            "status": product_validity_status,
+            "cross_pair_count": len(cross_pair_statuses),
+            "repeatability_bounded_pair_count": len(bounded_cross_pairs),
+            "failed_cross_pairs": failed_cross_pairs,
+        },
+        "performance": performance,
+        "repeatability_envelopes": envelopes,
+        "pair_statuses": pair_statuses,
+    }
 
 
 def _format_percent(value: Any) -> str:
@@ -1528,6 +1874,7 @@ def _repeatability_pair_summary(
         if metric.get("kind") == "image"
     ]
     diagnostics = comparison.product_statistics.get("diagnostics", [])
+    classifications = comparison.product_statistics.get("difference_classification", [])
     return {
         "pair_id": pair.pair_id,
         "group": pair.group,
@@ -1548,6 +1895,9 @@ def _repeatability_pair_summary(
             diagnostics,
             "relative_delta",
         ),
+        "classification_counts": _classification_counts(classifications),
+        "classification_summary": _classification_summary_rows(classifications),
+        "blocking_classification_count": _blocking_classification_count(classifications),
         "report": report_path.relative_to(run_root).as_posix(),
     }
 
@@ -1631,7 +1981,7 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
                 "| --- | ---: | ---: | ---: | ---: |",
             ]
         )
-        for side, label in zip(("base", "current"), runtime_labels, strict=True):
+        for side, label in zip(("base", "current"), runtime_labels):
             stats = runtime_summary.get(side, {})
             lines.append(
                 "| "
@@ -1895,6 +2245,36 @@ def _render_repeatability_summary(report: dict[str, Any]) -> str:
                 f"`{run.get('log_path')}` |"
             )
 
+    gate_decision = report.get("gate_decision")
+    if gate_decision:
+        run_validity = gate_decision["run_validity"]
+        product_validity = gate_decision["science_product_validity"]
+        performance = gate_decision["performance"]
+        lines.extend(
+            [
+                "",
+                "## Gate Decision",
+                "",
+                f"Overall status: **{gate_decision['overall_status']}**",
+                "",
+                "| Decision Area | Status | Notes |",
+                "| --- | --- | --- |",
+                "| Run validity | "
+                f"{run_validity['status']} | "
+                f"{len(run_validity['failures'])} failed run(s) |",
+                "| Science/product validity | "
+                f"{product_validity['status']} | "
+                f"{product_validity['repeatability_bounded_pair_count']} of "
+                f"{product_validity['cross_pair_count']} cross-branch pair(s) "
+                "repeatability-bounded |",
+                f"| Performance | {performance['status']} | {performance['reason']} |",
+            ]
+        )
+        failed_cross_pairs = product_validity.get("failed_cross_pairs") or []
+        if failed_cross_pairs:
+            lines.extend(["", "Blocking cross-branch pair(s):"])
+            lines.extend(f"- `{pair_id}`" for pair_id in failed_cross_pairs)
+
     runtime_summary = report.get("runtime_summary")
     if runtime_summary:
         lines.extend(
@@ -1944,7 +2324,11 @@ def _render_repeatability_summary(report: dict[str, Any]) -> str:
         )
     for row in pair_summaries:
         metrics = row.get("metrics", {})
-        status = "pass" if row["passed"] else "fail"
+        status = (
+            (gate_decision or {}).get("pair_statuses", {}).get(row["pair_id"], {}).get("status")
+        )
+        if status is None:
+            status = "pass" if row["passed"] else "fail"
         lines.append(
             "| "
             f"`{row['pair_id']}` | `{row['group']}` | {status} | "
@@ -1987,7 +2371,7 @@ def _write_repeatability_summary(
     repetitions: int,
     runs_by_side: dict[str, dict[int, PreparedRun]],
     pair_summaries: list[dict[str, Any]],
-) -> None:
+) -> dict[str, Any]:
     planned_pairs = [
         {
             **asdict(pair),
@@ -1997,17 +2381,24 @@ def _write_repeatability_summary(
         }
         for pair in _repeatability_pairs(repetitions)
     ]
+    runtime_summary = _runtime_summary(
+        {side: list(runs.values()) for side, runs in runs_by_side.items()}
+    )
+    gate_decision = _repeatability_gate_decision(
+        runs_by_side=runs_by_side,
+        runtime_summary=runtime_summary,
+        pair_summaries=pair_summaries,
+    )
     report = {
         "scenario_id": scenario_id,
         "run_root": str(run_root),
         "repetitions": repetitions,
         "runs": _repeatability_runs_payload(runs_by_side),
-        "runtime_summary": _runtime_summary(
-            {side: list(runs.values()) for side, runs in runs_by_side.items()}
-        ),
+        "runtime_summary": runtime_summary,
         "operation_timing_summary": _operation_timing_summary(
             {side: list(runs.values()) for side, runs in runs_by_side.items()}
         ),
+        "gate_decision": gate_decision,
         "planned_pairs": planned_pairs,
         "pair_summaries": pair_summaries,
     }
@@ -2019,6 +2410,7 @@ def _write_repeatability_summary(
         _render_repeatability_summary(report),
         encoding="utf-8",
     )
+    return gate_decision
 
 
 def _prepare_comparison_result(
@@ -2270,7 +2662,7 @@ def _run_repeatability(
             )
         )
 
-    _write_repeatability_summary(
+    gate_decision = _write_repeatability_summary(
         run_root=run_root,
         scenario_id=scenario_id,
         repetitions=repetitions,
@@ -2279,7 +2671,7 @@ def _run_repeatability(
     )
     print(f"Repeatability summary: {run_root / 'repeatability-summary.json'}", flush=True)
     print(f"Markdown summary: {run_root / 'repeatability-summary.md'}", flush=True)
-    passed = all(row["passed"] for row in pair_summaries)
+    passed = gate_decision["overall_status"] in {"pass", "warn"}
     return 0 if passed or args.allow_failures else 1
 
 

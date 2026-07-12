@@ -1,0 +1,2936 @@
+{
+  "scenario_id": "phase-only-core-performance-baseline",
+  "run_root": "/tmp/r2",
+  "repetitions": 3,
+  "runs": {
+    "base": {
+      "rep-01": {
+        "side": "base",
+        "ref": "master",
+        "repo_root": "/tmp/r2/checkouts/base",
+        "run_dir": "/tmp/r2/base/rep-01",
+        "parset_path": "/tmp/r2/inputs/base/rep-01/master_benchmark_phase_only.parset",
+        "work_dir": "/tmp/w2/base/rep-01",
+        "command": [
+          "/tmp/r2/checkouts/base/.venv/bin/rapthor",
+          "/tmp/r2/inputs/base/rep-01/master_benchmark_phase_only.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 426.8768088140059,
+        "log_path": "/tmp/r2/base/rep-01/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 21.393996
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 78.853371
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 3.290638
+          },
+          {
+            "operation": "calibrate_2",
+            "elapsed_seconds": 21.24919
+          },
+          {
+            "operation": "image_2",
+            "elapsed_seconds": 79.803093
+          },
+          {
+            "operation": "mosaic_2",
+            "elapsed_seconds": 3.350716
+          },
+          {
+            "operation": "calibrate_3",
+            "elapsed_seconds": 21.232049
+          },
+          {
+            "operation": "image_3",
+            "elapsed_seconds": 79.8721
+          },
+          {
+            "operation": "mosaic_3",
+            "elapsed_seconds": 3.278879
+          },
+          {
+            "operation": "calibrate_4",
+            "elapsed_seconds": 23.235438
+          },
+          {
+            "operation": "image_4",
+            "elapsed_seconds": 84.88677
+          },
+          {
+            "operation": "mosaic_4",
+            "elapsed_seconds": 3.267469
+          }
+        ]
+      },
+      "rep-02": {
+        "side": "base",
+        "ref": "master",
+        "repo_root": "/tmp/r2/checkouts/base",
+        "run_dir": "/tmp/r2/base/rep-02",
+        "parset_path": "/tmp/r2/inputs/base/rep-02/master_benchmark_phase_only.parset",
+        "work_dir": "/tmp/w2/base/rep-02",
+        "command": [
+          "/tmp/r2/checkouts/base/.venv/bin/rapthor",
+          "/tmp/r2/inputs/base/rep-02/master_benchmark_phase_only.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 429.5572219500318,
+        "log_path": "/tmp/r2/base/rep-02/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 21.616836
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 78.794796
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 3.785864
+          },
+          {
+            "operation": "calibrate_2",
+            "elapsed_seconds": 21.186105
+          },
+          {
+            "operation": "image_2",
+            "elapsed_seconds": 79.798249
+          },
+          {
+            "operation": "mosaic_2",
+            "elapsed_seconds": 3.274866
+          },
+          {
+            "operation": "calibrate_3",
+            "elapsed_seconds": 21.260753
+          },
+          {
+            "operation": "image_3",
+            "elapsed_seconds": 80.859557
+          },
+          {
+            "operation": "mosaic_3",
+            "elapsed_seconds": 3.279526
+          },
+          {
+            "operation": "calibrate_4",
+            "elapsed_seconds": 23.16944
+          },
+          {
+            "operation": "image_4",
+            "elapsed_seconds": 85.887968
+          },
+          {
+            "operation": "mosaic_4",
+            "elapsed_seconds": 3.320807
+          }
+        ]
+      },
+      "rep-03": {
+        "side": "base",
+        "ref": "master",
+        "repo_root": "/tmp/r2/checkouts/base",
+        "run_dir": "/tmp/r2/base/rep-03",
+        "parset_path": "/tmp/r2/inputs/base/rep-03/master_benchmark_phase_only.parset",
+        "work_dir": "/tmp/w2/base/rep-03",
+        "command": [
+          "/tmp/r2/checkouts/base/.venv/bin/rapthor",
+          "/tmp/r2/inputs/base/rep-03/master_benchmark_phase_only.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 429.83524129807483,
+        "log_path": "/tmp/r2/base/rep-03/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 21.373628
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 80.810464
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 3.268903
+          },
+          {
+            "operation": "calibrate_2",
+            "elapsed_seconds": 20.764083
+          },
+          {
+            "operation": "image_2",
+            "elapsed_seconds": 80.843921
+          },
+          {
+            "operation": "mosaic_2",
+            "elapsed_seconds": 3.266785
+          },
+          {
+            "operation": "calibrate_3",
+            "elapsed_seconds": 21.296031
+          },
+          {
+            "operation": "image_3",
+            "elapsed_seconds": 80.841221
+          },
+          {
+            "operation": "mosaic_3",
+            "elapsed_seconds": 3.287074
+          },
+          {
+            "operation": "calibrate_4",
+            "elapsed_seconds": 22.320797
+          },
+          {
+            "operation": "image_4",
+            "elapsed_seconds": 85.052964
+          },
+          {
+            "operation": "mosaic_4",
+            "elapsed_seconds": 3.332024
+          }
+        ]
+      }
+    },
+    "current": {
+      "rep-01": {
+        "side": "current",
+        "ref": "current",
+        "repo_root": "/app",
+        "run_dir": "/tmp/r2/current/rep-01",
+        "parset_path": "/tmp/r2/inputs/current/rep-01/current_benchmark_phase_only.parset",
+        "work_dir": "/tmp/w2/current/rep-01",
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "rapthor.cli",
+          "/tmp/r2/inputs/current/rep-01/current_benchmark_phase_only.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 291.587725594989,
+        "log_path": "/tmp/r2/current/rep-01/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 8.129388
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 54.44096
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 1.102881
+          },
+          {
+            "operation": "calibrate_2",
+            "elapsed_seconds": 7.097237
+          },
+          {
+            "operation": "image_2",
+            "elapsed_seconds": 61.32982
+          },
+          {
+            "operation": "mosaic_2",
+            "elapsed_seconds": 1.161419
+          },
+          {
+            "operation": "calibrate_3",
+            "elapsed_seconds": 6.105761
+          },
+          {
+            "operation": "image_3",
+            "elapsed_seconds": 55.278943
+          },
+          {
+            "operation": "mosaic_3",
+            "elapsed_seconds": 1.118553
+          },
+          {
+            "operation": "calibrate_4",
+            "elapsed_seconds": 9.112753
+          },
+          {
+            "operation": "image_4",
+            "elapsed_seconds": 60.301416
+          },
+          {
+            "operation": "mosaic_4",
+            "elapsed_seconds": 1.117092
+          }
+        ]
+      },
+      "rep-02": {
+        "side": "current",
+        "ref": "current",
+        "repo_root": "/app",
+        "run_dir": "/tmp/r2/current/rep-02",
+        "parset_path": "/tmp/r2/inputs/current/rep-02/current_benchmark_phase_only.parset",
+        "work_dir": "/tmp/w2/current/rep-02",
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "rapthor.cli",
+          "/tmp/r2/inputs/current/rep-02/current_benchmark_phase_only.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 303.1597763359314,
+        "log_path": "/tmp/r2/current/rep-02/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 8.13088
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 54.369547
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 1.238144
+          },
+          {
+            "operation": "calibrate_2",
+            "elapsed_seconds": 8.133702
+          },
+          {
+            "operation": "image_2",
+            "elapsed_seconds": 59.291336
+          },
+          {
+            "operation": "mosaic_2",
+            "elapsed_seconds": 1.109469
+          },
+          {
+            "operation": "calibrate_3",
+            "elapsed_seconds": 6.088049
+          },
+          {
+            "operation": "image_3",
+            "elapsed_seconds": 62.29638
+          },
+          {
+            "operation": "mosaic_3",
+            "elapsed_seconds": 1.104243
+          },
+          {
+            "operation": "calibrate_4",
+            "elapsed_seconds": 10.129835
+          },
+          {
+            "operation": "image_4",
+            "elapsed_seconds": 64.240785
+          },
+          {
+            "operation": "mosaic_4",
+            "elapsed_seconds": 1.10713
+          }
+        ]
+      },
+      "rep-03": {
+        "side": "current",
+        "ref": "current",
+        "repo_root": "/app",
+        "run_dir": "/tmp/r2/current/rep-03",
+        "parset_path": "/tmp/r2/inputs/current/rep-03/current_benchmark_phase_only.parset",
+        "work_dir": "/tmp/w2/current/rep-03",
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "rapthor.cli",
+          "/tmp/r2/inputs/current/rep-03/current_benchmark_phase_only.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 308.4994927600492,
+        "log_path": "/tmp/r2/current/rep-03/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 9.138687
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 56.484842
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 1.162365
+          },
+          {
+            "operation": "calibrate_2",
+            "elapsed_seconds": 9.120091
+          },
+          {
+            "operation": "image_2",
+            "elapsed_seconds": 63.283724
+          },
+          {
+            "operation": "mosaic_2",
+            "elapsed_seconds": 1.116023
+          },
+          {
+            "operation": "calibrate_3",
+            "elapsed_seconds": 7.106337
+          },
+          {
+            "operation": "image_3",
+            "elapsed_seconds": 60.219438
+          },
+          {
+            "operation": "mosaic_3",
+            "elapsed_seconds": 1.118876
+          },
+          {
+            "operation": "calibrate_4",
+            "elapsed_seconds": 11.117101
+          },
+          {
+            "operation": "image_4",
+            "elapsed_seconds": 61.23502
+          },
+          {
+            "operation": "mosaic_4",
+            "elapsed_seconds": 1.101858
+          }
+        ]
+      }
+    }
+  },
+  "runtime_summary": {
+    "base": {
+      "count": 3,
+      "min_seconds": 426.8768088140059,
+      "median_seconds": 429.5572219500318,
+      "max_seconds": 429.83524129807483
+    },
+    "current": {
+      "count": 3,
+      "min_seconds": 291.587725594989,
+      "median_seconds": 303.1597763359314,
+      "max_seconds": 308.4994927600492
+    },
+    "current_vs_base_median_delta_percent": -0.2942505425477484
+  },
+  "operation_timing_summary": {
+    "base": {
+      "operation_count": 12,
+      "by_operation": {
+        "calibrate_1": {
+          "count": 3,
+          "min_seconds": 21.373628,
+          "median_seconds": 21.393996,
+          "max_seconds": 21.616836
+        },
+        "calibrate_2": {
+          "count": 3,
+          "min_seconds": 20.764083,
+          "median_seconds": 21.186105,
+          "max_seconds": 21.24919
+        },
+        "calibrate_3": {
+          "count": 3,
+          "min_seconds": 21.232049,
+          "median_seconds": 21.260753,
+          "max_seconds": 21.296031
+        },
+        "calibrate_4": {
+          "count": 3,
+          "min_seconds": 22.320797,
+          "median_seconds": 23.16944,
+          "max_seconds": 23.235438
+        },
+        "image_1": {
+          "count": 3,
+          "min_seconds": 78.794796,
+          "median_seconds": 78.853371,
+          "max_seconds": 80.810464
+        },
+        "image_2": {
+          "count": 3,
+          "min_seconds": 79.798249,
+          "median_seconds": 79.803093,
+          "max_seconds": 80.843921
+        },
+        "image_3": {
+          "count": 3,
+          "min_seconds": 79.8721,
+          "median_seconds": 80.841221,
+          "max_seconds": 80.859557
+        },
+        "image_4": {
+          "count": 3,
+          "min_seconds": 84.88677,
+          "median_seconds": 85.052964,
+          "max_seconds": 85.887968
+        },
+        "mosaic_1": {
+          "count": 3,
+          "min_seconds": 3.268903,
+          "median_seconds": 3.290638,
+          "max_seconds": 3.785864
+        },
+        "mosaic_2": {
+          "count": 3,
+          "min_seconds": 3.266785,
+          "median_seconds": 3.274866,
+          "max_seconds": 3.350716
+        },
+        "mosaic_3": {
+          "count": 3,
+          "min_seconds": 3.278879,
+          "median_seconds": 3.279526,
+          "max_seconds": 3.287074
+        },
+        "mosaic_4": {
+          "count": 3,
+          "min_seconds": 3.267469,
+          "median_seconds": 3.320807,
+          "max_seconds": 3.332024
+        }
+      }
+    },
+    "current": {
+      "operation_count": 12,
+      "by_operation": {
+        "calibrate_1": {
+          "count": 3,
+          "min_seconds": 8.129388,
+          "median_seconds": 8.13088,
+          "max_seconds": 9.138687
+        },
+        "calibrate_2": {
+          "count": 3,
+          "min_seconds": 7.097237,
+          "median_seconds": 8.133702,
+          "max_seconds": 9.120091
+        },
+        "calibrate_3": {
+          "count": 3,
+          "min_seconds": 6.088049,
+          "median_seconds": 6.105761,
+          "max_seconds": 7.106337
+        },
+        "calibrate_4": {
+          "count": 3,
+          "min_seconds": 9.112753,
+          "median_seconds": 10.129835,
+          "max_seconds": 11.117101
+        },
+        "image_1": {
+          "count": 3,
+          "min_seconds": 54.369547,
+          "median_seconds": 54.44096,
+          "max_seconds": 56.484842
+        },
+        "image_2": {
+          "count": 3,
+          "min_seconds": 59.291336,
+          "median_seconds": 61.32982,
+          "max_seconds": 63.283724
+        },
+        "image_3": {
+          "count": 3,
+          "min_seconds": 55.278943,
+          "median_seconds": 60.219438,
+          "max_seconds": 62.29638
+        },
+        "image_4": {
+          "count": 3,
+          "min_seconds": 60.301416,
+          "median_seconds": 61.23502,
+          "max_seconds": 64.240785
+        },
+        "mosaic_1": {
+          "count": 3,
+          "min_seconds": 1.102881,
+          "median_seconds": 1.162365,
+          "max_seconds": 1.238144
+        },
+        "mosaic_2": {
+          "count": 3,
+          "min_seconds": 1.109469,
+          "median_seconds": 1.116023,
+          "max_seconds": 1.161419
+        },
+        "mosaic_3": {
+          "count": 3,
+          "min_seconds": 1.104243,
+          "median_seconds": 1.118553,
+          "max_seconds": 1.118876
+        },
+        "mosaic_4": {
+          "count": 3,
+          "min_seconds": 1.101858,
+          "median_seconds": 1.10713,
+          "max_seconds": 1.117092
+        }
+      }
+    },
+    "current_vs_base": {
+      "calibrate_1": {
+        "base_count": 3,
+        "base_median_seconds": 21.393996,
+        "current_count": 3,
+        "current_median_seconds": 8.13088,
+        "current_vs_base_median_delta_percent": -0.6199457081323191
+      },
+      "calibrate_2": {
+        "base_count": 3,
+        "base_median_seconds": 21.186105,
+        "current_count": 3,
+        "current_median_seconds": 8.133702,
+        "current_vs_base_median_delta_percent": -0.6160831828219486
+      },
+      "calibrate_3": {
+        "base_count": 3,
+        "base_median_seconds": 21.260753,
+        "current_count": 3,
+        "current_median_seconds": 6.105761,
+        "current_vs_base_median_delta_percent": -0.7128153927567852
+      },
+      "calibrate_4": {
+        "base_count": 3,
+        "base_median_seconds": 23.16944,
+        "current_count": 3,
+        "current_median_seconds": 10.129835,
+        "current_vs_base_median_delta_percent": -0.5627932742440042
+      },
+      "image_1": {
+        "base_count": 3,
+        "base_median_seconds": 78.853371,
+        "current_count": 3,
+        "current_median_seconds": 54.44096,
+        "current_vs_base_median_delta_percent": -0.3095924840042666
+      },
+      "image_2": {
+        "base_count": 3,
+        "base_median_seconds": 79.803093,
+        "current_count": 3,
+        "current_median_seconds": 61.32982,
+        "current_vs_base_median_delta_percent": -0.23148567687721083
+      },
+      "image_3": {
+        "base_count": 3,
+        "base_median_seconds": 80.841221,
+        "current_count": 3,
+        "current_median_seconds": 60.219438,
+        "current_vs_base_median_delta_percent": -0.2550899497176076
+      },
+      "image_4": {
+        "base_count": 3,
+        "base_median_seconds": 85.052964,
+        "current_count": 3,
+        "current_median_seconds": 61.23502,
+        "current_vs_base_median_delta_percent": -0.280036613421256
+      },
+      "mosaic_1": {
+        "base_count": 3,
+        "base_median_seconds": 3.290638,
+        "current_count": 3,
+        "current_median_seconds": 1.162365,
+        "current_vs_base_median_delta_percent": -0.64676606785675
+      },
+      "mosaic_2": {
+        "base_count": 3,
+        "base_median_seconds": 3.274866,
+        "current_count": 3,
+        "current_median_seconds": 1.116023,
+        "current_vs_base_median_delta_percent": -0.6592156747787543
+      },
+      "mosaic_3": {
+        "base_count": 3,
+        "base_median_seconds": 3.279526,
+        "current_count": 3,
+        "current_median_seconds": 1.118553,
+        "current_vs_base_median_delta_percent": -0.6589284549047637
+      },
+      "mosaic_4": {
+        "base_count": 3,
+        "base_median_seconds": 3.320807,
+        "current_count": 3,
+        "current_median_seconds": 1.10713,
+        "current_vs_base_median_delta_percent": -0.6666081467546894
+      }
+    }
+  },
+  "gate_decision": {
+    "overall_status": "pass",
+    "run_validity": {
+      "status": "pass",
+      "failures": []
+    },
+    "science_product_validity": {
+      "status": "pass",
+      "cross_pair_count": 9,
+      "repeatability_bounded_pair_count": 9,
+      "failed_cross_pairs": []
+    },
+    "performance": {
+      "status": "pass",
+      "reason": "Current branch median runtime is not slower than master."
+    },
+    "repeatability_envelopes": {
+      "same_branch_pair_count": 6,
+      "metrics": {
+        "max_abs_delta": {
+          "max": 0.4394875019788742,
+          "count": 6
+        },
+        "p99_abs_delta": {
+          "max": 0.007895909771323192,
+          "count": 6
+        },
+        "residual_rms": {
+          "max": 0.00466626873446239,
+          "count": 6
+        },
+        "residual_rms_over_reference_rms": {
+          "max": 1.241770774332525,
+          "count": 6
+        },
+        "max_abs_diagnostic_relative_delta": {
+          "max": 0.002243508955132993,
+          "count": 6
+        }
+      },
+      "blocking_classification_categories": {
+        "strict_contract_difference": {
+          "max": 16,
+          "count": 4
+        },
+        "strict_fits_image_difference": {
+          "max": 17,
+          "count": 4
+        },
+        "strict_fits_image_statistic": {
+          "max": 5,
+          "count": 4
+        },
+        "strict_fits_table_column": {
+          "max": 23,
+          "count": 4
+        },
+        "strict_h5_difference": {
+          "max": 9,
+          "count": 5
+        }
+      }
+    },
+    "pair_statuses": {
+      "base-rep-01_vs_base-rep-02": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 67
+      },
+      "base-rep-01_vs_base-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_base-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 67
+      },
+      "current-rep-01_vs_current-rep-02": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 2
+      },
+      "current-rep-01_vs_current-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 70
+      },
+      "current-rep-02_vs_current-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 70
+      },
+      "base-rep-01_vs_current-rep-01": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-01_vs_current-rep-02": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-01_vs_current-rep-03": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_current-rep-01": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_current-rep-02": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_current-rep-03": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-03_vs_current-rep-01": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-03_vs_current-rep-02": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-03_vs_current-rep-03": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      }
+    }
+  },
+  "planned_pairs": [
+    {
+      "group": "base-base",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "base",
+      "current_rep": 2,
+      "pair_id": "base-rep-01_vs_base-rep-02",
+      "reference": "base/rep-01",
+      "current": "base/rep-02"
+    },
+    {
+      "group": "base-base",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "base",
+      "current_rep": 3,
+      "pair_id": "base-rep-01_vs_base-rep-03",
+      "reference": "base/rep-01",
+      "current": "base/rep-03"
+    },
+    {
+      "group": "base-base",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "base",
+      "current_rep": 3,
+      "pair_id": "base-rep-02_vs_base-rep-03",
+      "reference": "base/rep-02",
+      "current": "base/rep-03"
+    },
+    {
+      "group": "current-current",
+      "reference_side": "current",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "current-rep-01_vs_current-rep-02",
+      "reference": "current/rep-01",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "current-current",
+      "reference_side": "current",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "current-rep-01_vs_current-rep-03",
+      "reference": "current/rep-01",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "current-current",
+      "reference_side": "current",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "current-rep-02_vs_current-rep-03",
+      "reference": "current/rep-02",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 1,
+      "pair_id": "base-rep-01_vs_current-rep-01",
+      "reference": "base/rep-01",
+      "current": "current/rep-01"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "base-rep-01_vs_current-rep-02",
+      "reference": "base/rep-01",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "base-rep-01_vs_current-rep-03",
+      "reference": "base/rep-01",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 1,
+      "pair_id": "base-rep-02_vs_current-rep-01",
+      "reference": "base/rep-02",
+      "current": "current/rep-01"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "base-rep-02_vs_current-rep-02",
+      "reference": "base/rep-02",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "base-rep-02_vs_current-rep-03",
+      "reference": "base/rep-02",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 3,
+      "current_side": "current",
+      "current_rep": 1,
+      "pair_id": "base-rep-03_vs_current-rep-01",
+      "reference": "base/rep-03",
+      "current": "current/rep-01"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 3,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "base-rep-03_vs_current-rep-02",
+      "reference": "base/rep-03",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 3,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "base-rep-03_vs_current-rep-03",
+      "reference": "base/rep-03",
+      "current": "current/rep-03"
+    }
+  ],
+  "pair_summaries": [
+    {
+      "pair_id": "base-rep-01_vs_base-rep-02",
+      "group": "base-base",
+      "reference": "base/rep-01",
+      "current": "base/rep-02",
+      "passed": false,
+      "failure_count": 122,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 122
+      },
+      "max_abs_delta": 0.4394875019788742,
+      "p99_abs_delta": 0.007895909771323192,
+      "residual_rms": 0.00466626873446239,
+      "residual_rms_over_reference_rms": 1.241770774332525,
+      "max_abs_diagnostic_relative_delta": 0.002239179933524172,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 9,
+          "sparse_model_image_residual": 4,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 6,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 55,
+          "strict-failure": 67
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 9,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms",
+            "field-MFS-model-pb.fits.fz:max"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 6,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160418)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160418)",
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.11639)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 67,
+      "report": "pairs/base-rep-01_vs_base-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_base-rep-03",
+      "group": "base-base",
+      "reference": "base/rep-01",
+      "current": "base/rep-03",
+      "passed": false,
+      "failure_count": 27,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 27
+      },
+      "max_abs_delta": 0.4363420456647873,
+      "p99_abs_delta": 9.924173355102539e-06,
+      "residual_rms": 0.004559018621019822,
+      "residual_rms_over_reference_rms": 1.2132297570882251,
+      "max_abs_diagnostic_relative_delta": 0.0001050797353382454,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 15,
+          "sparse_model_image_statistic": 8,
+          "sparse_model_image_residual": 3,
+          "pybdsf_catalog_diagnostic_column": 1
+        },
+        "by_disposition": {
+          "repeatability-candidate": 27
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "sector_1.source_catalog.fits:PA_img_plane"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 8,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms",
+            "field-MFS-model-pb.fits.fz:max"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-01_vs_base-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_base-rep-03",
+      "group": "base-base",
+      "reference": "base/rep-02",
+      "current": "base/rep-03",
+      "passed": false,
+      "failure_count": 123,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 123
+      },
+      "max_abs_delta": 0.43352164328098297,
+      "p99_abs_delta": 0.007895904239267098,
+      "residual_rms": 0.004592947575572414,
+      "residual_rms_over_reference_rms": 1.2066107909829513,
+      "max_abs_diagnostic_relative_delta": 0.0021586370211390325,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 10,
+          "sparse_model_image_residual": 4,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 6,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 56,
+          "strict-failure": 67
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 10,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms",
+            "field-MFS-model-pb.fits.fz:max"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 6,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160409)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160409)",
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.11639)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 67,
+      "report": "pairs/base-rep-02_vs_base-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "current-rep-01_vs_current-rep-02",
+      "group": "current-current",
+      "reference": "current/rep-01",
+      "current": "current/rep-02",
+      "passed": false,
+      "failure_count": 18,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 12,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 18
+      },
+      "max_abs_delta": 0.018092830665409565,
+      "p99_abs_delta": 9.939074516296387e-06,
+      "residual_rms": 7.6325314152236e-06,
+      "residual_rms_over_reference_rms": 0.00017931535004988625,
+      "max_abs_diagnostic_relative_delta": 9.86875534437715e-05,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 15,
+          "strict_h5_difference": 2,
+          "pybdsf_catalog_diagnostic_column": 1
+        },
+        "by_disposition": {
+          "repeatability-candidate": 16,
+          "strict-failure": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "sector_1.source_catalog.fits:PA_img_plane"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 2,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=1.11685e-05)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=1.11685e-05)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 2,
+      "report": "pairs/current-rep-01_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "current-rep-01_vs_current-rep-03",
+      "group": "current-current",
+      "reference": "current/rep-01",
+      "current": "current/rep-03",
+      "passed": false,
+      "failure_count": 120,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 12,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 120
+      },
+      "max_abs_delta": 0.08598983287811279,
+      "p99_abs_delta": 0.007895909324288367,
+      "residual_rms": 0.002036607548288452,
+      "residual_rms_over_reference_rms": 0.031502453385207775,
+      "max_abs_diagnostic_relative_delta": 0.002243508955132993,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 5,
+          "sparse_model_image_residual": 3,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 9,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 50,
+          "strict-failure": 70
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 5,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms",
+            "field-MFS-model-pb.fits.fz:std"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 9,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160405)",
+            "HDF5 numeric dataset differs for field-solutions-medium1-phase.h5:sol000/phase000/val (max_abs=0.000343829)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160405)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 70,
+      "report": "pairs/current-rep-01_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "current-rep-02_vs_current-rep-03",
+      "group": "current-current",
+      "reference": "current/rep-02",
+      "current": "current/rep-03",
+      "passed": false,
+      "failure_count": 120,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 12,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 120
+      },
+      "max_abs_delta": 0.08598977327346802,
+      "p99_abs_delta": 0.007895859507843819,
+      "residual_rms": 0.0020366118182440942,
+      "residual_rms_over_reference_rms": 0.03150244836963061,
+      "max_abs_diagnostic_relative_delta": 0.00214460975539937,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 5,
+          "sparse_model_image_residual": 3,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 9,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 50,
+          "strict-failure": 70
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 5,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms",
+            "field-MFS-model-pb.fits.fz:std"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 9,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160423)",
+            "HDF5 numeric dataset differs for field-solutions-medium1-phase.h5:sol000/phase000/val (max_abs=0.000344035)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160423)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 70,
+      "report": "pairs/current-rep-02_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_current-rep-01",
+      "group": "base-current",
+      "reference": "base/rep-01",
+      "current": "current/rep-01",
+      "passed": false,
+      "failure_count": 128,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 132
+      },
+      "max_abs_delta": 0.22202354669570923,
+      "p99_abs_delta": 0.007895991280674933,
+      "residual_rms": 0.003252094268271503,
+      "residual_rms_over_reference_rms": 0.8654357148118984,
+      "max_abs_diagnostic_relative_delta": 0.002328993923909179,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 15,
+          "sparse_model_image_residual": 4,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 6,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 61,
+          "strict-failure": 67
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 6,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160405)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160405)",
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.11638)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 67,
+      "report": "pairs/base-rep-01_vs_current-rep-01/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_current-rep-02",
+      "group": "base-current",
+      "reference": "base/rep-01",
+      "current": "current/rep-02",
+      "passed": false,
+      "failure_count": 128,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 132
+      },
+      "max_abs_delta": 0.22202354669570923,
+      "p99_abs_delta": 0.00789597675204276,
+      "residual_rms": 0.003252094275826078,
+      "residual_rms_over_reference_rms": 0.8654357168222949,
+      "max_abs_diagnostic_relative_delta": 0.0022305362131777432,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 15,
+          "sparse_model_image_residual": 4,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 6,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 61,
+          "strict-failure": 67
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 6,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160422)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160422)",
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.11639)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 67,
+      "report": "pairs/base-rep-01_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_current-rep-03",
+      "group": "base-current",
+      "reference": "base/rep-01",
+      "current": "current/rep-03",
+      "passed": false,
+      "failure_count": 32,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 36
+      },
+      "max_abs_delta": 0.22202354669570923,
+      "p99_abs_delta": 9.935349225997925e-06,
+      "residual_rms": 0.0032515288980653413,
+      "residual_rms_over_reference_rms": 0.8652852605113338,
+      "max_abs_diagnostic_relative_delta": 0.00010821125062978252,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 15,
+          "sparse_model_image_statistic": 14,
+          "sparse_model_image_residual": 3
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 32
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 14,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-01_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_current-rep-01",
+      "group": "base-current",
+      "reference": "base/rep-02",
+      "current": "current/rep-01",
+      "passed": false,
+      "failure_count": 34,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 38
+      },
+      "max_abs_delta": 0.22202132642269135,
+      "p99_abs_delta": 9.939074516296387e-06,
+      "residual_rms": 0.0032863580277556954,
+      "residual_rms_over_reference_rms": 0.8633573525666192,
+      "max_abs_diagnostic_relative_delta": 9.002365493030514e-05,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 15,
+          "sparse_model_image_statistic": 14,
+          "sparse_model_image_residual": 3,
+          "strict_h5_difference": 2
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 32,
+          "strict-failure": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 14,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 2,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=1.37314e-05)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=1.37314e-05)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 2,
+      "report": "pairs/base-rep-02_vs_current-rep-01/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_current-rep-02",
+      "group": "base-current",
+      "reference": "base/rep-02",
+      "current": "current/rep-02",
+      "passed": false,
+      "failure_count": 35,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 39
+      },
+      "max_abs_delta": 0.22202132642269135,
+      "p99_abs_delta": 9.937211871147156e-06,
+      "residual_rms": 0.0032863580278207,
+      "residual_rms_over_reference_rms": 0.8633573525836964,
+      "max_abs_diagnostic_relative_delta": 1.655033976805914e-05,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 15,
+          "sparse_model_image_statistic": 14,
+          "sparse_model_image_residual": 3,
+          "small_h5_numeric_difference": 2,
+          "pybdsf_catalog_diagnostic_column": 1
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 35
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "sector_1.source_catalog.fits:PA_img_plane"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_h5_numeric_difference",
+          "disposition": "repeatability-candidate",
+          "count": 2,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.28752e-06)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=6.28752e-06)"
+          ],
+          "recommendation": "Keep h5parm structure, axes, directions, and metadata strict; allow this only as a tiny numeric solver-repeatability delta."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 14,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-02_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_current-rep-03",
+      "group": "base-current",
+      "reference": "base/rep-02",
+      "current": "current/rep-03",
+      "passed": false,
+      "failure_count": 128,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 132
+      },
+      "max_abs_delta": 0.22202132642269135,
+      "p99_abs_delta": 0.007895879521965979,
+      "residual_rms": 0.003286560067064553,
+      "residual_rms_over_reference_rms": 0.863410430204946,
+      "max_abs_diagnostic_relative_delta": 0.002153291453035913,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 15,
+          "sparse_model_image_residual": 4,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 6,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 61,
+          "strict-failure": 67
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 6,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160419)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160419)",
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.11639)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 67,
+      "report": "pairs/base-rep-02_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-03_vs_current-rep-01",
+      "group": "base-current",
+      "reference": "base/rep-03",
+      "current": "current/rep-01",
+      "passed": false,
+      "failure_count": 128,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 132
+      },
+      "max_abs_delta": 0.22202354669570923,
+      "p99_abs_delta": 0.007895916923880572,
+      "residual_rms": 0.003240282741282391,
+      "residual_rms_over_reference_rms": 0.8611303814022326,
+      "max_abs_diagnostic_relative_delta": 0.0022438090033574296,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 15,
+          "sparse_model_image_residual": 4,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 6,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 61,
+          "strict-failure": 67
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 6,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160395)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160395)",
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.11638)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 67,
+      "report": "pairs/base-rep-03_vs_current-rep-01/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-03_vs_current-rep-02",
+      "group": "base-current",
+      "reference": "base/rep-03",
+      "current": "current/rep-02",
+      "passed": false,
+      "failure_count": 128,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 132
+      },
+      "max_abs_delta": 0.22202354669570923,
+      "p99_abs_delta": 0.007895952928811293,
+      "residual_rms": 0.0032402827415850648,
+      "residual_rms_over_reference_rms": 0.8611303814826706,
+      "max_abs_diagnostic_relative_delta": 0.0021453428859345945,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 3,
+          "strict_fits_image_difference": 17,
+          "sparse_model_image_statistic": 15,
+          "sparse_model_image_residual": 4,
+          "strict_fits_image_statistic": 5,
+          "strict_h5_difference": 6,
+          "strict_contract_difference": 16,
+          "pybdsf_catalog_diagnostic_column": 39,
+          "strict_fits_table_column": 23
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 61,
+          "strict-failure": 67
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 39,
+          "examples": [
+            "sector_1.source_catalog.fits:PA",
+            "sector_1.source_catalog.fits:PA_img_plane",
+            "sector_1.source_catalog.fits:E_Isl_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-dirty.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_contract_difference",
+          "disposition": "strict-failure",
+          "count": 16,
+          "examples": [
+            "sky-model summary differs for calibration_skymodel.txt",
+            "sky-model summary differs for calibrators_only_skymodel.txt",
+            "sky-model summary differs for source_skymodel.txt"
+          ],
+          "recommendation": "Investigate before accepting this branch difference."
+        },
+        {
+          "category": "strict_fits_image_difference",
+          "disposition": "strict-failure",
+          "count": 17,
+          "examples": [
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz",
+            "field-MFS-image.fits.fz"
+          ],
+          "recommendation": "Investigate before relaxing comparison rules."
+        },
+        {
+          "category": "strict_fits_image_statistic",
+          "disposition": "strict-failure",
+          "count": 5,
+          "examples": [
+            "field-MFS-dirty.fits:mean",
+            "field-MFS-image-pb-ast.fits:min",
+            "field-MFS-image-pb.fits:min"
+          ],
+          "recommendation": "Investigate image statistic drift before relaxing."
+        },
+        {
+          "category": "strict_fits_table_column",
+          "disposition": "strict-failure",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:DC_Min",
+            "sector_1.source_catalog.fits:DC_PA",
+            "sector_1.source_catalog.fits:DC_Min_img_plane"
+          ],
+          "recommendation": "Investigate catalog value drift before relaxing."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 6,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=0.00160413)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=0.00160413)",
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=6.11639)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 67,
+      "report": "pairs/base-rep-03_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-03_vs_current-rep-03",
+      "group": "base-current",
+      "reference": "base/rep-03",
+      "current": "current/rep-03",
+      "passed": false,
+      "failure_count": 35,
+      "warning_count": 4,
+      "metrics": {
+        "base_operations": 12,
+        "current_operations": 12,
+        "operations": 12,
+        "output_records": 12,
+        "fits": 28,
+        "h5": 8,
+        "text": 37,
+        "fits_image_hdus": 24,
+        "fits_table_hdus": 4,
+        "diagnostics": 4,
+        "visual_comparisons": 20,
+        "classified_differences": 39
+      },
+      "max_abs_delta": 0.22202354669570923,
+      "p99_abs_delta": 9.939074516296387e-06,
+      "residual_rms": 0.0032394547559312344,
+      "residual_rms_over_reference_rms": 0.8609103378448748,
+      "max_abs_diagnostic_relative_delta": 5.334082269406174e-06,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 4,
+          "small_image_residual": 15,
+          "sparse_model_image_statistic": 14,
+          "sparse_model_image_residual": 3,
+          "strict_h5_difference": 2,
+          "pybdsf_catalog_diagnostic_column": 1
+        },
+        "by_disposition": {
+          "warning": 4,
+          "repeatability-candidate": 33,
+          "strict-failure": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 4,
+          "examples": [
+            "calibrate_1",
+            "calibrate_2",
+            "calibrate_3"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "sector_1.source_catalog.fits:PA_img_plane"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 15,
+          "examples": [
+            "field-MFS-dirty.fits.fz",
+            "field-MFS-image-pb-ast.fits.fz",
+            "field-MFS-image-pb.fits.fz"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 3,
+          "examples": [
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz",
+            "field-MFS-model-pb.fits.fz"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        },
+        {
+          "category": "sparse_model_image_statistic",
+          "disposition": "repeatability-candidate",
+          "count": 14,
+          "examples": [
+            "field-MFS-model-pb.fits.fz:mean",
+            "field-MFS-model-pb.fits.fz:std",
+            "field-MFS-model-pb.fits.fz:rms"
+          ],
+          "recommendation": "Judge sparse model-image statistics with same-branch repeatability, p99/RMS residuals, and downstream diagnostics."
+        },
+        {
+          "category": "strict_h5_difference",
+          "disposition": "strict-failure",
+          "count": 2,
+          "examples": [
+            "HDF5 numeric dataset differs for field-solutions-fast-phase.h5:sol000/phase000/val (max_abs=1.8422e-05)",
+            "HDF5 numeric dataset differs for field-solutions.h5:sol000/phase000/val (max_abs=1.8422e-05)"
+          ],
+          "recommendation": "Keep h5parm structure and datasets strict unless justified."
+        }
+      ],
+      "blocking_classification_count": 2,
+      "report": "pairs/base-rep-03_vs_current-rep-03/branch-equivalence-report.json"
+    }
+  ]
+}
