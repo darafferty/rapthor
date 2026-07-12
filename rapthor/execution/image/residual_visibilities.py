@@ -5,7 +5,7 @@ from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import build_make_residual_visibilities_command
-from rapthor.execution.image.contracts import ImageSectorPayload
+from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import require_directory
 from rapthor.execution.shell import run_external_command
 

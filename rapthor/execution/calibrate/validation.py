@@ -2,7 +2,7 @@
 
 from typing import Mapping, Optional
 
-from rapthor.execution.calibrate.contracts import (
+from rapthor.execution.calibrate.payloads import (
     CalibrateChunkPayload,
     CalibrateImagePredictPayload,
     CalibratePayload,

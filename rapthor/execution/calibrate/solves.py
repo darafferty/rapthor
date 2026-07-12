@@ -9,7 +9,7 @@ from rapthor.execution.calibrate.commands import (
     build_idgcal_solve_phase_and_gain_command,
     build_idgcal_solve_phase_command,
 )
-from rapthor.execution.calibrate.contracts import CalibrateChunkPayload, CalibratePayload
+from rapthor.execution.calibrate.payloads import CalibrateChunkPayload, CalibratePayload
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import validate_required_list

@@ -11,9 +11,9 @@ from rapthor.execution.image.commands import (
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
 )
-from rapthor.execution.image.contracts import ImageCubeSpecPayload, ImageSectorPayload
 from rapthor.execution.image.cubes import make_image_cube
 from rapthor.execution.image.flux_normalization import normalize_flux_scale
+from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPayload
 from rapthor.execution.image.restoration import restore_skymodel
 from rapthor.execution.image.skymodel_filter import filter_image_skymodel
 from rapthor.execution.outputs import (

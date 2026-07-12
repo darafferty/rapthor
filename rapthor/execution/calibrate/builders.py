@@ -4,7 +4,7 @@ import os
 from typing import Mapping, Optional
 
 from rapthor.execution.calibrate.commands import parse_steps
-from rapthor.execution.calibrate.contracts import (
+from rapthor.execution.calibrate.payloads import (
     CalibrateChunkPayload,
     CalibrateImagePredictPayload,
     CalibratePayload,

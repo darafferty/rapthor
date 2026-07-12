@@ -19,8 +19,8 @@ from rapthor.execution.image.commands import (
     build_wsclean_restore_command,
     build_wsclean_screens_command,
 )
-from rapthor.execution.image.contracts import ImageSectorPayload
 from rapthor.execution.image.outputs import mfs_non_pb_image_patterns, mfs_pb_image_patterns
+from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import (
     cleanup_directory,
     first_existing_file,

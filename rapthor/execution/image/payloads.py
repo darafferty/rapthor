@@ -1,4 +1,4 @@
-"""Payload contracts for image execution."""
+"""Serializable payload types for image execution."""
 
 from typing import Optional, TypedDict, Union
 

@@ -1,4 +1,4 @@
-"""Payload contracts for calibration execution."""
+"""Serializable payload types for calibration execution."""
 
 from typing import Optional, TypedDict
 

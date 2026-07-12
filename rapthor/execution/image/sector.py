@@ -8,7 +8,6 @@ from rapthor.execution.artifacts import (
 )
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.astrometry import make_astrometry_corrected_image_record
-from rapthor.execution.image.contracts import ImageSectorPayload
 from rapthor.execution.image.diagnostics import run_image_diagnostics
 from rapthor.execution.image.outputs import (
     compress_image_records,
@@ -20,6 +19,7 @@ from rapthor.execution.image.outputs import (
     mfs_extra_image_patterns,
     source_list_records,
 )
+from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.image.preparation import (
     concatenate_prepared_visibilities,
     ensure_facet_region,

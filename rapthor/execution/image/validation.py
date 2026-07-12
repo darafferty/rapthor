@@ -2,7 +2,7 @@
 
 from typing import Mapping
 
-from rapthor.execution.image.contracts import (
+from rapthor.execution.image.payloads import (
     ImageCubeSpecPayload,
     ImagePayload,
     ImagePrepareTaskPayload,

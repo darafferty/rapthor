@@ -14,7 +14,7 @@ from rapthor.execution.calibrate.collection import (
     plot_processed_solve_product,
     process_collected_solve_product,
 )
-from rapthor.execution.calibrate.contracts import (
+from rapthor.execution.calibrate.payloads import (
     CalibrateChunkPayload,
     CalibratePayload,
 )

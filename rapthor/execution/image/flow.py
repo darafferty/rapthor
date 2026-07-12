@@ -7,7 +7,7 @@ from prefect.exceptions import UnfinishedRun
 
 import rapthor.execution.image.sector as image_sector
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.image.contracts import ImageSectorPayload
+from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.image.validation import validate_image_payload
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect

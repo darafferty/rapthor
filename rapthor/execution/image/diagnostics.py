@@ -4,8 +4,8 @@ import os
 from typing import Mapping, Optional
 
 from rapthor.execution.artifacts import publish_plot_file_records
-from rapthor.execution.image.contracts import ImageSectorPayload
 from rapthor.execution.image.diagnostic_calculation import calculate_image_diagnostics
+from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import file_records_for_patterns, require_file
 from rapthor.lib.records import file_record
 
