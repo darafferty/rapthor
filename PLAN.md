@@ -204,6 +204,10 @@ not just a final check.
 - Treat science-equivalence and performance-equivalence workflows as release
   gates, not everyday unit tests. Keep their reports easy to regenerate and
   easy for reviewers to interpret.
+- Treat branch repeatability as the default combined equivalence gate for a
+  scenario: one run should produce `science-equivalence-report.*`,
+  `performance-equivalence-report.*`, and `repeatability-summary.*` from the
+  same branch executions.
 - When CI fails, improve the smallest useful test or fixture rather than adding
   broad slow coverage.
 

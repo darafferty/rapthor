@@ -23,7 +23,8 @@ the raw run root:
 - option matrices: `option-matrix-summary.json`,
   `option-matrix-summary.md`, plus each active scenario's compact branch report
   and manifest
-- repeatability gates: `repeatability-summary.json`,
+- repeatability/equivalence gates: `science-equivalence-report.json`,
+  `science-equivalence-report.md`, `repeatability-summary.json`,
   `repeatability-summary.md`, and selected per-pair compact reports when they
   are needed to justify tolerances
 
@@ -36,9 +37,20 @@ visual-comparison PNGs, and temporary run directories out of git.
 Use `scripts/dev/run_branch_equivalence.py --repeatability-repetitions 3` when
 deciding whether branch differences are scientifically meaningful. This writes
 unique generated parsets and work directories for each base/current repetition,
-then compares all same-branch pairs and all base-current pairs. Track the
-compact `repeatability-summary.*` files and selected per-pair reports here; keep
-raw FITS, MS, h5parm, and full log products in ignored run directories.
+then compares all same-branch pairs and all base-current pairs. The same run
+now writes a science report, a performance report, and a combined repeatability
+summary:
+
+- `science-equivalence-report.json` and `science-equivalence-report.md`
+- `performance-equivalence-report.json` and
+  `performance-equivalence-report.md`
+- `repeatability-summary.json` and `repeatability-summary.md`
+
+Track the compact science report, combined repeatability summary, and selected
+per-pair reports here; track the compact performance report under
+`docs/source/development/performance_equivalence_runs/` when the run is also
+used as performance evidence. Keep raw FITS, MS, h5parm, and full log products
+in ignored run directories.
 Generated visual-comparison PNGs are ignored by default because the numeric
 summaries are usually more informative and much lighter for git history.
 Force-add only a tiny curated PNG set when a visual difference is genuinely

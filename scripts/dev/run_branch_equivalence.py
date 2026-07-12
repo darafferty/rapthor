@@ -2364,6 +2364,286 @@ def _render_repeatability_summary(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _write_json_report(path: Path, payload: dict[str, Any]) -> None:
+    path.write_text(
+        json.dumps(payload, indent=2, default=saved_equivalence._json_default),
+        encoding="utf-8",
+    )
+
+
+def _pair_result_status(
+    row: dict[str, Any],
+    gate_decision: dict[str, Any] | None,
+) -> str:
+    status = (gate_decision or {}).get("pair_statuses", {}).get(row["pair_id"], {}).get("status")
+    if status is not None:
+        return status
+    return "pass" if row.get("passed") else "fail"
+
+
+def _science_pair_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
+    gate_decision = report.get("gate_decision")
+    return [
+        {
+            **row,
+            "result": _pair_result_status(row, gate_decision),
+        }
+        for row in report.get("pair_summaries", [])
+    ]
+
+
+def _gate_runs_payload(report: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
+    return {
+        side: {
+            rep_label: {
+                "ref": run.get("ref"),
+                "returncode": run.get("returncode"),
+                "elapsed_seconds": run.get("elapsed_seconds"),
+                "parset_path": run.get("parset_path"),
+                "work_dir": run.get("work_dir"),
+                "log_path": run.get("log_path"),
+            }
+            for rep_label, run in runs.items()
+        }
+        for side, runs in report.get("runs", {}).items()
+    }
+
+
+def _science_equivalence_report(report: dict[str, Any]) -> dict[str, Any]:
+    gate_decision = report.get("gate_decision", {})
+    product_validity = gate_decision.get("science_product_validity", {})
+    return {
+        "scenario_id": report["scenario_id"],
+        "run_root": report["run_root"],
+        "repetitions": report["repetitions"],
+        "status": product_validity.get("status", "not-run"),
+        "run_validity": gate_decision.get("run_validity", {}),
+        "science_product_validity": product_validity,
+        "repeatability_envelopes": gate_decision.get("repeatability_envelopes", {}),
+        "runs": _gate_runs_payload(report),
+        "planned_pairs": report.get("planned_pairs", []),
+        "pair_summaries": _science_pair_rows(report),
+    }
+
+
+def _performance_equivalence_report(report: dict[str, Any]) -> dict[str, Any]:
+    gate_decision = report.get("gate_decision", {})
+    return {
+        "scenario_id": report["scenario_id"],
+        "run_root": report["run_root"],
+        "repetitions": report["repetitions"],
+        "status": gate_decision.get("performance", {}).get("status", "not-run"),
+        "run_validity": gate_decision.get("run_validity", {}),
+        "science_product_validity": gate_decision.get("science_product_validity", {}),
+        "performance": gate_decision.get("performance", {}),
+        "runtime_summary": report.get("runtime_summary", {}),
+        "operation_timing_summary": report.get("operation_timing_summary", {}),
+        "runs": _gate_runs_payload(report),
+    }
+
+
+def _render_science_equivalence_report(report: dict[str, Any]) -> str:
+    status = report.get("status", "not-run")
+    product_validity = report.get("science_product_validity", {})
+    run_validity = report.get("run_validity", {})
+    lines = [
+        "# Rapthor Science Equivalence",
+        "",
+        f"Scenario: `{report['scenario_id']}`",
+        f"Run root: `{report['run_root']}`",
+        f"Repetitions per side: {report['repetitions']}",
+        "",
+        "## Decision",
+        "",
+        f"Science/product status: **{status}**",
+        "",
+        "| Area | Status | Notes |",
+        "| --- | --- | --- |",
+        "| Run validity | "
+        f"{run_validity.get('status', 'not-run')} | "
+        f"{len(run_validity.get('failures', []))} failed run(s) |",
+        "| Product validity | "
+        f"{product_validity.get('status', 'not-run')} | "
+        f"{product_validity.get('repeatability_bounded_pair_count', 0)} of "
+        f"{product_validity.get('cross_pair_count', 0)} cross-branch pair(s) "
+        "repeatability-bounded |",
+    ]
+    failed_cross_pairs = product_validity.get("failed_cross_pairs") or []
+    if failed_cross_pairs:
+        lines.extend(["", "Blocking cross-branch pair(s):"])
+        lines.extend(f"- `{pair_id}`" for pair_id in failed_cross_pairs)
+
+    lines.extend(
+        [
+            "",
+            "## Branch Runs",
+            "",
+            "| Side | Repetition | Ref | Return Code | Work Dir |",
+            "| --- | --- | --- | ---: | --- |",
+        ]
+    )
+    for side, runs in report.get("runs", {}).items():
+        for rep_label, run in runs.items():
+            lines.append(
+                "| "
+                f"{side} | `{rep_label}` | `{run.get('ref')}` | "
+                f"{run.get('returncode')} | `{run.get('work_dir')}` |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Product Pair Summary",
+            "",
+            "| Pair | Group | Result | Failures | Warnings | FITS | H5 | Text | "
+            "Diagnostics | Max Abs Delta | P99 Abs Delta | Residual RMS | "
+            "Diagnostic Rel Delta | Report |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | "
+            "---: | ---: | ---: | ---: | --- |",
+        ]
+    )
+    pair_summaries = report.get("pair_summaries", [])
+    if not pair_summaries:
+        lines.append(
+            "| n/a | n/a | not run | 0 | 0 | 0 | 0 | 0 | 0 | n/a | n/a | n/a | n/a | n/a |"
+        )
+    for row in pair_summaries:
+        metrics = row.get("metrics", {})
+        lines.append(
+            "| "
+            f"`{row['pair_id']}` | `{row['group']}` | {row['result']} | "
+            f"{row['failure_count']} | {row['warning_count']} | "
+            f"{metrics.get('fits', 0)} | {metrics.get('h5', 0)} | "
+            f"{metrics.get('text', 0)} | {metrics.get('diagnostics', 0)} | "
+            f"{saved_equivalence._format_metric(row.get('max_abs_delta'))} | "
+            f"{saved_equivalence._format_metric(row.get('p99_abs_delta'))} | "
+            f"{saved_equivalence._format_metric(row.get('residual_rms'))} | "
+            f"{_format_percent(row.get('max_abs_diagnostic_relative_delta'))} | "
+            f"`{row['report']}` |"
+        )
+
+    if report.get("planned_pairs") and not pair_summaries:
+        lines.extend(["", "## Planned Pairs", ""])
+        for pair in report["planned_pairs"]:
+            lines.append(
+                f"- `{pair['pair_id']}`: {pair['reference']} -> {pair['current']} ({pair['group']})"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "This report is the science/product view of the same equivalence-gate run. "
+            "It focuses on branch run validity, same-branch repeatability, "
+            "cross-branch product comparisons, and product-level metrics.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _render_performance_equivalence_report(report: dict[str, Any]) -> str:
+    performance = report.get("performance", {})
+    lines = [
+        "# Rapthor Performance Equivalence",
+        "",
+        f"Scenario: `{report['scenario_id']}`",
+        f"Run root: `{report['run_root']}`",
+        f"Repetitions per side: {report['repetitions']}",
+        "",
+        "## Decision",
+        "",
+        f"Performance status: **{report.get('status', 'not-run')}**",
+        "",
+        "| Area | Status | Notes |",
+        "| --- | --- | --- |",
+        "| Run validity | "
+        f"{report.get('run_validity', {}).get('status', 'not-run')} | "
+        f"{len(report.get('run_validity', {}).get('failures', []))} failed run(s) |",
+        "| Product validity | "
+        f"{report.get('science_product_validity', {}).get('status', 'not-run')} | "
+        "Performance is interpreted only after product validity is understood |",
+        f"| Performance | {performance.get('status', 'not-run')} | "
+        f"{performance.get('reason', 'Performance pairs were not run.')} |",
+    ]
+
+    runtime_summary = report.get("runtime_summary")
+    if runtime_summary:
+        lines.extend(
+            [
+                "",
+                "## Runtime Summary",
+                "",
+                "| Side | Runs | Min (s) | Median (s) | Max (s) |",
+                "| --- | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for side in ("base", "current"):
+            stats = runtime_summary.get(side, {})
+            lines.append(
+                "| "
+                f"{side} | {stats.get('count', 0)} | "
+                f"{_format_seconds(stats.get('min_seconds'))} | "
+                f"{_format_seconds(stats.get('median_seconds'))} | "
+                f"{_format_seconds(stats.get('max_seconds'))} |"
+            )
+        lines.extend(
+            [
+                "",
+                "Current-vs-base median delta: "
+                f"{_format_percent(runtime_summary.get('current_vs_base_median_delta_percent'))}",
+            ]
+        )
+
+    _extend_operation_timing_summary(lines, report.get("operation_timing_summary"))
+
+    lines.extend(
+        [
+            "",
+            "## Branch Run Logs",
+            "",
+            "| Side | Repetition | Ref | Return Code | Elapsed (s) | Log |",
+            "| --- | --- | --- | ---: | ---: | --- |",
+        ]
+    )
+    for side, runs in report.get("runs", {}).items():
+        for rep_label, run in runs.items():
+            lines.append(
+                "| "
+                f"{side} | `{rep_label}` | `{run.get('ref')}` | "
+                f"{run.get('returncode')} | "
+                f"{_format_seconds(run.get('elapsed_seconds'))} | "
+                f"`{run.get('log_path')}` |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "This report is the runtime view of the same equivalence-gate run. "
+            "It reuses the branch executions and product comparisons from the "
+            "science report, then summarizes wall-clock and operation-level timings.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _write_equivalence_gate_reports(run_root: Path, repeatability_report: dict[str, Any]) -> None:
+    science_report = _science_equivalence_report(repeatability_report)
+    performance_report = _performance_equivalence_report(repeatability_report)
+    _write_json_report(run_root / "science-equivalence-report.json", science_report)
+    (run_root / "science-equivalence-report.md").write_text(
+        _render_science_equivalence_report(science_report),
+        encoding="utf-8",
+    )
+    _write_json_report(run_root / "performance-equivalence-report.json", performance_report)
+    (run_root / "performance-equivalence-report.md").write_text(
+        _render_performance_equivalence_report(performance_report),
+        encoding="utf-8",
+    )
+
+
 def _write_repeatability_summary(
     *,
     run_root: Path,
@@ -2402,14 +2682,12 @@ def _write_repeatability_summary(
         "planned_pairs": planned_pairs,
         "pair_summaries": pair_summaries,
     }
-    (run_root / "repeatability-summary.json").write_text(
-        json.dumps(report, indent=2, default=saved_equivalence._json_default),
-        encoding="utf-8",
-    )
+    _write_json_report(run_root / "repeatability-summary.json", report)
     (run_root / "repeatability-summary.md").write_text(
         _render_repeatability_summary(report),
         encoding="utf-8",
     )
+    _write_equivalence_gate_reports(run_root, report)
     return gate_decision
 
 
@@ -2671,6 +2949,16 @@ def _run_repeatability(
     )
     print(f"Repeatability summary: {run_root / 'repeatability-summary.json'}", flush=True)
     print(f"Markdown summary: {run_root / 'repeatability-summary.md'}", flush=True)
+    print(f"Science report: {run_root / 'science-equivalence-report.json'}", flush=True)
+    print(
+        f"Science markdown report: {run_root / 'science-equivalence-report.md'}",
+        flush=True,
+    )
+    print(f"Performance report: {run_root / 'performance-equivalence-report.json'}", flush=True)
+    print(
+        f"Performance markdown report: {run_root / 'performance-equivalence-report.md'}",
+        flush=True,
+    )
     passed = gate_decision["overall_status"] in {"pass", "warn"}
     return 0 if passed or args.allow_failures else 1
 

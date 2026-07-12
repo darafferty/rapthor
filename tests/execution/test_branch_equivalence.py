@@ -1396,12 +1396,27 @@ def test_repeatability_prepare_only_writes_summary_and_generated_inputs(tmp_path
 
     assert module.run(args) == 0
     summary = json.loads((run_root / "repeatability-summary.json").read_text())
+    science_report = json.loads((run_root / "science-equivalence-report.json").read_text())
+    performance_report = json.loads((run_root / "performance-equivalence-report.json").read_text())
     assert (run_root / "repeatability-summary.md").is_file()
+    assert (run_root / "science-equivalence-report.md").is_file()
+    assert (run_root / "performance-equivalence-report.md").is_file()
     assert summary["repetitions"] == 2
     assert summary["runtime_summary"]["current"]["count"] == 0
     assert summary["operation_timing_summary"]["current_vs_base"] == {}
     assert len(summary["planned_pairs"]) == 6
     assert summary["pair_summaries"] == []
+    assert science_report["status"] == "not-run"
+    assert science_report["planned_pairs"] == summary["planned_pairs"]
+    assert performance_report["status"] == "not-run"
+    assert performance_report["runtime_summary"]["current"]["count"] == 0
+    assert (
+        "# Rapthor Science Equivalence" in (run_root / "science-equivalence-report.md").read_text()
+    )
+    assert (
+        "# Rapthor Performance Equivalence"
+        in (run_root / "performance-equivalence-report.md").read_text()
+    )
     assert summary["runs"]["base"]["rep-01"]["work_dir"] == str(
         run_root / "work" / "base" / "rep-01"
     )

@@ -10,10 +10,11 @@ The current combined science/performance verdict lives in the root
 `EQUIVALENCE_REPORT.md`.
 
 After every successful or decision-relevant performance gate rerun, archive the
-compact Markdown/JSON report here and update the latest performance section of
-`EQUIVALENCE_REPORT.md` in the same change. Track selected per-pair compact
-reports only when they are needed to explain a tolerance or decision. Keep raw
-products, full logs, Dask reports, and temporary run directories out of git.
+compact Markdown/JSON performance report here and update the latest performance
+section of `EQUIVALENCE_REPORT.md` in the same change. Track selected per-pair
+compact reports only when they are needed to explain a tolerance or decision.
+Keep raw products, full logs, Dask reports, and temporary run directories out
+of git.
 
 ## Repeatability Gates
 
@@ -58,8 +59,18 @@ python3 scripts/dev/run_branch_equivalence.py \
 
 The runner writes elapsed wall-clock seconds for each branch repetition, parses
 operation boundary timings from each run's `rapthor.log`, and reports
-min/median/max plus current-vs-base median deltas. Archive the compact
-JSON/Markdown report here after the full gate completes.
+min/median/max plus current-vs-base median deltas. The same command also writes
+the science-equivalence report and combined repeatability summary:
+
+- `science-equivalence-report.json` and `science-equivalence-report.md`
+- `performance-equivalence-report.json` and
+  `performance-equivalence-report.md`
+- `repeatability-summary.json` and `repeatability-summary.md`
+
+Archive `performance-equivalence-report.*` here after the full gate completes.
+Archive `science-equivalence-report.*` and any selected pair reports under
+`docs/source/development/science_equivalence_runs/` when the run updates the
+science evidence as well.
 
 Current accepted gate evidence:
 
