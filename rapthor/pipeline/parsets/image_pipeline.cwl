@@ -105,6 +105,13 @@ inputs:
       (length = n_sectors).
     type: float[]
 
+  - id: image_frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done
+      (length = n_sectors).
+    type: float[]
+
   - id: image_maxinterval
     label: BDA maxinterval
     doc: |
@@ -786,6 +793,8 @@ steps:
         source: image_maxinterval
       - id: image_timebase
         source: image_timebase
+      - id: image_frequencybase
+        source: image_frequencybase
       - id: previous_mask_filename
         source: previous_mask_filename
       - id: mask_filename
@@ -955,7 +964,7 @@ steps:
       - id: peel_bright_sources
         source: peel_bright_sources
     scatter: [obs_filename, prepare_filename, concat_filename, residual_filename, starttime, ntimes,
-              image_freqstep, image_timestep, image_maxinterval, image_timebase,
+              image_freqstep, image_timestep, image_maxinterval, image_timebase, image_frequencybase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
               filtered_model_image_name, parallel_gridding_tasks,

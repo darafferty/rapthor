@@ -193,6 +193,7 @@ local_rms_window = 50
 local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
+bda_frequencybase = 0.0
 
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent

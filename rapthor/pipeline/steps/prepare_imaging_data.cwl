@@ -112,6 +112,15 @@ inputs:
       prefix: bdaavg.timebase=
       separate: False
 
+  - id: frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done.
+    type: float?
+    inputBinding:
+      prefix: bdaavg.frequencybase=
+      separate: False
+
   - id: maxinterval
     label: BDA maxinterval
     doc: |

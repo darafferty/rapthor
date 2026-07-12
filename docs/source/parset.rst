@@ -464,16 +464,14 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 0). A value of 0 will disable the averaging. Activating this option
-        may improve the speed of imaging.
+        Maximum baseline used in baseline-dependent averaging (BDA) in time direction
+        during imaging, in m (default = 0). A value of 0 will disable the averaging.
+        Activating this option may improve the speed of imaging.
 
-        .. note::
-
-            Currently, correction for time and frequency smearing cannot be done
-            when BDA is used during imaging. If the averaging of the input data
-            is such that time or frequency smearing is significant within the field
-            of view of interest, then the use of BDA is not recommended.
+    bda_frequencybase
+        Maximum baseline used in baseline-dependent averaging (BDA) in frequency
+        direction during imaging, in m (default = 0). A value of 0 will disable the
+        averaging.
 
     dde_method
         Method to use to correct for direction-dependent effects during imaging:
