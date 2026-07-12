@@ -10,7 +10,7 @@ OPTION_MATRIX_PATH = (
     / "docs"
     / "source"
     / "development"
-    / "equivalence_runs"
+    / "science_equivalence_runs"
     / "2026-07-06-option-matrix"
     / "option-matrix.json"
 )

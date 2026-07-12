@@ -40,7 +40,7 @@ Accepted foundation:
   slow-gain, and DI full-Jones products are pre-applied; DD products are
   applied on the fly during imaging when matching directions are available.
 - Science-equivalence evidence is summarized in `EQUIVALENCE_REPORT.md`, with
-  historical compact reports under `docs/source/development/equivalence_runs/`.
+  historical compact reports under `docs/source/development/science_equivalence_runs/`.
 
 Accepted performance and task-boundary evidence:
 
@@ -190,7 +190,7 @@ Do these in order unless a regression blocks progress.
 
    ```bash
    scripts/dev/generate-prefect-demo-data.py --force --include-multi-sector
-   rapthor docs/source/development/equivalence_runs/2026-07-06-option-matrix/inputs/current/multi_sector_mosaic.parset
+   rapthor docs/source/development/science_equivalence_runs/2026-07-06-option-matrix/inputs/current/multi_sector_mosaic.parset
    ```
 
    Benchmark rule: keep `ci-benchmark-many-sector-mosaic` and
@@ -308,7 +308,7 @@ Use these as the historical record instead of expanding this plan:
 - `EQUIVALENCE_REPORT.md`
 - `docs/source/development/science_equivalence_contract.rst`
 - `docs/source/development/performance_equivalence_contract.rst`
-- `docs/source/development/equivalence_runs/`
+- `docs/source/development/science_equivalence_runs/`
 - `docs/source/development/benchmark_baselines/`
 
 Most relevant benchmark reports:

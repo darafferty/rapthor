@@ -6,6 +6,14 @@ logs, Dask HTML reports, and run working directories out of git.
 
 Use `docs/source/development/performance_equivalence_contract.rst` as the
 contract for deciding whether a run is valid and how to interpret the result.
+The current combined science/performance verdict lives in the root
+`EQUIVALENCE_REPORT.md`.
+
+After every successful or decision-relevant performance gate rerun, archive the
+compact Markdown/JSON report here and update the latest performance section of
+`EQUIVALENCE_REPORT.md` in the same change. Track selected per-pair compact
+reports only when they are needed to explain a tolerance or decision. Keep raw
+products, full logs, Dask reports, and temporary run directories out of git.
 
 ## Baseline Gate
 
@@ -23,8 +31,8 @@ Prepare-only smoke:
 ```bash
 python3 scripts/dev/run_branch_equivalence.py \
   --scenario-id phase-only-core-performance-baseline \
-  --base-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/base/master_benchmark_phase_only.parset \
-  --current-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/current/current_benchmark_phase_only.parset \
+  --base-parset docs/source/development/science_equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/base/master_benchmark_phase_only.parset \
+  --current-parset docs/source/development/science_equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/current/current_benchmark_phase_only.parset \
   --run-root /tmp/rapthor-performance-gate-prepare-phase-only \
   --prepare-only \
   --repeatability-repetitions 3
@@ -36,8 +44,8 @@ Full advisory baseline:
 python3 scripts/dev/run_branch_equivalence.py \
   --scenario-id phase-only-core-performance-baseline \
   --base-ref master \
-  --base-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/base/master_benchmark_phase_only.parset \
-  --current-parset docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/current/current_benchmark_phase_only.parset \
+  --base-parset docs/source/development/science_equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/base/master_benchmark_phase_only.parset \
+  --current-parset docs/source/development/science_equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/current/current_benchmark_phase_only.parset \
   --run-root /tmp/rapthor-performance-gate-phase-only \
   --repeatability-work-root /tmp/rapthor-performance-gate-phase-only-work \
   --repeatability-repetitions 3 \

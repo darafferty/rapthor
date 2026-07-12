@@ -69,7 +69,7 @@ For every comparison:
   multiprocessing may hit AF_UNIX path-length limits
 * keep large FITS, Measurement Sets, h5parm products, and full logs outside git
 * store compact reports, manifests, and selected command logs under
-  ``docs/source/development/equivalence_runs/``
+  ``docs/source/development/science_equivalence_runs/``
 * archive those compact reports by default before treating the gate as
   complete; use a dated, descriptive directory name and update the
   equivalence-runs README/history so the result is discoverable

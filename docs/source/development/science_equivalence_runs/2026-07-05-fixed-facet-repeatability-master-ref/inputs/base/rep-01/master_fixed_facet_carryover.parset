@@ -1,0 +1,68 @@
+[global]
+dir_working = /tmp/rffw/base/rep-01
+input_ms = /app/examples/generated/prefect_demo_rich/prefect_demo_rich.ms
+data_colname = DATA
+generate_initial_skymodel = False
+download_initial_skymodel = False
+download_overwrite_skymodel = True
+input_skymodel = /app/examples/generated/prefect_demo_rich/prefect_demo_rich_true_sky.txt
+apparent_skymodel = /app/examples/generated/prefect_demo_rich/prefect_demo_rich_apparent_sky.txt
+regroup_input_skymodel = True
+strategy = /app/docs/source/development/science_equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/inputs/base/master_fixed_facet_carryover_strategy.py
+selfcal_data_fraction = 1.0
+final_data_fraction = 1.0
+input_h5parm = None
+input_fulljones_h5parm = None
+facet_layout = /app/docs/source/development/science_equivalence_runs/2026-07-05-fixed-facet-carryover-master-ref/inputs/shared/fixed_rich_facets.reg
+dde_mode = faceting
+
+[calibration]
+fast_freqstep_hz = 48828.125
+medium_freqstep_hz = 97656.25
+slow_freqstep_hz = 195312.5
+fulljones_freqstep_hz = 195312.5
+fast_smoothnessconstraint = 6.0e6
+medium_smoothnessconstraint = 5.0e6
+slow_smoothnessconstraint = 4.0e6
+dd_interval_factor = 1
+propagatesolutions = True
+maxiter = 50
+stepsize = 0.2
+tolerance = 0.001
+
+[imaging]
+grid_width_ra_deg = 1.0
+grid_width_dec_deg = 1.0
+grid_center_ra = 1h37m41.299s
+grid_center_dec = +33d09m35.132s
+grid_nsectors_ra = 1
+idg_mode = cpu
+reweight = False
+average_visibilities = False
+save_image_cube = False
+image_cube_stokes_list = [I]
+make_quv_images = False
+disable_iquv_clean = False
+photometry_skymodel = None
+astrometry_skymodel = None
+normalization_skymodels = None
+normalization_reference_frequencies = None
+
+[cluster]
+batch_system = single_machine
+max_nodes = 1
+cpus_per_task = 6
+mem_per_node_gb = 10
+max_cores = 6
+max_threads = 6
+deconvolution_threads = 2
+parallel_gridding_tasks = 1
+local_scratch_dir = /tmp/rffw/base/rep-01/scratch
+global_scratch_dir = /tmp/rffw/base/rep-01/scratch
+use_container = False
+container_type = docker
+cwl_runner = toil
+debug_workflow = False
+keep_temporary_files = False
+allow_internet_access = False
+

@@ -1,0 +1,19 @@
+{
+  "scenario_id": "di-multicycle-carryover",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/docs/source/development/science_equivalence_runs/2026-07-05-di-multicycle-carryover-master-ref/inputs/base/master_di_multicycle_carryover.parset",
+  "current_parset": "/app/docs/source/development/science_equivalence_runs/2026-07-05-di-multicycle-carryover-master-ref/inputs/current/current_di_multicycle_carryover.parset",
+  "base_work_dir": "/tmp/rbe-master-di-multicycle-carryover-v4-work",
+  "current_work_dir": "/tmp/rbe-current-di-multicycle-carryover-v4-work",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/master_di_multicycle_carryover.parset",
+      "strategy": "inputs/base/master_di_multicycle_carryover_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/current_di_multicycle_carryover.parset",
+      "strategy": "inputs/current/current_di_multicycle_carryover_strategy.py"
+    }
+  }
+}

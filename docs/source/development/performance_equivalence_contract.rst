@@ -60,7 +60,7 @@ contract disputes.
 
 ``phase-only-core``
   Fast branch-vs-master smoke scenario based on the prepared inputs in
-  ``docs/source/development/equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/``.
+  ``docs/source/development/science_equivalence_runs/2026-07-05-phase-only-initial-solutions-master-ref/inputs/``.
   It uses DD fast and medium phase solves across multiple cycles and avoids the
   legacy slow-gain combination issue. This should be the first repeated
   performance comparison because both branches complete it and it exercises the
@@ -69,7 +69,7 @@ contract disputes.
 ``dd-phase-plus-di-fulljones``
   Mixed-mode branch-vs-master scenario based on the prepared normalized inputs
   in
-  ``docs/source/development/equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/inputs/``.
+  ``docs/source/development/science_equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-master-ref/inputs/``.
   It exercises DD phase calibration followed by DI full-Jones calibration,
   h5parm collection/normalization, and imaging. Use this as the richer
   branch-vs-master performance check once ``phase-only-core`` is repeatable.

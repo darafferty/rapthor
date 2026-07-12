@@ -1,0 +1,19 @@
+{
+  "scenario_id": "dd-phase-plus-di-fulljones",
+  "base_ref": "master",
+  "current_ref": "current",
+  "base_parset": "/app/docs/source/development/science_equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-master-ref/inputs/base/master_dd_phase_plus_di_fulljones.parset",
+  "current_parset": "/app/docs/source/development/science_equivalence_runs/2026-07-05-dd-phase-plus-di-fulljones-master-ref/inputs/current/current_dd_phase_plus_di_fulljones.parset",
+  "base_work_dir": "/tmp/rbe-master-dd-phase-plus-di-fulljones-work",
+  "current_work_dir": "/tmp/rbe-current-dd-phase-plus-di-fulljones-work",
+  "input_snapshots": {
+    "base": {
+      "parset": "inputs/base/master_dd_phase_plus_di_fulljones.parset",
+      "strategy": "inputs/base/master_dd_phase_plus_di_fulljones_strategy.py"
+    },
+    "current": {
+      "parset": "inputs/current/current_dd_phase_plus_di_fulljones.parset",
+      "strategy": "inputs/current/current_dd_phase_plus_di_fulljones_strategy.py"
+    }
+  }
+}
