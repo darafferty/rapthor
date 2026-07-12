@@ -1,0 +1,1604 @@
+{
+  "scenario_id": "dd-phase-plus-di-fulljones-performance-gate",
+  "run_root": "/tmp/rddfj",
+  "repetitions": 3,
+  "runs": {
+    "base": {
+      "rep-01": {
+        "side": "base",
+        "ref": "master",
+        "repo_root": "/tmp/rddfj/checkouts/base",
+        "run_dir": "/tmp/rddfj/base/rep-01",
+        "parset_path": "/tmp/rddfj/inputs/base/rep-01/master_dd_phase_plus_di_fulljones.parset",
+        "work_dir": "/tmp/wddfj/base/rep-01",
+        "command": [
+          "/tmp/rddfj/checkouts/base/.venv/bin/rapthor",
+          "/tmp/rddfj/inputs/base/rep-01/master_dd_phase_plus_di_fulljones.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 175.24756331706885,
+        "log_path": "/tmp/rddfj/base/rep-01/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 30.731094
+          },
+          {
+            "operation": "predict_di_1",
+            "elapsed_seconds": 14.804823
+          },
+          {
+            "operation": "calibrate_di_1",
+            "elapsed_seconds": 19.347105
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 102.29241999999999
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 3.922769
+          }
+        ]
+      },
+      "rep-02": {
+        "side": "base",
+        "ref": "master",
+        "repo_root": "/tmp/rddfj/checkouts/base",
+        "run_dir": "/tmp/rddfj/base/rep-02",
+        "parset_path": "/tmp/rddfj/inputs/base/rep-02/master_dd_phase_plus_di_fulljones.parset",
+        "work_dir": "/tmp/wddfj/base/rep-02",
+        "command": [
+          "/tmp/rddfj/checkouts/base/.venv/bin/rapthor",
+          "/tmp/rddfj/inputs/base/rep-02/master_dd_phase_plus_di_fulljones.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 151.18336961301975,
+        "log_path": "/tmp/rddfj/base/rep-02/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 22.568499
+          },
+          {
+            "operation": "predict_di_1",
+            "elapsed_seconds": 15.764949
+          },
+          {
+            "operation": "calibrate_di_1",
+            "elapsed_seconds": 19.311346
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 87.844578
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 3.436117
+          }
+        ]
+      },
+      "rep-03": {
+        "side": "base",
+        "ref": "master",
+        "repo_root": "/tmp/rddfj/checkouts/base",
+        "run_dir": "/tmp/rddfj/base/rep-03",
+        "parset_path": "/tmp/rddfj/inputs/base/rep-03/master_dd_phase_plus_di_fulljones.parset",
+        "work_dir": "/tmp/wddfj/base/rep-03",
+        "command": [
+          "/tmp/rddfj/checkouts/base/.venv/bin/rapthor",
+          "/tmp/rddfj/inputs/base/rep-03/master_dd_phase_plus_di_fulljones.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 148.24489876290318,
+        "log_path": "/tmp/rddfj/base/rep-03/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 22.559105
+          },
+          {
+            "operation": "predict_di_1",
+            "elapsed_seconds": 15.69059
+          },
+          {
+            "operation": "calibrate_di_1",
+            "elapsed_seconds": 19.248185
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 85.144282
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 3.355697
+          }
+        ]
+      }
+    },
+    "current": {
+      "rep-01": {
+        "side": "current",
+        "ref": "current",
+        "repo_root": "/app",
+        "run_dir": "/tmp/rddfj/current/rep-01",
+        "parset_path": "/tmp/rddfj/inputs/current/rep-01/current_dd_phase_plus_di_fulljones.parset",
+        "work_dir": "/tmp/wddfj/current/rep-01",
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "rapthor.cli",
+          "/tmp/rddfj/inputs/current/rep-01/current_dd_phase_plus_di_fulljones.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 95.06705102801789,
+        "log_path": "/tmp/rddfj/current/rep-01/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 4.128362
+          },
+          {
+            "operation": "predict_di_1",
+            "elapsed_seconds": 2.097345
+          },
+          {
+            "operation": "calibrate_di_1",
+            "elapsed_seconds": 6.127615
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 58.257829
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 5.024269
+          }
+        ]
+      },
+      "rep-02": {
+        "side": "current",
+        "ref": "current",
+        "repo_root": "/app",
+        "run_dir": "/tmp/rddfj/current/rep-02",
+        "parset_path": "/tmp/rddfj/inputs/current/rep-02/current_dd_phase_plus_di_fulljones.parset",
+        "work_dir": "/tmp/wddfj/current/rep-02",
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "rapthor.cli",
+          "/tmp/rddfj/inputs/current/rep-02/current_dd_phase_plus_di_fulljones.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 94.00420438998844,
+        "log_path": "/tmp/rddfj/current/rep-02/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 6.148212
+          },
+          {
+            "operation": "predict_di_1",
+            "elapsed_seconds": 4.103179
+          },
+          {
+            "operation": "calibrate_di_1",
+            "elapsed_seconds": 5.100416
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 61.320611
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 1.155194
+          }
+        ]
+      },
+      "rep-03": {
+        "side": "current",
+        "ref": "current",
+        "repo_root": "/app",
+        "run_dir": "/tmp/rddfj/current/rep-03",
+        "parset_path": "/tmp/rddfj/inputs/current/rep-03/current_dd_phase_plus_di_fulljones.parset",
+        "work_dir": "/tmp/wddfj/current/rep-03",
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "rapthor.cli",
+          "/tmp/rddfj/inputs/current/rep-03/current_dd_phase_plus_di_fulljones.parset"
+        ],
+        "returncode": 0,
+        "elapsed_seconds": 86.96192909195088,
+        "log_path": "/tmp/rddfj/current/rep-03/rapthor-command.log",
+        "input_snapshot": {},
+        "operation_timings": [
+          {
+            "operation": "calibrate_1",
+            "elapsed_seconds": 4.132168
+          },
+          {
+            "operation": "predict_di_1",
+            "elapsed_seconds": 4.094685
+          },
+          {
+            "operation": "calibrate_di_1",
+            "elapsed_seconds": 6.136615
+          },
+          {
+            "operation": "image_1",
+            "elapsed_seconds": 53.267989
+          },
+          {
+            "operation": "mosaic_1",
+            "elapsed_seconds": 2.997312
+          }
+        ]
+      }
+    }
+  },
+  "runtime_summary": {
+    "base": {
+      "count": 3,
+      "min_seconds": 148.24489876290318,
+      "median_seconds": 151.18336961301975,
+      "max_seconds": 175.24756331706885
+    },
+    "current": {
+      "count": 3,
+      "min_seconds": 86.96192909195088,
+      "median_seconds": 94.00420438998844,
+      "max_seconds": 95.06705102801789
+    },
+    "current_vs_base_median_delta_percent": -0.37821068130305185
+  },
+  "operation_timing_summary": {
+    "base": {
+      "operation_count": 5,
+      "by_operation": {
+        "calibrate_1": {
+          "count": 3,
+          "min_seconds": 22.559105,
+          "median_seconds": 22.568499,
+          "max_seconds": 30.731094
+        },
+        "calibrate_di_1": {
+          "count": 3,
+          "min_seconds": 19.248185,
+          "median_seconds": 19.311346,
+          "max_seconds": 19.347105
+        },
+        "image_1": {
+          "count": 3,
+          "min_seconds": 85.144282,
+          "median_seconds": 87.844578,
+          "max_seconds": 102.29241999999999
+        },
+        "mosaic_1": {
+          "count": 3,
+          "min_seconds": 3.355697,
+          "median_seconds": 3.436117,
+          "max_seconds": 3.922769
+        },
+        "predict_di_1": {
+          "count": 3,
+          "min_seconds": 14.804823,
+          "median_seconds": 15.69059,
+          "max_seconds": 15.764949
+        }
+      }
+    },
+    "current": {
+      "operation_count": 5,
+      "by_operation": {
+        "calibrate_1": {
+          "count": 3,
+          "min_seconds": 4.128362,
+          "median_seconds": 4.132168,
+          "max_seconds": 6.148212
+        },
+        "calibrate_di_1": {
+          "count": 3,
+          "min_seconds": 5.100416,
+          "median_seconds": 6.127615,
+          "max_seconds": 6.136615
+        },
+        "image_1": {
+          "count": 3,
+          "min_seconds": 53.267989,
+          "median_seconds": 58.257829,
+          "max_seconds": 61.320611
+        },
+        "mosaic_1": {
+          "count": 3,
+          "min_seconds": 1.155194,
+          "median_seconds": 2.997312,
+          "max_seconds": 5.024269
+        },
+        "predict_di_1": {
+          "count": 3,
+          "min_seconds": 2.097345,
+          "median_seconds": 4.094685,
+          "max_seconds": 4.103179
+        }
+      }
+    },
+    "current_vs_base": {
+      "calibrate_1": {
+        "base_count": 3,
+        "base_median_seconds": 22.568499,
+        "current_count": 3,
+        "current_median_seconds": 4.132168,
+        "current_vs_base_median_delta_percent": -0.816905501779272
+      },
+      "calibrate_di_1": {
+        "base_count": 3,
+        "base_median_seconds": 19.311346,
+        "current_count": 3,
+        "current_median_seconds": 6.127615,
+        "current_vs_base_median_delta_percent": -0.6826935315642939
+      },
+      "image_1": {
+        "base_count": 3,
+        "base_median_seconds": 87.844578,
+        "current_count": 3,
+        "current_median_seconds": 58.257829,
+        "current_vs_base_median_delta_percent": -0.33680791317592756
+      },
+      "mosaic_1": {
+        "base_count": 3,
+        "base_median_seconds": 3.436117,
+        "current_count": 3,
+        "current_median_seconds": 2.997312,
+        "current_vs_base_median_delta_percent": -0.12770374233473422
+      },
+      "predict_di_1": {
+        "base_count": 3,
+        "base_median_seconds": 15.69059,
+        "current_count": 3,
+        "current_median_seconds": 4.094685,
+        "current_vs_base_median_delta_percent": -0.7390356258113939
+      }
+    }
+  },
+  "gate_decision": {
+    "overall_status": "pass",
+    "run_validity": {
+      "status": "pass",
+      "failures": []
+    },
+    "science_product_validity": {
+      "status": "pass",
+      "cross_pair_count": 9,
+      "repeatability_bounded_pair_count": 4,
+      "failed_cross_pairs": []
+    },
+    "performance": {
+      "status": "pass",
+      "reason": "Current branch median runtime is not slower than master."
+    },
+    "repeatability_envelopes": {
+      "same_branch_pair_count": 6,
+      "metrics": {
+        "max_abs_delta": {
+          "max": 0.0027392804622650146,
+          "count": 6
+        },
+        "p99_abs_delta": {
+          "max": 1.058727502822876e-05,
+          "count": 6
+        },
+        "residual_rms": {
+          "max": 4.193604155367501e-06,
+          "count": 6
+        },
+        "residual_rms_over_reference_rms": {
+          "max": 0.0009302467835494542,
+          "count": 6
+        },
+        "max_abs_diagnostic_relative_delta": {
+          "max": 0.00027380660444393834,
+          "count": 6
+        }
+      },
+      "blocking_classification_categories": {}
+    },
+    "pair_statuses": {
+      "base-rep-01_vs_base-rep-02": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-01_vs_base-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_base-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 0
+      },
+      "current-rep-01_vs_current-rep-02": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 0
+      },
+      "current-rep-01_vs_current-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 0
+      },
+      "current-rep-02_vs_current-rep-03": {
+        "status": "repeatability-reference",
+        "blocking_metrics": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-01_vs_current-rep-01": {
+        "status": "pass",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-01_vs_current-rep-02": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-01_vs_current-rep-03": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_current-rep-01": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_current-rep-02": {
+        "status": "pass",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-02_vs_current-rep-03": {
+        "status": "pass",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-03_vs_current-rep-01": {
+        "status": "repeatability-bounded",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-03_vs_current-rep-02": {
+        "status": "pass",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      },
+      "base-rep-03_vs_current-rep-03": {
+        "status": "pass",
+        "blocking_metrics": [],
+        "blocking_classifications": [],
+        "blocking_classification_count": 0
+      }
+    }
+  },
+  "planned_pairs": [
+    {
+      "group": "base-base",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "base",
+      "current_rep": 2,
+      "pair_id": "base-rep-01_vs_base-rep-02",
+      "reference": "base/rep-01",
+      "current": "base/rep-02"
+    },
+    {
+      "group": "base-base",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "base",
+      "current_rep": 3,
+      "pair_id": "base-rep-01_vs_base-rep-03",
+      "reference": "base/rep-01",
+      "current": "base/rep-03"
+    },
+    {
+      "group": "base-base",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "base",
+      "current_rep": 3,
+      "pair_id": "base-rep-02_vs_base-rep-03",
+      "reference": "base/rep-02",
+      "current": "base/rep-03"
+    },
+    {
+      "group": "current-current",
+      "reference_side": "current",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "current-rep-01_vs_current-rep-02",
+      "reference": "current/rep-01",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "current-current",
+      "reference_side": "current",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "current-rep-01_vs_current-rep-03",
+      "reference": "current/rep-01",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "current-current",
+      "reference_side": "current",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "current-rep-02_vs_current-rep-03",
+      "reference": "current/rep-02",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 1,
+      "pair_id": "base-rep-01_vs_current-rep-01",
+      "reference": "base/rep-01",
+      "current": "current/rep-01"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "base-rep-01_vs_current-rep-02",
+      "reference": "base/rep-01",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 1,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "base-rep-01_vs_current-rep-03",
+      "reference": "base/rep-01",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 1,
+      "pair_id": "base-rep-02_vs_current-rep-01",
+      "reference": "base/rep-02",
+      "current": "current/rep-01"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "base-rep-02_vs_current-rep-02",
+      "reference": "base/rep-02",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 2,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "base-rep-02_vs_current-rep-03",
+      "reference": "base/rep-02",
+      "current": "current/rep-03"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 3,
+      "current_side": "current",
+      "current_rep": 1,
+      "pair_id": "base-rep-03_vs_current-rep-01",
+      "reference": "base/rep-03",
+      "current": "current/rep-01"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 3,
+      "current_side": "current",
+      "current_rep": 2,
+      "pair_id": "base-rep-03_vs_current-rep-02",
+      "reference": "base/rep-03",
+      "current": "current/rep-02"
+    },
+    {
+      "group": "base-current",
+      "reference_side": "base",
+      "reference_rep": 3,
+      "current_side": "current",
+      "current_rep": 3,
+      "pair_id": "base-rep-03_vs_current-rep-03",
+      "reference": "base/rep-03",
+      "current": "current/rep-03"
+    }
+  ],
+  "pair_summaries": [
+    {
+      "pair_id": "base-rep-01_vs_base-rep-02",
+      "group": "base-base",
+      "reference": "base/rep-01",
+      "current": "base/rep-02",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 28
+      },
+      "max_abs_delta": 0.0027392730116844177,
+      "p99_abs_delta": 1.0583554394543067e-05,
+      "residual_rms": 4.193473869576231e-06,
+      "residual_rms_over_reference_rms": 0.0009302461644859959,
+      "max_abs_diagnostic_relative_delta": 0.00011213906480214133,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-01_vs_base-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_base-rep-03",
+      "group": "base-base",
+      "reference": "base/rep-01",
+      "current": "base/rep-03",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 28
+      },
+      "max_abs_delta": 0.002739258110523224,
+      "p99_abs_delta": 1.0585412383079529e-05,
+      "residual_rms": 4.1933509357293885e-06,
+      "residual_rms_over_reference_rms": 0.0009302433002633786,
+      "max_abs_diagnostic_relative_delta": 7.648855502744482e-05,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-01_vs_base-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_base-rep-03",
+      "group": "base-base",
+      "reference": "base/rep-02",
+      "current": "base/rep-03",
+      "passed": true,
+      "failure_count": 0,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 0
+      },
+      "max_abs_delta": 9.5367431640625e-07,
+      "p99_abs_delta": 7.450580596923828e-08,
+      "residual_rms": 2.798036379218908e-08,
+      "residual_rms_over_reference_rms": 1.1179652077090894e-06,
+      "max_abs_diagnostic_relative_delta": 9.894765859359855e-05,
+      "classification_counts": {
+        "by_category": {},
+        "by_disposition": {}
+      },
+      "classification_summary": [],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-02_vs_base-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "current-rep-01_vs_current-rep-02",
+      "group": "current-current",
+      "reference": "current/rep-01",
+      "current": "current/rep-02",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 4,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 28
+      },
+      "max_abs_delta": 0.002739265561103821,
+      "p99_abs_delta": 1.058727502822876e-05,
+      "residual_rms": 4.193604155367501e-06,
+      "residual_rms_over_reference_rms": 0.0009302448714561693,
+      "max_abs_diagnostic_relative_delta": 0.00027380660444393834,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/current-rep-01_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "current-rep-01_vs_current-rep-03",
+      "group": "current-current",
+      "reference": "current/rep-01",
+      "current": "current/rep-03",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 4,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 28
+      },
+      "max_abs_delta": 0.0027392804622650146,
+      "p99_abs_delta": 1.0584481060504913e-05,
+      "residual_rms": 4.193525202232028e-06,
+      "residual_rms_over_reference_rms": 0.0009302467835494542,
+      "max_abs_diagnostic_relative_delta": 0.0001972573163411099,
+      "classification_counts": {
+        "by_category": {
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/current-rep-01_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "current-rep-02_vs_current-rep-03",
+      "group": "current-current",
+      "reference": "current/rep-02",
+      "current": "current/rep-03",
+      "passed": true,
+      "failure_count": 0,
+      "warning_count": 0,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 4,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 0
+      },
+      "max_abs_delta": 1.430511474609375e-06,
+      "p99_abs_delta": 8.195638656616211e-08,
+      "residual_rms": 2.9337452928718106e-08,
+      "residual_rms_over_reference_rms": 1.1697229239542259e-06,
+      "max_abs_diagnostic_relative_delta": 7.652833413951396e-05,
+      "classification_counts": {
+        "by_category": {},
+        "by_disposition": {}
+      },
+      "classification_summary": [],
+      "blocking_classification_count": 0,
+      "report": "pairs/current-rep-02_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_current-rep-01",
+      "group": "base-current",
+      "reference": "base/rep-01",
+      "current": "current/rep-01",
+      "passed": true,
+      "failure_count": 0,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 2
+      },
+      "max_abs_delta": 1.430511474609375e-06,
+      "p99_abs_delta": 8.009374141693115e-08,
+      "residual_rms": 2.907585400156931e-08,
+      "residual_rms_over_reference_rms": 1.2695789294760213e-06,
+      "max_abs_diagnostic_relative_delta": 0.00023591637823455207,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2
+        },
+        "by_disposition": {
+          "warning": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-01_vs_current-rep-01/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_current-rep-02",
+      "group": "base-current",
+      "reference": "base/rep-01",
+      "current": "current/rep-02",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 30
+      },
+      "max_abs_delta": 0.002739258110523224,
+      "p99_abs_delta": 1.058727502822876e-05,
+      "residual_rms": 4.193926298639054e-06,
+      "residual_rms_over_reference_rms": 0.000930243932420589,
+      "max_abs_diagnostic_relative_delta": 3.798549155915316e-05,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2,
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "warning": 2,
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-01_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-01_vs_current-rep-03",
+      "group": "base-current",
+      "reference": "base/rep-01",
+      "current": "current/rep-03",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 30
+      },
+      "max_abs_delta": 0.0027392730116844177,
+      "p99_abs_delta": 1.0585412383079529e-05,
+      "residual_rms": 4.193828561655234e-06,
+      "residual_rms_over_reference_rms": 0.0009302458448704803,
+      "max_abs_diagnostic_relative_delta": 6.0242613538950354e-05,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2,
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "warning": 2,
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-01_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_current-rep-01",
+      "group": "base-current",
+      "reference": "base/rep-02",
+      "current": "current/rep-01",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 30
+      },
+      "max_abs_delta": 0.0027392804622650146,
+      "p99_abs_delta": 1.0583549737930298e-05,
+      "residual_rms": 4.193163525241461e-06,
+      "residual_rms_over_reference_rms": 0.0009302566396492931,
+      "max_abs_diagnostic_relative_delta": 0.00017413891444445316,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2,
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "warning": 2,
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-02_vs_current-rep-01/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_current-rep-02",
+      "group": "base-current",
+      "reference": "base/rep-02",
+      "current": "current/rep-02",
+      "passed": true,
+      "failure_count": 0,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 2
+      },
+      "max_abs_delta": 1.430511474609375e-06,
+      "p99_abs_delta": 8.940696716308594e-08,
+      "residual_rms": 2.992830039937535e-08,
+      "residual_rms_over_reference_rms": 1.2544886262684157e-06,
+      "max_abs_diagnostic_relative_delta": 0.00011278902628702995,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2
+        },
+        "by_disposition": {
+          "warning": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-02_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-02_vs_current-rep-03",
+      "group": "base-current",
+      "reference": "base/rep-02",
+      "current": "current/rep-03",
+      "passed": true,
+      "failure_count": 0,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 2
+      },
+      "max_abs_delta": 9.5367431640625e-07,
+      "p99_abs_delta": 7.566995918750763e-08,
+      "residual_rms": 2.8423340914162993e-08,
+      "residual_rms_over_reference_rms": 1.1544958444166994e-06,
+      "max_abs_diagnostic_relative_delta": 0.00017197157016339172,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2
+        },
+        "by_disposition": {
+          "warning": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-02_vs_current-rep-03/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-03_vs_current-rep-01",
+      "group": "base-current",
+      "reference": "base/rep-03",
+      "current": "current/rep-01",
+      "passed": false,
+      "failure_count": 28,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 30
+      },
+      "max_abs_delta": 0.002739265561103821,
+      "p99_abs_delta": 1.0583549737930298e-05,
+      "residual_rms": 4.1930402910881305e-06,
+      "residual_rms_over_reference_rms": 0.0009302537849857356,
+      "max_abs_diagnostic_relative_delta": 0.0002730595544344838,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2,
+          "small_image_residual": 4,
+          "sparse_model_image_residual": 1,
+          "pybdsf_catalog_diagnostic_column": 23
+        },
+        "by_disposition": {
+          "warning": 2,
+          "repeatability-candidate": 28
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        },
+        {
+          "category": "pybdsf_catalog_diagnostic_column",
+          "disposition": "repeatability-candidate",
+          "count": 23,
+          "examples": [
+            "sector_1.source_catalog.fits:E_RA",
+            "sector_1.source_catalog.fits:E_DEC",
+            "sector_1.source_catalog.fits:E_Total_flux"
+          ],
+          "recommendation": "Keep source count and primary flux/position strict; bound fitted uncertainty/shape/noise columns with same-branch PyBDSF scatter."
+        },
+        {
+          "category": "small_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 4,
+          "examples": [
+            "field-MFS-image-pb-ast.fits",
+            "field-MFS-image-pb.fits",
+            "field-MFS-image.fits"
+          ],
+          "recommendation": "Bound with same-branch image residual scatter before turning this into a tolerance."
+        },
+        {
+          "category": "sparse_model_image_residual",
+          "disposition": "repeatability-candidate",
+          "count": 1,
+          "examples": [
+            "field-MFS-model-pb.fits"
+          ],
+          "recommendation": "Treat as a sparse model-component residual only after same-branch repeatability bounds it."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-03_vs_current-rep-01/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-03_vs_current-rep-02",
+      "group": "base-current",
+      "reference": "base/rep-03",
+      "current": "current/rep-02",
+      "passed": true,
+      "failure_count": 0,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 2
+      },
+      "max_abs_delta": 1.430511474609375e-06,
+      "p99_abs_delta": 8.940696716308594e-08,
+      "residual_rms": 3.0933708199425884e-08,
+      "residual_rms_over_reference_rms": 1.2280199324075516e-06,
+      "max_abs_diagnostic_relative_delta": 7.713849334343196e-05,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2
+        },
+        "by_disposition": {
+          "warning": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-03_vs_current-rep-02/branch-equivalence-report.json"
+    },
+    {
+      "pair_id": "base-rep-03_vs_current-rep-03",
+      "group": "base-current",
+      "reference": "base/rep-03",
+      "current": "current/rep-03",
+      "passed": true,
+      "failure_count": 0,
+      "warning_count": 2,
+      "metrics": {
+        "base_operations": 5,
+        "current_operations": 5,
+        "operations": 5,
+        "output_records": 5,
+        "fits": 7,
+        "h5": 3,
+        "text": 10,
+        "fits_image_hdus": 6,
+        "fits_table_hdus": 1,
+        "diagnostics": 1,
+        "visual_comparisons": 5,
+        "classified_differences": 2
+      },
+      "max_abs_delta": 1.1920928955078125e-06,
+      "p99_abs_delta": 8.195638656616211e-08,
+      "residual_rms": 2.9172251673113696e-08,
+      "residual_rms_over_reference_rms": 1.1154276246654494e-06,
+      "max_abs_diagnostic_relative_delta": 0.00013631892756850908,
+      "classification_counts": {
+        "by_category": {
+          "output_record_auxiliary_artifacts": 2
+        },
+        "by_disposition": {
+          "warning": 2
+        }
+      },
+      "classification_summary": [
+        {
+          "category": "output_record_auxiliary_artifacts",
+          "disposition": "warning",
+          "count": 2,
+          "examples": [
+            "calibrate_1",
+            "calibrate_di_1"
+          ],
+          "recommendation": "Keep as non-blocking when only plot filenames or known local intermediate aliases differ and final scientific products pass."
+        }
+      ],
+      "blocking_classification_count": 0,
+      "report": "pairs/base-rep-03_vs_current-rep-03/branch-equivalence-report.json"
+    }
+  ]
+}

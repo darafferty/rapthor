@@ -17,17 +17,18 @@ Detailed performance evidence:
 ## Executive Decision
 
 **Recommendation: accept the refactored Prefect/Dask pipeline as
-scientifically sound for the tested contract, and continue guarded performance
-and scalability validation before making the final operational switch from
-`master`.**
+scientifically sound for the tested contract, and accept the current
+repeatability-aware performance evidence for the tested phase-only and
+DD/full-Jones scenarios. Continue targeted scalability optimisation and
+operational readiness checks before making the final switch from `master`.**
 
 The current evidence answers two related but separate questions:
 
 - **Science equivalence:** the refactored pipeline preserves the tested
   self-calibration product contract.
-- **Performance equivalence:** the first repeatability-aware phase-only
-  performance gate passes and shows the current branch faster than `master`,
-  but broader performance evidence is still needed for DD/full-Jones paths.
+- **Performance equivalence:** repeatability-aware phase-only and DD/full-Jones
+  performance gates pass and show the current branch faster than `master` for
+  both tested scenarios.
 
 This report is the reviewer-facing summary. The dated folders under
 `docs/source/development/science_equivalence_runs/` and
@@ -39,7 +40,7 @@ individual runs.
 | Gate | Latest Result | Evidence | Decision |
 | --- | --- | --- | --- |
 | Science equivalence | **Pass / accepted** | `2026-07-11-post-task-split-saved-reference`, `2026-07-11-post-task-split-option-matrix`, and earlier DD/full-Jones repeatability evidence | Scientific contract is accepted for the covered LOFAR HBA self-calibration paths. |
-| Performance equivalence | **Pass for phase-only core** | `2026-07-11-phase-only-core-repeatability-gate` | Initial performance gate passes; run DD/full-Jones before treating performance equivalence as broadly established. |
+| Performance equivalence | **Pass for phase-only core and DD/full-Jones** | `2026-07-11-phase-only-core-repeatability-gate`, `2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate` | Performance equivalence is established for the current optimisation phase; continue targeted benchmarking for new scalability changes. |
 
 ## What Was Being Decided
 
@@ -99,12 +100,25 @@ The current branch passes the science gate because:
 
 ## Latest Performance Gate
 
-Status: **phase-only core performance equivalence passes**.
+Status: **phase-only core and DD/full-Jones performance equivalence pass**.
 
 Latest tracked performance evidence:
 
+- `docs/source/development/performance_equivalence_runs/2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate.md`
+- `docs/source/development/performance_equivalence_runs/2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate.summary.json`
 - `docs/source/development/performance_equivalence_runs/2026-07-11-phase-only-core-repeatability-gate.md`
 - `docs/source/development/performance_equivalence_runs/2026-07-11-phase-only-core-repeatability-gate.summary.json`
+
+DD phase plus DI full-Jones result:
+
+- all six branch runs completed with return code `0`
+- science/product validity passed; 4 of 9 `master`/current pairs were
+  repeatability-bounded and the remaining cross-branch pairs passed directly
+- current median runtime was `94.004 s`
+- `master` median runtime was `151.183 s`
+- current branch median runtime was `37.821%` faster than `master`
+- parsed operation medians were faster on the current branch for calibration,
+  prediction, imaging, and mosaic operations
 
 Phase-only result:
 
@@ -115,10 +129,11 @@ Phase-only result:
 - current branch median runtime was `29.425%` faster than `master`
 - all parsed operation medians were faster on the current branch
 
-This result is strong evidence that the Prefect/Dask refactor does not impose a
-phase-only runtime penalty. It is not yet the final performance decision for all
-scientific modes. The next performance gate should run the
-`dd-phase-plus-di-fulljones` scenario with three repetitions per branch.
+Together, these results are strong evidence that the Prefect/Dask refactor does
+not impose a runtime penalty for the tested core and mixed-calibration paths.
+Future optimisation batches should continue to produce targeted benchmark
+reports, but the performance-equivalence gate no longer blocks the current
+scalability phase.
 
 ## Evidence Summary
 
@@ -129,6 +144,7 @@ scientific modes. The next performance gate should run the
 | DD phase plus DI full-Jones repeatability | Pass | Confirms the most important mixed calibration path is stable across repeated runs and branch comparisons. |
 | Focused normalized full-Jones branch-vs-master run | Accepted with classified non-blocking differences | Confirms calibration solutions match after full-Jones gain normalization alignment. |
 | Phase-only performance repeatability gate | Pass | Confirms current branch is faster than `master` for the phase-only core scenario while products remain repeatability-bounded. |
+| DD/full-Jones performance repeatability gate | Pass | Confirms current branch is faster than `master` for the broader mixed DD phase plus DI full-Jones scenario while product differences remain valid. |
 | Flexible carry-forward and mode-boundary scenarios | Accepted intentional differences | Confirms the refactor uses explicit, safer calibration-state rules rather than copying implicit master behavior. |
 
 ## What Is Strict
@@ -203,8 +219,10 @@ using stale or incompatible solutions.
 
 ## Known Caveats
 
-- The performance gate has passed for the phase-only core scenario only. Run
-  DD/full-Jones repeatability before claiming broad performance equivalence.
+- Performance equivalence has been tested for phase-only core and DD/full-Jones
+  paths. Continue to add targeted benchmark evidence when changing task
+  granularity, resource policy, WSClean/PyBDSF behavior, or hidden scaling
+  paths.
 - The `screens` option-matrix row remains skipped until reliable IDGCal/screen
   support is available in the target environment.
 - MPI WSClean, Slurm, and external-Dask behavior remain deployment checks

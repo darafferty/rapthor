@@ -1,6 +1,6 @@
 # Rapthor Architecture Refactor Plan
 
-Status snapshot: 2026-07-11.
+Status snapshot: 2026-07-12.
 
 ## Goal
 
@@ -82,6 +82,11 @@ Accepted performance and task-boundary evidence:
   the expected extra predict/postprocess work without material overhead:
   command time changed by about `+0.9%` relative to `ci-benchmark` in the same
   run, while wall time was not worse.
+- The repeatability-aware performance-equivalence gate now passes for both the
+  phase-only core scenario and the broader DD phase plus DI full-Jones
+  scenario. The DD/full-Jones gate completed three `master` and three current
+  runs with return code `0`, passed product validity, and measured current
+  median runtime at `94.004 s` versus `151.183 s` for `master` (`-37.821%`).
 - WSClean-rendered model mosaics are the preferred path when sector sky-model
   inputs exist. Sparse FITS mapping remains a fallback for products that cannot
   be rendered by WSClean.
@@ -102,45 +107,7 @@ Operating rules:
 
 Do these in order unless a regression blocks progress.
 
-1. **Extend the performance-equivalence gate beyond the phase-only baseline.**
-   The repeatability-aware gate is now implemented and the first formal
-   `phase-only-core` run passes.
-
-   Completed:
-
-   - `scripts/dev/run_branch_equivalence.py` now reports separate run-validity,
-     science/product-validity, and performance decisions.
-   - Same-branch `master`/`master` and current/current pairs define
-     repeatability envelopes before cross-branch product differences are judged.
-   - Cross-branch differences are classified as `pass`, `warn`,
-     `repeatability-bounded`, `accepted-difference`, or `fail`; non-zero runs
-     and missing required products remain hard failures.
-   - Compact Markdown/JSON reports show same-branch envelopes, cross-branch
-     deltas, pair decisions, elapsed run times, and operation-level timing
-     deltas.
-   - The passing `phase-only-core` report is archived as
-     `docs/source/development/performance_equivalence_runs/2026-07-11-phase-only-core-repeatability-gate.md`.
-
-   Phase-only result:
-
-   - all six branch runs completed with return code `0`
-   - 9 of 9 `master`/current pairs were repeatability-bounded
-   - current median runtime was `303.160 s` versus `429.557 s` for `master`
-     (`-29.425%`)
-   - all parsed operation medians were faster on the current branch
-
-   Next gate target:
-
-   - run `dd-phase-plus-di-fulljones` with three repetitions per branch before
-     using the gate as broader performance-equivalence evidence
-   - keep run roots short, for example `/tmp/r2` and `/tmp/w2`, because the
-     `master` branch can hit PyBDSF `AF_UNIX path too long` errors under long
-     working directories
-   - if the DD/full-Jones gate passes, treat performance equivalence as
-     established for the current optimisation phase; if it fails, fix or
-     document the specific scenario before continuing broad optimisation
-
-2. **Target the next image-side performance bottlenecks.**
+1. **Target the next image-side performance bottlenecks.**
    Current benchmarks consistently show the largest costs are
    `filter_skymodel` and WSClean image runs. Treat calibration plotting as a
    secondary target, and only optimize it if larger/repeated runs keep showing
@@ -179,7 +146,7 @@ Do these in order unless a regression blocks progress.
    - add `ci-benchmark-wsclean-predict` only when calibration prediction setup
      or WSClean-predict paths are touched
 
-3. **Keep mosaic science coverage explicit, but targeted.**
+2. **Keep mosaic science coverage explicit, but targeted.**
    The `multi-sector-mosaic` option-matrix scenario protects sector imaging,
    regridding, and mosaic assembly, but branch-vs-master equivalence is blocked
    because `master` fails before imaging commands run with the generated CWL
@@ -199,13 +166,13 @@ Do these in order unless a regression blocks progress.
    sector regridding, or scalability scheduling. When they are used, run them
    as targeted paired scenarios and archive compact evidence.
 
-4. **Guard the science-equivalence contract.**
+3. **Guard the science-equivalence contract.**
    For documentation, preview-artifact, benchmark-report, or refactor-only
    changes, run focused tests. For calibration, prediction, imaging, h5parm,
    FITS, catalog, sky-model, or product-record changes, rerun the relevant
    saved-reference and branch-vs-master scenarios before judging the change.
 
-5. **Polish runtime UX and contributor docs after the next scalability result.**
+4. **Polish runtime UX and contributor docs after the next scalability result.**
    Keep `TESTING.md`, `.agents/testing_playbook.md`, `AGENTS.md`, runtime docs,
    and this plan aligned. Improve preflight/dry-run output, missing-tool
    messages, runtime dashboard/resource summaries, and debugging docs as the
@@ -309,6 +276,7 @@ Use these as the historical record instead of expanding this plan:
 - `docs/source/development/science_equivalence_contract.rst`
 - `docs/source/development/performance_equivalence_contract.rst`
 - `docs/source/development/science_equivalence_runs/`
+- `docs/source/development/performance_equivalence_runs/`
 - `docs/source/development/benchmark_baselines/`
 
 Most relevant benchmark reports:

@@ -15,11 +15,13 @@ compact Markdown/JSON report here and update the latest performance section of
 reports only when they are needed to explain a tolerance or decision. Keep raw
 products, full logs, Dask reports, and temporary run directories out of git.
 
-## Baseline Gate
+## Repeatability Gates
 
-Run the first gate before making further performance-sensitive optimisation
-changes. Start with the phase-only scenario because both branches can run it
-without the known legacy slow-gain combination limitations.
+Run the repeatability-aware gate before making further performance-sensitive
+optimisation changes, and rerun targeted scenarios after each optimisation
+batch. Start with the phase-only scenario because both branches can run it
+without the known legacy slow-gain combination limitations, then cover a
+broader mixed-calibration path such as DD phase plus DI full-Jones.
 
 Use short `--run-root` and `--repeatability-work-root` paths, preferably under
 `/tmp`, when comparing against `master`. The legacy `master` helper scripts can
@@ -59,5 +61,10 @@ operation boundary timings from each run's `rapthor.log`, and reports
 min/median/max plus current-vs-base median deltas. Archive the compact
 JSON/Markdown report here after the full gate completes.
 
-The first formal repeatability-aware phase-only gate pass is archived in
-`2026-07-11-phase-only-core-repeatability-gate.md`.
+Current accepted gate evidence:
+
+- `2026-07-11-phase-only-core-repeatability-gate.md`: phase-only core passes,
+  with current median runtime `29.425%` faster than `master`
+- `2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate.md`: DD phase plus
+  DI full-Jones passes, with current median runtime `37.821%` faster than
+  `master`
