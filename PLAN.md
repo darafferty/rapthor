@@ -84,14 +84,64 @@ The branch is ready to recommend over `master` when all of these are true:
    production/staging validation before recommending this branch for
    multi-node imaging.
 7. **Deployment packaging is available.**
-   A Spack recipe in `../ska-sdp-spack/packages/` can install/load this
-   Prefect/Dask branch with the required Python and external-tool dependencies,
-   without replacing the existing `py-rapthor` recipe until the switch decision
-   is made.
+   Developers can test without Spack using the dev container or an existing
+   Python/tool environment plus editable install. Production-like deployments
+   have a Spack recipe in `../ska-sdp-spack/packages/` that can install/load
+   this Prefect/Dask branch with the required Python and external-tool
+   dependencies, without replacing the existing `py-rapthor` recipe until the
+   switch decision is made.
 
 ## Outstanding Work Before Switching
 
-Do these in order unless a regression blocks progress.
+Do these in order unless a regression blocks progress. Interactive testing on
+developer machines is a first-class path: many testers will run `rapthor`
+directly without Slurm, using local/no-server Prefect and local Dask. Slurm,
+external Dask, and MPI WSClean are a separate production-readiness track.
+
+## Immediate Task List
+
+- [ ] **Make interactive testing frictionless.**
+  Check `docs/source/development/manual_testing_prefect_dask.rst` from the
+  perspective of a developer on a non-Slurm system. It must include the shortest
+  path for `rapthor input.parset`, unique working directories, optional local
+  Prefect dashboard, local Dask settings, run tags, install/environment options
+  for non-Spack testers, and what to inspect.
+- [ ] **Create a manual-test reporting template.**
+  Add a compact copy/paste template for testers to record branch/commit,
+  parset/strategy, runtime mode, required parset edits, output sanity, dashboard
+  observations, and switch recommendation.
+- [ ] **Prepare the Spack/module path.**
+  Add the new `py-rapthor-prefect-dask` recipe in
+  `../ska-sdp-spack/packages/`, add/verify `py-prefect-dask`, and run the
+  module-load smoke checks listed below. This is required for production-like
+  staging, but it should not block interactive testers who already have a
+  working dev container or site environment.
+- [ ] **Run the first interactive tester wave.**
+  Ask at least two developers outside the refactor to run their own
+  single-machine or login-node interactive parsets without Slurm. Capture
+  whether they can get from `master` parset to successful current-branch run
+  without help.
+- [ ] **Run the production-style no-server concurrency check.**
+  Launch two independent Rapthor jobs at the same time with no `PREFECT_API_URL`
+  and unique working directories. Confirm they use isolated Prefect state and
+  do not collide on local SQLite state or output paths.
+- [ ] **Stage the multi-node path.**
+  Adapt the prototype Slurm/Dask script, run one representative allocation with
+  external Dask and `imaging.use_mpi = True`, and confirm WSClean MPI uses the
+  allocated nodes without oversubscription.
+- [ ] **Demonstrate multi-node dashboards locally.**
+  Run Rapthor through Slurm on multiple nodes and view both dashboards in a
+  local browser: Prefect for flow/task state and Dask for worker/task
+  occupancy. The Slurm launcher should print or write copy/paste SSH tunnel
+  commands for the Prefect dashboard and Dask dashboard.
+- [ ] **Update the decision evidence.**
+  Summarize manual-test outcomes, install method used by each tester,
+  Spack/module smoke checks, and Slurm staging status in
+  `EQUIVALENCE_REPORT.md` or a linked switch-readiness report.
+- [ ] **Run final gates.**
+  Refresh non-integration tests, representative integration tests, science
+  equivalence, performance equivalence, and the current CI benchmark scenario
+  set after the final switch-readiness edits.
 
 ### 1. Manual Testing And Parset Migration Guide
 
@@ -102,6 +152,9 @@ make sure it includes:
 
 - quick-start commands for the dev container, a persistent Prefect dashboard,
   local Dask, and `rapthor input.parset`
+- a clear interactive path for developers testing on systems without Slurm
+- non-Spack setup guidance: dev container, existing site module/environment, or
+  editable install once external astronomy tools are already available
 - the smallest recommended parset edits for moving from `master` to the
   current branch
 - how to tag runs with `prefect_run_tags`
@@ -127,6 +180,8 @@ make sure it includes:
 Ask developers not involved in the refactor to run a small but meaningful set
 of real workflows:
 
+- at least two interactive non-Slurm runs on different developer systems, using
+  local/no-server Prefect and local Dask
 - one default-like single-sector self-calibration parset
 - one phase-only or calibration-light parset
 - one DD phase plus DI full-Jones or otherwise mixed-calibration parset
@@ -170,7 +225,17 @@ Prepare a reviewer/stakeholder pack before recommending the switch:
 This should be written for people who understand self-calibration and software
 risk, but do not know the internal refactor history.
 
-### 4. Spack Packaging For Staging And Production Tests
+### 4. Install Paths For Manual, Staging, And Production Tests
+
+Support two installation paths during switch readiness:
+
+- **Non-Spack interactive testing:** developers may use the dev container, an
+  existing site environment/module set, or an editable install of this branch.
+  This is the fastest way to get feedback from people testing real parsets on
+  systems without Slurm.
+- **Spack/module staging:** production-like tests should use a loadable Spack
+  environment so Slurm/MPI runs can be reproduced and compared with legacy
+  deployments.
 
 Add a new Spack package under `../ska-sdp-spack/packages/` as an alternative to
 the existing `py-rapthor` recipe. Recommended working name:
@@ -221,9 +286,9 @@ Before broad manual testing, remove avoidable friction:
 - adapt the Slurm/Dask launch pattern from the Prefect prototype scripts as
   the staging template: use a Dask scheduler on the first allocated node, one
   Dask worker per node, health checks before `rapthor` starts, explicit
-  dashboard tunnel instructions, and a Prefect API URL that is reachable by
-  remote workers when a persistent/temporary dashboard is used. Local checkout
-  reference: `../ska-sdp-rapthor-prefect-prototype/aws-run-poc-multi-node.sbatch`
+  dashboard tunnel instructions for a local browser demo, and a Prefect API URL
+  that is reachable by remote workers when a persistent/temporary dashboard is
+  used. Local checkout reference: `../ska-sdp-rapthor-prefect-prototype/aws-run-poc-multi-node.sbatch`
   (the same prototype may be available as `../rapthor-prefect-prototype` in
   other workspaces).
 
@@ -337,6 +402,9 @@ main plan stays focused on the branch-switch decision.
 - **Slurm/MPI production hardening:** adapt the prototype multi-node launch
   pattern, validate external Dask workers on each allocated node, and prove MPI
   WSClean imaging in staging.
+- **Persistent Prefect service:** set up a shared Prefect server backed by
+  Postgres so production users can monitor multiple parallel Rapthor jobs from
+  one Prefect UI without relying on local SQLite state.
 - **Spack deployment:** add the new Prefect/Dask branch recipe and module-load
   smoke checks before production-style manual testing.
 - **Deferred code tidying:** split or simplify modules such as

@@ -53,6 +53,10 @@ For the simplest local run, use the installed command directly:
 
     $ rapthor input.parset
 
+Interactive testers do not need Slurm or Spack. Use the dev container, an
+existing site environment, or an editable install of this branch as long as the
+required radio astronomy tools and Python dependencies are available.
+
 With the default runtime settings, Rapthor lets Prefect use its temporary local
 API/server when no ``PREFECT_API_URL`` or ``prefect_api_url`` is configured and
 starts one local Dask scheduler for the run. The top-level pipeline and
@@ -426,6 +430,19 @@ For the MPI WSClean imaging path, also set:
     [imaging]
     use_mpi = True
 
+For a live demonstration, the Slurm launcher should print or write SSH tunnel
+commands for both dashboards. The intended local browser endpoints are:
+
+.. code-block:: text
+
+    Prefect dashboard: http://127.0.0.1:14200
+    Dask dashboard:    http://127.0.0.1:18787/status
+
+The tunnel usually forwards from the local machine through the login/head node
+to the Prefect host and the first compute node running the Dask scheduler. The
+Prefect API URL used by Rapthor must still be reachable from Dask workers
+inside the allocation; the SSH tunnel is only for the local browser view.
+
 Use the production template when the allocation should start a temporary
 Prefect server:
 
@@ -433,11 +450,12 @@ Prefect server:
 
     $ RAPTHOR_PARSET=/path/to/rapthor.parset sbatch scripts/prod/run-rapthor-slurm.sbatch
 
-For production-like Slurm tests, run from a loadable Spack environment once the
-Prefect/Dask branch recipe is available. That recipe should live alongside the
-legacy ``py-rapthor`` recipe in ``../ska-sdp-spack/packages/`` and should load
-Prefect, Dask distributed, DP3, WSClean including ``wsclean-mp``, and the
-Python astronomy dependencies required by Rapthor.
+For production-like Slurm tests, prefer a loadable Spack environment once the
+Prefect/Dask branch recipe is available. Interactive non-Slurm testers may use
+other working environments. The Spack recipe should live alongside the legacy
+``py-rapthor`` recipe in ``../ska-sdp-spack/packages/`` and should load Prefect,
+Dask distributed, DP3, WSClean including ``wsclean-mp``, and the Python
+astronomy dependencies required by Rapthor.
 
 Use the development template when a persistent Prefect API is already running:
 

@@ -31,6 +31,25 @@ This is the lowest-friction mode. If no Prefect API URL or Dask scheduler is
 configured, Rapthor uses a temporary Prefect API/server and a local Dask
 scheduler for the run.
 
+Install Or Environment Choices
+------------------------------
+
+Use whichever environment is natural on the system you are testing:
+
+* **Dev container:** best for quick local checks in this repository. The dev
+  container installs Rapthor in editable mode with development and documentation
+  dependencies.
+* **Existing site environment:** fine for interactive testing when DP3,
+  WSClean, python-casacore, PyBDSF, LoSoTo, LSMTool, and the other astronomy
+  dependencies are already available. Install this branch in editable mode
+  inside that environment if needed.
+* **Spack/module environment:** preferred for production-like staging,
+  multi-node Slurm, and comparisons with the legacy deployment, but not
+  required for every manual tester.
+
+Before running a real parset, record the install method and the key tool
+versions so failures can be reproduced.
+
 Production Parallel Runs Without A Prefect Server
 -------------------------------------------------
 
@@ -131,13 +150,28 @@ the login node or the process that launched Rapthor. Until a Postgres-backed
 Prefect service is available, treat this as staging validation rather than the
 default production mode.
 
+For a demonstration, the Slurm launcher should write the dashboard endpoints
+and SSH tunnel commands into the run output directory. The intended local view
+is:
+
+* Prefect dashboard in a local browser, for example
+  ``http://127.0.0.1:14200``
+* Dask dashboard in a local browser, for example
+  ``http://127.0.0.1:18787/status``
+
+The tunnel normally goes through the login/head node to the host running the
+Prefect server and the first compute node running the Dask scheduler. The exact
+host names and ports are site-specific, so record the generated tunnel command
+with the manual-test outcome.
+
 Spack Or Module-Based Staging
 -----------------------------
 
 For production-like manual tests, prefer a loadable Spack environment once the
-Prefect/Dask branch recipe exists. The intended package is a new recipe in
-``../ska-sdp-spack/packages/`` rather than the existing ``py-rapthor`` recipe,
-so testers can compare the legacy and refactored branches side by side.
+Prefect/Dask branch recipe exists. This is not required for all interactive
+testers. The intended package is a new recipe in ``../ska-sdp-spack/packages/``
+rather than the existing ``py-rapthor`` recipe, so testers can compare the
+legacy and refactored branches side by side.
 
 The recipe should provide:
 
@@ -254,6 +288,7 @@ outcome:
     Strategy:
     Run tags:
     Runtime mode: ephemeral/local_dask, persistent Prefect, external Dask, Slurm
+    Install/environment: dev container / editable install / site module / Spack
     Required parset changes:
     Return code:
     Working directory:
