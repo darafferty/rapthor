@@ -65,6 +65,13 @@ dashboard by accident. Export ``PREFECT_API_URL`` or set ``prefect_api_url`` in
 the parset when you want a persistent dashboard. Rapthor also sets
 ``PREFECT_SERVER_ANALYTICS_ENABLED=false`` for the run.
 
+For production systems that need to launch several Rapthor jobs before a
+Postgres-backed Prefect service is available, prefer this no-server mode for
+each independent job. Give every job a unique ``global.dir_working`` and leave
+``PREFECT_API_URL`` unset, or set ``prefect_api_mode = ephemeral``. This avoids
+multiple jobs sharing a local SQLite-backed Prefect server. Use a managed
+Prefect API with Postgres when persistent dashboard history is required.
+
 To keep a persistent Prefect dashboard, start a server in one terminal and
 explicitly export its API URL before running Rapthor:
 
@@ -91,6 +98,11 @@ run tags in the parset:
 
 Rapthor attaches these tags to the pipeline, operation, and task runs launched
 with the shared Prefect runner.
+
+Developers testing the Prefect/Dask branch with real parsets should also read
+the manual-testing guide at :ref:`manual_testing_prefect_dask`. It gives a
+short checklist for adapting ``master`` parsets, choosing runtime settings,
+inspecting outputs, and recording evidence for the branch switch decision.
 
 To use an existing Dask cluster, either set ``dask_scheduler`` in the parset or
 export ``DASK_SCHEDULER``:
@@ -390,6 +402,12 @@ and one Dask worker per allocated node inside a single Slurm allocation. The
 launch scripts export ``DASK_SCHEDULER`` before running ``rapthor`` so the
 parset does not need to contain a fixed scheduler address.
 
+For multi-node imaging with WSClean MPI, the same allocation must expose the
+Dask scheduler to all workers and the WSClean MPI launch must match the
+allocated node count. If a Prefect dashboard is used, ``PREFECT_API_URL`` must
+also be reachable from the Dask worker nodes. This path should be validated in
+a representative staging allocation before production use.
+
 The parset should select the Slurm/external-Dask mode:
 
 .. code-block:: ini
@@ -401,12 +419,25 @@ The parset should select the Slurm/external-Dask mode:
     cpus_per_task = 32
     mem_per_node_gb = 256
 
+For the MPI WSClean imaging path, also set:
+
+.. code-block:: ini
+
+    [imaging]
+    use_mpi = True
+
 Use the production template when the allocation should start a temporary
 Prefect server:
 
 .. code-block:: console
 
     $ RAPTHOR_PARSET=/path/to/rapthor.parset sbatch scripts/prod/run-rapthor-slurm.sbatch
+
+For production-like Slurm tests, run from a loadable Spack environment once the
+Prefect/Dask branch recipe is available. That recipe should live alongside the
+legacy ``py-rapthor`` recipe in ``../ska-sdp-spack/packages/`` and should load
+Prefect, Dask distributed, DP3, WSClean including ``wsclean-mp``, and the
+Python astronomy dependencies required by Rapthor.
 
 Use the development template when a persistent Prefect API is already running:
 
