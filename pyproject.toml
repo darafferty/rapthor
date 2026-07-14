@@ -180,7 +180,7 @@ commands = [
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
-        "--cov-report", "html",
+        # "--cov-report", "html",
         "--cov=rapthor",
         "--cov-append",
         "tests/{posargs}",
