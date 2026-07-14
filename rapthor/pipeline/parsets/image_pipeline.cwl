@@ -123,6 +123,16 @@ inputs:
         type: array
         items: int
 
+  - id: image_minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done (length = n_obs * n_sectors).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
+
   - id: previous_mask_filename
     label: Filename of previous mask
     doc: |
@@ -787,14 +797,16 @@ steps:
         source: ntimes
       - id: image_freqstep
         source: image_freqstep
+      - id: image_minchannels
+        source: image_minchannels
+      - id: image_frequencybase
+        source: image_frequencybase
       - id: image_timestep
         source: image_timestep
       - id: image_maxinterval
         source: image_maxinterval
       - id: image_timebase
         source: image_timebase
-      - id: image_frequencybase
-        source: image_frequencybase
       - id: previous_mask_filename
         source: previous_mask_filename
       - id: mask_filename
@@ -964,7 +976,7 @@ steps:
       - id: peel_bright_sources
         source: peel_bright_sources
     scatter: [obs_filename, prepare_filename, concat_filename, residual_filename, starttime, ntimes,
-              image_freqstep, image_timestep, image_maxinterval, image_timebase, image_frequencybase,
+              image_freqstep, image_timestep, image_maxinterval, image_minchannels, image_timebase, image_frequencybase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
               filtered_model_image_name, parallel_gridding_tasks,

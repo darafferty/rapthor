@@ -17,8 +17,6 @@ arguments:
   - shift.type=phaseshifter
   - avg.type=squash
   - bdaavg.type=bdaaverager
-  - bdaavg.minchannels=1
-  - bdaavg.frequencybase=0.0
   - applycal.type=applycal
   - applycal.correction=phase000
   - applycal.slowgain.correction=amplitude000
@@ -130,6 +128,15 @@ inputs:
       prefix: bdaavg.maxinterval=
       separate: False
 
+  - id: minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done.
+    type: int?
+    inputBinding:
+      prefix: bdaavg.minchannels=
+      separate: False
+      
   - id: beamdir
     label: Direction in which to apply beam
     doc: |
