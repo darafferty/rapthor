@@ -99,6 +99,12 @@ inputs:
       done (length = n_obs).
     type: int[]
 
+  - id: image_minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done.
+    type: int[]
+      
   - id: previous_mask_filename
     label: Filename of previous mask
     doc: |
@@ -734,6 +740,8 @@ steps:
         source: image_timestep
       - id: maxinterval
         source: image_maxinterval
+      - id: minchannels
+        source: image_minchannels
       - id: timebase
         source: image_timebase
       - id: frequencybase
@@ -756,7 +764,7 @@ steps:
         source: prepare_data_steps
       - id: applycal_steps
         source: prepare_data_applycal_steps
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval]
+    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval, minchannels]
     scatterMethod: dotproduct
     out:
       - id: msimg
