@@ -7,4 +7,3 @@ git ls-remote https://git.astron.nl/RD/idg.git                HEAD | awk '{ prin
 git ls-remote https://github.com/casacore/python-casacore.git HEAD | awk '{ print "PYTHONCASACORE_COMMIT="$1 }'
 git ls-remote https://github.com/nlesc-dirac/sagecal.git      HEAD | awk '{ print "SAGECAL_COMMIT="$1 }'
 git ls-remote https://gitlab.com/aroffringa/wsclean.git       HEAD | awk '{ print "WSCLEAN_COMMIT="$1 }'
-printf '%s\n' 'WSCLEAN_COMMIT=8bc500d20ee6fdb400ecdde7d8e6d3898836ba2c'
