@@ -28,7 +28,7 @@ from rapthor.lib.sector import Sector
 matplotlib.use('Agg')
 import mocpy
 from astropy.visualization.wcsaxes import SphericalCircle
-from lsmtool.facet import read_ds9_region_file, read_skymodel
+from lsmtool.facet import read_ds9_region_file, read_from_skymodel
 from losoto.h5parm import h5parm
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
@@ -1994,7 +1994,7 @@ class Field(object):
             sector_bounds_width_ra = abs((bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0])  # deg
             sector_bounds_width_dec = abs((bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1])  # deg
 
-            facets = read_skymodel(self.calibration_skymodel_file,
+            facets = read_from_skymodel(self.calibration_skymodel_file,
                                    self.sector_bounds_mid_ra,
                                    self.sector_bounds_mid_dec,
                                    max(skymodel_bounds_width_ra, sector_bounds_width_ra),
