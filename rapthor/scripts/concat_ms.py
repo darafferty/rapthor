@@ -175,8 +175,7 @@ def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
         f"msin.datacolumn={data_colname}",
         f"msout={output_file}",
         "steps=[applybeam]",
-        "applybeam.mode=None"
-        "msin.orderms=False",
+        "applybeam.mode=Nonemsin.orderms=False",
         "msin.missingdata=True",
         "msout.writefullresflag=False",
         "msout.storagemanager=Dysco",
