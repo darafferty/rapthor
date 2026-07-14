@@ -213,7 +213,7 @@ def main(
             filter_by_mask=filter_by_mask,
             keep_mask=True,
             ncores=ncores,
-    )
+        )
     except RuntimeError as error:
         if "All pixels in the image are blanked" not in str(error):
             raise
