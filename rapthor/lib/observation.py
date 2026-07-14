@@ -615,7 +615,7 @@ class Observation(object):
         self.log.debug(
             "If BDA is enabled, maxinterval = %.1f s and minchannels = %d will be used for imaging",
             self.parameters["image_bda_maxinterval"] * timestep_sec,
-            self.parameters["image_bda_minchannels"]
+            self.parameters["image_bda_minchannels"],
         )
 
     def get_nearest_freqstep(self, freqstep):

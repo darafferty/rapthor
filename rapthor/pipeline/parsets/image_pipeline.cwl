@@ -976,7 +976,8 @@ steps:
       - id: peel_bright_sources
         source: peel_bright_sources
     scatter: [obs_filename, prepare_filename, concat_filename, residual_filename, starttime, ntimes,
-              image_freqstep, image_timestep, image_maxinterval, image_minchannels, image_timebase, image_frequencybase,
+              image_freqstep, image_minchannels, image_frequencybase, image_timestep, image_maxinterval,
+              image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
               filtered_model_image_name, parallel_gridding_tasks,
