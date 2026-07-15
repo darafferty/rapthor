@@ -1,6 +1,7 @@
 """
 Module that holds miscellaneous functions and classes
 """
+
 import multiprocessing
 import os
 import subprocess
@@ -15,16 +16,25 @@ from astropy.time import Time
 from losoto.h5parm import h5parm
 from scipy.interpolate import interp1d
 
-
 # Always use a 0-based origin in wcs_pix2world and wcs_world2pix calls.
 WCS_ORIGIN = 0
 # Default WCS pixel scale within Rapthor
 WCS_PIXEL_SCALE = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
 
 
-def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
-                        ximsize=512, yimsize=512, cellsize_deg=0.000417, freqs=None, times=None,
-                        antennas=None, aterm_type='tec', fill_val=0):
+def make_template_image(
+    image_name,
+    reference_ra_deg,
+    reference_dec_deg,
+    ximsize=512,
+    yimsize=512,
+    cellsize_deg=0.000417,
+    freqs=None,
+    times=None,
+    antennas=None,
+    aterm_type="tec",
+    fill_val=0,
+):
     """
     Make a blank FITS image and save it to disk
 
@@ -55,7 +65,7 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
         nants = len(antennas)
         ntimes = len(times)
         nfreqs = len(freqs)
-        if aterm_type == 'tec':
+        if aterm_type == "tec":
             # TEC solutions
             # data is [RA, DEC, ANTENNA, FREQ, TIME].T
             shape_out = [ntimes, nfreqs, nants, yimsize, ximsize]
@@ -70,50 +80,50 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
         nfreqs = 1
         freqs = [150e6]
 
-    hdu = pyfits.PrimaryHDU(np.ones(shape_out, dtype=np.float32)*fill_val)
+    hdu = pyfits.PrimaryHDU(np.ones(shape_out, dtype=np.float32) * fill_val)
     hdulist = pyfits.HDUList([hdu])
     header = hdulist[0].header
 
     # Add RA, Dec info
     i = 1
-    header[f'CRVAL{i}'] = reference_ra_deg
-    header[f'CDELT{i}'] = -cellsize_deg
-    header[f'CRPIX{i}'] = ximsize / 2.0
-    header[f'CUNIT{i}'] = 'deg'
-    header[f'CTYPE{i}'] = 'RA---SIN'
+    header[f"CRVAL{i}"] = reference_ra_deg
+    header[f"CDELT{i}"] = -cellsize_deg
+    header[f"CRPIX{i}"] = ximsize / 2.0
+    header[f"CUNIT{i}"] = "deg"
+    header[f"CTYPE{i}"] = "RA---SIN"
     i += 1
-    header[f'CRVAL{i}'] = reference_dec_deg
-    header[f'CDELT{i}'] = cellsize_deg
-    header[f'CRPIX{i}'] = yimsize / 2.0
-    header[f'CUNIT{i}'] = 'deg'
-    header[f'CTYPE{i}'] = 'DEC--SIN'
+    header[f"CRVAL{i}"] = reference_dec_deg
+    header[f"CDELT{i}"] = cellsize_deg
+    header[f"CRPIX{i}"] = yimsize / 2.0
+    header[f"CUNIT{i}"] = "deg"
+    header[f"CTYPE{i}"] = "DEC--SIN"
     i += 1
 
     # Add STOKES info or ANTENNA (+MATRIX) info
     if antennas is None:
         # basic image
-        header[f'CRVAL{i}'] = 1.0
-        header[f'CDELT{i}'] = 1.0
-        header[f'CRPIX{i}'] = 1.0
-        header[f'CUNIT{i}'] = ''
-        header[f'CTYPE{i}'] = 'STOKES'
+        header[f"CRVAL{i}"] = 1.0
+        header[f"CDELT{i}"] = 1.0
+        header[f"CRPIX{i}"] = 1.0
+        header[f"CUNIT{i}"] = ""
+        header[f"CTYPE{i}"] = "STOKES"
         i += 1
     else:
-        if aterm_type == 'gain':
+        if aterm_type == "gain":
             # gain aterm images: add MATRIX info
-            header[f'CRVAL{i}'] = 0.0
-            header[f'CDELT{i}'] = 1.0
-            header[f'CRPIX{i}'] = 1.0
-            header[f'CUNIT{i}'] = ''
-            header[f'CTYPE{i}'] = 'MATRIX'
+            header[f"CRVAL{i}"] = 0.0
+            header[f"CDELT{i}"] = 1.0
+            header[f"CRPIX{i}"] = 1.0
+            header[f"CUNIT{i}"] = ""
+            header[f"CTYPE{i}"] = "MATRIX"
             i += 1
 
         # dTEC or gain: add ANTENNA info
-        header[f'CRVAL{i}'] = 0.0
-        header[f'CDELT{i}'] = 1.0
-        header[f'CRPIX{i}'] = 1.0
-        header[f'CUNIT{i}'] = ''
-        header[f'CTYPE{i}'] = 'ANTENNA'
+        header[f"CRVAL{i}"] = 0.0
+        header[f"CDELT{i}"] = 1.0
+        header[f"CRPIX{i}"] = 1.0
+        header[f"CUNIT{i}"] = ""
+        header[f"CTYPE{i}"] = "ANTENNA"
         i += 1
 
     # Add frequency info
@@ -123,12 +133,12 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
         del_freq = np.min(deltas)
     else:
         del_freq = 1e8
-    header['RESTFRQ'] = ref_freq
-    header[f'CRVAL{i}'] = ref_freq
-    header[f'CDELT{i}'] = del_freq
-    header[f'CRPIX{i}'] = 1.0
-    header[f'CUNIT{i}'] = 'Hz'
-    header[f'CTYPE{i}'] = 'FREQ'
+    header["RESTFRQ"] = ref_freq
+    header[f"CRVAL{i}"] = ref_freq
+    header[f"CDELT{i}"] = del_freq
+    header[f"CRPIX{i}"] = 1.0
+    header[f"CUNIT{i}"] = "Hz"
+    header[f"CTYPE{i}"] = "FREQ"
     i += 1
 
     # Add time info
@@ -145,18 +155,18 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
                 del_time = deltas[0]
         else:
             del_time = 1.0
-        header[f'CRVAL{i}'] = ref_time
-        header[f'CDELT{i}'] = del_time
-        header[f'CRPIX{i}'] = 1.0
-        header[f'CUNIT{i}'] = 's'
-        header[f'CTYPE{i}'] = 'TIME'
+        header[f"CRVAL{i}"] = ref_time
+        header[f"CDELT{i}"] = del_time
+        header[f"CRPIX{i}"] = 1.0
+        header[f"CUNIT{i}"] = "s"
+        header[f"CTYPE{i}"] = "TIME"
         i += 1
 
     # Add equinox
-    header['EQUINOX'] = 2000.0
+    header["EQUINOX"] = 2000.0
 
     # Add telescope
-    header['TELESCOP'] = 'LOFAR'
+    header["TELESCOP"] = "LOFAR"
 
     hdulist[0].header = header
     hdulist.writeto(image_name, overwrite=True)
@@ -182,16 +192,16 @@ def string2bool(invar):
     if isinstance(invar, bool):
         return invar
     elif isinstance(invar, str):
-        if 'TRUE' in invar.upper() or invar == '1':
+        if "TRUE" in invar.upper() or invar == "1":
             return True
-        elif 'FALSE' in invar.upper() or invar == '0':
+        elif "FALSE" in invar.upper() or invar == "0":
             return False
         else:
-            raise ValueError('input2bool: Cannot convert string "'+invar+'" to boolean!')
+            raise ValueError('input2bool: Cannot convert string "' + invar + '" to boolean!')
     elif isinstance(invar, int) or isinstance(invar, float):
         return bool(invar)
     else:
-        raise TypeError('Unsupported data type:'+str(type(invar)))
+        raise TypeError("Unsupported data type:" + str(type(invar)))
 
 
 def string2list(invar):
@@ -213,27 +223,27 @@ def string2list(invar):
     str_list = None
     if type(invar) is str:
         invar = invar.strip()
-        if invar.startswith('[') and invar.endswith(']'):
-            str_list = [f.strip(' \'\"') for f in invar.strip('[]').split(',')]
+        if invar.startswith("[") and invar.endswith("]"):
+            str_list = [f.strip(" '\"") for f in invar.strip("[]").split(",")]
         elif "," in invar:
-            str_list = [f.strip(' \'\"') for f in invar.split(',')]
+            str_list = [f.strip(" '\"") for f in invar.split(",")]
         else:
-            str_list = [invar.strip(' \'\"')]
+            str_list = [invar.strip(" '\"")]
     elif type(invar) is list:
-        str_list = [str(f).strip(' \'\"') for f in invar]
+        str_list = [str(f).strip(" '\"") for f in invar]
     else:
-        raise TypeError('Unsupported data type:'+str(type(invar)))
+        raise TypeError("Unsupported data type:" + str(type(invar)))
     return str_list
 
 
 def _float_approx_equal(x, y, tol=None, rel=None):
     if tol is rel is None:
-        raise TypeError('cannot specify both absolute and relative errors are None')
+        raise TypeError("cannot specify both absolute and relative errors are None")
     tests = []
     if tol is not None:
         tests.append(tol)
     if rel is not None:
-        tests.append(rel*abs(x))
+        tests.append(rel * abs(x))
     assert tests
     return abs(x - y) <= max(tests)
 
@@ -255,7 +265,7 @@ def approx_equal(x, y, *args, **kwargs):
     """
     if not (type(x) is type(y) is float):
         # Skip checking for __approx_equal__ in the common case of two floats.
-        methodname = '__approx_equal__'
+        methodname = "__approx_equal__"
         # Allow the objects to specify what they consider "approximately equal",
         # giving precedence to x. If either object has the appropriate method, we
         # pass on any optional arguments untouched.
@@ -294,12 +304,12 @@ def ra2hhmmss(deg, as_string=False):
         A tuple of (HH, MM, SS.S) or a string as 'HHhMMmSS.Ss'
     """
     deg = deg % 360
-    x, hh = modf(deg/15)
-    x, mm = modf(x*60)
-    ss = x*60
+    x, hh = modf(deg / 15)
+    x, mm = modf(x * 60)
+    ss = x * 60
 
     if as_string:
-        return f'{int(hh)}h{int(mm)}m{ss}s'
+        return f"{int(hh)}h{int(mm)}m{ss}s"
     else:
         return (int(hh), int(mm), ss)
 
@@ -324,11 +334,11 @@ def dec2ddmmss(deg, as_string=False):
     """
     sign = -1 if deg < 0 else 1
     x, dd = modf(abs(deg))
-    x, mm = modf(x*60)
-    ss = x*60
+    x, mm = modf(x * 60)
+    ss = x * 60
 
     if as_string:
-        return f'{sign*int(dd)}d{int(mm)}m{ss}s'
+        return f"{sign * int(dd)}d{int(mm)}m{ss}s"
     else:
         return (int(dd), int(mm), ss, sign)
 
@@ -347,7 +357,7 @@ def convert_mjd2mvt(mjd_sec):
     mvtime : str
         Casacore MVTime string
     """
-    t = Time(mjd_sec / 3600 / 24, format='mjd', scale='utc')
+    t = Time(mjd_sec / 3600 / 24, format="mjd", scale="utc")
 
     return t.strftime("%d%b%Y/%H:%M:%S.%f")
 
@@ -368,7 +378,7 @@ def convert_mvt2mjd(mvt_str):
     """
     mjd = Time.strptime(mvt_str, "%d%b%Y/%H:%M:%S.%f", format="mjd")
 
-    return mjd.to_value('mjd') * 3600 * 24
+    return mjd.to_value("mjd") * 3600 * 24
 
 
 def angular_separation(position1, position2):
@@ -419,9 +429,11 @@ def get_reference_station(soltab, max_ind=None):
         max_ind = len(soltab.ant)
 
     weights = soltab.getValues(retAxesVals=False, weight=True)
-    weights = np.sum(weights, axis=tuple([i for i, axis_name in
-                                          enumerate(soltab.getAxesNames())
-                                          if axis_name != 'ant']), dtype=float)
+    weights = np.sum(
+        weights,
+        axis=tuple([i for i, axis_name in enumerate(soltab.getAxesNames()) if axis_name != "ant"]),
+        dtype=float,
+    )
     ref_ind = np.where(weights[0:max_ind] == np.max(weights[0:max_ind]))[0][0]
 
     return ref_ind
@@ -446,7 +458,7 @@ def remove_soltabs(solset, soltabnames):
             soltab = solset.getSoltab(soltabname)
             soltab.delete()
         except Exception:
-            print(f'Error: soltab {soltabname!r} could not be removed')
+            print(f"Error: soltab {soltabname!r} could not be removed")
 
 
 def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
@@ -498,8 +510,8 @@ def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
     for obs in obs_list:
         total_time += obs.numsamples * obs.timepersample  # sec
         total_bandwidth += obs.numchannels * obs.channelwidth  # Hz
-        ncore += len([stat for stat in obs.stations if stat.startswith('CS')])
-        nremote += len([stat for stat in obs.stations if stat.startswith('RS')])
+        ncore += len([stat for stat in obs.stations if stat.startswith("CS")])
+        nremote += len([stat for stat in obs.stations if stat.startswith("RS")])
         mid_freq += (obs.endfreq + obs.startfreq) / 2 / 1e6  # MHz
         unflagged_fraction += find_unflagged_fraction(obs.ms_filename, obs.starttime, obs.endtime)
         elevation += obs.mean_el_rad  # radians
@@ -527,15 +539,16 @@ def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
         # 40 degrees, where the relation is not calibrated, use the value
         # at 40 degrees as a lower limit
         elevation = max(40 * np.pi / 180, elevation)
-        noise = 62e-6 / np.cos(np.pi / 2 - elevation)**2  # Jy/beam
+        noise = 62e-6 / np.cos(np.pi / 2 - elevation) ** 2  # Jy/beam
         noise /= np.sqrt(total_bandwidth / 48e6)  # adjust for LoTSS bandwidth (48 MHz)
         noise /= np.sqrt(total_time / (8 * 3600))  # adjust for LoTSS time (8 hours)
     else:
         core_term = ncore * (ncore - 1) / 2 / sefd_core**2
         remote_term = nremote * (nremote - 1) / 2 / sefd_remote**2
         mixed_term = ncore * nremote / (sefd_core * sefd_remote)
-        noise = w_factor / np.sqrt(2 * (2 * total_time * total_bandwidth) *
-                                   (core_term + mixed_term + remote_term))  # Jy/beam
+        noise = w_factor / np.sqrt(
+            2 * (2 * total_time * total_bandwidth) * (core_term + mixed_term + remote_term)
+        )  # Jy/beam
     noise /= np.sqrt(unflagged_fraction)
 
     return (noise, unflagged_fraction)
@@ -571,7 +584,7 @@ def find_unflagged_fraction(ms_file, start_time, end_time):
     return unflagged_fraction
 
 
-def get_flagged_solution_fraction(h5file, solsetname='sol000'):
+def get_flagged_solution_fraction(h5file, solsetname="sol000"):
     """
     Get flagged fraction for solutions in given H5parm
 
@@ -593,20 +606,22 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
         num_flagged = 0
         num_all = 0
         for soltab in solset.getSoltabs():
-            num_flagged += np.count_nonzero(np.logical_or(~np.isfinite(soltab.val),
-                                                          soltab.weight == 0.0))
+            num_flagged += np.count_nonzero(
+                np.logical_or(~np.isfinite(soltab.val), soltab.weight == 0.0)
+            )
             num_all += soltab.val.size
     if num_all == 0:
         raise ValueError(
-            'Cannot calculate flagged fraction: no solutions found in '
-            f'solset {solsetname} of h5parm file {h5file}'
+            "Cannot calculate flagged fraction: no solutions found in "
+            f"solset {solsetname} of h5parm file {h5file}"
         )
 
     return num_flagged / num_all
 
 
-def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to_low',
-                            dec_bin_width=2.0):
+def rename_skymodel_patches(
+    skymodel, order_dec="high_to_low", order_ra="high_to_low", dec_bin_width=2.0
+):
     """
     Rename the patches in the input sky model according to the given scheme
 
@@ -629,8 +644,9 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
         Bin width in degrees for the Dec values
     """
     if not skymodel.hasPatches:
-        raise ValueError('Cannot rename patches since the input skymodel is not grouped '
-                         'into patches.')
+        raise ValueError(
+            "Cannot rename patches since the input skymodel is not grouped into patches."
+        )
     patch_positions = skymodel.getPatchPositions()
     patch_names = []
     patch_ras = []
@@ -641,32 +657,33 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
         patch_decs.append(position[1].value)
 
     # Make bins in Dec, ordered from low to high
-    dec_bins = np.linspace(min(patch_decs)-0.1, max(patch_decs)+0.1,
-                           num=int(max(patch_decs)-min(patch_decs))+1)
-    if order_dec == 'high_to_low':
+    dec_bins = np.linspace(
+        min(patch_decs) - 0.1, max(patch_decs) + 0.1, num=int(max(patch_decs) - min(patch_decs)) + 1
+    )
+    if order_dec == "high_to_low":
         dec_bins = dec_bins[::-1]
     bin_members = np.digitize(patch_decs, dec_bins)
 
     # Run through the bins, sorting by RA and renaming the patches
     # accordingly
     patch_index = 1
-    patch_col = skymodel.getColValues('Patch')
+    patch_col = skymodel.getColValues("Patch")
     patch_dict = {}
     for bin_index in range(1, len(dec_bins)):
         # Sort by RA (high to low)
         in_bin = np.where(bin_members == bin_index)
         ras = np.array(patch_ras)[in_bin]
         names = np.array(patch_names)[in_bin][np.argsort(ras)]  # ordered from low to high
-        if order_ra == 'high_to_low':
+        if order_ra == "high_to_low":
             names = names[::-1]
 
         # Rename the patches in the model's table metadata
         for old_name in names:
-            new_name = f'Patch_{patch_index}'
+            new_name = f"Patch_{patch_index}"
             patch_dict[new_name] = patch_positions[old_name]
             patch_col[skymodel.getRowIndex(old_name)] = new_name
             patch_index += 1
-    skymodel.setColValues('Patch', patch_col)
+    skymodel.setColValues("Patch", patch_col)
     skymodel.setPatchPositions(patch_dict)
 
 
@@ -685,8 +702,8 @@ def get_max_spectral_terms(skymodel_file):
         Maximum number of spectral terms
     """
     skymodel = lsmtool.load(skymodel_file)
-    if 'SpectralIndex' in skymodel.getColNames():
-        return skymodel.getColValues('SpectralIndex').shape[1] + 1  # add one for the zeroth term
+    if "SpectralIndex" in skymodel.getColNames():
+        return skymodel.getColValues("SpectralIndex").shape[1] + 1  # add one for the zeroth term
     else:
         return 1  # the zeroth term is always present
 
