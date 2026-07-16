@@ -28,6 +28,10 @@ and known limitations must all be visible to reviewers.
 - Repeatability-aware branch comparisons now generate
   `science-equivalence-report.*`, `performance-equivalence-report.*`, and
   `repeatability-summary.*` from the same branch executions.
+- The accepted evidence predates the July master-sync changes for WSClean
+  prediction bandwidth, imaging frequency BDA, mixed station diameters, and
+  the updated LSMTool API. Complete the targeted verification in step 0 before
+  treating the staged branch as the new science-gate baseline.
 
 **Performance:** accepted for the current optimisation phase.
 
@@ -100,6 +104,10 @@ external Dask, and MPI WSClean are a separate production-readiness track.
 
 ## Immediate Task List
 
+- [ ] **Verify the recent master-sync changes.**
+  Add the focused unit and integration coverage in step 0, strengthen the two
+  affected branch-vs-master option scenarios, and archive a fresh science-gate
+  result before beginning the external manual-test wave.
 - [ ] **Make interactive testing frictionless.**
   Check `docs/source/development/manual_testing_prefect_dask.rst` from the
   perspective of a developer on a non-Slurm system. It must include the shortest
@@ -142,6 +150,45 @@ external Dask, and MPI WSClean are a separate production-readiness track.
   Refresh non-integration tests, representative integration tests, science
   equivalence, performance equivalence, and the current CI benchmark scenario
   set after the final switch-readiness edits.
+
+### 0. Verify The Recent Master Sync
+
+The latest archived science gate is from 2026-07-11. The recent master sync and
+LSMTool dependency update therefore need targeted evidence before the existing
+science decision is applied to the staged branch.
+
+- [ ] Add direct tests for WSClean prediction frequency chunking: one channel,
+  exact division, an uneven final chunk, and complete non-overlapping channel
+  coverage.
+- [ ] Add a `Field` test with otherwise compatible observations that have
+  different station diameters. Assert successful construction, the mean
+  diameter, and the resulting FWHM. Add an end-to-end mixed-diameter scenario
+  only if this input shape is expected in near-term production use.
+- [ ] Add a focused integration test that enables WSClean prediction with a
+  bandwidth smaller than the generated MS bandwidth. Assert multiple
+  prediction bands, their channel ranges, the `-no-reorder` argument, successful
+  calibration, and the expected output products.
+- [ ] Add a focused integration test for frequency-only imaging BDA with
+  `imaging.bda_timebase = 0` and `imaging.bda_frequencybase > 0`. Assert the
+  DP3 command and the prepared MS frequency layout, not just pipeline
+  completion.
+- [ ] Update the branch option matrix so `prediction-path-wsclean` uses a
+  non-default bandwidth that creates multiple bands, and add a separate
+  frequency-only imaging-BDA scenario. Keep command semantics in integration
+  assertions because the equivalence comparator intentionally compares
+  operations and scientific products rather than exact tool commands.
+- [ ] Rerun and archive the full saved-reference science gate after the LSMTool
+  update, then rerun the affected WSClean-prediction and imaging-BDA
+  branch-vs-master scenarios. Update `EQUIVALENCE_REPORT.md` and the science
+  gate history with the result.
+- [ ] After science equivalence passes, benchmark the WSClean multi-band and
+  frequency-BDA scenarios if performance claims will be made for them. The
+  existing core performance gates remain applicable to the unchanged default
+  paths and need only be refreshed at the final switch gate.
+- [ ] Decide whether SKA-Low is part of the branch-switch scope. If it is,
+  restore/modernize the SKA-Low defaults and add a representative smoke and
+  equivalence path. If it is not, record SKA-Low as an explicit limitation;
+  the current science evidence covers LOFAR HBA.
 
 ### 1. Manual Testing And Parset Migration Guide
 
