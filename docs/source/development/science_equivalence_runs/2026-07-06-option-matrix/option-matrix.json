@@ -27,7 +27,7 @@
     },
     {
       "id": "frequency-only-imaging-bda",
-      "skip_reason": "WSClean 3.7 can reorder and grid the multi-SPW DP3 BDA output, but its primary-beam construction rejects Measurement Sets with more than one spectral window; keep DP3 command/layout coverage in integration tests until this tool limitation is resolved",
+      "skip_reason": "master omits WSClean's required -reorder option and its supported EveryBeam versions reject DP3's multi-SPW frequency-BDA layout; validate the current branch through focused integration and archive its command/product evidence instead of treating a failing master run as an equivalence reference",
       "notes": "Frequency-only imaging BDA with time BDA and regular averaging disabled."
     },
     {
