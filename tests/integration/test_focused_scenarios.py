@@ -184,14 +184,14 @@ def test_prepare_frequency_only_imaging_bda_with_dp3(test_ms, tmp_path):
 )
 def test_rapthor_run_frequency_only_imaging_bda(
     generated_parset_path,
-    image_only_strategy_path,
+    single_loop_strategy_path,
 ):
     """Image frequency-BDA data with WSClean and produce a primary-beam image."""
     updated_parset_path = update_parset_path(
         generated_parset_path,
         {
             "allow_internet_access": "False",
-            "strategy": str(image_only_strategy_path),
+            "strategy": str(single_loop_strategy_path),
             "reweight": "False",
             "average_visibilities": "False",
             "bda_timebase": "0.0",
@@ -216,28 +216,31 @@ def test_rapthor_run_frequency_only_imaging_bda(
     assert dp3_arguments["bdaavg.frequencybase"] == "1000.0"
     assert dp3_arguments["bdaavg.minchannels"] == "4"
 
-    prepared_ms = Path(dp3_arguments["msout"])
-    if not prepared_ms.is_absolute():
-        prepared_ms = working_dir / "pipelines" / "image_1" / prepared_ms
-    with pt.table(f"{prepared_ms}::SPECTRAL_WINDOW", ack=False) as table:
+    imaging_ms = working_dir / "pipelines" / "image_1" / "sector_1_concat.ms"
+    with pt.table(f"{imaging_ms}::SPECTRAL_WINDOW", ack=False) as table:
         spectral_window_count = table.nrows()
-        prepared_channel_counts = table.getcol("NUM_CHAN")
+        imaging_channel_counts = table.getcol("NUM_CHAN")
     assert spectral_window_count > 1
-    assert prepared_channel_counts.min() >= 4
+    assert imaging_channel_counts.min() >= 4
 
     wsclean_commands = find_command_records(
         working_dir,
         operation="image_1",
         executable="wsclean",
-        contains="-apply-primary-beam",
+        contains="-reorder",
     )
     assert wsclean_commands
     assert all("-reorder" in record.command for record in wsclean_commands)
+    assert all(
+        "-apply-primary-beam" in record.command or "-apply-facet-beam" in record.command
+        for record in wsclean_commands
+    )
 
     primary_beam_images = sorted((working_dir / "images" / "image_1").glob("*-MFS*-image-pb.fits*"))
     assert primary_beam_images
-    with fits.open(primary_beam_images[0], memmap=True) as hdul:
-        assert np.isfinite(hdul[0].data).any()
+    with fits.open(primary_beam_images[0], memmap=False) as hdul:
+        image_data = next(hdu.data for hdu in hdul if hdu.data is not None)
+    assert np.isfinite(image_data).any()
 
 
 @pytest.mark.integration

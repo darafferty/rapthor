@@ -187,10 +187,14 @@ science decision is applied to the staged branch.
   this path needs current-branch product validation rather than pretending a
   failing master run is an equivalence reference. Rebuild the dev container
   before running that validation.
-- [ ] Rebuild the dev container and run the frequency-only imaging-BDA focused
+- [x] Rebuild the dev container and run the frequency-only imaging-BDA focused
   integration scenario through WSClean and primary-beam product generation.
   Keep its branch-vs-master option-matrix row skipped because master fails this
-  path; archive current-branch command and product evidence instead.
+  path; archive current-branch command and product evidence instead. The
+  EveryBeam 0.8.3 run passed on 2026-07-16 with a two-SPW imaging MS
+  (`NUM_CHAN = [4, 8]`), WSClean `-reorder` plus facet-beam application, and a
+  fully finite primary-beam FITS product. Evidence is archived under
+  `docs/source/development/science_equivalence_runs/2026-07-16-frequency-only-imaging-bda-current/`.
 - [ ] Rerun and archive the full saved-reference science gate after the LSMTool
   and EveryBeam updates, then rerun the affected WSClean-prediction
   branch-vs-master scenario. Update `EQUIVALENCE_REPORT.md` and the science gate

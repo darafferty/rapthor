@@ -149,6 +149,11 @@ long`.
   DP3 image-based predict, WSClean predict, and BDA/averaging pass against
   `master`; multi-sector mosaic and screens remain explicitly skipped for the
   documented legacy/tool-support reasons.
+- `2026-07-16-frequency-only-imaging-bda-current/`: focused current-branch
+  validation with EveryBeam 0.8.3. DP3 frequency BDA produces a two-SPW
+  imaging MS, WSClean completes with reorder and facet-beam application, and
+  the primary-beam FITS product is fully finite. This is current-only evidence
+  because two documented `master` defects prevent a valid comparison run.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones

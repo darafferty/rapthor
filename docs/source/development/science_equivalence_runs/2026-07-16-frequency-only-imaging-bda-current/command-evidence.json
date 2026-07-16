@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "scenario": "frequency-only-imaging-bda-current",
+  "environment": {
+    "dp3": "6.6.0 (v6.6-8-g18e793a4)",
+    "everybeam": "0.8.3",
+    "wsclean": "3.7 (v3.7-44-g79de0e8c)"
+  },
+  "commands": [
+    {
+      "task_run_name": "prepare_chunk_1",
+      "tool": "DP3",
+      "tags": [
+        "dp3"
+      ],
+      "selected_arguments": [
+        "bdaavg.type=bdaaverager",
+        "bdaavg.minchannels=4",
+        "bdaavg.timebase=0.0",
+        "bdaavg.frequencybase=1000.0",
+        "bdaavg.maxinterval=6",
+        "steps=[applybeam,shift,bdaavg]"
+      ],
+      "duration_seconds": 1.185339,
+      "returncode": 0
+    },
+    {
+      "task_run_name": "wsclean_image",
+      "tool": "wsclean",
+      "tags": [
+        "wsclean"
+      ],
+      "selected_arguments": [
+        "-apply-facet-beam",
+        "-channels-out 4",
+        "-deconvolution-channels 4",
+        "-reorder",
+        "pipelines/image_1/sector_1_concat.ms"
+      ],
+      "duration_seconds": 10.979364,
+      "returncode": 0
+    }
+  ]
+}

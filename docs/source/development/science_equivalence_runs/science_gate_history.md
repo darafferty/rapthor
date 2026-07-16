@@ -8,7 +8,7 @@ Generated: 2026-06-11
 
 Archived for post-cutover cleanup: 2026-06-12
 
-Latest on-disk report scan: 2026-07-11
+Latest on-disk report scan: 2026-07-16
 
 Method contract: `docs/source/development/science_equivalence_contract.rst`
 
@@ -267,6 +267,32 @@ classified auxiliary output-record warning and no failures.
 | `bda-averaging` | pass | 1 | 1 | 0 | 1 | 7 | 2 | 10 | 1 |
 | `multi-sector-mosaic` | skipped | 0 | 0 | 0 | 0 | - | - | - | - |
 | `screens` | skipped | 0 | 0 | 0 | 0 | - | - | - | - |
+
+## 2026-07-16 Frequency-Only Imaging BDA Validation
+
+The current branch was validated in a clean development image rebuilt with
+EveryBeam 0.8.3. The focused integration scenario ran calibration and imaging
+through DP3 frequency BDA, WSClean 3.7, facet-beam application, and
+primary-beam product generation.
+
+The archived compact evidence is:
+
+```text
+docs/source/development/science_equivalence_runs/2026-07-16-frequency-only-imaging-bda-current/
+```
+
+The scenario passed. DP3 used `bdaavg.timebase=0`,
+`bdaavg.frequencybase=1000`, and calibration-derived
+`bdaavg.minchannels=4`. The durable imaging Measurement Set had two spectral
+windows with `NUM_CHAN = [4, 8]`. WSClean completed with `-reorder` and
+`-apply-facet-beam`, and `field-MFS-image-pb.fits` had 360,000 finite pixels
+out of 360,000.
+
+No branch-vs-master comparison is claimed for this option combination. Master
+omits WSClean's required `-reorder` argument and its supported EveryBeam
+generation rejects DP3's multi-SPW frequency-BDA layout. The option-matrix row
+therefore remains explicitly skipped, with the current-branch command and
+product evidence serving as the regression baseline.
 
 ## Current Strengthened Saved-Reference Run
 

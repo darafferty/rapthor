@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "scenario": "frequency-only-imaging-bda-current",
+  "test": {
+    "node_id": "tests/integration/test_focused_scenarios.py::test_rapthor_run_frequency_only_imaging_bda",
+    "result": "pass",
+    "duration_seconds": 40.91
+  },
+  "imaging_measurement_set": {
+    "path": "pipelines/image_1/sector_1_concat.ms",
+    "spectral_window_count": 2,
+    "num_chan": [
+      4,
+      8
+    ]
+  },
+  "primary_beam_image": {
+    "path": "images/image_1/field-MFS-image-pb.fits",
+    "shape": [
+      1,
+      1,
+      600,
+      600
+    ],
+    "pixel_count": 360000,
+    "finite_pixels": 360000,
+    "finite_fraction": 1.0,
+    "finite_min": -0.00007328658830374479,
+    "finite_max": 0.00020407619012985379
+  }
+}
