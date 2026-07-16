@@ -260,7 +260,7 @@ class Sector(object):
         # Set the observation-specific parameters
         # TODO: only include values for solves that were done in the current cycle
         # (if no solves were done, derive the values from input h5parm?)
-        max_peak_smearing = imaging_parameters['max_peak_smearing']
+        max_peak_smearing = imaging_parameters["max_peak_smearing"]
         min_solve_timestep = min(
             self.field.fast_timestep_sec,
             self.field.medium_timestep_sec,
@@ -271,19 +271,19 @@ class Sector(object):
             # fast solve not relevant for short baselines due to antenna contraints
             self.field.medium_timestep_sec,
             self.field.slow_timestep_sec,
-            self.field.fulljones_timestep_sec
+            self.field.fulljones_timestep_sec,
         )
         min_solve_freqstep = min(
-            self.field.parset['calibration_specific']['fast_freqstep_hz'],
-            self.field.parset['calibration_specific']['medium_freqstep_hz'],
-            self.field.parset['calibration_specific']['slow_freqstep_hz'],
-            self.field.parset['calibration_specific']['fulljones_freqstep_hz']
+            self.field.parset["calibration_specific"]["fast_freqstep_hz"],
+            self.field.parset["calibration_specific"]["medium_freqstep_hz"],
+            self.field.parset["calibration_specific"]["slow_freqstep_hz"],
+            self.field.parset["calibration_specific"]["fulljones_freqstep_hz"],
         )
         min_solve_freqstep_short_baselines = min(
             # fast solve not relevant for short baselines due to antenna contraints
-            self.field.parset['calibration_specific']['medium_freqstep_hz'],
-            self.field.parset['calibration_specific']['slow_freqstep_hz'],
-            self.field.parset['calibration_specific']['fulljones_freqstep_hz']
+            self.field.parset["calibration_specific"]["medium_freqstep_hz"],
+            self.field.parset["calibration_specific"]["slow_freqstep_hz"],
+            self.field.parset["calibration_specific"]["fulljones_freqstep_hz"],
         )
         for obs in self.observations:
             # Set imaging parameters

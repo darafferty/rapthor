@@ -585,17 +585,9 @@ class Observation(object):
             # that the solutions can be applied properly during imaging. Since this is for the
             # normal (non-baseline-dependent) averaging, we use the smallest intervals over all
             # solves
-            target_timewidth_sec = min(
-                target_timewidth_sec,
-                min_solve_timestep
-            )
-            target_bandwidth_hz = min(
-                target_bandwidth_hz,
-                min_solve_freqstep
-            )
-        self.log.debug(
-            "Target averaging timewidth for imaging is %.1f s", target_timewidth_sec
-        )
+            target_timewidth_sec = min(target_timewidth_sec, min_solve_timestep)
+            target_bandwidth_hz = min(target_bandwidth_hz, min_solve_freqstep)
+        self.log.debug("Target averaging timewidth for imaging is %.1f s", target_timewidth_sec)
         self.log.debug(
             "Target averaging bandwidth for imaging is %.1f MHz",
             target_bandwidth_hz / 1e6,
@@ -625,9 +617,7 @@ class Observation(object):
             nchan,
             max(
                 1,
-                self.get_nearest_freqstep(
-                    min_solve_freqstep_short_baselines / self.channelwidth
-                ),
+                self.get_nearest_freqstep(min_solve_freqstep_short_baselines / self.channelwidth),
             ),
         )  # channels
         target_minchannels = max(
