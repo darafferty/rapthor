@@ -104,6 +104,35 @@ if __name__ == "__main__":
     print("RESULT " + json.dumps(result, sort_keys=True))
 """
 
+PREFECT_HOME_RESOLUTION_SCRIPT = r"""
+import json
+import os
+import sys
+from pathlib import Path
+
+import rapthor.cli
+
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.runtime_bootstrap import bootstrapped_runtime
+
+prefect_imported_before_bootstrap = "prefect" in sys.modules
+with bootstrapped_runtime(
+    ExecutionConfig(prefect_api_mode="ephemeral", task_runner="sync")
+):
+    from prefect.settings import PREFECT_HOME
+
+    resolved_home = Path(PREFECT_HOME.value())
+    environment_home = Path(os.environ["PREFECT_HOME"])
+    result = {
+        "prefect_imported_before_bootstrap": prefect_imported_before_bootstrap,
+        "resolved_home": resolved_home.as_posix(),
+        "environment_home": environment_home.as_posix(),
+        "outer_home": sys.argv[1],
+    }
+
+print("RESULT " + json.dumps(result, sort_keys=True))
+"""
+
 
 @pytest.mark.prefect
 @pytest.mark.parametrize(
@@ -160,6 +189,33 @@ def test_runtime_bootstrap_process_matrix(tmp_path, scenario):
         assert result["input_dask_scheduler"] is None
         assert result["plan_dask_scheduler"].startswith("tcp://")
         assert result["effective_dask_scheduler"] == result["plan_dask_scheduler"]
+
+
+def test_ephemeral_prefect_resolves_isolated_home_before_import(tmp_path):
+    pytest.importorskip("prefect")
+
+    script = tmp_path / "prefect_home_resolution.py"
+    script.write_text(PREFECT_HOME_RESOLUTION_SCRIPT)
+    prefect_home = tmp_path / "outer-prefect-home"
+    prefect_home.mkdir()
+
+    completed = subprocess.run(
+        [sys.executable, script.as_posix(), prefect_home.as_posix()],
+        cwd=Path(__file__).parents[2],
+        env=_isolated_runtime_environment(prefect_home),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=180,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    result = _extract_smoke_result(completed.stdout)
+
+    assert result["prefect_imported_before_bootstrap"] is False
+    assert result["resolved_home"] == result["environment_home"]
+    assert result["resolved_home"] != result["outer_home"]
 
 
 def _isolated_runtime_environment(prefect_home):

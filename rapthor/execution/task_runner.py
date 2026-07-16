@@ -4,8 +4,6 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Optional
 
-from prefect import tags as prefect_tags
-
 from rapthor.execution.config import ExecutionConfig
 
 
@@ -19,6 +17,13 @@ class DaskSchedulerConnectionError(RuntimeError):
 
 DASK_SCHEDULER_CHECK_TIMEOUT = "30s"
 LOCAL_DASK_WAIT_TIMEOUT = "60s"
+
+
+def _prefect_tags(*tags):
+    """Return a Prefect tag context without importing Prefect during bootstrap."""
+    from prefect import tags as tags_context
+
+    return tags_context(*tags)
 
 
 @dataclass
@@ -54,7 +59,7 @@ def run_flow_with_task_runner(
     if flow_run_name is not None:
         flow_options["flow_run_name"] = flow_run_name
     configured_flow = prefect_flow.with_options(**flow_options)
-    tag_context = prefect_tags(*config.run_tags) if config.run_tags else nullcontext()
+    tag_context = _prefect_tags(*config.run_tags) if config.run_tags else nullcontext()
     with tag_context:
         return configured_flow(*flow_args, execution_config=config, **flow_kwargs)
 

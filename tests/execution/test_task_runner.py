@@ -301,7 +301,7 @@ def test_run_flow_with_task_runner_applies_prefect_run_tags(monkeypatch):
         lambda execution_config: runner,
     )
     monkeypatch.setattr(
-        "rapthor.execution.task_runner.prefect_tags",
+        "rapthor.execution.task_runner._prefect_tags",
         lambda *tags: FakeTagContext(tag_calls, tags),
     )
 
