@@ -33,6 +33,9 @@ Prefect/Dask.
       post-migration target-environment checks.
     - ``hybrid_screens`` and ``shared_facet_rw`` remain deferred until they are
       needed and reliable in the intended tool environment.
+    - Frequency BDA during imaging now uses WSClean's required reordering path.
+      EveryBeam 0.8.3 or later is required so primary-beam products can be
+      generated from the resulting multi-spectral-window Measurement Set.
 
 
 Version 2.1 (2025/12/04)

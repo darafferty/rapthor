@@ -121,6 +121,14 @@ Possible master bugs or legacy limitations to investigate separately:
 - previous DI full-Jones products can be applied in later DD-only imaging after
   a new calibration step, making correction state implicit rather than
   strategy-scoped
+- frequency-only imaging BDA on master does not pass ``-reorder`` to WSClean.
+  WSClean 3.7 therefore rejects the multi-spectral-window Measurement Set
+  before imaging. The current branch supplies the required option.
+- the previous documented minimum and dev-container pin for EveryBeam allowed
+  versions whose phased-array telescope loader required exactly one spectral
+  window. That makes WSClean primary-beam construction fail on DP3 frequency
+  BDA output. EveryBeam 0.8.3 accepts the BDA layout; the active container
+  recipes and dependency documentation now require that release.
 
 Rerun policy: documentation, report-only, and preview-artifact changes may use
 the current evidence plus focused tests. Changes to calibration, prediction,

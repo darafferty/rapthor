@@ -178,18 +178,23 @@ science decision is applied to the staged branch.
   the WSClean limitation below is resolved. Keep command semantics in
   integration assertions because the equivalence comparator intentionally
   compares operations and scientific products rather than exact tool commands.
-- [ ] Resolve frequency-only imaging BDA after DP3 preparation. WSClean 3.7 can
-  reorder and grid the resulting multi-SPW Measurement Set, but its
-  `-apply-primary-beam` stage rejects inputs with more than one spectral window.
-  Confirm the intended upstream/tool behavior and either support primary-beam
-  products without changing their scientific meaning or fail early with a
-  clear limitation. Do not silently disable beam correction. The
-  calibration-derived `image_bda_minchannels` safeguard from `master` is now
-  ported independently of this WSClean limitation.
+- [x] Resolve frequency-only imaging BDA after DP3 preparation. Preserve
+  master's intended BDA and primary-beam semantics: pass WSClean's required
+  `-reorder`, retain the calibration-derived `image_bda_minchannels` safeguard,
+  and require EveryBeam 0.8.3 or later. Earlier EveryBeam releases construct a
+  single-band telescope model and reject DP3's multi-SPW frequency-BDA layout.
+  Master also omits `-reorder`; both are documented reference-branch bugs, so
+  this path needs current-branch product validation rather than pretending a
+  failing master run is an equivalence reference. Rebuild the dev container
+  before running that validation.
+- [ ] Rebuild the dev container and run the frequency-only imaging-BDA focused
+  integration scenario through WSClean and primary-beam product generation.
+  Keep its branch-vs-master option-matrix row skipped because master fails this
+  path; archive current-branch command and product evidence instead.
 - [ ] Rerun and archive the full saved-reference science gate after the LSMTool
-  update, then rerun the affected WSClean-prediction and imaging-BDA
-  branch-vs-master scenarios. Update `EQUIVALENCE_REPORT.md` and the science
-  gate history with the result.
+  and EveryBeam updates, then rerun the affected WSClean-prediction
+  branch-vs-master scenario. Update `EQUIVALENCE_REPORT.md` and the science gate
+  history with the result.
 - [ ] After science equivalence passes, benchmark the WSClean multi-band and
   frequency-BDA scenarios if performance claims will be made for them. The
   existing core performance gates remain applicable to the unchanged default
