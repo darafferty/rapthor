@@ -236,6 +236,7 @@ def _select_wsclean_command_for_sector(
         apply_time_frequency_smearing=bool(sector["apply_time_frequency_smearing"]),
         temp_dir=temp_dir,
         update_model_required=bool(sector["make_residual_visibilities"]),
+        reorder=float(sector.get("frequencybase") or 0.0) > 0,
     )
     if sector["use_facets"]:
         if region_record is None:

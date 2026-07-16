@@ -16,6 +16,7 @@ class ImagePrepareTaskPayload(TypedDict):
     freqstep: int
     timestep: int
     maxinterval: Optional[int]
+    minchannels: int
 
 
 class ImageCubeSpecPayload(TypedDict):

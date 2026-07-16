@@ -9,6 +9,12 @@ from pathlib import Path
 import casacore.tables as pt
 import pytest
 
+from rapthor.execution.image.commands import (
+    PrepareImagingDataOptions,
+    build_prepare_imaging_data_command,
+)
+from rapthor.lib.miscellaneous import convert_mjd2mvt
+
 from .utils import (
     find_command_records,
     first_command_arguments,
@@ -64,6 +70,102 @@ def _assert_wsclean_applies_h5parm(working_dir, operation, h5parm, *, diagonal=F
     assert any(str(h5parm) in record.command for record in wsclean_commands)
     if diagonal:
         assert any("-diagonal-visibilities" in record.command for record in wsclean_commands)
+
+
+def _wsclean_channel_range(command):
+    range_index = command.index("-channel-range")
+    return tuple(int(value) for value in command[range_index + 1 : range_index + 3])
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "generated_parset_path",
+    [
+        (
+            "tests/resources/integration_template.parset",
+            "tests/resources/integration_true_sky.txt",
+            "tests/resources/integration_apparent_sky.txt",
+        )
+    ],
+    indirect=True,
+)
+def test_rapthor_run_wsclean_predicts_multiple_frequency_bands(
+    generated_parset_path,
+    single_loop_strategy_path,
+):
+    """WSClean prediction covers every MS channel across multiple narrow bands."""
+    updated_parset_path = update_parset_path(
+        generated_parset_path,
+        {
+            "allow_internet_access": "False",
+            "strategy": str(single_loop_strategy_path),
+            "use_wsclean_predict": "True",
+            "wsclean_predict_bw": "75000.0",
+            "reweight": "False",
+        },
+    )
+
+    output = _run_rapthor(updated_parset_path)
+
+    assert "Operation calibrate_1 completed" in output
+    assert "Operation image_1 completed" in output
+    working_dir = Path(get_working_dir_from_parset(updated_parset_path))
+    predict_commands = find_command_records(
+        working_dir,
+        operation="calibrate_1",
+        executable="wsclean",
+        contains="-predict",
+    )
+    assert predict_commands
+    assert all("-no-reorder" in record.command for record in predict_commands)
+    assert {_wsclean_channel_range(record.command) for record in predict_commands} == {
+        (0, 3),
+        (3, 6),
+        (6, 8),
+    }
+    assert (working_dir / "solutions" / "calibrate_1" / "field-solutions.h5").is_file()
+    assert sorted((working_dir / "images" / "image_1").glob("*-MFS-image.fits"))
+
+
+@pytest.mark.integration
+def test_prepare_frequency_only_imaging_bda_with_dp3(test_ms, tmp_path):
+    """The production DP3 command preserves the configured minimum channels."""
+    prepared_ms = tmp_path / "frequency_bda.ms"
+    with pt.table(str(test_ms), ack=False) as table:
+        starttime = convert_mjd2mvt(float(table.getcell("TIME", 0)))
+        input_channel_count = table.getcell("DATA", 0).shape[0]
+
+    command = build_prepare_imaging_data_command(
+        PrepareImagingDataOptions(
+            msin=str(test_ms),
+            data_colname="DATA",
+            msout=str(prepared_ms),
+            starttime=starttime,
+            ntimes=0,
+            phasecenter="'[24.422081deg, 33.159759deg]'",
+            freqstep=1,
+            timestep=1,
+            beamdir="'[24.422081deg, 33.159759deg]'",
+            num_threads=2,
+            steps="[bdaavg]",
+            minchannels=4,
+            maxinterval=6,
+            timebase=0.0,
+            frequencybase=1000.0,
+        )
+    )
+
+    subprocess.run(command, cwd=tmp_path, check=True, capture_output=True, text=True)
+
+    assert "steps=[bdaavg]" in command
+    assert "bdaavg.timebase=0.0" in command
+    assert "bdaavg.frequencybase=1000.0" in command
+    assert "bdaavg.minchannels=4" in command
+    assert prepared_ms.is_dir()
+    with pt.table(f"{prepared_ms}::SPECTRAL_WINDOW", ack=False) as table:
+        prepared_channel_counts = table.getcol("NUM_CHAN")
+    assert prepared_channel_counts.min() >= 4
+    assert prepared_channel_counts.min() < input_channel_count
 
 
 @pytest.mark.integration

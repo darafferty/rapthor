@@ -336,6 +336,7 @@ class Image(Operation):
             "image_timestep": [],
             "image_maxinterval": [],
             "image_timebase": [],
+            "image_minchannels": [],
             "image_frequencybase": [],
             "phasecenter": [],
             "image_name": [],
@@ -373,6 +374,7 @@ class Image(Operation):
             values["image_timestep"].append(sector.get_obs_parameters("image_timestep"))
             values["image_maxinterval"].append(sector.get_obs_parameters("image_bda_maxinterval"))
             values["image_timebase"].append(self.field.image_bda_timebase)
+            values["image_minchannels"].append(sector.get_obs_parameters("image_bda_minchannels"))
             values["image_frequencybase"].append(self.field.image_bda_frequencybase)
             values["starttime"].append(
                 [misc.convert_mjd2mvt(obs.starttime) for obs in self.field.observations]
@@ -485,6 +487,7 @@ class Image(Operation):
             "image_timestep": sector_inputs["image_timestep"],
             "image_maxinterval": sector_inputs["image_maxinterval"],
             "image_timebase": sector_inputs["image_timebase"],
+            "image_minchannels": sector_inputs["image_minchannels"],
             "image_frequencybase": sector_inputs["image_frequencybase"],
             "phasecenter": sector_inputs["phasecenter"],
             "image_name": sector_inputs["image_name"],

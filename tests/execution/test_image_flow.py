@@ -508,6 +508,7 @@ class SectorStub:
             obs.parameters["image_freqstep"] = 4
             obs.parameters["image_timestep"] = 2
             obs.parameters["image_bda_maxinterval"] = 8
+            obs.parameters["image_bda_minchannels"] = 3
 
     def get_obs_parameters(self, name):
         if name == "ms_filename":
@@ -634,6 +635,7 @@ def _image_input_parms():
         "image_timestep": [[2, 2]],
         "image_maxinterval": [[8, 8]],
         "image_timebase": [10.0],
+        "image_minchannels": [[3, 3]],
         "image_frequencybase": [5.0],
         "phasecenter": ["'[123.0deg, 45.0deg]'"],
         "image_name": ["sector_1"],
@@ -819,6 +821,7 @@ def _two_sector_image_input_parms():
         "image_timestep",
         "image_maxinterval",
         "image_timebase",
+        "image_minchannels",
         "image_frequencybase",
         "phasecenter",
         "image_name",
@@ -1111,6 +1114,9 @@ def test_image_command_builders_match_reference_fixtures():
     assert "bdaavg.frequencybase=5.0" in build_prepare_imaging_data_command(
         _prepare_imaging_data_options(frequencybase=5.0)
     )
+    assert "bdaavg.minchannels=3" in build_prepare_imaging_data_command(
+        _prepare_imaging_data_options(minchannels=3)
+    )
     assert (
         normalize_command(
             build_compress_sector_images_command(
@@ -1212,6 +1218,29 @@ def test_wsclean_command_builders_preserve_full_stokes_options():
 
     assert linked_command[linked_command.index("-link-polarizations") + 1] == "I"
     assert "-join-polarizations" not in linked_command
+
+
+def test_wsclean_command_builders_reorder_frequency_bda_input():
+    common = _wsclean_options(reorder=True)
+    commands = [
+        build_wsclean_no_dde_command(common),
+        build_wsclean_facets_command(
+            WscleanFacetOptions(
+                common=common,
+                scalar_visibilities=True,
+                diagonal_visibilities=False,
+                h5parm="facet-solutions.h5",
+                soltabs="phase000",
+                region_file="sector_1_facets_ds9.reg",
+                num_gridding_tasks=3,
+                shared_facet_reads=False,
+                shared_facet_writes=False,
+            )
+        ),
+        build_wsclean_screens_command(WscleanScreenOptions(common=common, interval=[0, 9])),
+    ]
+
+    assert all("-reorder" in command for command in commands)
 
 
 def test_wsclean_command_keeps_model_data_when_residual_visibilities_are_requested():
@@ -1408,6 +1437,7 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
         "freqstep": 4,
         "timestep": 2,
         "maxinterval": 8,
+        "minchannels": 3,
     }
     assert sector["obs_original_paths"] == ["/data/obs_0.ms", "/data/obs_1.ms"]
 

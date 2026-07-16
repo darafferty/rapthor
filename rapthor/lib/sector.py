@@ -157,6 +157,7 @@ class Sector(object):
         self.reweight = imaging_parameters["reweight"]
         self.target_fast_timestep = self.field.fast_timestep_sec
         self.target_slow_timstep = self.field.slow_timestep_sec
+        self.target_fast_freqstep = self.field.parset["calibration_specific"]["fast_freqstep_hz"]
         self.target_slow_freqstep = self.field.parset["calibration_specific"]["slow_freqstep_hz"]
         self.apply_screens = self.field.apply_screens
 
@@ -269,6 +270,7 @@ class Sector(object):
                 self.width_dec,
                 self.target_fast_timestep,
                 self.target_slow_timstep,
+                self.target_fast_freqstep,
                 self.target_slow_freqstep,
                 preapply_dd_solutions,
             )

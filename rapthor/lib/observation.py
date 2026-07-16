@@ -507,6 +507,7 @@ class Observation(object):
         width_dec,
         solve_fast_timestep,
         solve_slow_timestep,
+        solve_fast_freqstep,
         solve_slow_freqstep,
         preapply_dd_solutions,
     ):
@@ -527,6 +528,8 @@ class Observation(object):
             Solution interval in sec for fast solve
         solve_slow_timestep : float
             Solution interval in sec for slow solve
+        solve_fast_freqstep : float
+            Solution interval in Hz for fast solve
         solve_slow_freqstep : float
             Solution interval in Hz for slow solve
         preapply_dd_solutions : bool
@@ -604,9 +607,16 @@ class Observation(object):
             self.numsamples, int(round(solve_slow_timestep / timestep_sec))
         )  # time slots
         self.parameters["image_bda_maxinterval"] = max(1, target_maxinterval)
+
+        min_freqstep = min(
+            self.get_nearest_freqstep(solve_fast_freqstep / chan_width_hz),
+            self.get_nearest_freqstep(solve_slow_freqstep / chan_width_hz),
+        )
+        self.parameters["image_bda_minchannels"] = max(1, int(nchan / min_freqstep))
         self.log.debug(
-            "If BDA is enabled, maxinterval = %.1f s will be used for imaging",
+            "If BDA is enabled, maxinterval = %.1f s and minchannels = %d will be used for imaging",
             self.parameters["image_bda_maxinterval"] * timestep_sec,
+            self.parameters["image_bda_minchannels"],
         )
 
     def get_nearest_freqstep(self, freqstep):

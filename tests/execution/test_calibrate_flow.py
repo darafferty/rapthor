@@ -273,7 +273,7 @@ def fake_direct_calibrate_helpers(monkeypatch):
         return [
             {
                 "frequency_bandwidth": [150000000.0, 1000000.0],
-                "channel_range": (0, 3),
+                "channel_range": (0, 4),
             }
         ]
 
@@ -1288,7 +1288,7 @@ def _wsclean_predict_options(**overrides) -> WscleanPredictOptions:
         "model_column": "patch1",
         "facet": "patch1",
         "model_root": "wsclean_predict_chunk_1_band_1",
-        "channel_range": (0, 3),
+        "channel_range": (0, 4),
         "model_storage_manager": "default",
         "num_threads": 4,
         "apply_time_frequency_smearing": True,
@@ -1486,7 +1486,7 @@ def test_calibrate_command_builders_create_reference_tokens():
         "wsclean_predict_chunk_1_band_1",
         "-channel-range",
         "0",
-        "3",
+        "4",
         "-model-storage-manager",
         "default",
         "-no-reorder",
@@ -2843,7 +2843,7 @@ def test_run_calibrate_flow_supports_dd_wsclean_predict(
         str(tmp_path / "wsclean_predict_chunk_1_band_1"),
         "-channel-range",
         "0",
-        "3",
+        "4",
         "-model-storage-manager",
         "default",
         "-no-reorder",

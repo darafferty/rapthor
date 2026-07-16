@@ -38,6 +38,7 @@ def prepare_visibility_ms(
                 beamdir=str(sector["phasecenter"]),
                 num_threads=int(sector["max_threads"]),
                 steps=str(sector["prepare_data_steps"]),
+                minchannels=int(prepare_task["minchannels"]),
                 maxinterval=prepare_task.get("maxinterval"),
                 timebase=sector.get("timebase"),
                 frequencybase=sector.get("frequencybase"),

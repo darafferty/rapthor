@@ -1,6 +1,9 @@
+import shutil
 from pathlib import Path
 
+import casacore.tables as pt
 import lsmtool
+import numpy as np
 import pytest
 from matplotlib import pyplot as plt
 
@@ -28,6 +31,41 @@ def calibration_strategy_field():
 
 def test_scan_observations(field):
     assert field.fwhm_ra_deg == 4.500843683229519
+
+
+def test_scan_observations_uses_mean_station_diameter(
+    parset_for_field_test,
+    test_ms,
+    tmp_path,
+):
+    second_ms = tmp_path / "different_diameter.ms"
+    shutil.copytree(test_ms, second_ms)
+
+    with pt.table(f"{second_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
+        channel_freq = table.getcol("CHAN_FREQ")
+        channel_width = table.getcol("CHAN_WIDTH")
+        frequency_offset = float(
+            channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max()
+        )
+        table.putcol("CHAN_FREQ", channel_freq + frequency_offset)
+        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + frequency_offset)
+
+    with pt.table(f"{test_ms}::ANTENNA", ack=False) as table:
+        first_diameter = float(table.getcol("DISH_DIAMETER")[0])
+    with pt.table(f"{second_ms}::ANTENNA", readonly=False, ack=False) as table:
+        table.putcol("DISH_DIAMETER", table.getcol("DISH_DIAMETER") * 2.0)
+
+    parset = parset_for_field_test.copy()
+    parset["mss"] = [test_ms, str(second_ms)]
+    mixed_field = Field(parset, minimal=True)
+
+    expected_diameter = 1.5 * first_diameter
+    mean_reference_frequency = np.mean(
+        [observation.referencefreq for observation in mixed_field.full_observations]
+    )
+    expected_fwhm_ra = 1.1 * (3.0e8 / mean_reference_frequency) / expected_diameter * 180.0 / np.pi
+    assert mixed_field.diam == pytest.approx(expected_diameter)
+    assert mixed_field.fwhm_ra_deg == pytest.approx(expected_fwhm_ra)
 
 
 def test_regular_frequency_spacing(field):

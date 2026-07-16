@@ -62,6 +62,7 @@ def image_payload_from_inputs(
         "image_timestep",
         "image_maxinterval",
         "image_timebase",
+        "image_minchannels",
         "image_frequencybase",
         "phasecenter",
         "channels_out",
@@ -160,6 +161,7 @@ def image_payload_from_inputs(
         freqsteps = input_parms["image_freqstep"][sector_index]
         timesteps = input_parms["image_timestep"][sector_index]
         maxintervals = input_parms["image_maxinterval"][sector_index]
+        minchannels = input_parms["image_minchannels"][sector_index]
         obs_inputs = [
             obs_records,
             prepare_filenames,
@@ -168,6 +170,7 @@ def image_payload_from_inputs(
             freqsteps,
             timesteps,
             maxintervals,
+            minchannels,
         ]
         if not all(isinstance(value, list) for value in [obs_original_records, *obs_inputs]):
             raise ValueError(f"sector {sector_index} observation inputs must be lists")
@@ -196,6 +199,7 @@ def image_payload_from_inputs(
                     "maxinterval": (
                         None if maxintervals[obs_index] is None else int(maxintervals[obs_index])
                     ),
+                    "minchannels": int(minchannels[obs_index]),
                 }
             )
 

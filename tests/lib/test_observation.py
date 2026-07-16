@@ -413,6 +413,7 @@ class TestObservation:
             # solutions, the smearing limit is the active constraint, giving 3 slots.
             solve_fast_timestep=20.0,
             solve_slow_timestep=60.0,
+            solve_fast_freqstep=observation.channelwidth,
             solve_slow_freqstep=observation.channelwidth * 4,
             preapply_dd_solutions=preapply_dd_solutions,
         )
@@ -422,6 +423,7 @@ class TestObservation:
         assert observation.parameters["image_freqstep"] == 4
         assert observation.parameters["image_timestep"] == expected_image_timestep
         assert observation.parameters["image_bda_maxinterval"] == 6
+        assert observation.parameters["image_bda_minchannels"] == observation.numchannels
 
     @pytest.mark.parametrize(
         "freqstep, expected",

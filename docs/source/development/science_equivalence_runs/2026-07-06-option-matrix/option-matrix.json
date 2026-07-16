@@ -17,13 +17,18 @@
       "id": "prediction-path-wsclean",
       "base_parset": "inputs/base/prediction_path_wsclean.parset",
       "current_parset": "inputs/current/prediction_path_wsclean.parset",
-      "notes": "DD fast+medium phase calibration with WSClean predict enabled on the generated rich demo data."
+      "notes": "DD fast+medium phase calibration with WSClean predict split into multiple frequency bands on the generated rich demo data."
     },
     {
       "id": "bda-averaging",
       "base_parset": "inputs/base/bda_averaging.parset",
       "current_parset": "inputs/current/bda_averaging.parset",
       "notes": "DD fast+medium phase calibration with calibration BDA and imaging averaging/BDA enabled on the generated rich demo data."
+    },
+    {
+      "id": "frequency-only-imaging-bda",
+      "skip_reason": "WSClean 3.7 can reorder and grid the multi-SPW DP3 BDA output, but its primary-beam construction rejects Measurement Sets with more than one spectral window; keep DP3 command/layout coverage in integration tests until this tool limitation is resolved",
+      "notes": "Frequency-only imaging BDA with time BDA and regular averaging disabled."
     },
     {
       "id": "multi-sector-mosaic",

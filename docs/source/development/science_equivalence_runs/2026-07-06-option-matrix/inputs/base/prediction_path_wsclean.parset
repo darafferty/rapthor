@@ -19,6 +19,7 @@ dde_mode = faceting
 [calibration]
 use_image_based_predict = False
 use_wsclean_predict = True
+wsclean_predict_bw = 75000.0
 fast_freqstep_hz = 48828.125
 medium_freqstep_hz = 97656.25
 slow_freqstep_hz = 195312.5

@@ -1,6 +1,6 @@
 # Rapthor Switch-Readiness Plan
 
-Status snapshot: 2026-07-12.
+Status snapshot: 2026-07-16.
 
 ## Goal
 
@@ -157,26 +157,35 @@ The latest archived science gate is from 2026-07-11. The recent master sync and
 LSMTool dependency update therefore need targeted evidence before the existing
 science decision is applied to the staged branch.
 
-- [ ] Add direct tests for WSClean prediction frequency chunking: one channel,
+- [x] Add direct tests for WSClean prediction frequency chunking: one channel,
   exact division, an uneven final chunk, and complete non-overlapping channel
   coverage.
-- [ ] Add a `Field` test with otherwise compatible observations that have
+- [x] Add a `Field` test with otherwise compatible observations that have
   different station diameters. Assert successful construction, the mean
   diameter, and the resulting FWHM. Add an end-to-end mixed-diameter scenario
   only if this input shape is expected in near-term production use.
-- [ ] Add a focused integration test that enables WSClean prediction with a
+- [x] Add a focused integration test that enables WSClean prediction with a
   bandwidth smaller than the generated MS bandwidth. Assert multiple
   prediction bands, their channel ranges, the `-no-reorder` argument, successful
   calibration, and the expected output products.
-- [ ] Add a focused integration test for frequency-only imaging BDA with
+- [x] Add a focused integration test for frequency-only imaging BDA with
   `imaging.bda_timebase = 0` and `imaging.bda_frequencybase > 0`. Assert the
-  DP3 command and the prepared MS frequency layout, not just pipeline
-  completion.
-- [ ] Update the branch option matrix so `prediction-path-wsclean` uses a
+  production DP3 command, the calibration-derived `bdaavg.minchannels` floor,
+  and the prepared MS frequency layout.
+- [x] Update the branch option matrix so `prediction-path-wsclean` uses a
   non-default bandwidth that creates multiple bands, and add a separate
-  frequency-only imaging-BDA scenario. Keep command semantics in integration
-  assertions because the equivalence comparator intentionally compares
-  operations and scientific products rather than exact tool commands.
+  frequency-only imaging-BDA scenario. The latter is explicitly skipped until
+  the WSClean limitation below is resolved. Keep command semantics in
+  integration assertions because the equivalence comparator intentionally
+  compares operations and scientific products rather than exact tool commands.
+- [ ] Resolve frequency-only imaging BDA after DP3 preparation. WSClean 3.7 can
+  reorder and grid the resulting multi-SPW Measurement Set, but its
+  `-apply-primary-beam` stage rejects inputs with more than one spectral window.
+  Confirm the intended upstream/tool behavior and either support primary-beam
+  products without changing their scientific meaning or fail early with a
+  clear limitation. Do not silently disable beam correction. The
+  calibration-derived `image_bda_minchannels` safeguard from `master` is now
+  ported independently of this WSClean limitation.
 - [ ] Rerun and archive the full saved-reference science gate after the LSMTool
   update, then rerun the affected WSClean-prediction and imaging-BDA
   branch-vs-master scenarios. Update `EQUIVALENCE_REPORT.md` and the science

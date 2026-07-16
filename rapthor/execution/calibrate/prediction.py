@@ -335,7 +335,7 @@ def _frequency_chunks_for_ms(
         return [
             {
                 "frequency_bandwidth": [frequencies[0], float(fallback_frequency_bandwidth[1])],
-                "channel_range": (0, 0),
+                "channel_range": (0, 1),
             }
         ]
 
@@ -350,8 +350,8 @@ def _frequency_chunks_for_ms(
 
     chunks = []
     for start_channel in range(0, len(frequencies), channels_per_chunk):
-        end_channel = min(start_channel + channels_per_chunk, len(frequencies)) - 1
-        chunk_frequencies = frequencies[start_channel : end_channel + 1]
+        end_channel = min(start_channel + channels_per_chunk, len(frequencies))
+        chunk_frequencies = frequencies[start_channel:end_channel]
         bandwidth = abs(max(chunk_frequencies) - min(chunk_frequencies)) + channel_width
         chunks.append(
             {
