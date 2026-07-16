@@ -31,7 +31,7 @@ matplotlib.use("Agg")
 import mocpy
 from astropy.visualization.wcsaxes import SphericalCircle
 from losoto.h5parm import h5parm
-from lsmtool.facet import read_ds9_region_file, read_skymodel
+from lsmtool.facet import read_ds9_region_file, read_from_skymodel
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import close, figure
 
@@ -83,6 +83,7 @@ class Field(object):
             "use_image_based_predict"
         ]
         self.use_wsclean_predict = self.parset["calibration_specific"]["use_wsclean_predict"]
+        self.wsclean_predict_bw = self.parset["calibration_specific"]["wsclean_predict_bw"]
         self.calibrate_bda_timebase = self.parset["calibration_specific"]["bda_timebase"]
         self.calibrate_bda_frequencybase = self.parset["calibration_specific"]["bda_frequencybase"]
         self.dd_interval_factor = self.parset["calibration_specific"]["dd_interval_factor"]
@@ -142,6 +143,7 @@ class Field(object):
         self.slow_datause = self.parset["calibration_specific"]["slow_datause"]
         self.reweight = self.parset["imaging_specific"]["reweight"]
         self.image_bda_timebase = self.parset["imaging_specific"]["bda_timebase"]
+        self.image_bda_frequencybase = self.parset["imaging_specific"]["bda_frequencybase"]
         self.do_multiscale_clean = self.parset["imaging_specific"]["do_multiscale_clean"]
         self.apply_diagonal_solutions = self.parset["imaging_specific"]["apply_diagonal_solutions"]
         self.make_quv_images = self.parset["imaging_specific"]["make_quv_images"]
@@ -281,7 +283,7 @@ class Field(object):
                             f"following input MS files: {ms1} and {ms2}"
                         )
 
-        # Check that all observations have the same pointing upto some tolerance level
+        # Check that all observations have the same pointing up to some tolerance level
         self.ra = obs0.ra
         self.dec = obs0.dec
         separation_tolerance_arcsec = self.parset["separation_tolerance_arcsec"]
@@ -296,15 +298,6 @@ class Field(object):
                     "separation_tolerance_arcsec option in the parset if necessary."
                 )
 
-        # Check that all observations have the same station diameter
-        self.diam = obs0.diam
-        for obs in self.full_observations:
-            if self.diam != obs.diam:
-                raise ValueError(
-                    f"Station diameter for MS {obs.ms_filename} differs from the one for MS "
-                    f"{obs0.ms_filename}"
-                )
-
         # Check that all observations have the same stations
         self.stations = obs0.stations
         for obs in self.full_observations:
@@ -314,6 +307,7 @@ class Field(object):
                 )
 
         # Find mean elevation and FOV over all observations
+        self.diam = np.mean([obs.diam for obs in self.full_observations])
         el_rad_list = []
         ref_freq_list = []
         for obs in self.full_observations:
@@ -2315,7 +2309,7 @@ class Field(object):
             sector_bounds_width_ra = abs((bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0])  # deg
             sector_bounds_width_dec = abs((bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1])  # deg
 
-            facets = read_skymodel(
+            facets = read_from_skymodel(
                 self.calibration_skymodel_file,
                 self.sector_bounds_mid_ra,
                 self.sector_bounds_mid_dec,

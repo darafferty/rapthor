@@ -290,6 +290,7 @@ def build_wsclean_predict_command(options: WscleanPredictOptions) -> list[str]:
             str(options.channel_range[1]),
             "-model-storage-manager",
             options.model_storage_manager,
+            "-no-reorder",
             options.msin,
         ]
     )

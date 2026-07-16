@@ -140,6 +140,7 @@ def build_image_prepare_data_steps(
     preapply_solutions: bool,
     average_visibilities: bool,
     image_bda_timebase: float,
+    image_bda_frequencybase: float,
     all_channels_regular: bool,
     apply_screens: bool,
 ) -> list[str]:
@@ -155,7 +156,8 @@ def build_image_prepare_data_steps(
         steps.append("applycal")
     if average_visibilities:
         steps.append("avg")
-    if image_bda_timebase > 0 and all_channels_regular and not apply_screens:
+    bda_requested = image_bda_timebase > 0 or image_bda_frequencybase > 0
+    if bda_requested and all_channels_regular and not apply_screens:
         steps.append("bdaavg")
     return steps
 

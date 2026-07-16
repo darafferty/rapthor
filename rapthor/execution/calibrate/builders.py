@@ -18,6 +18,8 @@ from rapthor.execution.payloads import (
 )
 from rapthor.lib.records import directory_record_path
 
+DEFAULT_WSCLEAN_PREDICT_BANDWIDTH_HZ = 2.0e6
+
 # These are the DP3 step names supported for the standalone applycal that runs
 # before DD solves. `fastphase` applies phase000, `slowgain` applies
 # amplitude000, and DI fast+medium already points at the combined phase product.
@@ -700,6 +702,11 @@ def _image_predict_payload_from_inputs(
     numterms = int(input_parms["num_spectral_terms"])
     if numterms < 1:
         raise ValueError("num_spectral_terms must be at least 1")
+    max_predict_bandwidth_hz = float(
+        input_parms.get("wsclean_predict_bw", DEFAULT_WSCLEAN_PREDICT_BANDWIDTH_HZ)
+    )
+    if max_predict_bandwidth_hz <= 0:
+        raise ValueError("wsclean_predict_bw must be greater than zero")
 
     region_key = (
         "predict_facet_region_file"
@@ -733,6 +740,7 @@ def _image_predict_payload_from_inputs(
                 length=2,
             )
         ),
+        "max_predict_bandwidth_hz": max_predict_bandwidth_hz,
         "num_spectral_terms": numterms,
         "model_images": [
             os.path.join(pipeline_dir, f"{model_root}-term-{index}.fits")

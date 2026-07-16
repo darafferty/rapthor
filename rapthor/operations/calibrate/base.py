@@ -175,6 +175,7 @@ class Calibrate(Operation):
                 "model_image_imsize": model_image_imsize,
                 "model_image_cellsize": model_image_cellsize,
                 "model_image_frequency_bandwidth": model_image_frequency_bandwidth,
+                "wsclean_predict_bw": field.wsclean_predict_bw,
                 "num_spectral_terms": num_spectral_terms,
                 # Geometry / field setup
                 "ra_mid": field.ra,

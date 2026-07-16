@@ -183,6 +183,9 @@ def _run_wsclean_predict_for_chunk(
     frequency_chunks = _frequency_chunks_for_ms(
         copied_msin,
         list(image_predict["model_image_frequency_bandwidth"]),
+        max_bandwidth_hz=float(
+            image_predict.get("max_predict_bandwidth_hz", WSCLEAN_PREDICT_MAX_BANDWIDTH_HZ)
+        ),
     )
     time_frequency_smearing = bool(
         payload.get("correctfreqsmearing") or payload.get("correcttimesmearing")

@@ -848,21 +848,30 @@ class TestImage:
         assert selected_h5parm == "dd-solutions.h5"
 
     @pytest.mark.parametrize(
-        "preapply, average, bda_timebase, regular, screens, expected_steps",
+        "preapply, average, bda_timebase, bda_frequencybase, regular, screens, expected_steps",
         [
-            (False, True, 10.0, True, False, ["applybeam", "shift", "avg", "bdaavg"]),
-            (True, True, 10.0, True, True, ["applybeam", "shift", "applycal", "avg"]),
-            (True, False, 10.0, False, False, ["applybeam", "shift", "applycal"]),
+            (False, True, 10.0, 0.0, True, False, ["applybeam", "shift", "avg", "bdaavg"]),
+            (False, True, 0.0, 10.0, True, False, ["applybeam", "shift", "avg", "bdaavg"]),
+            (True, True, 10.0, 0.0, True, True, ["applybeam", "shift", "applycal", "avg"]),
+            (True, False, 10.0, 0.0, False, False, ["applybeam", "shift", "applycal"]),
         ],
     )
     def test_build_image_prepare_data_steps(
-        self, preapply, average, bda_timebase, regular, screens, expected_steps
+        self,
+        preapply,
+        average,
+        bda_timebase,
+        bda_frequencybase,
+        regular,
+        screens,
+        expected_steps,
     ):
         assert (
             build_image_prepare_data_steps(
                 preapply_solutions=preapply,
                 average_visibilities=average,
                 image_bda_timebase=bda_timebase,
+                image_bda_frequencybase=bda_frequencybase,
                 all_channels_regular=regular,
                 apply_screens=screens,
             )

@@ -40,6 +40,7 @@ def prepare_visibility_ms(
                 steps=str(sector["prepare_data_steps"]),
                 maxinterval=prepare_task.get("maxinterval"),
                 timebase=sector.get("timebase"),
+                frequencybase=sector.get("frequencybase"),
                 h5parm=sector.get("prepare_data_h5parm"),
                 fulljones_h5parm=sector.get("fulljones_h5parm"),
                 normalize_h5parm=sector.get("input_normalize_h5parm"),

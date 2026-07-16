@@ -61,6 +61,7 @@ class CalibrateImagePredictPayload(TypedDict):
     model_image_imsize: list[int]
     model_image_cellsize: object
     model_image_frequency_bandwidth: list[object]
+    max_predict_bandwidth_hz: float
     num_spectral_terms: int
     model_images: list[str]
     ra_mid: object

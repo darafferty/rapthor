@@ -1,6 +1,6 @@
 """Shared region-file helpers for execution scripts."""
 
-from lsmtool.facet import make_ds9_region_file, read_skymodel
+from lsmtool.facet import make_ds9_region_file, read_from_skymodel
 from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
@@ -21,9 +21,9 @@ def make_ds9_region_from_skymodel(
 
     The bounding box is centred on ``ra_mid`` and ``dec_mid`` in degrees.
     ``width_ra`` is the RA width in degrees corrected to Dec = 0, matching the
-    convention expected by ``lsmtool.facet.read_skymodel``.
+    convention expected by ``lsmtool.facet.read_from_skymodel``.
     """
-    facets = read_skymodel(
+    facets = read_from_skymodel(
         skymodel,
         ra_mid,
         dec_mid,

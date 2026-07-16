@@ -257,11 +257,17 @@ def fake_direct_calibrate_helpers(monkeypatch):
         calls["patch_names_from_region"].append(region_file)
         return ["patch1", "patch2"]
 
-    def fake_frequency_chunks_for_ms(msin, fallback_frequency_bandwidth):
+    def fake_frequency_chunks_for_ms(
+        msin,
+        fallback_frequency_bandwidth,
+        *,
+        max_bandwidth_hz,
+    ):
         calls["frequency_chunks_for_ms"].append(
             {
                 "msin": msin,
                 "fallback_frequency_bandwidth": list(fallback_frequency_bandwidth),
+                "max_bandwidth_hz": max_bandwidth_hz,
             }
         )
         return [
@@ -397,6 +403,7 @@ class CalibrateFieldStub:
         self.generate_screens = False
         self.use_image_based_predict = False
         self.use_wsclean_predict = False
+        self.wsclean_predict_bw = 2.0e6
         self.apply_normalizations = False
         self.normalize_h5parm = None
         self.fulljones_h5parm_filename = None
@@ -1482,6 +1489,7 @@ def test_calibrate_command_builders_create_reference_tokens():
         "3",
         "-model-storage-manager",
         "default",
+        "-no-reorder",
         "dd_obs_0_wsclean_predict.ms",
     ]
     assert build_idgcal_solve_phase_command(
@@ -1999,6 +2007,7 @@ def test_calibrate_payload_from_inputs_builds_dd_image_predict_payload(tmp_path)
         "model_image_imsize": [1024, 1024],
         "model_image_cellsize": 0.001,
         "model_image_frequency_bandwidth": [150000000.0, 1000000.0],
+        "max_predict_bandwidth_hz": 2000000.0,
         "num_spectral_terms": 2,
         "model_images": [
             str(tmp_path / "calibration_model-term-0.fits"),
@@ -2022,6 +2031,7 @@ def test_calibrate_payload_from_inputs_builds_dd_wsclean_predict_payload(tmp_pat
     assert payload["image_based_predict"] is False
     assert payload["wsclean_predict"] is True
     assert payload["modeldatacolumn"] is None
+    assert payload["image_predict"]["max_predict_bandwidth_hz"] == 2000000.0
     assert payload["image_predict"]["facet_region_file"] == "predict_field_facets_ds9.reg"
     assert payload["image_predict"]["facet_region_path"] == str(
         tmp_path / "predict_field_facets_ds9.reg"
@@ -2029,6 +2039,23 @@ def test_calibrate_payload_from_inputs_builds_dd_wsclean_predict_payload(tmp_pat
     assert payload["chunks"][0]["solve_slots"][0]["reusemodel"] is None
     assert payload["chunks"][0]["solve_slots"][1]["reusemodel"] is None
     assert "modeldatacolumns" not in payload["chunks"][0]["solve_slots"][1]
+
+
+def test_calibrate_payload_from_inputs_uses_configured_wsclean_predict_bandwidth(tmp_path):
+    input_parms = _dd_wsclean_predict_input_parms()
+    input_parms["wsclean_predict_bw"] = 500000.0
+
+    payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
+
+    assert payload["image_predict"]["max_predict_bandwidth_hz"] == 500000.0
+
+
+def test_calibrate_payload_from_inputs_rejects_invalid_wsclean_predict_bandwidth(tmp_path):
+    input_parms = _dd_wsclean_predict_input_parms()
+    input_parms["wsclean_predict_bw"] = 0.0
+
+    with pytest.raises(ValueError, match="wsclean_predict_bw"):
+        calibrate_payload_from_inputs("dd", input_parms, tmp_path)
 
 
 def test_calibrate_payload_from_inputs_builds_dd_with_slow_payload(tmp_path):
@@ -2789,6 +2816,10 @@ def test_run_calibrate_flow_supports_dd_wsclean_predict(
     assert fake_direct_calibrate_helpers["patch_names_from_region"] == [
         str(tmp_path / "predict_field_facets_ds9.reg")
     ]
+    assert [
+        call["max_bandwidth_hz"]
+        for call in fake_direct_calibrate_helpers["frequency_chunks_for_ms"]
+    ] == [2000000.0, 2000000.0]
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(
@@ -2815,6 +2846,7 @@ def test_run_calibrate_flow_supports_dd_wsclean_predict(
         "3",
         "-model-storage-manager",
         "default",
+        "-no-reorder",
         str(tmp_path / "input_chunk_0_wsclean_predict_1.ms"),
     ]
 

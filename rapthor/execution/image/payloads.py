@@ -50,6 +50,7 @@ class ImageSectorPayload(TypedDict):
     mask_filename: str
     mask_path: str
     timebase: Optional[float]
+    frequencybase: Optional[float]
     phasecenter: str
     h5parm: Optional[str]
     prepare_data_h5parm: Optional[str]

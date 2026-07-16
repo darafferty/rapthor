@@ -62,6 +62,7 @@ def image_payload_from_inputs(
         "image_timestep",
         "image_maxinterval",
         "image_timebase",
+        "image_frequencybase",
         "phasecenter",
         "channels_out",
         "deconvolution_channels",
@@ -112,6 +113,10 @@ def image_payload_from_inputs(
         per_sector_keys.extend(["output_source_catalog", "output_normalize_h5parm"])
     if use_mpi:
         per_sector_keys.extend(["mpi_nnodes", "mpi_cpus_per_task"])
+    if "image_frequencybase" not in input_parms:
+        input_parms = dict(input_parms)
+        input_parms["image_frequencybase"] = [0.0] * sector_count
+
     for key in per_sector_keys:
         value = input_parms.get(key, [])
         if not isinstance(value, list) or len(value) != sector_count:
@@ -289,6 +294,7 @@ def image_payload_from_inputs(
                 "mask_filename": mask_filename,
                 "mask_path": os.path.join(pipeline_dir, mask_filename),
                 "timebase": input_parms["image_timebase"][sector_index],
+                "frequencybase": input_parms["image_frequencybase"][sector_index],
                 "phasecenter": str(input_parms["phasecenter"][sector_index]),
                 "h5parm": h5parm,
                 "prepare_data_h5parm": prepare_data_h5parm,

@@ -114,6 +114,9 @@ use_image_based_predict = False
 # for calibration solves.
 use_wsclean_predict = False
 
+# If using WSClean predict, create separate model images with this bandwidth (Hz).
+wsclean_predict_bw = 2e6
+
 # Maximum factor by which the direction-dependent solution intervals can be
 # increased, so that fainter calibrators get longer intervals (default = 1).
 # The maximum factor by which the smoothnessconstraints are increased, such
@@ -182,7 +185,7 @@ correct_time_frequency_smearing = False
 # (default = none), local rms parameters (defaults = 0.8, 50, and "rms"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
-# (BDA) timebase value in m (default = 0)
+# (BDA) baseline limits in m (default = 0 for frequency BDA)
 cellsize_arcsec = 1.5
 robust = -0.65
 min_uv_lambda = 80.0
@@ -194,6 +197,7 @@ local_rms_window = 50
 local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
+bda_frequencybase = 0.0
 
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent

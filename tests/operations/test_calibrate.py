@@ -219,6 +219,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.calibration_strategy = {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]}
             self._calibration_strategy_defaulted = False
             self.use_wsclean_predict = False
+            self.wsclean_predict_bw = 2.0e6
             self.normalize_h5parm = None
             self.calibrate_bda_timebase = 0
             self.calibrate_bda_frequencybase = 0

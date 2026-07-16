@@ -560,6 +560,7 @@ class FieldStub:
         self.peel_bright_sources = False
         self.average_visibilities = True
         self.image_bda_timebase = 10.0
+        self.image_bda_frequencybase = 0.0
         self.slow_timestep_sec = 0.0
         self.data_colname = "DATA"
         self.skip_final_major_iteration = True
@@ -633,6 +634,7 @@ def _image_input_parms():
         "image_timestep": [[2, 2]],
         "image_maxinterval": [[8, 8]],
         "image_timebase": [10.0],
+        "image_frequencybase": [5.0],
         "phasecenter": ["'[123.0deg, 45.0deg]'"],
         "image_name": ["sector_1"],
         "pol": "I",
@@ -817,6 +819,7 @@ def _two_sector_image_input_parms():
         "image_timestep",
         "image_maxinterval",
         "image_timebase",
+        "image_frequencybase",
         "phasecenter",
         "image_name",
         "channels_out",
@@ -1105,6 +1108,9 @@ def test_image_command_builders_match_reference_fixtures():
         )
         == commands["image"]["prepare_imaging_data"]
     )
+    assert "bdaavg.frequencybase=5.0" in build_prepare_imaging_data_command(
+        _prepare_imaging_data_options(frequencybase=5.0)
+    )
     assert (
         normalize_command(
             build_compress_sector_images_command(
@@ -1389,6 +1395,7 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
     assert sector["residual_filename"] is None
     assert sector["residual_path"] is None
     assert sector["mask_path"] == str(tmp_path / "sector_1_mask.fits")
+    assert sector["frequencybase"] == 5.0
     assert sector["max_threads"] == 4
     assert sector["filter_skymodel_ncores"] == 4
     assert sector["deconvolution_threads"] == 2

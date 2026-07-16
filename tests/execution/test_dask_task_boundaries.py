@@ -753,6 +753,7 @@ def _calibrate_prediction_payload(payload: dict) -> dict:
         "model_image_imsize": [1024, 1024],
         "model_image_cellsize": 0.001,
         "model_image_frequency_bandwidth": [150000000.0, 1000000.0],
+        "max_predict_bandwidth_hz": 2000000.0,
         "num_spectral_terms": 1,
         "model_images": ["/work/calibrate_1/calibration_model-term-0.fits"],
         "ra_mid": 123.0,

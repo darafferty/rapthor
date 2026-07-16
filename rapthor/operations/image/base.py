@@ -336,6 +336,7 @@ class Image(Operation):
             "image_timestep": [],
             "image_maxinterval": [],
             "image_timebase": [],
+            "image_frequencybase": [],
             "phasecenter": [],
             "image_name": [],
             "central_patch_name": [],
@@ -372,6 +373,7 @@ class Image(Operation):
             values["image_timestep"].append(sector.get_obs_parameters("image_timestep"))
             values["image_maxinterval"].append(sector.get_obs_parameters("image_bda_maxinterval"))
             values["image_timebase"].append(self.field.image_bda_timebase)
+            values["image_frequencybase"].append(self.field.image_bda_frequencybase)
             values["starttime"].append(
                 [misc.convert_mjd2mvt(obs.starttime) for obs in self.field.observations]
             )
@@ -441,6 +443,7 @@ class Image(Operation):
             preapply_solutions=prepare_data_applycal_steps is not None,
             average_visibilities=self.field.average_visibilities,
             image_bda_timebase=self.field.image_bda_timebase,
+            image_bda_frequencybase=self.field.image_bda_frequencybase,
             all_channels_regular=all_regular,
             apply_screens=self.apply_screens,
         )
@@ -482,6 +485,7 @@ class Image(Operation):
             "image_timestep": sector_inputs["image_timestep"],
             "image_maxinterval": sector_inputs["image_maxinterval"],
             "image_timebase": sector_inputs["image_timebase"],
+            "image_frequencybase": sector_inputs["image_frequencybase"],
             "phasecenter": sector_inputs["phasecenter"],
             "image_name": sector_inputs["image_name"],
             "pol": self.image_pol,

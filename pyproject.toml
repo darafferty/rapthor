@@ -40,7 +40,7 @@ dependencies = [
     "h5py",
     "jinja2",
     "losoto>=2.4.3",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@176ef008534bdd929e58c57b00c0a60e3445ad68",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@3adf3d6f1f8c03db34e13a45a752f6f6dd7d7f4a",
     "matplotlib",
     "mocpy",
     "numpy",

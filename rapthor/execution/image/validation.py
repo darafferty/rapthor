@@ -105,6 +105,8 @@ def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSec
     validated_sector = dict(sector)
     validated_sector["prepare_tasks"] = prepare_tasks
     validated_sector["image_cube_specs"] = image_cube_specs
+    frequencybase = sector.get("frequencybase")
+    validated_sector["frequencybase"] = None if frequencybase is None else float(frequencybase)
     validated_sector["wsclean_imsize"] = validate_int_list(
         sector.get("wsclean_imsize"),
         f"sectors[{index}].wsclean_imsize",

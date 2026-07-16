@@ -40,6 +40,7 @@ class PrepareImagingDataOptions:
     normalize_h5parm: Optional[str] = None
     central_patch_name: Optional[str] = None
     applycal_steps: Optional[str] = None
+    frequencybase: Optional[float] = 0.0
 
 
 @dataclass(frozen=True)
@@ -129,7 +130,6 @@ def build_prepare_imaging_data_command(options: PrepareImagingDataOptions) -> li
         "avg.type=squash",
         "bdaavg.type=bdaaverager",
         "bdaavg.minchannels=1",
-        "bdaavg.frequencybase=0.0",
         "applycal.type=applycal",
         "applycal.correction=phase000",
         "applycal.slowgain.correction=amplitude000",
@@ -152,6 +152,7 @@ def build_prepare_imaging_data_command(options: PrepareImagingDataOptions) -> li
         f"avg.timestep={options.timestep}",
     ]
     append_prefixed_value(command, "bdaavg.timebase=", options.timebase)
+    append_prefixed_value(command, "bdaavg.frequencybase=", options.frequencybase)
     append_prefixed_value(command, "bdaavg.maxinterval=", options.maxinterval)
     command.append(f"applybeam.direction={_strip_wrapping_shell_quotes(options.beamdir)}")
     append_prefixed_value(command, "applycal.parmdb=", options.h5parm)

@@ -216,6 +216,12 @@ The available options are described below under their respective sections.
         if both are enabled, Rapthor keeps ``use_wsclean_predict`` and disables
         ``use_image_based_predict``.
 
+    wsclean_predict_bw
+        Bandwidth in Hz for each model image drawn during WSClean-based prediction
+        (default = ``2e6``). Wide-band data are split into channel groups no wider
+        than this value before model images are drawn and predicted into temporary
+        model-data columns.
+
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
         default = ``qr``).
@@ -471,9 +477,13 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 0). A value of 0 will disable the averaging. Activating this option
-        may improve the speed of imaging.
+        Maximum baseline used in baseline-dependent time averaging (BDA) during
+        imaging, in m (default = 20000). A value of 0 will disable time BDA.
+        Activating this option may improve the speed of imaging.
+
+    bda_frequencybase
+        Maximum baseline used in baseline-dependent frequency averaging (BDA) during
+        imaging, in m (default = 0). A value of 0 will disable frequency BDA.
 
         .. note::
 
