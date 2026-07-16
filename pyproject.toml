@@ -241,21 +241,7 @@ commands = [
 skip_install = true
 deps = "ruff"
 format_targets = [
-    "rapthor/lib/__init__.py",
-    "rapthor/lib/cluster.py",
-    "rapthor/lib/cwl.py",
-    "rapthor/lib/cwlrunner.py",
-    "rapthor/lib/operation.py",
-    "rapthor/lib/observation.py",
-    "rapthor/lib/parset.py",
-    "rapthor/lib/strategy.py",
-    "rapthor/operations/calibrate.py",
-    "rapthor/operations/image.py",
-    "rapthor/process.py",
-    "rapthor/scripts/calculate_image_diagnostics.py",
-    "rapthor/scripts/normalize_flux_scale.py",
-    "rapthor/testing.py",
-    "rapthor/scripts",
+    "rapthor",
     "tests"
 ]
 
