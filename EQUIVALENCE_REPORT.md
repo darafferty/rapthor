@@ -1,6 +1,6 @@
 # Rapthor Equivalence Decision Report
 
-Latest status scan: 2026-07-12
+Latest status scan: 2026-07-16
 
 Science contract:
 `docs/source/development/science_equivalence_contract.rst`
@@ -39,7 +39,7 @@ individual runs.
 
 | Gate | Latest Result | Evidence | Decision |
 | --- | --- | --- | --- |
-| Science equivalence | **Pass / accepted** | `2026-07-11-post-task-split-saved-reference`, `2026-07-11-post-task-split-option-matrix`, and earlier DD/full-Jones repeatability evidence | Scientific contract is accepted for the covered LOFAR HBA self-calibration paths. |
+| Science equivalence | **Pass / accepted with classified post-sync differences** | `2026-07-16-post-master-sync-saved-reference`, `2026-07-16-post-master-sync-option-matrix`, current-only frequency-BDA evidence, and earlier DD/full-Jones repeatability evidence | Scientific contract remains accepted for the covered LOFAR HBA paths; the retained differences are an EveryBeam baseline shift and a deliberate fix for incomplete master WSClean prediction. |
 | Performance equivalence | **Pass for phase-only core and DD/full-Jones** | `2026-07-11-phase-only-core-repeatability-gate`, `2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate` | Performance equivalence is established for the current optimisation phase; continue targeted benchmarking for new scalability changes. |
 
 ## What Was Being Decided
@@ -77,6 +77,9 @@ Confidence: **high for the tested LOFAR HBA self-calibration paths**.
 
 Latest tracked science evidence:
 
+- `docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-saved-reference/`
+- `docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-option-matrix/`
+- `docs/source/development/science_equivalence_runs/2026-07-16-frequency-only-imaging-bda-current/`
 - `docs/source/development/science_equivalence_runs/2026-07-11-post-task-split-saved-reference/`
 - `docs/source/development/science_equivalence_runs/2026-07-11-post-task-split-option-matrix/`
 - `docs/source/development/science_equivalence_runs/2026-07-06-dd-phase-plus-di-fulljones-normalized-repeatability-master-ref/`
@@ -85,10 +88,17 @@ Latest tracked science evidence:
 
 The current branch passes the science gate because:
 
-- the post-task-split saved-reference gate passes for all active non-stale
-  reference scenarios
-- the post-task-split option matrix passes for normalization, DP3 image-based
-  prediction, WSClean prediction, and BDA/averaging
+- six post-sync saved-reference scenarios pass strictly after the LSMTool and
+  EveryBeam updates
+- the old saved normalization cube difference is stable, concentrated at beam
+  boundary pixels, and absent from a controlled same-stack `master`/current
+  normalization comparison
+- the post-sync WSClean prediction difference is explained by a master bug:
+  master leaves two of eight channels unpredicted, while current uses complete
+  end-exclusive channel ranges with direct unit and integration coverage
+- frequency-only imaging BDA completes on current with a two-SPW DP3 output,
+  WSClean reorder/facet-beam application, and a finite primary-beam image;
+  documented master defects prevent a valid reference run for this path
 - the DD phase plus DI full-Jones repeatability run passes for every
   base-base, current-current, and base-current pair after full-Jones gain
   normalization was aligned
@@ -139,6 +149,9 @@ scalability phase.
 
 | Evidence | Result | Why it matters |
 | --- | --- | --- |
+| Post-master-sync saved-reference gate | Six strict passes; normalization dependency shift classified | Confirms the refactor remains stable after LSMTool/EveryBeam updates without hiding an old beam-boundary baseline change behind broader tolerances. |
+| Post-master-sync option checks | Normalization passes; WSClean prediction divergence accepted as a master bug fix | Separates dependency effects from branch effects and proves current covers every requested prediction channel. |
+| Frequency-only imaging BDA | Current-only pass | Closes a recently ported path for which master cannot provide a scientifically valid reference. |
 | Post-task-split saved-reference gate | Pass | Confirms task-boundary changes preserved the saved scientific product contract for active scenarios. |
 | Post-task-split option matrix | Pass for active rows | Confirms high-risk options still work after task splitting: normalization, DP3 prediction, WSClean prediction, and BDA/averaging. |
 | DD phase plus DI full-Jones repeatability | Pass | Confirms the most important mixed calibration path is stable across repeated runs and branch comparisons. |
@@ -208,6 +221,9 @@ These differences are accepted and should not be treated as regressions:
   `field-solutions.h5`, rather than copying the legacy master behavior where a
   slow-gain h5parm-combination error can still produce a successful run with
   phase-only active solutions.
+- The current branch interprets WSClean `-channel-range` endpoints correctly
+  and covers every prediction channel. Master can leave the last channel of
+  each legacy frequency chunk unpredicted.
 - The current branch has leaner output records than the legacy CWL path; this
   is a metadata shape difference, not a change in the scientific products.
 - The current branch exposes more Prefect task boundaries and runtime metrics;
@@ -231,6 +247,10 @@ using stale or incompatible solutions.
   `master` limitations. They are preserved in the historical run log, but they
   should not be used as the desired scientific target without a separate
   decision.
+- The historical normalization frequency-cube baseline predates EveryBeam
+  0.8.3. Its small edge-concentrated shift is retained in the strict report and
+  classified through repeatability plus a same-stack branch comparison; the
+  global FITS tolerances were not widened.
 
 ## Decision Implication
 

@@ -31,7 +31,7 @@ active CWL equivalence harness, CWL workflow/parset files, and `cwltool`
 validation tests have since been removed as part of post-cutover cleanup. This
 file is now the historical parity record.
 
-Current gate verdict as of 2026-07-11: the saved-reference matrix, focused
+Current gate verdict as of 2026-07-16: the saved-reference matrix, focused
 DD-plus-DI full-Jones branch-vs-master rerun, three-repeat normalized
 branch-repeatability envelope, and full integration suite support accepting the
 current branch for the covered scientific contract. Remaining cross-branch
@@ -47,6 +47,15 @@ the saved normalization fixture to use valid distinct reference frequencies.
 The 2026-07-11 post-task-split rerun passes the same active saved-reference
 matrix and the same active branch-vs-master option-matrix rows after the image,
 mosaic, and calibration task-boundary work.
+The 2026-07-16 post-master-sync gate keeps that decision after the LSMTool and
+EveryBeam updates. Six saved scenarios pass strictly. The old saved
+normalization cube has a small, stable beam-edge shift under EveryBeam 0.8.3,
+while a controlled same-stack `master`/current normalization comparison passes.
+The focused WSClean prediction comparison diverges intentionally: legacy
+master uses inclusive array endpoints for WSClean's end-exclusive channel
+ranges and leaves two of eight channels unpredicted; current covers all eight
+exactly once. The strict reports remain unchanged and both classifications are
+archived.
 The multi-sector mosaic option-matrix row is documented as a current-branch
 coverage/stored-reference target rather than a branch-vs-master gate because
 legacy `master` fails before comparison in the CWL multi-sector image scatter.
@@ -293,6 +302,46 @@ omits WSClean's required `-reorder` argument and its supported EveryBeam
 generation rejects DP3's multi-SPW frequency-BDA layout. The option-matrix row
 therefore remains explicitly skipped, with the current-branch command and
 product evidence serving as the regression baseline.
+
+## 2026-07-16 Post-Master-Sync Science Gate
+
+The complete active saved-reference matrix was rerun after the LSMTool API and
+EveryBeam 0.8.3 updates. The main run and its peeling/restart continuation are
+archived together at:
+
+```text
+docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-saved-reference/
+```
+
+`dd_only_calibration`, `di_only_calibration`,
+`full_stokes_clean_disabled`, `image_cube`, `peeling`, and `restart` pass
+strictly. `normalization` retains one frequency-cube pixel failure against the
+older dependency baseline (`max_abs = 3.4368e-4`, `p99_abs = 2.3842e-6`,
+`residual_rms = 2.1727e-6`). An independent current rerun is much closer to the
+first current run (`residual_rms = 3.0061e-7`, no pixel above `1e-5`), and 121
+of 128 old-reference residuals above `1e-4` are within ten pixels of an image
+edge. A same-stack branch comparison also passes normalization. The difference
+is therefore retained and classified as EveryBeam baseline drift rather than
+hidden by changing the comparator.
+
+The paired focused checks are archived at:
+
+```text
+docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-option-matrix/
+```
+
+`normalization-rich-demo` passes strictly. `prediction-path-wsclean` completes
+on both branches but fails strict product comparison because current fixes a
+legacy master channel-range bug. For an eight-channel MS, master passes
+`0 3` and `4 7` to WSClean and predicts only channels 0-2 and 4-6. Current
+passes `0 3`, `3 6`, and `6 8`, covering every channel exactly once. The
+resulting FITS, h5parm, catalog, and sky-model differences are expected
+downstream consequences of solving with complete model data. Focused tests
+lock the corrected command and coverage semantics.
+
+Decision: the science gate remains accepted for the covered LOFAR HBA
+contract. Neither classified difference is an unexplained current-branch
+regression, and no scientific tolerance was relaxed.
 
 ## Current Strengthened Saved-Reference Run
 

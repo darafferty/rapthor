@@ -1,0 +1,39 @@
+{
+  "classification": "dependency-baseline-drift",
+  "dependency_stack": {
+    "everybeam": "0.8.3",
+    "wsclean": "3.7"
+  },
+  "product": "sector_1_I_freq_cube.fits",
+  "saved_reference_vs_current_1": {
+    "max_abs_delta": 0.00034368038177490234,
+    "p99_abs_delta": 2.384185791015625e-06,
+    "p999_abs_delta": 2.008676528930664e-05,
+    "residual_rms": 2.172743359320716e-06,
+    "pixels_over_1e-5": 3172,
+    "pixels_over_1e-4": 128
+  },
+  "saved_reference_vs_current_2": {
+    "max_abs_delta": 0.0003432035446166992,
+    "p99_abs_delta": 2.4139881134033203e-06,
+    "p999_abs_delta": 2.0176172256469727e-05,
+    "residual_rms": 2.1839615480589993e-06,
+    "pixels_over_1e-5": 3187,
+    "pixels_over_1e-4": 127
+  },
+  "current_1_vs_current_2": {
+    "max_abs_delta": 7.62939453125e-06,
+    "p99_abs_delta": 1.043081283569336e-06,
+    "p999_abs_delta": 1.6093254089355469e-06,
+    "residual_rms": 3.0061447216527223e-07,
+    "pixels_over_1e-5": 0,
+    "pixels_over_1e-4": 0
+  },
+  "saved_reference_pixels_over_1e-4_by_plane": [0, 14, 114, 0],
+  "saved_reference_pixels_over_1e-4_within_10_pixel_edge": 121,
+  "controlled_branch_comparison": {
+    "scenario": "normalization-rich-demo",
+    "result": "pass",
+    "evidence": "../2026-07-16-post-master-sync-option-matrix/normalization-rich-demo/branch-equivalence-report.json"
+  }
+}

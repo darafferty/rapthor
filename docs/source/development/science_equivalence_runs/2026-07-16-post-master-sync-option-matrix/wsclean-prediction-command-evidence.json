@@ -1,0 +1,37 @@
+{
+  "classification": "intentional-master-bug-fix",
+  "branches": {
+    "master": "f379cf15913c90fb1157a6baf32c0229c660f451",
+    "current": "14430fbfdabd507ff70291e789075497a591a953"
+  },
+  "dependency_stack": {
+    "everybeam": "0.8.3",
+    "wsclean": "3.7",
+    "dp3": "6.6"
+  },
+  "measurement_set_channels": 8,
+  "configured_max_prediction_bandwidth_hz": 75000.0,
+  "master": {
+    "channel_ranges_passed_to_wsclean": [[0, 3], [4, 7]],
+    "covered_channels_under_end_exclusive_semantics": [0, 1, 2, 4, 5, 6],
+    "missing_channels": [3, 7],
+    "observed_wsclean_prediction_group_channel_counts": [3, 3]
+  },
+  "current": {
+    "channel_ranges_passed_to_wsclean": [[0, 3], [3, 6], [6, 8]],
+    "covered_channels_under_end_exclusive_semantics": [0, 1, 2, 3, 4, 5, 6, 7],
+    "missing_channels": [],
+    "model_column_nonzero_channel_counts": {
+      "Patch_rich_centre": 8,
+      "Patch_rich_east": 8,
+      "Patch_rich_north": 8,
+      "Patch_rich_south": 8,
+      "Patch_rich_west": 8
+    }
+  },
+  "raw_product_comparison": {
+    "result": "fail",
+    "failure_count": 33,
+    "evidence": "prediction-path-wsclean/branch-equivalence-report.json"
+  }
+}

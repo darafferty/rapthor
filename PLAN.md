@@ -28,10 +28,11 @@ and known limitations must all be visible to reviewers.
 - Repeatability-aware branch comparisons now generate
   `science-equivalence-report.*`, `performance-equivalence-report.*`, and
   `repeatability-summary.*` from the same branch executions.
-- The accepted evidence predates the July master-sync changes for WSClean
-  prediction bandwidth, imaging frequency BDA, mixed station diameters, and
-  the updated LSMTool API. Complete the targeted verification in step 0 before
-  treating the staged branch as the new science-gate baseline.
+- The July master-sync and dependency changes now have targeted integration,
+  current-only frequency-BDA, saved-reference, and controlled
+  branch-vs-master evidence. The post-sync gate retains one classified
+  EveryBeam baseline shift and one intentional WSClean channel-coverage fix;
+  neither is an unexplained current-branch regression.
 
 **Performance:** accepted for the current optimisation phase.
 
@@ -104,7 +105,7 @@ external Dask, and MPI WSClean are a separate production-readiness track.
 
 ## Immediate Task List
 
-- [ ] **Verify the recent master-sync changes.**
+- [x] **Verify the recent master-sync changes.**
   Add the focused unit and integration coverage in step 0, strengthen the two
   affected branch-vs-master option scenarios, and archive a fresh science-gate
   result before beginning the external manual-test wave.
@@ -195,10 +196,16 @@ science decision is applied to the staged branch.
   (`NUM_CHAN = [4, 8]`), WSClean `-reorder` plus facet-beam application, and a
   fully finite primary-beam FITS product. Evidence is archived under
   `docs/source/development/science_equivalence_runs/2026-07-16-frequency-only-imaging-bda-current/`.
-- [ ] Rerun and archive the full saved-reference science gate after the LSMTool
+- [x] Rerun and archive the full saved-reference science gate after the LSMTool
   and EveryBeam updates, then rerun the affected WSClean-prediction
-  branch-vs-master scenario. Update `EQUIVALENCE_REPORT.md` and the science gate
-  history with the result.
+  branch-vs-master scenario. Six saved scenarios pass strictly. The old
+  normalization cube shows a stable, edge-concentrated EveryBeam baseline
+  shift, while a same-stack `master`/current normalization comparison passes.
+  The WSClean prediction comparison diverges because `master` leaves two of
+  eight channels unpredicted by using inclusive endpoints with WSClean's
+  end-exclusive `-channel-range`; current covers all channels exactly once.
+  The raw reports and classifications are archived under the dated science
+  equivalence directories, and the stakeholder report/history are updated.
 - [ ] After science equivalence passes, benchmark the WSClean multi-band and
   frequency-BDA scenarios if performance claims will be made for them. The
   existing core performance gates remain applicable to the unchanged default

@@ -154,6 +154,14 @@ long`.
   imaging MS, WSClean completes with reorder and facet-beam application, and
   the primary-beam FITS product is fully finite. This is current-only evidence
   because two documented `master` defects prevent a valid comparison run.
+- `2026-07-16-post-master-sync-saved-reference/`: full active saved-reference
+  rerun after the LSMTool and EveryBeam updates. Six scenarios pass strictly;
+  the retained normalization failure is a stable, edge-concentrated dependency
+  baseline shift and the same-stack branch comparison passes.
+- `2026-07-16-post-master-sync-option-matrix/`: controlled same-stack
+  normalization and WSClean-prediction comparisons. Normalization passes;
+  WSClean prediction records the intentional current fix for master's missing
+  end-of-chunk channels, with the raw strict failure preserved.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones
