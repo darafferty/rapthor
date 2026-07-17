@@ -3454,22 +3454,11 @@ def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
     assert Path(operation.done_file).is_file()
 
 
-def test_image_normalize_finalizer_accepts_prefect_outputs(
-    tmp_path, fake_image_shell_operation_cls
-):
+def test_image_normalize_finalizer_accepts_prefect_outputs(tmp_path):
     field = FieldStub(tmp_path)
     operation = ImageNormalize(field, index=1)
-    operation.outputs = run_flow_for_test(
-        image_flow,
-        image_payload_from_inputs(
-            _normalize_image_input_parms(),
-            operation.pipeline_working_dir,
-            make_image_cube=True,
-            normalize_flux_scale=True,
-        ),
-        execution_config=ExecutionConfig(task_runner="sync"),
-        shell_operation_cls=fake_image_shell_operation_cls,
-    )
+    operation.outputs = _expected_normalize_image_operation_outputs(operation)
+    _materialize_image_operation_outputs(operation.outputs)
 
     operation.finalize()
 
