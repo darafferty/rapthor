@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from rapthor.lib.strategy import (
+    _validate_calibrate_strategy,
     check_and_adjust_parameters,
     set_image_strategy,
     set_selfcal_strategy,
@@ -159,12 +160,14 @@ def test_check_and_adjust_parameters_raises_error_for_missing_primary_parameters
     ("primary_parameter", "missing_parameter"),
     [
         ("do_calibrate", "do_slowgain_solve"),
+        ("do_calibrate", "do_fulljones_solve"),
         ("do_calibrate", "max_normalization_delta"),
         ("do_calibrate", "solve_min_uv_lambda"),
         ("do_calibrate", "fast_timestep_sec"),
         ("do_calibrate", "slow_timestep_sec"),
         ("do_calibrate", "fulljones_timestep_sec"),
         ("do_calibrate", "scale_normalization_delta"),
+        ("do_calibrate", "calibration_strategy"),
         ("do_check", "convergence_ratio"),
         ("do_check", "divergence_ratio"),
         ("do_check", "failure_ratio"),
@@ -195,7 +198,6 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
 @pytest.mark.parametrize(
     ("primary_parameter", "missing_parameter"),
     [
-        ("do_calibrate", "do_fulljones_solve"),
         ("do_calibrate", "target_flux"),
         ("do_calibrate", "max_directions"),
         ("do_calibrate", "regroup_model"),
@@ -272,3 +274,42 @@ def test_validate_strategy_raises_error_for_inconsistent_strategy_and_parset_set
             validate_strategy(strategy_steps, parset)
     else:
         validate_strategy(strategy_steps, parset)
+
+
+@pytest.mark.parametrize(
+    "calibration_strategy, expected_error_message",
+    [
+        (
+            {
+                "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+                "dd": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+            },
+            None,
+        ),
+        ({"di": ["fast_phase"], "dd": []}, None),
+        ({"di": ["fast_phase"]}, None),
+        ({"dd": ["fast_phase"]}, None),
+        ({"di": [], "dd": ["full_jones"]}, None),
+        (
+            {"di": ["unknown", "full_jones"], "dd": ["unknown", "fast_phase"]},
+            'Calibration strategy for mode "di" contains unrecognized solve type "unknown"',
+        ),
+        (
+            {
+                "unknown_mode": ["fast_phase", "full_jones"],
+                "di": ["fast_phase"],
+                "dd": ["full_jones"],
+            },
+            'Calibration strategy contains unrecognized calibration mode "unknown_mode"',
+        ),
+    ],
+)
+def test_validate_calibration_strategy(calibration_strategy, expected_error_message):
+    if expected_error_message:
+        with pytest.raises(
+            ValueError,
+            match=expected_error_message,
+        ):
+            _validate_calibrate_strategy(calibration_strategy)
+    else:
+        _validate_calibrate_strategy(calibration_strategy)

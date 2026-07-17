@@ -14,6 +14,7 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
   InlineJavascriptRequirement: {}
+  MultipleInputFeatureRequirement: {}
 
 {% if max_cores is not none %}
 hints:
@@ -35,6 +36,10 @@ inputs:
     doc: |
       The data column to be read from the MS files (length = 1).
     type: string
+  
+  - id: modeldatacolumn
+    type: string?
+
 
   - id: starttime
     label: Start time of each chunk
@@ -50,12 +55,6 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
-  - id: solint_fast_timestep
-    label: Fast solution interval in time
-    doc: |
-      The solution interval in number of timeslots for the fast phase solve (length =
-      n_obs * n_time_chunks).
-    type: int[]
 
   - id: maxiter
     label: Maximum iterations
@@ -74,13 +73,24 @@ inputs:
     doc: |
       The filename of the input sky model text file used for all processing except
       in DDECal solve steps (length = 1).
-    type: File
+    type: File?
 
   - id: solverlbfgs_iter
     label: LBFGS iterations per minibatch
     doc: |
       The number of iterations per minibatch in LBFGS solver (length = 1).
     type: int
+  - id: do_slowgain_solve
+    label: Perform slow gain solve
+    type: boolean
+
+  - id: solve1_mode
+    label: solve1_mode
+    type: string
+
+  - id: solve2_mode
+    label: solve2_mode
+    type: string
 
 {% if use_image_based_predict  or use_wsclean_predict %}
   - id: num_spectral_terms
@@ -176,14 +186,19 @@ inputs:
       = n_obs * n_time_chunks).
     type: string[]
 
-{% if do_slowgain_solve %}
+  - id: solint_solve1_timestep
+    label: Fast solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the fast phase solve (length =
+      n_obs * n_time_chunks).
+    type: int[]
+
   - id: solint_slow_timestep
     label: Slow solution interval in time
     doc: |
       The solution interval in number of timeslots for the slow gain solve (length =
       n_obs * n_time_chunks).
-    type: int[]
-{% endif %}
+    type: int[]?
 
   - id: idgcal_antennaconstraint
     label: Antenna constraint
@@ -203,125 +218,176 @@ inputs:
 
   - id: solint_fast_freqstep
     label: Fast solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the fast phase solve
-      (length = n_obs * n_time_chunks).
     type: int[]
-
-  - id: fast_solutions_per_direction
+  
+  - id: solint_solve1_freqstep
+    label: Solve1 freqstep
+    type: int[]
+  - id: solint_solve2_freqstep
+    label: Solve2 freqstep
+    type: int[]
+  - id: solint_solve3_freqstep
+    label: Solve3 freqstep
+    type: int[]
+  - id: solint_solve4_freqstep
+    label: Solve4 freqstep
+    type: int[]
+  
+  - id: solve1_solutions_per_direction
     label: Fast number of solutions per direction
     doc: |
       The number of solutions per direction for the fast phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: int
-
+      - type: array
+        items:
+          - type: array
+            items: 
+            - int
+          - "null"
+      
   - id: calibrator_patch_names
     label: Names of calibrator patches
     doc: |
       The names of the patches used in calibration (length = n_calibrators).
-    type: string[]
+    type: string[]?
+
+  - id: solve_directions
+    label: Direction names passed to DDECal
+    doc: |
+      The names of the directions passed to DDECal. Direction-independent solves
+      leave this unset so DP3 does not receive a solve.directions argument.
+    type: string[]?
 
   - id: calibrator_fluxes
     label: Values of calibrator flux densities
     doc: |
       The total flux densities in Jy of the patches used in calibration (length =
       n_calibrators).
-    type: float[]
+    type: float[]?
 
-  - id: output_fast_h5parm
+  - id: output_solve1_h5parm
     label: Fast output solution table
     doc: |
       The filename of the output h5parm solution table for the fast phase solve (length
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: collected_fast_h5parm
+  - id: collected_solve1_h5parm
     label: Collected fast output solution table
     doc: |
       The filename of the output collected h5parm solution table for the fast phase solve
       (length = 1).
     type: string
 
-  - id: fast_smoothness_dd_factors
+  - id: solve1_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the fast phase
       solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: float
-
-  - id: fast_smoothnessconstraint
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - float
+         
+  - id: solve1_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the fast phase solve (length = 1).
-    type: float
+    type: float?
 
-  - id: fast_smoothnessreffrequency
+  - id: solve1_smoothnessreffrequency
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the fast phase solve (length = n_obs *
       n_time_chunks).
     type: float[]
 
-  - id: fast_smoothnessrefdistance
+  - id: solve1_smoothnessrefdistance
     label: Fast smoothnessrefdistance
     doc: |
       The smoothnessrefdistance in m for the fast phase solve (length = 1).
-    type: float
+    type: float?
 
-  - id: fast_antennaconstraint
+  - id: solve1_antennaconstraint
     label: Fast antenna constraint
     doc: |
       The antenna constraint for the fast phase solve (length = 1).
-    type: string
+    type: string?
 
-  - id: solint_medium_timestep
-    label: Medium solution interval in time
-    doc: |
-      The solution interval in number of timeslots for the medium phase solve (length =
-      n_obs * n_time_chunks).
+  - id: solint_solve1_timestep
+    label: First solution interval in time
     type: int[]
 
-  - id: solint_medium_freqstep
-    label: Medium solution interval in frequency
-    doc: |
-      The solution interval in number of frequency channels for the medium phase solve
-      (length = n_obs * n_time_chunks).
+  - id: solint_solve2_timestep
+    label: Second solution interval in frequency
     type: int[]
 
-  - id: medium_solutions_per_direction
+  - id: solint_solve3_timestep
+    label: Third solution interval in frequency
+    type: int[]
+
+  - id: solint_solve4_timestep
+    label: Forth solution interval in frequency
+    type: int[]
+
+  - id: solve2_solutions_per_direction
     label: Medium number of solutions per direction
     doc: |
       The number of solutions per direction for the medium phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: int
-
-  - id: output_medium1_h5parm
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - int
+        
+  - id: solve3_solutions_per_direction
+    label: Medium number of solutions per direction
+    doc: |
+      The number of solutions per direction for the medium phase solve (length =
+      n_obs * n_calibrators * n_time_chunks).
+    type:
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - int
+  
+  - id: solve4_solutions_per_direction
+    label: Medium number of solutions per direction
+    doc: |
+      The number of solutions per direction for the medium phase solve (length =
+      n_obs * n_calibrators * n_time_chunks).
+    type:
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - int
+        
+  - id: output_solve2_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium1 phase solve (length
       = n_obs * n_time_chunks).
     type: string[]
 
-  - id: collected_medium1_h5parm
+  - id: collected_solve2_h5parm
     label: Collected medium output solution table
     doc: |
       The filename of the output collected h5parm solution table for the medium1 phase solve
       (length = 1).
     type: string
 
-  - id: combined_fast_medium1_h5parm
+  - id: combined_solve1_solve2_h5parm
     label: Combined fast and medium1 output solution table
     doc: |
       The filename of the output combined h5parm solution table for the fast phase solve
@@ -329,41 +395,68 @@ inputs:
       (length = 1).
     type: string
 
-  - id: medium_smoothness_dd_factors
+  - id: solve2_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the medium phase
       solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: float
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - float
 
-  - id: medium_smoothnessconstraint
+  - id: solve2_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
     type: float
 
-  - id: medium_smoothnessreffrequency
+  - id: solve4_smoothnessconstraint
+    label: Fast smoothnessconstraint
+    doc: |
+      The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
+    type: float
+
+  - id: solve2_smoothnessreffrequency
     label: Fast smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
       n_time_chunks).
     type: float[]
 
-  - id: medium_smoothnessrefdistance
+  - id: solve4_smoothnessreffrequency
+    label: Fast smoothnessreffrequency
+    doc: |
+      The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
+      n_time_chunks).
+    type: float[]
+
+  - id: solve2_smoothnessrefdistance
     label: Fast smoothnessrefdistance
     doc: |
       The smoothnessrefdistance in m for the medium phase solve (length = 1).
-    type: float
+    type: float?
 
-  - id: medium_antennaconstraint
+  - id: solve4_smoothnessrefdistance
+    label: Fast smoothnessrefdistance
+    doc: |
+      The smoothnessrefdistance in m for the medium phase solve (length = 1).
+    type: float?
+
+  - id: solve2_antennaconstraint
     label: Fast antenna constraint
     doc: |
       The antenna constraint for the medium phase solve (length = 1).
-    type: string
+    type: string?
+
+  - id: solve4_antennaconstraint
+    label: Fast antenna constraint
+    doc: |
+      The antenna constraint for the medium phase solve (length = 1).
+    type: string?
 
   - id: dp3_steps
     label: Steps for DP3
@@ -387,6 +480,18 @@ inputs:
     label: The filename of normalization h5parm
     doc: |
       The filename of the input flux-scale normalization h5parm (length = 1).
+    type: File?
+
+  - id: applycal_h5parm
+    label: The filename of scalar pre-apply h5parm
+    doc: |
+      The filename of the input scalar phase/gain h5parm to apply before calibration.
+    type: File?
+
+  - id: fulljones_h5parm
+    label: The filename of full-Jones pre-apply h5parm
+    doc: |
+      The filename of the input full-Jones h5parm to apply before calibration.
     type: File?
 
   - id: bda_timebase
@@ -478,15 +583,25 @@ inputs:
       Flag that enables model computation using SAGECal.
     type: boolean
 
-  - id: fast_datause
+  - id: solve1_datause
     doc: |
       DDECal datause option for the fast-phase calibration (length = 1).
-    type: string
+    type: string?
 
-  - id: medium_datause
+  - id: solve2_datause
     doc: |
       DDECal datause option for the medium-phase calibration (length = 1).
-    type: string
+    type: string?
+
+  - id: solve3_datause
+    doc: |
+      DDECal datause option for the medium-phase calibration (length = 1).
+    type: string?
+
+  - id: solve4_datause
+    doc: |
+      DDECal datause option for the medium-phase calibration (length = 1).
+    type: string?
 
   - id: stepsize
     label: Solver step size
@@ -545,89 +660,105 @@ inputs:
       The maximum number of threads to use for a job (length = 1).
     type: int
 
-{% if do_slowgain_solve %}
 # start do_slowgain_solve
-  - id: slow_datause
+  - id: solve3_datause
     doc: |
       DDECal datause option for the slow-gain calibration (length = 1).
-    type: string
+    type: string?
 
   - id: solint_slow_timestep
     label: Slow solution interval in time
     doc: |
       The solution interval in number of timeslots for the slow-gain
       solve (length = n_obs * n_freq_chunks).
-    type: int[]
+    type: int[]?
 
   - id: solint_slow_freqstep
     label: Slow solution interval in frequency
     doc: |
       The solution interval in number of frequency channels for the
       slow-gain solve (length = n_obs * n_freq_chunks).
-    type: int[]
+    type: int[]?
 
-  - id: slow_solutions_per_direction
-    label: Slow number of solutions per direction
-    doc: |
-      The number of solutions per direction for the
-      slow-gain solve (length = n_obs * n_directions * n_time_chunks).
-    type:
-      type: array
-      items:
-        type: array
-        items: int
-
-  - id: slow_smoothness_dd_factors
+  - id: solve3_smoothness_dd_factors
     label: Smoothness factors
     doc: |
       The factor by which to multiply the smoothnesscontraint for the
       slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
     type:
-      type: array
-      items:
-        type: array
-        items: float
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - float
 
-  - id: slow_smoothnessconstraint
+  - id: solve4_smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint for the
+      slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
+    type:
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - float
+
+  - id: solve3_smoothnessconstraint
     label: Slow smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the slow-gain
       solve (length = 1).
-    type: float
+    type: float?
 
-  - id: slow_antennaconstraint
+  - id: solve3_antennaconstraint
     label: Slow antenna constraint
     doc: |
       The antenna constraint for the slow-gain solve (length = 1).
-    type: string
+    type: string?
 
-  - id: slow_initialsolutions_h5parm
+  - id: solve3_initialsolutions_h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm solution table to use for the
       slow-gain initial solutions (length = 1).
     type: File?
 
-  - id: medium2_initialsolutions_h5parm
+  - id: solve3_smoothness_dd_factors
+    label: Smoothness factors
+    doc: |
+      The factor by which to multiply the smoothnesscontraint for the
+      slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
+    type:
+      - type: array
+        items:
+          - "null"
+          - type: array
+            items: 
+            - float
+
+  - id: solve4_initialsolutions_h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm solution table to use for the medium2-phase
       initial solutions (length = 1).
     type: File?
 
-  - id: collected_medium2_h5parm
+  - id: collected_solve4_h5parm
     label: Collected medium output solution table
     doc: |
       The filename of the output collected h5parm solution table for the medium2 phase solve
       (length = 1).
-    type: string
+    type: string?
 
   - id: max_normalization_delta
     label: Maximum normalization delta
     doc: |
       The maximum allowed difference in the median of the amplitudes from unity, per
       station (length = 1).
-    type: float
+    type: float?
 
   - id: scale_normalization_delta
     label: Scale normalization delta flag
@@ -635,55 +766,55 @@ inputs:
       Flag that enables scaling (with distance from the phase center) of the
       maximum allowed difference in the median of the amplitudes from unity, per
       station (length = 1).
-    type: string
+    type: string?
 
   - id: phase_center_ra
     label: Phase center RA
     doc: |
       The RA in degrees of the phase center (length = 1).
-    type: float
+    type: float?
 
   - id: phase_center_dec
     label: Phase center Dec
     doc: |
       The Dec in degrees of the phase center (length = 1).
-    type: float
+    type: float?
 
-  - id: output_slow_h5parm
+  - id: output_solve3_h5parm
     label: Slow solve output solution table
     doc: |
       The filename of the output h5parm solution table for the slow-
       gain solve (length = n_obs * n_freq_chunks).
-    type: string[]
+    type: string[]?
 
-  - id: collected_slow_h5parm
+  - id: collected_solve3_h5parm
     label: Collected slow output solution table
     doc: |
       The filename of the output collected h5parm solution table for the
       slow-gain solve (length = 1).
-    type: string
+    type: string?
 
-  - id: output_medium2_h5parm
+  - id: output_solve4_h5parm
     label: Medium output solution table
     doc: |
       The filename of the output h5parm solution table for the medium2 phase solve (length
       = n_obs * n_time_chunks).
-    type: string[]
+    type: string[]?
 
-  - id: combined_fast_medium1_medium2_h5parm
+  - id: combined_solve1_solve2_solve4_h5parm
     label: Combined fast, medium1, and medium2 output solution table
     doc: |
       The filename of the output combined h5parm solution table for the fast
       phase solve, medium1 phase solve and medium2 phase solve
       (length = 1).
-    type: string
+    type: string?
 
   - id: combined_h5parms
     label: Combined output solution table
     doc: |
       The filename of the output combined h5parm solution table for the full solve
       (length = 1).
-    type: string
+    type: string?
 
   - id: solution_combine_mode
     label: Mode for combining solutions
@@ -691,10 +822,12 @@ inputs:
       The mode used for combining the fast-phase and slow-gain solutions
       (length = 1).
     type: string?
-
-{% endif %}
-# end do_slowgain_solve
-
+  - id: solve3_mode
+    label: Solve3 mode
+    type: string
+  - id: solve4_mode
+    label: Solve4 mode
+    type: string
 {% endif %}
 # end generate_screens
 
@@ -706,7 +839,14 @@ outputs:
       - combine_solutions/outh5parm
     type: File
 {% else %}
-      - adjust_h5parm_sources/adjustedh5parm
+      - adjust_h5parm_sources_full/adjustedh5parm
+      - combine_fast_and_full_slow_h5parms/combinedh5parm
+      - adjust_h5parm_sources_slow_without_medium2/adjustedh5parm
+      - combine_fast_medium1_slow_h5parms/combinedh5parm
+      - adjust_h5parm_sources_phase/adjustedh5parm
+      - combine_fast_medium1_h5parms/combinedh5parm
+      - collect_fast_phases/outh5parm
+    pickValue: first_non_null
     type: File
   - id: fast_phase_solutions
     outputSource:
@@ -715,11 +855,7 @@ outputs:
   - id: medium1_phase_solutions
     outputSource:
       - collect_medium1_phases/outh5parm
-    type: File
-  - id: combined_solutions
-    outputSource:
-      - adjust_h5parm_sources/adjustedh5parm
-    type: File
+    type: File?
   - id: fast_phase_plots
     outputSource:
       - plot_fast_phase_solutions/plots
@@ -728,7 +864,6 @@ outputs:
     outputSource:
       - plot_medium1_phase_solutions/plots
     type: File[]
-{% if do_slowgain_solve %}
   - id: slow_gain_solutions
     outputSource:
       - collect_slow_gains/outh5parm
@@ -744,12 +879,11 @@ outputs:
   - id: medium2_phase_solutions
     outputSource:
       - collect_medium2_phases/outh5parm
-    type: File
+    type: File?
   - id: medium2_phase_plots
     outputSource:
       - plot_medium2_phase_solutions/plots
-    type: File[]
-{% endif %}
+    type: File[]?
 {% endif %}
 
 
@@ -885,9 +1019,7 @@ steps:
 {% if generate_screens %}
 # start generate_screens
 
-{% if not do_slowgain_solve %}
 # start not do_slowgain_solve (i.e., phase-only solve)
-
   - id: solve_fast_phases_only
     label: Solve for fast phases
     doc: |
@@ -905,7 +1037,7 @@ steps:
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: model_image
         source: draw_model/model_images
       - id: maxiter
@@ -914,14 +1046,15 @@ steps:
         source: idgcal_antennaconstraint
       - id: numthreads
         source: max_threads
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
     scatter: [msin, starttime, ntimes, h5parm, solint]
+    when: $(!do_slowgain_solve)
     scatterMethod: dotproduct
     out:
       - id: output_h5parm
 
-{% else %}
 # start do_slowgain_solve (i.e., full, fast phase and slow gain solve)
-
   - id: solve_fast_phases_slow_gains
     label: Solve for fast phases and slow gains
     doc: |
@@ -932,6 +1065,8 @@ steps:
       and the gain corrections for beam errors.
     run: {{ rapthor_pipeline_dir }}/steps/idgcal_solve_phase_and_gain.cwl
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: msin
         source: timechunk_filename
       - id: starttime
@@ -941,7 +1076,7 @@ steps:
       - id: h5parm
         source: output_idgcal_h5parm
       - id: solint_fast
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: solint_slow
         source: solint_slow_timestep
       - id: model_image
@@ -954,11 +1089,9 @@ steps:
         source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint_fast, solint_slow]
     scatterMethod: dotproduct
+    when: $(do_slowgain_solve)
     out:
       - id: output_h5parm
-
-{% endif %}
-# end do_slowgain_solve
 
   - id: combine_solutions
     label: Combine separate solutions
@@ -968,11 +1101,10 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_screen_h5parms.cwl
     in:
       - id: inh5parms
-{% if not do_slowgain_solve %}
-        source: solve_fast_phases_only/output_h5parm
-{% else %}
-        source: solve_fast_phases_slow_gains/output_h5parm
-{% endif %}
+        source: 
+        - solve_fast_phases_only/output_h5parm
+        - solve_fast_phases_slow_gains/output_h5parm
+        pickValue: "the_only_non_null"
       - id: outputh5parm
         source: combined_h5parms
     out:
@@ -1019,6 +1151,10 @@ steps:
         source: dp3_steps
       - id: applycal_steps
         source: applycal_steps
+      - id: applycal_h5parm
+        source: applycal_h5parm
+      - id: fulljones_h5parm
+        source: fulljones_h5parm
 {% if use_image_based_predict %}
       - id: normalize_h5parm
         source: adjust_normalize_sources/adjustedh5parm
@@ -1057,20 +1193,24 @@ steps:
       - id: sourcedb
         source: calibration_skymodel_file
       - id: directions
-        source: calibrator_patch_names
+        source: solve_directions
 {% endif %}
       - id: numthreads
         source: max_threads
+{% if not use_wsclean_predict %}
+      - id: modeldatacolumn
+        source: modeldatacolumn
+{% endif %}
       - id: solve1_h5parm
-        source: output_fast_h5parm
+        source: output_solve1_h5parm
       - id: solve1_solint
-        source: solint_fast_timestep
+        source: solint_solve1_timestep
       - id: solve1_mode
-        valueFrom: 'scalarphase'
+        source: solve1_mode
       - id: solve1_nchan
-        source: solint_fast_freqstep
+        source: solint_solve1_freqstep
       - id: solve1_solutions_per_direction
-        source: fast_solutions_per_direction
+        source: solve1_solutions_per_direction
       - id: solve1_llssolver
         source: llssolver
       - id: solve1_maxiter
@@ -1090,7 +1230,7 @@ steps:
       - id: solve1_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve1_datause
-        source: fast_datause
+        source: solve1_datause
       - id: solve1_stepsize
         source: stepsize
       - id: solve1_stepsigma
@@ -1100,15 +1240,15 @@ steps:
       - id: solve1_uvlambdamin
         source: uvlambdamin
       - id: solve1_smoothness_dd_factors
-        source: fast_smoothness_dd_factors
+        source: solve1_smoothness_dd_factors
       - id: solve1_smoothnessconstraint
-        source: fast_smoothnessconstraint
+        source: solve1_smoothnessconstraint
       - id: solve1_smoothnessreffrequency
-        source: fast_smoothnessreffrequency
+        source: solve1_smoothnessreffrequency
       - id: solve1_smoothnessrefdistance
-        source: fast_smoothnessrefdistance
+        source: solve1_smoothnessrefdistance
       - id: solve1_antennaconstraint
-        source: fast_antennaconstraint
+        source: solve1_antennaconstraint
       - id: solve1_correctfreqsmearing
         source: correctfreqsmearing
       - id: solve1_correcttimesmearing
@@ -1127,15 +1267,15 @@ steps:
         valueFrom: '[solve1.*]'
 {% endif %}
       - id: solve2_h5parm
-        source: output_medium1_h5parm
+        source: output_solve2_h5parm
       - id: solve2_solint
-        source: solint_medium_timestep
+        source: solint_solve2_timestep
       - id: solve2_mode
-        valueFrom: 'scalarphase'
+        source: solve2_mode
       - id: solve2_nchan
-        source: solint_medium_freqstep
+        source: solint_solve2_freqstep
       - id: solve2_solutions_per_direction
-        source: medium_solutions_per_direction
+        source: solve2_solutions_per_direction
       - id: solve2_llssolver
         source: llssolver
       - id: solve2_maxiter
@@ -1155,7 +1295,7 @@ steps:
       - id: solve2_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve2_datause
-        source: medium_datause
+        source: solve2_datause
       - id: solve2_stepsize
         source: stepsize
       - id: solve2_stepsigma
@@ -1165,18 +1305,18 @@ steps:
       - id: solve2_uvlambdamin
         source: uvlambdamin
       - id: solve2_smoothness_dd_factors
-        source: medium_smoothness_dd_factors
+        source: solve2_smoothness_dd_factors
       - id: solve2_smoothnessconstraint
-        source: medium_smoothnessconstraint
+        source: solve2_smoothnessconstraint
       - id: solve2_smoothnessreffrequency
-        source: medium_smoothnessreffrequency
+        source: solve2_smoothnessreffrequency
       - id: solve2_smoothnessrefdistance
-        source: medium_smoothnessrefdistance
+        source: solve2_smoothnessrefdistance
       - id: solve2_antennaconstraint
         valueFrom: '[]'
-{% if do_slowgain_solve %}
       - id: solve2_keepmodel
-        valueFrom: 'True'
+        source: do_slowgain_solve
+        valueFrom: $(self?"true":null)
       - id: solve3_reusemodel
 {% if use_image_based_predict or use_wsclean_predict %}
 {% if use_image_based_predict %}
@@ -1193,15 +1333,15 @@ steps:
       - id: solve3_applycal_steps
         source: ddecal_applycal_steps
       - id: solve3_h5parm
-        source: output_slow_h5parm
+        source: output_solve3_h5parm
       - id: solve3_solint
-        source: solint_slow_timestep
+        source: solint_solve3_timestep
       - id: solve3_mode
-        valueFrom: 'diagonal'
+        source: solve3_mode
       - id: solve3_nchan
-        source: solint_slow_freqstep
+        source: solint_solve3_freqstep
       - id: solve3_solutions_per_direction
-        source: slow_solutions_per_direction
+        source: solve3_solutions_per_direction
       - id: solve3_llssolver
         source: llssolver
       - id: solve3_maxiter
@@ -1209,7 +1349,7 @@ steps:
       - id: solve3_propagatesolutions
         source: propagatesolutions
       - id: solve3_initialsolutions_h5parm
-        source: slow_initialsolutions_h5parm
+        source: solve3_initialsolutions_h5parm
       - id: solve3_initialsolutions_soltab
         valueFrom: '[phase000,amplitude000]'
       - id: solve3_solveralgorithm
@@ -1221,7 +1361,7 @@ steps:
       - id: solve3_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve3_datause
-        source: slow_datause
+        source: solve3_datause
       - id: solve3_stepsize
         source: stepsize
       - id: solve3_stepsigma
@@ -1231,13 +1371,14 @@ steps:
       - id: solve3_uvlambdamin
         source: uvlambdamin
       - id: solve3_smoothness_dd_factors
-        source: slow_smoothness_dd_factors
+        source: solve3_smoothness_dd_factors
       - id: solve3_smoothnessconstraint
-        source: slow_smoothnessconstraint
+        source: solve3_smoothnessconstraint
       - id: solve3_antennaconstraint
-        source: slow_antennaconstraint
+        source: solve3_antennaconstraint
       - id: solve3_keepmodel
-        valueFrom: 'True'
+        source: do_slowgain_solve
+        valueFrom: $(self?"true":null)
       - id: solve4_reusemodel
 {% if use_image_based_predict or use_wsclean_predict %}
 {% if use_image_based_predict %}
@@ -1250,15 +1391,15 @@ steps:
         valueFrom: '[solve1.*]'
 {% endif %}
       - id: solve4_h5parm
-        source: output_medium2_h5parm
+        source: output_solve4_h5parm
       - id: solve4_solint
-        source: solint_medium_timestep
+        source: solint_solve4_timestep
       - id: solve4_mode
-        valueFrom: 'scalarphase'
+        source: solve4_mode
       - id: solve4_nchan
-        source: solint_medium_freqstep
+        source: solint_solve4_freqstep
       - id: solve4_solutions_per_direction
-        source: medium_solutions_per_direction
+        source: solve4_solutions_per_direction
       - id: solve4_llssolver
         source: llssolver
       - id: solve4_maxiter
@@ -1266,7 +1407,7 @@ steps:
       - id: solve4_propagatesolutions
         source: propagatesolutions
       - id: solve4_initialsolutions_h5parm
-        source: medium2_initialsolutions_h5parm
+        source: solve4_initialsolutions_h5parm
       - id: solve4_initialsolutions_soltab
         valueFrom: '[phase000]'
       - id: solve4_solveralgorithm
@@ -1278,7 +1419,7 @@ steps:
       - id: solve4_solverlbfgs_minibatches
         source: solverlbfgs_minibatches
       - id: solve4_datause
-        source: medium_datause
+        source: solve4_datause
       - id: solve4_stepsize
         source: stepsize
       - id: solve4_stepsigma
@@ -1288,23 +1429,20 @@ steps:
       - id: solve4_uvlambdamin
         source: uvlambdamin
       - id: solve4_smoothness_dd_factors
-        source: medium_smoothness_dd_factors
+        source: solve4_smoothness_dd_factors
       - id: solve4_smoothnessconstraint
-        source: medium_smoothnessconstraint
+        source: solve4_smoothnessconstraint
       - id: solve4_smoothnessreffrequency
-        source: medium_smoothnessreffrequency
+        source: solve4_smoothnessreffrequency
       - id: solve4_smoothnessrefdistance
-        source: medium_smoothnessrefdistance
+        source: solve4_smoothnessrefdistance
       - id: solve4_antennaconstraint
-        source: medium_antennaconstraint
-{% endif %}
+        source: solve4_antennaconstraint
     scatter: [msin, starttime, ntimes, maxinterval,
-              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
+              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, 
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
-{% if do_slowgain_solve %}
               solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
               solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
-{% endif %}
               minchannels]
     scatterMethod: dotproduct
     out:
@@ -1323,7 +1461,7 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm1
       - id: outputh5parm
-        source: collected_fast_h5parm
+        source: collected_solve1_h5parm
     out:
       - id: outh5parm
 
@@ -1338,7 +1476,8 @@ steps:
       - id: soltype
         valueFrom: 'phase'
       - id: root
-        valueFrom: 'fast_phase_'
+        valueFrom: |
+          $(((inputs.h5parm.basename.match(/^(.*_)[^_]*_\.h5parm$/) || [])[1]) || null)
     out:
       - id: plots
 
@@ -1352,9 +1491,12 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm2
       - id: outputh5parm
-        source: collected_medium1_h5parm
+        source: collected_solve2_h5parm
+      - id: dp3_steps
+        source: dp3_steps
     out:
       - id: outh5parm
+    when: $(inputs.dp3_steps.indexOf("solve2")!==-1)
 
   - id: plot_medium1_phase_solutions
     label: Plot medium phase solutions
@@ -1368,6 +1510,7 @@ steps:
         valueFrom: 'phase'
       - id: root
         valueFrom: 'medium1_phase_'
+    when: $(inputs.h5parm !== null)
     out:
       - id: plots
 
@@ -1383,7 +1526,7 @@ steps:
       - id: inh5parm2
         source: collect_medium1_phases/outh5parm
       - id: outh5parm
-        source: combined_fast_medium1_h5parm
+        source: combined_solve1_solve2_h5parm
       - id: mode
         valueFrom: 'p1p2_scalar'
       - id: reweight
@@ -1392,10 +1535,12 @@ steps:
         source: calibrator_patch_names
       - id: calibrator_fluxes
         source: calibrator_fluxes
+      - id: dp3_steps
+        source: dp3_steps
     out:
       - id: combinedh5parm
+    when: $(inputs.dp3_steps.indexOf("solve2") !== -1)
 
-{% if do_slowgain_solve %}
 # start do_slowgain_solve
 
   - id: collect_slow_gains
@@ -1404,11 +1549,14 @@ steps:
       This step collects all the gain solutions from the solve
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    when: $(inputs.do_slowgain_solve)
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: inh5parms
         source: solve/output_h5parm3
       - id: outputh5parm
-        source: collected_slow_h5parm
+        source: collected_solve3_h5parm
     out:
       - id: outh5parm
 
@@ -1419,6 +1567,8 @@ steps:
       smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: h5parm
         source: collect_slow_gains/outh5parm
       - id: flag
@@ -1433,6 +1583,7 @@ steps:
         source: phase_center_ra
       - id: phase_center_dec
         source: phase_center_dec
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: outh5parm
 
@@ -1442,12 +1593,15 @@ steps:
       This step makes plots of the slow phase solutions.
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
       - id: h5parm
         source: process_slow_gains/outh5parm
       - id: soltype
         valueFrom: 'phase'
       - id: root
         valueFrom: 'slow_phase_'
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: plots
 
@@ -1463,6 +1617,9 @@ steps:
         valueFrom: 'amplitude'
       - id: root
         valueFrom: 'slow_amplitude_'
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+    when: $(inputs.do_slowgain_solve)
     out:
       - id: plots
 
@@ -1476,7 +1633,12 @@ steps:
       - id: inh5parms
         source: solve/output_h5parm4
       - id: outputh5parm
-        source: collected_medium2_h5parm
+        source: collected_solve4_h5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
     out:
       - id: outh5parm
 
@@ -1492,6 +1654,11 @@ steps:
         valueFrom: 'phase'
       - id: root
         valueFrom: 'medium2_phase_'
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
     out:
       - id: plots
 
@@ -1507,7 +1674,7 @@ steps:
       - id: inh5parm2
         source: collect_medium2_phases/outh5parm
       - id: outh5parm
-        source: combined_fast_medium1_medium2_h5parm
+        source: combined_solve1_solve2_solve4_h5parm
       - id: mode
         valueFrom: 'p1p2_scalar'
       - id: reweight
@@ -1516,6 +1683,11 @@ steps:
         source: calibrator_patch_names
       - id: calibrator_fluxes
         source: calibrator_fluxes
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
     out:
       - id: combinedh5parm
 
@@ -1541,10 +1713,44 @@ steps:
         source: calibrator_patch_names
       - id: calibrator_fluxes
         source: calibrator_fluxes
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1)
     out:
       - id: combinedh5parm
 
-  - id: adjust_h5parm_sources
+  - id: combine_fast_medium1_slow_h5parms
+    label: Combine fast/medium phase and slow-gain solutions
+    doc: |
+      This step combines the phase solutions with the combined and renormalized
+      slow gains when there is no second medium-phase solve.
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: combine_fast_medium1_h5parms/combinedh5parm
+      - id: inh5parm2
+        source: collect_slow_gains/outh5parm
+      - id: outh5parm
+        source: combined_h5parms
+      - id: mode
+        valueFrom: 'p1a2'
+      - id: reweight
+        valueFrom: 'False'
+      - id: calibrator_names
+        source: calibrator_patch_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") === -1)
+    out:
+      - id: combinedh5parm
+
+  - id: adjust_h5parm_sources_full
     label: Adjust h5parm sources
     doc: |
       This step adjusts the h5parm source coordinates to match those in the sky model.
@@ -1554,13 +1760,17 @@ steps:
         source: calibration_skymodel_file
       - id: h5parm
         source: combine_fast_and_full_slow_h5parms/combinedh5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve 
+      - id: dp3_steps
+        source: dp3_steps
+      - id: directions
+        source: calibrator_patch_names
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") !== -1 && inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
-{% else %}
-# start not do_slowgain_solve
-
-  - id: adjust_h5parm_sources
+  - id: adjust_h5parm_sources_slow_without_medium2
     label: Adjust h5parm sources
     doc: |
       This step adjusts the h5parm source coordinates to match those in the sky model.
@@ -1569,11 +1779,38 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
-        source: combine_fast_medium1_h5parms/combinedh5parm
+        source: combine_fast_medium1_slow_h5parms/combinedh5parm
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: dp3_steps
+        source: dp3_steps
+      - id: directions
+        source: calibrator_patch_names
+    when: $(inputs.do_slowgain_solve && inputs.dp3_steps.indexOf("solve4") === -1 && inputs.directions.length > 1)
     out:
       - id: adjustedh5parm
 
-{% endif %}
+  - id: adjust_h5parm_sources_phase
+    label: Adjust h5parm sources
+    doc: |
+      This step adjusts the h5parm source coordinates to match those in the sky model.
+    run: {{ rapthor_pipeline_dir }}/steps/adjust_h5parm_sources.cwl
+    in:
+      - id: skymodel
+        source: calibration_skymodel_file
+      - id: h5parm
+        source:
+          - combine_fast_medium1_h5parms/combinedh5parm
+          - collect_fast_phases/outh5parm
+        pickValue: first_non_null
+      - id: do_slowgain_solve
+        source: do_slowgain_solve
+      - id: directions
+        source: calibrator_patch_names
+    when: $(!inputs.do_slowgain_solve && inputs.directions.length > 1)
+    out:
+      - id: adjustedh5parm
+
 # end do_slowgain_solve / not do_slowgain_solve
 
 {% endif %}

@@ -36,7 +36,9 @@ def expand_array(array, new_shape, new_axis_ind):
     new_array : array
         The expanded array
     """
-    new_array = np.zeros(new_shape)
+    new_array = np.zeros(new_shape, dtype=array.dtype)
+    if new_axis_ind < array.ndim and array.shape[new_axis_ind] == 1:
+        array = np.take(array, 0, axis=new_axis_ind)
     slc = [slice(None)] * len(new_shape)
     for i in range(new_shape[new_axis_ind]):
         slc[new_axis_ind] = i

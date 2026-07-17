@@ -221,11 +221,18 @@ inputs:
       The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
     type: string?
 
+  - id: prepare_data_h5parm
+    label: Filename of pre-apply h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions to pre-apply
+      before imaging (length = 1).
+    type: File?
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions (length =
-      1).
+      The filename of the h5parm file with the direction-dependent calibration
+      solutions to apply during imaging (length = 1).
     type: File?
 
   - id: fulljones_h5parm
@@ -829,6 +836,8 @@ steps:
         source: prepare_data_steps
       - id: prepare_data_applycal_steps
         source: prepare_data_applycal_steps
+      - id: prepare_data_h5parm
+        source: prepare_data_h5parm
       - id: h5parm
         source: h5parm
       - id: fulljones_h5parm

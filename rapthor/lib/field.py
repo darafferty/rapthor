@@ -31,7 +31,7 @@ from astropy.visualization.wcsaxes import SphericalCircle
 from losoto.h5parm import h5parm
 from lsmtool.facet import read_ds9_region_file, read_from_skymodel
 from matplotlib.patches import Ellipse
-from matplotlib.pyplot import figure
+from matplotlib.pyplot import close, figure
 
 
 class Field(object):
@@ -54,6 +54,8 @@ class Field(object):
         self.parset = parset.copy()
         self.working_dir = self.parset["dir_working"]
         self.ms_filenames = self.parset["mss"]
+        self.working_dir = self.parset["dir_working"]
+        self.ms_filenames = self.parset["mss"]
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset["data_colname"]
         self.use_image_based_predict = self.parset["calibration_specific"][
@@ -64,6 +66,10 @@ class Field(object):
         self.calibrate_bda_timebase = self.parset["calibration_specific"]["bda_timebase"]
         self.calibrate_bda_frequencybase = self.parset["calibration_specific"]["bda_frequencybase"]
         self.dd_interval_factor = self.parset["calibration_specific"]["dd_interval_factor"]
+        self.input_h5parm_filename = self.parset["input_h5parm"]
+        self.input_fulljones_h5parm_filename = self.parset["input_fulljones_h5parm"]
+        self.input_apply_amplitudes = False
+        self.input_apply_fulljones = False
         self.h5parm_filename = self.parset["input_h5parm"]
         self.fulljones_h5parm_filename = self.parset["input_fulljones_h5parm"]
         self.normalize_h5parm = self.parset["input_normalization_h5parm"]
@@ -151,10 +157,19 @@ class Field(object):
         self.generate_screens = False
         self.apply_fulljones = False
         self.apply_normalizations = self.normalize_h5parm is not None
+        self.dd_apply_amplitudes = False
+        self.di_apply_amplitudes = False
+        self.scalar_h5parm_directions = {}
         self.fast_phases_h5parm_filename = None
         self.medium1_phases_h5parm_filename = None
         self.medium2_phases_h5parm_filename = None
         self.slow_gains_h5parm_filename = None
+        self.dd_h5parm_filename = None
+        self.di_h5parm_filename = None
+        self.di_fast_phases_h5parm_filename = None
+        self.di_medium1_phases_h5parm_filename = None
+        self.di_medium2_phases_h5parm_filename = None
+        self.di_slow_gains_h5parm_filename = None
         self.calibration_diagnostics = []
         self.selfcal_state = None
         self.make_residual_visibilities = False
@@ -177,11 +192,14 @@ class Field(object):
         self.imaged_sources_only = False
         self.peel_bright_sources = False
         self.do_slowgain_solve = False
+        self.do_fulljones_solve = False
         self.do_normalize = False
         self.make_image_cube = False
         self.field_image_filename_prev = None
         self.field_image_filename = None
         self.disable_clean = False
+        self.calibration_strategy = None
+        self._calibration_strategy_defaulted = False
 
         # Scan MS files to get observation info
         self.scan_observations()
@@ -1702,6 +1720,70 @@ class Field(object):
         self.wcs_pixel_scale = misc.WCS_PIXEL_SCALE
         self.wcs = make_wcs(self.ra, self.dec, self.wcs_pixel_scale)
 
+    @staticmethod
+    def _normalize_h5parm_direction_name(direction_name):
+        if isinstance(direction_name, bytes):
+            direction_name = direction_name.decode()
+        direction_name = str(direction_name)
+        if direction_name.startswith("[") and direction_name.endswith("]"):
+            return direction_name[1:-1]
+        return direction_name
+
+    def _get_scalar_h5parm_directions(self, solset, soltab_name):
+        soltab = solset.getSoltab(soltab_name)
+        if "dir" not in soltab.getAxesNames():
+            return []
+
+        positions = {}
+        try:
+            for source_name, source_position in solset.obj.source[:]:
+                name = self._normalize_h5parm_direction_name(source_name)
+                positions[name] = {
+                    "ra": float(np.degrees(source_position[0])),
+                    "dec": float(np.degrees(source_position[1])),
+                }
+        except (AttributeError, KeyError, TypeError, ValueError):
+            positions = {}
+
+        directions = []
+        for direction_name in soltab.getAxisValues("dir"):
+            name = self._normalize_h5parm_direction_name(direction_name)
+            direction = {"name": name, "ra": None, "dec": None}
+            direction.update(positions.get(name, {}))
+            directions.append(direction)
+        return directions
+
+    def _scan_scalar_h5parm(self, filename):
+        filename = str(filename)
+        with h5parm(filename) as solutions:
+            if "coefficients000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("coefficients000")
+                if "phase_coefficients" not in solset.getSoltabNames():
+                    raise ValueError(
+                        f"The screen solutions file {filename!r} must "
+                        "have a phase_coefficients soltab."
+                    )
+                self.scalar_h5parm_directions[filename] = self._get_scalar_h5parm_directions(
+                    solset, "phase_coefficients"
+                )
+                return "amplitude1_coefficients" in solset.getSoltabNames()
+            elif "sol000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("sol000")
+                if "phase000" not in solset.getSoltabNames():
+                    raise ValueError(
+                        f"The direction-dependent solutions file {filename!r} must "
+                        "have a phase000 soltab."
+                    )
+                self.scalar_h5parm_directions[filename] = self._get_scalar_h5parm_directions(
+                    solset, "phase000"
+                )
+                return "amplitude000" in solset.getSoltabNames()
+            else:
+                raise ValueError(
+                    f"The direction-dependent solutions file {filename!r} must "
+                    "have the solutions stored in the sol000 or coefficients000 solset."
+                )
+
     def scan_h5parms(self):
         """
         Scans the calibration h5parms
@@ -1709,37 +1791,28 @@ class Field(object):
         The basic structure is checked for correctness and for the presence of
         amplitude solutions (which may require different processing steps).
         """
+        self.dd_apply_amplitudes = False
+        self.di_apply_amplitudes = False
+        self.scalar_h5parm_directions = {}
+
         if self.h5parm_filename is not None:
-            with h5parm(self.h5parm_filename) as solutions:
-                if "coefficients000" in solutions.getSolsetNames():
-                    solset = solutions.getSolset("coefficients000")
-                    if "phase_coefficients" not in solset.getSoltabNames():
-                        raise ValueError(
-                            f"The screen solutions file {self.h5parm_filename!r} must "
-                            "have a phase_coefficients soltab."
-                        )
-                    if "amplitude1_coefficients" in solset.getSoltabNames():
-                        self.apply_amplitudes = True
-                    else:
-                        self.apply_amplitudes = False
-                elif "sol000" in solutions.getSolsetNames():
-                    solset = solutions.getSolset("sol000")
-                    if "phase000" not in solset.getSoltabNames():
-                        raise ValueError(
-                            f"The direction-dependent solutions file {self.h5parm_filename!r} must "
-                            "have a phase000 soltab."
-                        )
-                    if "amplitude000" in solset.getSoltabNames():
-                        self.apply_amplitudes = True
-                    else:
-                        self.apply_amplitudes = False
-                else:
-                    raise ValueError(
-                        f"The direction-dependent solutions file {self.h5parm_filename!r} must "
-                        "have the solutions stored in the sol000 or coefficients000 solset."
-                    )
+            self.apply_amplitudes = self._scan_scalar_h5parm(self.h5parm_filename)
         else:
             self.apply_amplitudes = False
+        if self.dd_h5parm_filename is not None:
+            if self.dd_h5parm_filename == self.h5parm_filename:
+                self.dd_apply_amplitudes = self.apply_amplitudes
+            else:
+                self.dd_apply_amplitudes = self._scan_scalar_h5parm(self.dd_h5parm_filename)
+        elif self.h5parm_filename is not None and self.di_h5parm_filename is None:
+            self.dd_apply_amplitudes = self.apply_amplitudes
+        if self.di_h5parm_filename is not None:
+            if self.di_h5parm_filename == self.h5parm_filename:
+                self.di_apply_amplitudes = self.apply_amplitudes
+            else:
+                self.di_apply_amplitudes = self._scan_scalar_h5parm(self.di_h5parm_filename)
+        if self.h5parm_filename == self.input_h5parm_filename:
+            self.input_apply_amplitudes = self.apply_amplitudes
 
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
@@ -1760,6 +1833,8 @@ class Field(object):
                     )
         else:
             self.apply_fulljones = False
+        if self.fulljones_h5parm_filename == self.input_fulljones_h5parm_filename:
+            self.input_apply_fulljones = self.apply_fulljones
 
     def check_selfcal_progress(self):
         """
@@ -1959,8 +2034,13 @@ class Field(object):
 
         # Update field and sector dicts with the parameters for this cycle
         self.__dict__.update(step_dict)
+        if "calibration_strategy" not in step_dict:
+            self.calibration_strategy = None
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
+
+        # Update calibration strategy for this cycle
+        self.set_calibration_strategy()
 
         # Update the sky models
         if index == 1:
@@ -1998,15 +2078,32 @@ class Field(object):
             target_number = None
             calibrator_max_dist_deg = None
 
-        self.update_skymodels(
-            index,
-            step_dict["regroup_model"],
-            target_flux=target_flux,
-            target_number=target_number,
-            calibrator_max_dist_deg=calibrator_max_dist_deg,
-            combine_current_and_intial=final,
+        reuse_solution_layout = (
+            index > 1
+            and not self.do_calibrate
+            and self.do_image
+            and (
+                self.dd_h5parm_filename is not None
+                or self.di_h5parm_filename is not None
+                or self.h5parm_filename is not None
+            )
         )
-        self.remove_skymodels()  # clean up sky models to reduce memory usage
+        if reuse_solution_layout:
+            self.log.info(
+                "Reusing the existing calibration patch layout for image-only cycle %s "
+                "because previous scalar solutions will be applied.",
+                index,
+            )
+        else:
+            self.update_skymodels(
+                index,
+                step_dict["regroup_model"],
+                target_flux=target_flux,
+                target_number=target_number,
+                calibrator_max_dist_deg=calibrator_max_dist_deg,
+                combine_current_and_intial=final,
+            )
+            self.remove_skymodels()  # clean up sky models to reduce memory usage
 
         # Check whether any sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
@@ -2040,6 +2137,31 @@ class Field(object):
 
         # check whether images are to be compressed
         self.compress_images = self.compress_final_images if final else self.compress_selfcal_images
+
+    def set_calibration_strategy(self):
+        """
+        Sets the calibration strategy for the current cycle.
+
+        If no calibration_strategy is specified in the strategy file (or if it is set to None) then
+        the default strategy is used as determined by the legacy parameters:
+           - `do_fulljones_solve` set to True triggers DI calibration after DD
+           - `do_slowgain_solve` set to True triggers a slow gain solve after the main solve
+        """
+        self._calibration_strategy_defaulted = not bool(self.calibration_strategy)
+        if not self.calibration_strategy:
+            # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
+            self.calibration_strategy = {
+                # DD is always done first in the legacy strategy to support the use case that requires
+                # removing DD effects before doing a DI solve
+                "dd": [
+                    "fast_phase",  # Always do a fast DD solve
+                    "medium_phase",  # Always do a medium DD solve
+                    *(
+                        ["slow_gains"] if self.do_slowgain_solve else []
+                    ),  # Only do a slow DD solve if do_slowgain_solve is True in the strategy file
+                ],
+                "di": [*(["full_jones"] if self.do_fulljones_solve else [])],
+            }
 
     def get_matplotlib_patch(self, wcs=None):
         """
@@ -2279,3 +2401,4 @@ class Field(object):
         ax.legend(loc="upper left")
         ax.grid()
         fig.savefig(os.path.join(self.working_dir, "plots", output_filename))
+        close(fig)

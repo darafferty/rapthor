@@ -79,7 +79,10 @@ def parse_cmd_args_from_logs(log_path, cmd):
     # Join continuation lines, drop backslashes, split into tokens
     tokens = match.group(1).replace("\\\n", " ")
     if "=" in tokens:
-        return {k: v for k, _, v in (t.partition("=") for t in tokens.split() if "=" in t)}
+        return {
+            k.strip("'\""): v.strip("'\"")
+            for k, _, v in (t.partition("=") for t in tokens.split() if "=" in t)
+        }
     else:
         # Avoid parsing and return the full string
         return tokens

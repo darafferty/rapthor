@@ -260,6 +260,16 @@ run_tests:
     OMP_NUM_THREADS: "1"
     OPENBLAS_NUM_THREADS: "1"
     VECLIB_MAXIMUM_THREADS: "1"
+.run_integration_tests:
+  extends: .run_tests
+  stage: run_integration_tests
+  variables:
+    BLIS_NUM_THREADS: "1"
+    MKL_NUM_THREADS: "1"
+    NUMEXPR_MAX_THREADS: "1"
+    OMP_NUM_THREADS: "1"
+    OPENBLAS_NUM_THREADS: "1"
+    VECLIB_MAXIMUM_THREADS: "1"
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     when: always

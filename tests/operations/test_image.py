@@ -186,6 +186,7 @@ class TestImage:
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
         field.use_mpi = use_mpi
+        field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = parallel_gridding_tasks
         field.parset["cluster_specific"]["max_cores"] = max_cores
@@ -222,8 +223,9 @@ class TestImage:
         rendered CWL workflow for the image step.
         """
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
+        field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
-        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file, num_patches=50)
         image = _initialize_operation(Image(field, index=1), do_predict=False, use_facets=True)
         image.setup()  # renders subpipeline_parset.cwl
 
@@ -236,6 +238,23 @@ class TestImage:
         assert image_step_inputs.get("name") == "image_name"
         assert image_step_inputs.get("shared_facet_reads") == "shared_facet_rw"
         assert image_step_inputs.get("shared_facet_writes") == "shared_facet_rw"
+        assert image.input_parms["shared_facet_rw"] is shared_facet_rw
+
+    @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
+    def test_set_parset_parameters_disables_facets_without_dd_scalar_h5parm(
+        self, field, h5parm_file, solution_attr
+    ):
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        setattr(field, solution_attr, str(h5parm_file))
+        if solution_attr == "di_h5parm_filename":
+            field.h5parm_filename = str(h5parm_file)
+        else:
+            field.h5parm_filename = None
+
+        image = Image(field, index=1)
+        image.set_parset_parameters()
+
+        assert image.use_facets is False
 
     @pytest.mark.parametrize(
         "cwl_workflow",
@@ -458,6 +477,590 @@ class TestImage:
         assert derived_pol == expected_pol, (
             f"Expected polarization '{expected_pol}', got '{derived_pol}'"
         )
+
+    @pytest.mark.parametrize(
+        "calibration_strategy, apply_none, apply_normalizations, apply_amplitudes, expected_steps",
+        [
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
+                True,
+                True,
+                False,
+                None,
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]},
+                False,
+                False,
+                False,
+                "[fastphase,mediumphase,fulljones]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"]},
+                False,
+                True,
+                False,
+                "[fastphase,mediumphase,normalization]",
+            ),
+            (
+                {"dd": ["slow_gains"]},
+                False,
+                True,
+                True,
+                "[slowgain,normalization]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
+                False,
+                True,
+                True,
+                "[fastphase,mediumphase,slowgain,fulljones,normalization]",
+            ),
+            (
+                {},
+                False,
+                True,
+                False,
+                "[normalization]",
+            ),
+            (
+                {},
+                False,
+                False,
+                False,
+                None,
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase"], "di": []},
+                False,
+                True,
+                False,
+                "[fastphase,mediumphase,normalization]",
+            ),
+            (
+                {"dd": ["medium_phase", "fast_phase"]},
+                False,
+                True,
+                False,
+                "[mediumphase,fastphase,normalization]",
+            ),
+            (
+                {"dd": ["slow_gains", "fast_phase"], "di": ["full_jones"]},
+                False,
+                True,
+                True,
+                "[slowgain,fastphase,fulljones,normalization]",
+            ),
+            (
+                {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
+                False,
+                True,
+                True,
+                "[fulljones,fastphase,slowgain,normalization]",
+            ),
+            # Cases with apply_normalizations=False: normalization step should be absent
+            (
+                {"dd": ["fast_phase", "medium_phase"]},
+                False,
+                False,
+                False,
+                "[fastphase,mediumphase]",
+            ),
+            (
+                {"dd": ["slow_gains"]},
+                False,
+                False,
+                True,
+                "[slowgain]",
+            ),
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"], "di": ["full_jones"]},
+                False,
+                False,
+                True,
+                "[fastphase,mediumphase,slowgain,fulljones]",
+            ),
+            (
+                {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
+                False,
+                False,
+                True,
+                "[fulljones,fastphase,slowgain]",
+            ),
+            # DI-only cases (no DD solutions)
+            (
+                {"di": ["full_jones"]},
+                False,
+                True,
+                False,
+                "[fulljones,normalization]",
+            ),
+            (
+                {"di": ["full_jones"]},
+                False,
+                False,
+                False,
+                "[fulljones]",
+            ),
+            # DI slow_gains cases
+            (
+                {"di": ["slow_gains"]},
+                False,
+                True,
+                True,
+                "[slowgain,normalization]",
+            ),
+            (
+                {"di": ["slow_gains"]},
+                False,
+                False,
+                True,
+                "[slowgain]",
+            ),
+            (
+                {"di": ["fast_phase", "medium_phase", "slow_gains"]},
+                False,
+                False,
+                True,
+                "[fastphase]",
+            ),
+            (
+                {"di": ["slow_gains", "full_jones"]},
+                False,
+                True,
+                True,
+                "[slowgain,fulljones,normalization]",
+            ),
+            (
+                {"di": ["slow_gains", "full_jones"]},
+                False,
+                False,
+                True,
+                "[slowgain,fulljones]",
+            ),
+            # Edge case: slow_gains in strategy but no amplitude solutions present
+            # (e.g. the slow-gain solve failed). slowgain must be omitted to prevent
+            # DP3 from crashing when amplitude000 is absent from the H5parm.
+            (
+                {"dd": ["fast_phase", "medium_phase", "slow_gains"]},
+                False,
+                False,
+                False,
+                "[fastphase,mediumphase]",
+            ),
+        ],
+    )
+    def test_build_applycal_steps(
+        self,
+        field,
+        h5parm_file,
+        calibration_strategy,
+        apply_none,
+        apply_normalizations,
+        apply_amplitudes,
+        expected_steps,
+    ):
+        """Test that _build_applycal_steps returns the correct DP3 step string."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.use_facets = False
+        image.apply_none = apply_none
+        image.apply_normalizations = apply_normalizations
+        field.calibration_strategy = calibration_strategy
+
+        image.apply_amplitudes = apply_amplitudes
+
+        # Create a temporary fake normalize/fulljones h5parm so CWLFile doesn't fail,
+        # but only when the respective calibration was actually performed.
+        if apply_normalizations:
+            field.normalize_h5parm = str(h5parm_file)
+        if "full_jones" in calibration_strategy.get("di", []):
+            field.fulljones_h5parm_filename = str(h5parm_file)
+
+        steps, _, _ = image._build_applycal_steps()
+        assert steps == expected_steps
+
+    @pytest.mark.parametrize(
+        "apply_amplitudes, expected_steps",
+        [
+            (False, "[fastphase]"),
+            (True, "[fastphase,slowgain]"),
+        ],
+    )
+    def test_build_applycal_steps_image_only_uses_supplied_scalar_h5parm(
+        self, field, h5parm_file, tmp_path, apply_amplitudes, expected_steps
+    ):
+        """Image-only runs use supplied scalar solutions, not previous-cycle products."""
+        previous_h5parm = tmp_path / "previous-field-solutions.h5"
+        previous_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=previous_h5parm)
+        field.parset["input_h5parm"] = str(h5parm_file)
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(previous_h5parm)
+        field.dd_h5parm_filename = str(previous_h5parm)
+        field.input_apply_amplitudes = apply_amplitudes
+        field.apply_amplitudes = not apply_amplitudes
+        field.calibration_strategy = {
+            "dd": ["fast_phase", "medium_phase", "slow_gains"],
+            "di": [],
+        }
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.use_facets = False
+        image.apply_amplitudes = not apply_amplitudes
+        image.apply_fulljones = False
+        image.apply_normalizations = False
+
+        steps, fulljones_h5parm, input_normalize_h5parm = image._build_applycal_steps()
+
+        assert steps == expected_steps
+        assert image._selected_applycal_h5parm == str(h5parm_file)
+        assert fulljones_h5parm is None
+        assert input_normalize_h5parm is None
+
+    def test_build_applycal_steps_image_only_uses_supplied_fulljones_h5parm(
+        self, field, h5parm_file, tmp_path
+    ):
+        """Image-only runs use supplied full-Jones solutions, not previous-cycle products."""
+        previous_fulljones_h5parm = tmp_path / "previous-fulljones-solutions.h5"
+        previous_fulljones_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.parset["input_h5parm"] = None
+        field.parset["input_fulljones_h5parm"] = str(h5parm_file)
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = None
+        field.dd_h5parm_filename = None
+        field.di_h5parm_filename = None
+        field.fulljones_h5parm_filename = str(previous_fulljones_h5parm)
+        field.apply_fulljones = True
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.use_facets = False
+        image.apply_amplitudes = False
+        image.apply_fulljones = True
+        image.apply_normalizations = False
+
+        steps, fulljones_h5parm, input_normalize_h5parm = image._build_applycal_steps()
+
+        assert steps == "[fulljones]"
+        assert image._selected_applycal_h5parm is None
+        assert fulljones_h5parm["path"] == str(h5parm_file)
+        assert input_normalize_h5parm is None
+
+    def test_build_applycal_steps_image_only_facets_select_supplied_h5parm(
+        self, field, h5parm_file, tmp_path
+    ):
+        """Facet image-only runs pass the scalar H5parm to WSClean without preapply."""
+        previous_h5parm = tmp_path / "previous-field-solutions.h5"
+        previous_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=previous_h5parm)
+        field.parset["input_h5parm"] = str(h5parm_file)
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(previous_h5parm)
+        field.dd_h5parm_filename = str(previous_h5parm)
+        field.input_apply_amplitudes = True
+        field.apply_amplitudes = True
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.use_facets = True
+        image.apply_amplitudes = True
+        image.apply_fulljones = False
+        image.apply_normalizations = False
+
+        steps, fulljones_h5parm, input_normalize_h5parm = image._build_applycal_steps()
+
+        assert steps is None
+        assert image._selected_applycal_h5parm is None
+        assert image._selected_imaging_h5parm == str(h5parm_file)
+        assert fulljones_h5parm is None
+        assert input_normalize_h5parm is None
+
+    def test_set_input_parameters_image_only_uses_supplied_scalar_h5parm(
+        self, field, h5parm_file, tmp_path
+    ):
+        """Image-only inputs include applycal for supplied, not previous-cycle, solutions."""
+        previous_h5parm = tmp_path / "previous-field-solutions.h5"
+        previous_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=previous_h5parm)
+        field.parset["input_h5parm"] = str(h5parm_file)
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(previous_h5parm)
+        field.dd_h5parm_filename = str(previous_h5parm)
+        field.input_apply_amplitudes = False
+        field.apply_amplitudes = True
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=1)
+        image.use_facets = False
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["prepare_data_applycal_steps"] == "[fastphase]"
+        assert "applycal" in image.input_parms["prepare_data_steps"]
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(h5parm_file)
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+
+    def test_set_input_parameters_image_only_uses_supplied_h5parm_direction(
+        self, field, h5parm_file, tmp_path
+    ):
+        """Image-only preapply uses the supplied H5parm direction nearest to the sector."""
+        previous_h5parm = tmp_path / "previous-field-solutions.h5"
+        previous_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=previous_h5parm)
+        sector = field.imaging_sectors[0]
+        field.parset["input_h5parm"] = str(h5parm_file)
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(previous_h5parm)
+        field.dd_h5parm_filename = str(previous_h5parm)
+        field.input_apply_amplitudes = False
+        field.apply_amplitudes = True
+        field.calibration_strategy = {}
+        field.dde_method = "single"
+        field.scalar_h5parm_directions = {
+            str(h5parm_file): [
+                {"name": "far_direction", "ra": sector.ra + 5.0, "dec": sector.dec},
+                {"name": "nearest_solution", "ra": sector.ra, "dec": sector.dec},
+            ]
+        }
+
+        image = Image(field=field, index=1)
+        image.use_facets = False
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["central_patch_name"] == ["nearest_solution"]
+
+    def test_build_applycal_steps_first_cycle_image_only_ignores_stale_h5parm(
+        self, field, h5parm_file
+    ):
+        """First-cycle image-only runs without inputs do not use stale field solutions."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.parset["input_h5parm"] = None
+        field.parset["input_fulljones_h5parm"] = None
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.fulljones_h5parm_filename = str(h5parm_file)
+        field.apply_amplitudes = True
+        field.apply_fulljones = True
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.apply_amplitudes = True
+        image.apply_fulljones = True
+        image.apply_normalizations = False
+
+        steps, fulljones_h5parm, input_normalize_h5parm = image._build_applycal_steps()
+
+        assert steps is None
+        assert image.use_facets is False
+        assert image._selected_applycal_h5parm is None
+        assert image._selected_fulljones_h5parm is None
+        assert fulljones_h5parm is None
+        assert input_normalize_h5parm is None
+
+    def test_set_input_parameters_later_image_only_uses_previous_cycle_h5parm(
+        self, field, h5parm_file, tmp_path
+    ):
+        """Later image-only cycles apply the current field solution from earlier calibration."""
+        input_h5parm = tmp_path / "input-field-solutions.h5"
+        input_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.parset["input_h5parm"] = str(input_h5parm)
+        field.dde_method = "single"
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.input_apply_amplitudes = False
+        field.apply_amplitudes = True
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=2)
+        image.use_facets = False
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["prepare_data_applycal_steps"] == "[fastphase,slowgain]"
+        assert "applycal" in image.input_parms["prepare_data_steps"]
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(h5parm_file)
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+
+    def test_build_applycal_steps_later_image_only_prefers_dd_and_includes_fulljones(
+        self, field, h5parm_file, tmp_path
+    ):
+        """Later image-only cycles prefer DD scalar solutions and still include full-Jones."""
+        di_h5parm = tmp_path / "di-solutions.h5"
+        fulljones_h5parm = tmp_path / "fulljones-solutions.h5"
+        for path in (di_h5parm, fulljones_h5parm):
+            path.touch()
+
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.parset["input_h5parm"] = None
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(di_h5parm)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.di_h5parm_filename = str(di_h5parm)
+        field.fulljones_h5parm_filename = str(fulljones_h5parm)
+        field.apply_amplitudes = False
+        field.apply_fulljones = True
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=2)
+        image.use_facets = False
+        image.apply_fulljones = True
+        image.apply_normalizations = False
+
+        steps, fulljones_h5parm_input, input_normalize_h5parm = image._build_applycal_steps()
+
+        assert steps == "[fastphase,fulljones]"
+        assert image._selected_applycal_h5parm == str(h5parm_file)
+        assert fulljones_h5parm_input["path"] == str(fulljones_h5parm)
+        assert input_normalize_h5parm is None
+
+    def test_set_input_parameters_later_image_only_facets_preapply_di_slow_and_image_dd(
+        self, field, h5parm_file, tmp_path
+    ):
+        """Later image-only facet cycles preapply DI diagonal gains and image with DD."""
+        di_h5parm = tmp_path / "di-solutions.h5"
+        di_slow_h5parm = tmp_path / "di-solutions-slow-gain.h5"
+        dd_fast_h5parm = tmp_path / "field-solutions-fast-phase.h5"
+        for path in (di_h5parm, di_slow_h5parm, dd_fast_h5parm):
+            path.touch()
+
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file, num_patches=50)
+        field.parset["input_h5parm"] = None
+        field.dde_method = "full"
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.di_h5parm_filename = str(di_h5parm)
+        field.fast_phases_h5parm_filename = str(dd_fast_h5parm)
+        field.di_slow_gains_h5parm_filename = str(di_slow_h5parm)
+        field.dd_apply_amplitudes = False
+        field.di_apply_amplitudes = True
+        field.apply_amplitudes = False
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=2)
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.use_facets is True
+        assert image.input_parms["prepare_data_applycal_steps"] == "[slowgain]"
+        assert "applycal" in image.input_parms["prepare_data_steps"]
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(di_h5parm)
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+
+    def test_set_input_parameters_later_image_only_facets_do_not_preapply_dd_slow(
+        self, field, h5parm_file, tmp_path
+    ):
+        """DD diagonal gains are passed to facet imaging instead of being preapplied."""
+        slow_h5parm = tmp_path / "field-solutions-slow-gain.h5"
+        slow_h5parm.touch()
+
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file, num_patches=50)
+        field.parset["input_h5parm"] = None
+        field.dde_method = "full"
+        field.do_calibrate = False
+        field.do_image = True
+        field.h5parm_filename = str(h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.slow_gains_h5parm_filename = str(slow_h5parm)
+        field.dd_apply_amplitudes = True
+        field.apply_amplitudes = True
+        field.calibration_strategy = {}
+
+        image = Image(field=field, index=2)
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.use_facets is True
+        assert image.input_parms["prepare_data_applycal_steps"] is None
+        assert "applycal" not in image.input_parms["prepare_data_steps"]
+        assert image.input_parms["prepare_data_h5parm"] is None
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+        assert image.input_parms["soltabs"] == "amplitude000,phase000"
+
+    def test_build_applycal_steps_prefers_dd_scalar_h5parm_when_mixed(
+        self, field, h5parm_file, tmp_path
+    ):
+        """DD scalar products are selected over DI scalar products when both exist."""
+        di_h5parm = tmp_path / "di-solutions.h5"
+        di_h5parm.touch()
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.di_h5parm_filename = str(di_h5parm)
+        field.calibration_strategy = {
+            "di": ["fast_phase"],
+            "dd": ["fast_phase", "slow_gains"],
+        }
+
+        image = Image(field=field, index=1)
+        image.use_facets = False
+        image.set_parset_parameters()
+        image.apply_amplitudes = True
+
+        steps, _, _ = image._build_applycal_steps()
+
+        assert steps == "[fastphase,slowgain]"
+        assert image._selected_applycal_h5parm == str(h5parm_file)
+
+    def test_build_applycal_steps_uses_dd_h5parm_for_facets_without_preapply(
+        self, field, h5parm_file
+    ):
+        """Facet imaging receives the DD h5parm but does not preapply DD solves."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+
+        image = Image(field=field, index=1)
+        image.set_parset_parameters()
+        image.use_facets = True
+        image.apply_amplitudes = True
+        image.apply_normalizations = False
+
+        steps, _, _ = image._build_applycal_steps()
+
+        assert steps is None
+        assert image._selected_applycal_h5parm is None
+        assert image._selected_imaging_h5parm == str(h5parm_file)
+
+    def test_set_input_parameters_dd_slow_only_facets_get_h5parm(self, field, h5parm_file):
+        """Single DD slow-gain phase solves still provide an h5parm to WSClean facets."""
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.dd_h5parm_filename = str(h5parm_file)
+        field.calibration_strategy = {"dd": ["slow_gains"]}
+        field.apply_amplitudes = False
+
+        image = Image(field=field, index=1)
+        image.use_facets = True
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["prepare_data_applycal_steps"] is None
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
 
     def test_image_operation_sets_mask_file(
         self, field, h5parm_file, monkeypatch, expected_image_output
