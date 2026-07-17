@@ -27,6 +27,7 @@ def representative_image_payload(work_dir: object = "/work/image_1") -> dict:
                         "freqstep": 2,
                         "timestep": 3,
                         "maxinterval": None,
+                        "minchannels": 1,
                     }
                 ],
                 "image_cube_specs": [

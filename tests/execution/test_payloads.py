@@ -136,6 +136,7 @@ def test_validate_image_payload_validates_nested_sector_contract():
     validated = validate_image_payload(payload)
 
     assert validated["sectors"][0]["prepare_tasks"][0]["msout"] == "obs.prep.ms"
+    assert validated["sectors"][0]["prepare_tasks"][0]["minchannels"] == 1
     assert validated["sectors"][0]["image_cube_specs"][0]["filename"] == (
         "sector_1_I_freq_cube.fits"
     )

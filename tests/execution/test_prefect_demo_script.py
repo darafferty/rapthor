@@ -1,5 +1,8 @@
 import configparser
 import importlib.util
+import json
+import os
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,6 +59,42 @@ def test_default_run_dir_is_unique():
     module = load_demo_script()
 
     assert module._default_run_dir() != module._default_run_dir()
+
+
+def test_loading_demo_script_does_not_import_prefect(tmp_path):
+    script = tmp_path / "import_demo.py"
+    script.write_text(
+        "\n".join(
+            [
+                "import importlib.util",
+                "import json",
+                "import sys",
+                f"path = {str(SCRIPT_PATH)!r}",
+                "spec = importlib.util.spec_from_file_location('demo_import_check', path)",
+                "module = importlib.util.module_from_spec(spec)",
+                "sys.modules[spec.name] = module",
+                "spec.loader.exec_module(module)",
+                "print(json.dumps({'prefect_imported': 'prefect' in sys.modules}))",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env.pop("PREFECT_API_URL", None)
+
+    completed = subprocess.run(
+        [sys.executable, script],
+        cwd=Path(__file__).parents[2],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=60,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert json.loads(completed.stdout)["prefect_imported"] is False
 
 
 def test_working_dir_override_defaults_to_run_dir(tmp_path):
@@ -241,7 +280,7 @@ def test_demo_main_passes_benchmark_resources_to_dask_and_runtime_parset(monkeyp
 
     monkeypatch.setattr(module, "_wait_for_prefect", lambda api_url, timeout_seconds: None)
     monkeypatch.setattr(module, "_start_local_dask_cluster", fake_start_local_dask_cluster)
-    monkeypatch.setattr(module, "pipeline_flow", fake_pipeline_flow)
+    monkeypatch.setattr(module, "_run_pipeline_flow", fake_pipeline_flow)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -371,6 +410,9 @@ def test_started_prefect_server_disables_server_analytics(monkeypatch, tmp_path)
     monkeypatch.setattr(module, "_is_prefect_healthy", lambda api_url: False)
     monkeypatch.setattr(module, "_wait_for_prefect", lambda api_url, timeout_seconds: None)
     monkeypatch.setattr(module.subprocess, "Popen", fake_popen)
+    prefect_home = tmp_path / "prefect-home"
+    prefect_home.mkdir()
+    monkeypatch.setattr(module, "mkdtemp", lambda **kwargs: str(prefect_home))
 
     server = module._start_prefect_server(
         "0.0.0.0",
@@ -380,7 +422,9 @@ def test_started_prefect_server_disables_server_analytics(monkeypatch, tmp_path)
         timeout_seconds=5,
     )
 
-    assert isinstance(server, FakeServer)
+    assert isinstance(server, module.StartedPrefectServer)
+    assert server.process.__class__ is FakeServer
+    assert server.prefect_home == prefect_home
     assert popen_calls[0][0] == [
         "prefect",
         "server",
@@ -390,4 +434,37 @@ def test_started_prefect_server_disables_server_analytics(monkeypatch, tmp_path)
         "--port",
         "4200",
     ]
+    assert popen_calls[0][1]["env"][module.PREFECT_HOME_ENV] == str(prefect_home)
     assert popen_calls[0][1]["env"][module.PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "false"
+    assert popen_calls[0][1]["env"][module.PREFECT_UI_API_URL_ENV] == "/api"
+
+
+def test_keep_prefect_server_open_waits_for_ctrl_c_and_cleans_state(monkeypatch, tmp_path):
+    module = load_demo_script()
+    prefect_home = tmp_path / "prefect-home"
+    prefect_home.mkdir()
+    calls = []
+
+    class FakeProcess:
+        pid = 1234
+
+        def wait(self, timeout=None):
+            calls.append(("wait", timeout))
+            if timeout is None:
+                raise KeyboardInterrupt
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            calls.append(("terminate", None))
+
+        def kill(self):
+            calls.append(("kill", None))
+
+    server = module.StartedPrefectServer(FakeProcess(), prefect_home)
+
+    module._keep_prefect_server_open(server)
+
+    assert calls == [("wait", None), ("terminate", None), ("wait", 10)]
+    assert not prefect_home.exists()
