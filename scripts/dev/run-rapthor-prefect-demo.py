@@ -6,23 +6,36 @@ from __future__ import annotations
 import argparse
 import configparser
 import os
+import shutil
 import subprocess
 import sys
 import time
 import uuid
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
+from tempfile import mkdtemp
 from typing import Optional
 from urllib.error import URLError
 from urllib.request import urlopen
 
 from rapthor.execution.config import COMMAND_PROFILE_MODES, TASK_RUNNERS, ExecutionConfig
-from rapthor.execution.pipeline.flow import pipeline_flow
-from rapthor.execution.runtime_bootstrap import PREFECT_SERVER_ANALYTICS_ENABLED_ENV
-from rapthor.execution.task_runner import start_local_dask_cluster
+from rapthor.execution.runtime_bootstrap import (
+    PREFECT_HOME_ENV,
+    PREFECT_SERVER_ANALYTICS_ENABLED_ENV,
+)
 from rapthor.lib.parset import parset_read
 from rapthor.lib.parset_paths import materialize_parset_paths
+
+PREFECT_UI_API_URL_ENV = "PREFECT_UI_API_URL"
+
+
+@dataclass(frozen=True)
+class StartedPrefectServer:
+    """A local Prefect server and its isolated state directory."""
+
+    process: subprocess.Popen
+    prefect_home: Path
 
 
 def _default_run_dir() -> Path:
@@ -175,7 +188,7 @@ def _start_prefect_server(
     run_dir: Path,
     api_url: str,
     timeout_seconds: int,
-) -> Optional[subprocess.Popen]:
+) -> Optional[StartedPrefectServer]:
     if _is_prefect_healthy(api_url):
         print(f"Using existing Prefect server at {api_url}")
         return None
@@ -185,17 +198,26 @@ def _start_prefect_server(
     print(f"Starting Prefect server on {host}:{port}")
     print(f"Prefect server log: {log_file}")
 
+    prefect_home = Path(mkdtemp(prefix="rapthor-prefect-dashboard-"))
+    print(f"Prefect server state: {prefect_home}")
+
     log_handle = log_file.open("w")
     try:
         server_env = os.environ.copy()
+        server_env[PREFECT_HOME_ENV] = str(prefect_home)
         server_env[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] = "false"
-        server = subprocess.Popen(
-            ["prefect", "server", "start", "--host", host, "--port", str(port)],
-            env=server_env,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
+        server_env[PREFECT_UI_API_URL_ENV] = "/api"
+        try:
+            server = subprocess.Popen(
+                ["prefect", "server", "start", "--host", host, "--port", str(port)],
+                env=server_env,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except Exception:
+            shutil.rmtree(prefect_home, ignore_errors=True)
+            raise
     finally:
         log_handle.close()
     try:
@@ -206,8 +228,31 @@ def _start_prefect_server(
             server.wait(timeout=10)
         except subprocess.TimeoutExpired:
             server.kill()
+        shutil.rmtree(prefect_home, ignore_errors=True)
         raise
-    return server
+    return StartedPrefectServer(process=server, prefect_home=prefect_home)
+
+
+def _stop_prefect_server(server: StartedPrefectServer) -> None:
+    if server.process.poll() is None:
+        server.process.terminate()
+        try:
+            server.process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            server.process.kill()
+    shutil.rmtree(server.prefect_home, ignore_errors=True)
+
+
+def _keep_prefect_server_open(server: StartedPrefectServer) -> None:
+    """Keep a completed dashboard available until the tester stops it."""
+    print("Pipeline finished. Keeping the Prefect dashboard open.")
+    print("Press Ctrl+C to stop the Prefect server.")
+    try:
+        server.process.wait()
+    except KeyboardInterrupt:
+        print("Stopping Prefect server.")
+    finally:
+        _stop_prefect_server(server)
 
 
 def _materialize_parset_paths(
@@ -280,7 +325,17 @@ def _cluster_parset_overrides_from_args(args: argparse.Namespace) -> dict[str, o
 
 
 def _start_local_dask_cluster(execution_config: ExecutionConfig):
+    from rapthor.execution.task_runner import start_local_dask_cluster
+
     return start_local_dask_cluster(execution_config)
+
+
+def _run_pipeline_flow(*args, **kwargs):
+    # Prefect reads environment-backed settings during import. Keep this lazy so
+    # main() can select the dashboard API before the flow module is imported.
+    from rapthor.execution.pipeline.flow import pipeline_flow
+
+    return pipeline_flow(*args, **kwargs)
 
 
 def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
@@ -436,8 +491,8 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Keep a server started by this helper running if Rapthor fails. "
-            "Defaults to true so the dashboard remains available for inspection."
+            "Keep a server started by this helper open after Rapthor fails until "
+            "Ctrl+C is pressed. Defaults to true for dashboard inspection."
         ),
     )
     parser.add_argument(
@@ -445,8 +500,8 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Keep a server started by this helper running after Rapthor finishes. "
-            "Defaults to true so completed runs remain visible in the dashboard."
+            "Keep a server started by this helper open after Rapthor finishes until "
+            "Ctrl+C is pressed. Defaults to true so completed runs remain visible."
         ),
     )
     return parser.parse_args(argv)
@@ -479,6 +534,7 @@ def main() -> int:
     server = None
     dask_cluster = None
     failed = False
+    interrupted = False
     try:
         if args.no_start_server:
             _wait_for_prefect(api_url, timeout_seconds=5)
@@ -570,7 +626,7 @@ def main() -> int:
             execution_config,
             dask_client=None if dask_cluster is None else dask_cluster.client,
         ):
-            pipeline_flow(
+            _run_pipeline_flow(
                 run_parset_file,
                 logging_level=args.logging_level,
                 execution_config=execution_config,
@@ -579,6 +635,11 @@ def main() -> int:
             print(f"Wrote Dask performance report: {performance_report_path}")
         print("Rapthor Prefect demo run finished.")
         return 0
+    except KeyboardInterrupt:
+        interrupted = True
+        failed = True
+        print("Rapthor dashboard run interrupted.", file=sys.stderr)
+        return 130
     except Exception:
         failed = True
         raise
@@ -587,23 +648,19 @@ def main() -> int:
             print("Stopping local Dask cluster.")
             dask_cluster.close()
         if server is not None:
-            keep_server = args.keep_server or (failed and args.keep_server_on_failure)
+            keep_server = not interrupted and (
+                args.keep_server or (failed and args.keep_server_on_failure)
+            )
             if keep_server:
                 status = "failed" if failed else "finished"
-                print(f"Rapthor {status}; leaving the Prefect server running.")
+                print(f"Rapthor {status}; the dashboard remains available for inspection.")
                 print(f"Prefect dashboard: {_dashboard_url_from_api(api_url)}")
-                print(f"Prefect server PID: {server.pid}")
-                print(
-                    "Stop it manually when finished, for example with: "
-                    "pkill -f 'prefect server start'"
-                )
+                print(f"Prefect server PID: {server.process.pid}")
+                print(f"Prefect server state: {server.prefect_home}")
+                _keep_prefect_server_open(server)
             else:
                 print("Stopping Prefect server.")
-                server.terminate()
-                try:
-                    server.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    server.kill()
+                _stop_prefect_server(server)
 
 
 if __name__ == "__main__":

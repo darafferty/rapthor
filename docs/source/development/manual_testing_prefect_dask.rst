@@ -13,15 +13,78 @@ whether this branch should replace ``master``.
 Quick Start
 -----------
 
-Start with a copy of your parset and a fresh working directory:
+Start Prefect in one terminal:
+
+.. code-block:: console
+
+    $ scripts/dev/start-prefect-server.sh
+
+The script only starts Prefect. It creates a fresh server database in system
+temporary storage, disables analytics, configures a tunnel-friendly UI API
+path, waits for the API health check, and prints the connection details. It
+does not start or otherwise wrap Rapthor. Execute the script as shown; do not
+``source`` it, because it manages a foreground server process and its cleanup
+traps.
+
+Keep the server terminal open. In a second terminal on the same host, point
+Rapthor at the server and use the normal interface:
+
+.. code-block:: console
+
+    $ export PREFECT_API_URL=http://127.0.0.1:4200/api
+    $ rapthor rapthor.parset
+
+Open ``http://127.0.0.1:4200`` locally, or use the tunnel below when Rapthor is
+running remotely. Stop the server with ``Ctrl+C`` in its terminal when testing
+is complete. The setup script then stops the server and removes the temporary
+state it created. This is the recommended tester workflow: Rapthor is started
+exactly as it would be without a dashboard.
+
+To use a different dashboard port, pass it to the setup script and use the
+same port in ``PREFECT_API_URL``:
+
+.. code-block:: console
+
+    $ scripts/dev/start-prefect-server.sh --port 14200
+
+.. code-block:: console
+
+    $ export PREFECT_API_URL=http://127.0.0.1:14200/api
+    $ rapthor rapthor.parset
+
+Start each test with a copy of the parset and a fresh working directory:
 
 .. code-block:: console
 
     $ cp my-master.parset my-prefect-dask.parset
     $ mkdir -p runs/manual-my-target
 
-Edit ``my-prefect-dask.parset`` so ``global.dir_working`` points at a new
-directory. Then run:
+Edit ``my-prefect-dask.parset`` so ``global.dir_working`` points at the new
+directory, then pass that parset to the normal ``rapthor`` command above.
+
+When running interactively on a remote compute node, first note its hostname:
+
+.. code-block:: console
+
+    $ hostname
+
+Then forward both dashboard ports through the cluster login node from your
+laptop, following the pattern already proven by the Prefect prototype:
+
+.. code-block:: console
+
+    $ ssh -N \
+        -L 127.0.0.1:4200:compute-node:4200 \
+        -L 127.0.0.1:8787:compute-node:8787 \
+        user@login.cluster.example
+
+Open ``http://127.0.0.1:4200`` for Prefect and
+``http://127.0.0.1:8787/status`` for Dask. Replace the host names with those
+used by the site. If Rapthor runs directly on the login or interactive host,
+use ``127.0.0.1`` as both tunnel destinations.
+
+For a run without a persistent dashboard, leave ``PREFECT_API_URL`` unset and
+run Rapthor directly:
 
 .. code-block:: console
 
@@ -75,31 +138,24 @@ When a persistent dashboard and long-lived run history become production
 requirements, use an explicitly configured Prefect API backed by Postgres
 rather than the local development server.
 
-Persistent Dashboard Run
-------------------------
-
-Use this when you want to inspect flows, tasks, logs, and artifacts in the
-Prefect dashboard:
-
-.. code-block:: console
-
-    $ PREFECT_SERVER_ANALYTICS_ENABLED=false \
-      prefect server start --host 0.0.0.0 --port 4200
-
-In another terminal:
-
-.. code-block:: console
-
-    $ export PREFECT_API_URL=http://127.0.0.1:4200/api
-    $ rapthor my-prefect-dask.parset
-
-The dashboard is available at ``http://127.0.0.1:4200``. Add run tags to make
-manual tests easy to find:
+Add run tags to make manual tests easy to find in the dashboard:
 
 .. code-block:: ini
 
     [cluster]
     prefect_run_tags = manual-test, my-target, current-branch
+
+Optional Bundled Demo Helper
+----------------------------
+
+``scripts/dev/run-rapthor-prefect-demo.py`` remains available for repeatable
+bundled demos and benchmark automation. It starts and stops the supporting
+services itself, but it is not the primary workflow for developers testing
+their own parsets. To exercise the small repository fixture with it:
+
+.. code-block:: console
+
+    $ scripts/dev/run-rapthor-prefect-demo.py examples/prefect_demo.parset
 
 Dask Choices
 ------------
@@ -128,7 +184,7 @@ whether external tools are oversubscribed. The Prefect dashboard is better for
 operation/task status, logs, artifacts, and restart behavior.
 
 Slurm, External Dask, And WSClean MPI
-------------------------------------
+-------------------------------------
 
 Multi-node production validation should run inside one Slurm allocation with:
 

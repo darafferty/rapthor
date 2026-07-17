@@ -109,7 +109,7 @@ external Dask, and MPI WSClean are a separate production-readiness track.
   Add the focused unit and integration coverage in step 0, strengthen the two
   affected branch-vs-master option scenarios, and archive a fresh science-gate
   result before beginning the external manual-test wave.
-- [ ] **Make interactive testing frictionless.**
+- [x] **Make interactive testing frictionless.**
   Check `docs/source/development/manual_testing_prefect_dask.rst` from the
   perspective of a developer on a non-Slurm system. It must include the shortest
   path for `rapthor input.parset`, unique working directories, optional local

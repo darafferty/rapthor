@@ -81,16 +81,21 @@ explicitly export its API URL before running Rapthor:
 
 .. code-block:: console
 
-    $ PREFECT_SERVER_ANALYTICS_ENABLED=false \
-      prefect server start --host 0.0.0.0 --port 4200
+    $ scripts/dev/start-prefect-server.sh
 
 .. code-block:: console
 
     $ export PREFECT_API_URL=http://127.0.0.1:4200/api
     $ rapthor input.parset
 
-When a Prefect API URL is configured, Rapthor checks it before launch and logs
-the matching dashboard URL.
+The setup script starts only Prefect; it does not invoke Rapthor. It uses an
+isolated temporary Prefect home, waits for the API health check, and cleans up
+when stopped with ``Ctrl+C``. Execute it directly rather than sourcing it. When
+a Prefect API URL is configured, Rapthor checks it before launch and logs the
+matching dashboard URL.
+
+Choose another port with ``scripts/dev/start-prefect-server.sh --port 14200``
+and use the matching ``http://127.0.0.1:14200/api`` URL for Rapthor.
 
 To make related runs easier to find in the Prefect dashboard, add optional
 run tags in the parset:
@@ -127,27 +132,33 @@ of the parset. Use ``prefect_api_mode = external`` when a run must fail unless
 the configured Prefect API is reachable.
 
 
-Prefect dashboard demo
-----------------------
+Optional Prefect dashboard demo helper
+--------------------------------------
 
-The public ``rapthor`` command uses the Prefect/Dask process flow. To run a
-small demo parset and watch it in the Prefect dashboard, use the local demo
-helper:
+The explicit server setup above followed by ``rapthor input.parset`` is the
+recommended workflow for testers using their own data. A local helper remains
+available for repeatable bundled demos and benchmark automation:
 
 .. code-block:: console
 
     $ scripts/dev/run-rapthor-prefect-demo.py examples/prefect_demo.parset
 
-The helper starts a temporary Prefect server when one is not already available,
+The helper starts an isolated local Prefect server when one is not already available,
 prints the dashboard URL, materializes relative parset paths to absolute paths,
-runs the parset through the Prefect process flow, and leaves the temporary
-server running when the run finishes so previous runs remain visible in the
-dashboard. By default, the helper also overrides ``global.dir_working`` to a
+runs the parset through the Prefect process flow, and keeps the server open
+when the run finishes so the completed run remains visible. Press ``Ctrl+C``
+after inspecting it; the helper then stops the server and removes its isolated
+state. Its SQLite database uses system temporary storage, normally node-local
+on a cluster, rather than the user's normal Prefect home. The server also
+configures a relative UI API path, so the dashboard works through a single SSH
+port forward. By default, the helper also overrides
+``global.dir_working`` to a
 fresh ``rapthor-work`` directory inside the demo run directory, so repeated runs
 do not reuse pipeline state. Pass ``--no-unique-working-dir`` to use the working
 directory from the parset, or ``--working-dir /path/to/work`` to choose one
 explicitly. Use ``--no-keep-server`` for a one-shot run that stops its temporary
-server before exiting. The demo parset uses the small local test Measurement Set
+server and removes its temporary state before exiting. The demo parset uses the
+small local test Measurement Set
 and ``examples/prefect_demo_strategy.py``. To attach to an existing server
 instead:
 
@@ -155,20 +166,6 @@ instead:
 
     $ PREFECT_API_URL=http://127.0.0.1:4200/api \
       scripts/dev/run-rapthor-prefect-demo.py --no-start-server /path/to/rapthor.parset
-
-If you are already inside the dev container and want to restart the persistent
-Prefect server manually, stop any existing local server process and start a new
-one bound to all interfaces:
-
-.. code-block:: console
-
-    $ pkill -f "prefect.server" || true
-    $ PREFECT_SERVER_ANALYTICS_ENABLED=false \
-      prefect server start --host 0.0.0.0 --port 4200
-
-This keeps the server in the foreground so its logs remain visible. The
-dashboard is then available from the host at ``http://localhost:4200`` when the
-container forwards port ``4200``.
 
 Use ``--task-runner local_dask``, ``--task-runner sync``, or
 ``--task-runner external_dask`` to override the parset for a demo run. The demo
