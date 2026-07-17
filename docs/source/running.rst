@@ -108,6 +108,48 @@ run tags in the parset:
 Rapthor attaches these tags to the pipeline, operation, and task runs launched
 with the shared Prefect runner.
 
+Running several jobs with dashboards
+-------------------------------------
+
+Several interactive jobs can use one Prefect server. Export the same
+``PREFECT_API_URL`` in each job terminal, give every parset a unique
+``global.dir_working``, and use distinct ``prefect_run_tags``. The dashboard
+shows each job as a separate pipeline flow run with its own flow-run page,
+subflows, tasks, logs, and artifacts. Those flow-run pages can be opened in
+separate browser tabs for side-by-side monitoring.
+
+To give every job a completely separate dashboard and Prefect database, start
+one isolated server per job on a unique port:
+
+.. code-block:: console
+
+    $ scripts/dev/start-prefect-server.sh --port 14200
+    $ scripts/dev/start-prefect-server.sh --port 14201
+
+Run those commands in separate server terminals. In two additional terminals,
+connect each Rapthor process to the corresponding server:
+
+.. code-block:: console
+
+    $ export PREFECT_API_URL=http://127.0.0.1:14200/api
+    $ rapthor job-a.parset
+
+.. code-block:: console
+
+    $ export PREFECT_API_URL=http://127.0.0.1:14201/api
+    $ rapthor job-b.parset
+
+The dashboards are then available at ``http://127.0.0.1:14200`` and
+``http://127.0.0.1:14201``. Local Dask runs must also use different
+``dask_dashboard_address`` ports, for example ``:18787`` and ``:18788``. Leave
+``PREFECT_HOME`` unset so each setup script creates unique temporary state, or
+set a different ``PREFECT_HOME`` directory for each server.
+
+This multi-dashboard setup is intended for manual testing. Do not use one
+local SQLite-backed Prefect server as a shared production service for many
+parallel jobs. Until a Postgres-backed service is available, use Rapthor's
+isolated no-server mode for concurrent production jobs.
+
 Developers testing the Prefect/Dask branch with real parsets should also read
 the manual-testing guide at :ref:`manual_testing_prefect_dask`. It gives a
 short checklist for adapting ``master`` parsets, choosing runtime settings,

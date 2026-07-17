@@ -94,6 +94,86 @@ This is the lowest-friction mode. If no Prefect API URL or Dask scheduler is
 configured, Rapthor uses a temporary Prefect API/server and a local Dask
 scheduler for the run.
 
+Multiple Concurrent Jobs And Dashboards
+---------------------------------------
+
+Testers can run more than one Rapthor job at a time. There are two useful
+dashboard arrangements:
+
+* **One shared dashboard:** start one Prefect server, then export the same
+  ``PREFECT_API_URL`` in every Rapthor terminal. Each job appears as a separate
+  pipeline flow run with its own flow-run page, logs, subflows, tasks, and
+  artifacts. There is one dashboard URL for all the jobs, rather than a
+  separate dashboard server for each job. Open the individual flow-run pages
+  in separate browser tabs when monitoring the jobs side by side.
+* **One isolated dashboard per job:** start a Prefect server for each job on a
+  different port. Each setup-script process creates independent temporary
+  Prefect state, so every job has its own dashboard URL and SQLite database.
+
+The shared arrangement is convenient for a small number of interactive test
+runs. It is not the production recommendation because the local Prefect server
+uses SQLite. Use isolated servers for stronger test isolation, or the no-server
+mode described below for concurrent production jobs until a Postgres-backed
+Prefect service is available.
+
+For example, start two isolated dashboard servers in two terminals:
+
+.. code-block:: console
+
+    $ scripts/dev/start-prefect-server.sh --port 14200
+
+.. code-block:: console
+
+    $ scripts/dev/start-prefect-server.sh --port 14201
+
+Then start each job from its own terminal with the matching API URL:
+
+.. code-block:: console
+
+    $ export PREFECT_API_URL=http://127.0.0.1:14200/api
+    $ rapthor job-a.parset
+
+.. code-block:: console
+
+    $ export PREFECT_API_URL=http://127.0.0.1:14201/api
+    $ rapthor job-b.parset
+
+Open ``http://127.0.0.1:14200`` for job A and
+``http://127.0.0.1:14201`` for job B. Keep both server terminals open until
+the jobs and dashboard inspection are complete. Leave ``PREFECT_HOME`` unset
+to let each script create unique temporary state. If you set ``PREFECT_HOME``
+explicitly, use a different directory for every server.
+
+Every concurrent job must have a unique working directory. When using local
+Dask, it must also have a unique Dask dashboard port. Run tags make jobs easier
+to identify, especially when they share one Prefect dashboard. For example,
+job A can use:
+
+.. code-block:: ini
+
+    [global]
+    dir_working = /path/to/runs/job-a
+
+    [cluster]
+    prefect_run_tags = manual-test, job-a
+    dask_dashboard_address = :18787
+
+and job B can use:
+
+.. code-block:: ini
+
+    [global]
+    dir_working = /path/to/runs/job-b
+
+    [cluster]
+    prefect_run_tags = manual-test, job-b
+    dask_dashboard_address = :18788
+
+If the jobs run remotely, forward each selected Prefect and Dask port through
+SSH. For example, add ``14200``, ``14201``, ``18787``, and ``18788`` as
+separate local forwards. A port can be omitted when its dashboard is not
+needed.
+
 Install Or Environment Choices
 ------------------------------
 
