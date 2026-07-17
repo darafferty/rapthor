@@ -277,6 +277,11 @@ RUN aoflagger --version && \
 #---------------------------------------------------------------------------
 FROM runtime AS dev
 
+# The dev container intentionally installs the editable package and development
+# dependencies into its disposable system Python environment.
+ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y --no-install-recommends time && \
