@@ -18,11 +18,24 @@ INTEGRATION_PARSET = (
 )
 
 
+def _pipeline_log_tails(parset_path, line_count=100):
+    """Return the end of each pipeline log for a failed Rapthor run."""
+    working_dir = Path(get_working_dir_from_parset(parset_path))
+    sections = []
+    for log_path in sorted((working_dir / "logs").glob("*/pipeline.log")):
+        lines = log_path.read_text(errors="replace").splitlines()
+        sections.append(f"--- {log_path} ---\n" + "\n".join(lines[-line_count:]))
+    return "\n".join(sections)
+
+
 def _run_rapthor(parset_path):
     command = ["rapthor", str(parset_path)]
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     output = f"{result.stdout}\n{result.stderr}"
-    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+    pipeline_logs = _pipeline_log_tails(parset_path) if result.returncode else ""
+    assert result.returncode == 0, (
+        f"Rapthor failed with output:\n{output}\nPipeline log tails:\n{pipeline_logs}"
+    )
     return output
 
 
@@ -43,45 +56,24 @@ def _prepare_imaging_data_args(working_dir, image_name):
 @pytest.mark.parametrize("generated_parset_path", [INTEGRATION_PARSET], indirect=True)
 def test_image_only_run_applies_supplied_input_h5parm(
     generated_parset_path,
-    single_loop_strategy_path,
     image_only_strategy_path,
+    resource_dir,
 ):
     """Image-only runs use the parset-supplied H5parm to build applycal."""
-    calibration_parset_path = update_parset_path(
-        generated_parset_path,
-        {
-            "allow_internet_access": "False",
-            "strategy": str(single_loop_strategy_path),
-            "reweight": "False",
-        },
-    )
-    calibration_working_dir = Path(get_working_dir_from_parset(calibration_parset_path))
-    print("---Rapthor calibration working dir: ", calibration_working_dir)
-
-    calibration_output = _run_rapthor(calibration_parset_path)
-    assert "Operation calibrate_1 completed" in calibration_output
-    assert "Operation image_1 completed" in calibration_output
-
-    input_h5parm = calibration_working_dir / "solutions" / "calibrate_1" / "field-solutions.h5"
-    assert input_h5parm.exists(), "Expected the calibration run to produce scalar solutions"
-
-    image_working_dir = calibration_working_dir.parent / "image_only_work"
-    image_scratch_dir = calibration_working_dir.parent / "image_only_scratch"
+    input_h5parm = resource_dir / "integration_field_solutions.h5"
+    image_working_dir = Path(get_working_dir_from_parset(generated_parset_path))
     image_parset_path = update_parset_path(
         generated_parset_path,
         {
             "allow_internet_access": "False",
             "strategy": str(image_only_strategy_path),
-            "dir_working": str(image_working_dir),
-            "local_scratch_dir": str(image_scratch_dir),
-            "global_scratch_dir": str(image_scratch_dir),
             "input_h5parm": str(input_h5parm),
             "dde_method": "single",
             "reweight": "False",
             "regroup_input_skymodel": "False",
         },
     )
-    print("---Rapthor image-only working dir: ", image_working_dir)
+    print("---Rapthor working dir: ", image_working_dir)
 
     image_output = _run_rapthor(image_parset_path)
     assert "Operation calibrate_1 completed" not in image_output
