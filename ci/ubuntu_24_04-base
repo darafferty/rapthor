@@ -277,17 +277,22 @@ RUN aoflagger --version && \
 #---------------------------------------------------------------------------
 FROM runtime AS dev
 
-# The dev container intentionally installs the editable package and development
-# dependencies into its disposable system Python environment.
-ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
-    PIP_ROOT_USER_ACTION=ignore
-
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
-    apt-get install -y --no-install-recommends time && \
+    apt-get install -y --no-install-recommends \
+        python3-venv \
+        time && \
     rm -rf /var/lib/apt/lists/*
 
-ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam
+# CI installs Rapthor and its test dependencies in an isolated tox environment.
+# Do the same here so pip installs NumPy-compatible wheels instead of reusing
+# Python extensions from the runtime image that were built against NumPy 1.x.
+ENV VIRTUAL_ENV=/opt/rapthor-venv
+RUN python3 -m venv ${VIRTUAL_ENV}
+
+ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam \
+    PATH="${VIRTUAL_ENV}/bin:${PATH}" \
+    PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /app
 

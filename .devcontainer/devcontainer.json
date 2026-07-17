@@ -14,13 +14,16 @@
   ],
   "workspaceFolder": "/app",
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-  "postCreateCommand": "python3 -m pip install --upgrade pip && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install -e . && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install --group=dev",
+  "postCreateCommand": "python3 -m pip install --upgrade pip && python3 -m pip install --group=dev && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install -e .",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance"
-      ]
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/rapthor-venv/bin/python"
+      }
     }
   },
   "remoteEnv": {
