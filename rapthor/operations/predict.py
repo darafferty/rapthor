@@ -93,7 +93,9 @@ class Predict(Operation):
             "sector_patches": sector_parms["sector_patches"],
             "h5parm": CWLFile(h5parm_filename).to_json() if h5parm_filename else None,
             "normalize_h5parm": normalize_h5parm,
-            "dp3_applycal_steps": f"[{','.join(dp3_applycal_steps)}]" if dp3_applycal_steps else None,
+            "dp3_applycal_steps": f"[{','.join(dp3_applycal_steps)}]"
+            if dp3_applycal_steps
+            else None,
             "onebeamperpatch": field.onebeamperpatch,
             "sagecalpredict": field.sagecalpredict,
             "obs_filename": CWLDir(obs_parms["obs_filename"]).to_json(),
@@ -186,9 +188,9 @@ class Predict(Operation):
         dp3_applycal_steps = []
         h5parm_filename = self._get_applycal_h5parm_filename()
         if h5parm_filename is not None:
-            dp3_applycal_steps.append('fastphase')
+            dp3_applycal_steps.append("fastphase")
             if self.field.apply_amplitudes:
-                dp3_applycal_steps.append('slowgain')
+                dp3_applycal_steps.append("slowgain")
         if self.field.apply_normalizations:
             normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
             dp3_applycal_steps.append("normalization")

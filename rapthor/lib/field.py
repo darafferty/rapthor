@@ -46,7 +46,6 @@ class Field(object):
         If True, only initialize the minimal set of required parameters
     """
 
-
     def __init__(self, parset, minimal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
         # values and/or the operations
@@ -1757,32 +1756,32 @@ class Field(object):
     def _scan_scalar_h5parm(self, filename):
         filename = str(filename)
         with h5parm(filename) as solutions:
-            if 'coefficients000' in solutions.getSolsetNames():
-                solset = solutions.getSolset('coefficients000')
-                if 'phase_coefficients' not in solset.getSoltabNames():
+            if "coefficients000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("coefficients000")
+                if "phase_coefficients" not in solset.getSoltabNames():
                     raise ValueError(
-                        f'The screen solutions file {filename!r} must '
-                        'have a phase_coefficients soltab.'
+                        f"The screen solutions file {filename!r} must "
+                        "have a phase_coefficients soltab."
                     )
                 self.scalar_h5parm_directions[filename] = self._get_scalar_h5parm_directions(
                     solset, "phase_coefficients"
                 )
-                return 'amplitude1_coefficients' in solset.getSoltabNames()
-            elif 'sol000' in solutions.getSolsetNames():
-                solset = solutions.getSolset('sol000')
-                if 'phase000' not in solset.getSoltabNames():
+                return "amplitude1_coefficients" in solset.getSoltabNames()
+            elif "sol000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("sol000")
+                if "phase000" not in solset.getSoltabNames():
                     raise ValueError(
-                        f'The direction-dependent solutions file {filename!r} must '
-                        'have a phase000 soltab.'
+                        f"The direction-dependent solutions file {filename!r} must "
+                        "have a phase000 soltab."
                     )
                 self.scalar_h5parm_directions[filename] = self._get_scalar_h5parm_directions(
                     solset, "phase000"
                 )
-                return 'amplitude000' in solset.getSoltabNames()
+                return "amplitude000" in solset.getSoltabNames()
             else:
                 raise ValueError(
-                    f'The direction-dependent solutions file {filename!r} must '
-                    'have the solutions stored in the sol000 or coefficients000 solset.'
+                    f"The direction-dependent solutions file {filename!r} must "
+                    "have the solutions stored in the sol000 or coefficients000 solset."
                 )
 
     def scan_h5parms(self):
