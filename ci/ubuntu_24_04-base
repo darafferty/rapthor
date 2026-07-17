@@ -204,7 +204,7 @@ RUN pip install -r requirements.txt
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS runner
+FROM ubuntu:24.04 AS runtime
 
 COPY --from=builder /usr/local /usr/local
 
@@ -269,3 +269,26 @@ RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version && \
     fpack -H
+
+
+#---------------------------------------------------------------------------
+# Development target. It extends the CI runner so the OS, Python version,
+# compiled tools, and runtime dependencies are identical to CI.
+#---------------------------------------------------------------------------
+FROM runtime AS dev
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends time && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam
+
+WORKDIR /app
+
+CMD ["/bin/bash"]
+
+
+# Keep the CI runner as the default final target while allowing the dev
+# container to branch from the same runtime image above.
+FROM runtime AS runner

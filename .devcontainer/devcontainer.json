@@ -1,16 +1,20 @@
 {
   "name": "Rapthor Dev Container",
   "build": {
-	"context": "..",
-    "dockerfile": "Dockerfile",
-    "target": "dev"
+    "context": "..",
+    "dockerfile": "../ci/ubuntu_24_04-base",
+    "target": "dev",
+    "options": [
+      "--platform=linux/amd64"
+    ]
   },
   "runArgs": [
+    "--platform=linux/amd64",
     "--shm-size=4g"
   ],
   "workspaceFolder": "/app",
   "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-  "postCreateCommand": "python3 -m pip install --upgrade pip && python3 -m pip install --no-binary=bdsf bdsf && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install -e . && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install --group=dev",
+  "postCreateCommand": "python3 -m pip install --upgrade pip && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install -e . && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=0.0.0 python3 -m pip install --group=dev",
   "customizations": {
     "vscode": {
       "extensions": [
