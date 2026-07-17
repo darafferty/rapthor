@@ -44,6 +44,8 @@ operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
 
+.. _local_runtime:
+
 Low-friction local runtime
 --------------------------
 
@@ -76,6 +78,11 @@ each independent job. Give every job a unique ``global.dir_working`` and leave
 multiple jobs sharing a local SQLite-backed Prefect server. Use a managed
 Prefect API with Postgres when persistent dashboard history is required.
 
+.. _persistent_prefect_dashboard:
+
+Persistent Prefect dashboard
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 To keep a persistent Prefect dashboard, start a server in one terminal and
 explicitly export its API URL before running Rapthor:
 
@@ -107,6 +114,8 @@ run tags in the parset:
 
 Rapthor attaches these tags to the pipeline, operation, and task runs launched
 with the shared Prefect runner.
+
+.. _concurrent_rapthor_jobs:
 
 Running several jobs with dashboards
 -------------------------------------
@@ -150,10 +159,10 @@ local SQLite-backed Prefect server as a shared production service for many
 parallel jobs. Until a Postgres-backed service is available, use Rapthor's
 isolated no-server mode for concurrent production jobs.
 
-Developers testing the Prefect/Dask branch with real parsets should also read
-the manual-testing guide at :ref:`manual_testing_prefect_dask`. It gives a
-short checklist for adapting ``master`` parsets, choosing runtime settings,
-inspecting outputs, and recording evidence for the branch switch decision.
+.. _external_dask_runtime:
+
+Using an existing Dask cluster
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To use an existing Dask cluster, either set ``dask_scheduler`` in the parset or
 export ``DASK_SCHEDULER``:
@@ -173,6 +182,13 @@ for this run, set ``prefect_api_mode = ephemeral`` in the ``[cluster]`` section
 of the parset. Use ``prefect_api_mode = external`` when a run must fail unless
 the configured Prefect API is reachable.
 
+Developers testing the Prefect/Dask branch with real parsets should also read
+the manual-testing guide at :ref:`manual_testing_prefect_dask`. It covers the
+branch-specific parset adaptations, output checks, and evidence to record;
+runtime commands remain canonical on this page.
+
+
+.. _prefect_demo_helper:
 
 Optional Prefect dashboard demo helper
 --------------------------------------
@@ -236,6 +252,71 @@ from the container to the host before opening the URL in your browser. Pass
 Prefect's temporary ``local_dask`` clusters directly; those can be harder to
 monitor because they are created lazily by each flow. With
 ``--task-runner external_dask``, use the dashboard for the external scheduler.
+
+.. _demo_compute_node_tunnel:
+
+Tunneling demo dashboards from a compute node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When the demo runs on an interactive compute node, give both dashboards stable
+ports. Run this on the compute node and keep the terminal open:
+
+.. code-block:: console
+
+    $ hostname
+    $ scripts/dev/run-rapthor-prefect-demo.py \
+      --host 0.0.0.0 \
+      --port 14200 \
+      --api-url http://127.0.0.1:14200/api \
+      --task-runner local_dask \
+      --dask-dashboard-address 0.0.0.0:18787 \
+      examples/prefect_demo.parset
+
+Passing ``--api-url`` explicitly prevents an inherited ``PREFECT_API_URL``
+from silently selecting another server. Wait until the helper has printed both
+the Prefect and Dask dashboard URLs. In another shell on the compute node, the
+following checks should then succeed:
+
+.. code-block:: console
+
+    $ curl --fail --silent http://127.0.0.1:14200/api/health
+    $ curl --fail --silent http://127.0.0.1:18787/status > /dev/null
+
+If either command reports ``Connection refused``, check the helper terminal and
+the ports in its printed dashboard URLs before creating the tunnel. The Dask
+dashboard is not available until the helper has started its local Dask cluster.
+
+Note the compute-node hostname printed by ``hostname``. On the machine where
+the web browser is running, open an SSH tunnel through the cluster login node:
+
+.. code-block:: console
+
+    $ ssh -N -J user@login.cluster.example \
+      -L 14200:127.0.0.1:14200 \
+      -L 18787:127.0.0.1:18787 \
+      user@compute-node
+
+Then open ``http://127.0.0.1:14200`` for Prefect and
+``http://127.0.0.1:18787/status`` for Dask. Run the tunnel command on the
+browser machine, not in the compute-node session. It remains in the foreground;
+stop it with ``Ctrl+C`` after dashboard inspection.
+
+If the site does not permit SSH sessions directly to compute nodes, connect to
+the login node and forward to the compute node instead:
+
+.. code-block:: console
+
+    $ ssh -N \
+      -L 14200:compute-node:14200 \
+      -L 18787:compute-node:18787 \
+      user@login.cluster.example
+
+This fallback requires the dashboard ports to be reachable over the cluster
+network; the explicit ``0.0.0.0`` bindings enable that for both demo services.
+Replace the example host names and ports with site-approved values. If either
+local port is already occupied, change the number before the first colon in the
+matching ``-L`` option and use that number in the browser URL.
+
 To save the Dask scheduler, task stream, and profiling information as a
 standalone HTML file, pass ``--dask-performance-report``. The report is written
 to the demo run directory by default:
@@ -344,7 +425,7 @@ the runtime resources:
 
     $ scripts/dev/run-rapthor-prefect-demo.py \
       --task-runner local_dask \
-      --local-dask-workers 1 \
+      --local-dask-workers 2 \
       --cpus-per-task 4 \
       --max-threads 4 \
       examples/generated/prefect_demo_rich/prefect_demo_rich.parset
@@ -436,6 +517,8 @@ local smoke check:
       --cpus-per-task 4 \
       --max-threads 4
 
+
+.. _slurm_external_dask:
 
 Running with Slurm and external Dask
 ------------------------------------
