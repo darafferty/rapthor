@@ -74,6 +74,7 @@ class Sector:
             "ms_filename": "filename.ms",
             "ms_prep_filename": None,
             "image_freqstep": None,
+            "image_bda_minchannels": None,
             "image_timestep": None,
             "image_bda_maxinterval": None,
         }

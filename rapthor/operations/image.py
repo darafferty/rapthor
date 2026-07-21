@@ -422,10 +422,11 @@ class Image(Operation):
         filtered_model_image_name = []
         starttime = []
         ntimes = []
-        image_freqstep = []
         image_timestep = []
         image_bda_maxinterval = []
         image_bda_timebase = []
+        image_freqstep = []
+        image_bda_minchannels = []
         image_bda_frequencybase = []
         phasecenter = []
         image_root = []
@@ -476,10 +477,11 @@ class Image(Operation):
             mask_filename.append(image_root[-1] + "_mask.fits")
             filtered_model_image_name.append(image_root[-1] + "-MFS-filtered-model.fits.fz")
             image_freqstep.append(sector.get_obs_parameters("image_freqstep"))
+            image_bda_minchannels.append(sector.get_obs_parameters("image_bda_minchannels"))
+            image_bda_frequencybase.append(self.field.image_bda_frequencybase)
             image_timestep.append(sector.get_obs_parameters("image_timestep"))
             image_bda_maxinterval.append(sector.get_obs_parameters("image_bda_maxinterval"))
             image_bda_timebase.append(self.field.image_bda_timebase)
-            image_bda_frequencybase.append(self.field.image_bda_frequencybase)
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
@@ -579,10 +581,11 @@ class Image(Operation):
             "mask_filename": mask_filename,
             "starttime": starttime,
             "ntimes": ntimes,
-            "image_freqstep": image_freqstep,
             "image_timestep": image_timestep,
             "image_maxinterval": image_bda_maxinterval,
             "image_timebase": image_bda_timebase,
+            "image_freqstep": image_freqstep,
+            "image_minchannels": image_bda_minchannels,
             "image_frequencybase": image_bda_frequencybase,
             "phasecenter": phasecenter,
             "image_name": image_root,
