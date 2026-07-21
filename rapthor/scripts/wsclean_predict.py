@@ -4,18 +4,19 @@ Script to predict using wsclean
 """
 
 import argparse
-from argparse import ArgumentParser, RawTextHelpFormatter
-import casacore.tables as ct
 import json
 import logging
-from lsmtool.facet import read_ds9_region_file
-import numpy as np
 import os
 import shutil
-import subprocess
 import stat
+import subprocess
 import sys
 import uuid
+from argparse import ArgumentParser, RawTextHelpFormatter
+
+import casacore.tables as ct
+import numpy as np
+from lsmtool.facet import read_ds9_region_file
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
