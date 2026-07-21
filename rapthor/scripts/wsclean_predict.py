@@ -90,7 +90,7 @@ def predict(
     time_freq_smearing,
     storage_manager,
     predict_bandwidth,
-    n_threads
+    n_threads,
 ):
     """
     Predict model image to msfile
@@ -178,9 +178,9 @@ def predict(
             err_code = err.returncode
 
         err_code = 0
-        first_facet=1
+        first_facet = 1
         for facet in facet_names:
-            start_time=time.time()
+            start_time = time.time()
             cmd = [
                 "wsclean",
                 "-predict",
@@ -205,8 +205,8 @@ def predict(
             cmd.append("-parallel-reordering")
             cmd.append(str(n_threads))
             if not first_facet:
-              cmd.append("-reuse-reordered")
-              first_facet=0
+                cmd.append("-reuse-reordered")
+                first_facet = 0
             cmd.append("-save-reordered")
             cmd.append(msfile)
             try:
@@ -215,8 +215,8 @@ def predict(
                 print(err, file=sys.stderr)
                 err_code = err.returncode
                 break
-            end_time=time.time()
-            print(f'XXXX {end_time-start_time}')
+            end_time = time.time()
+            print(f"XXXX {end_time - start_time}")
 
     return err_code
 
