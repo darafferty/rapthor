@@ -8,7 +8,6 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 import stat
 import shutil
-import time
 import uuid
 import json
 import subprocess
@@ -180,7 +179,6 @@ def predict(
         err_code = 0
         first_facet = 1
         for facet in facet_names:
-            start_time = time.time()
             cmd = [
                 "wsclean",
                 "-predict",
@@ -215,8 +213,6 @@ def predict(
                 print(err, file=sys.stderr)
                 err_code = err.returncode
                 break
-            end_time = time.time()
-            print(f"XXXX {end_time - start_time}")
 
     return err_code
 
