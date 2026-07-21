@@ -4,19 +4,20 @@ Script to predict using wsclean
 """
 
 import argparse
-import json
-import logging
+from argparse import ArgumentParser, RawTextHelpFormatter
 import os
-import shutil
 import stat
+import shutil
+import uuid
+import json
 import subprocess
 import sys
-import uuid
-from argparse import ArgumentParser, RawTextHelpFormatter
-
-import casacore.tables as ct
+import logging
 import numpy as np
+import casacore.tables as ct
 from lsmtool.facet import read_ds9_region_file
+
+import time
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -89,6 +90,7 @@ def predict(
     time_freq_smearing,
     storage_manager,
     predict_bandwidth,
+    n_threads
 ):
     """
     Predict model image to msfile
@@ -107,6 +109,7 @@ def predict(
     time_freq_smearing: if true, enable smearing in predict
     storage_manager: storage manager to use 'default'
     predict_bandwidth: bandwidth of prediction, channels will be split into groups
+    n_threads: max threads to use
 
     """
     # get channel frequencies
@@ -175,7 +178,9 @@ def predict(
             err_code = err.returncode
 
         err_code = 0
+        first_facet=1
         for facet in facet_names:
+            start_time=time.time()
             cmd = [
                 "wsclean",
                 "-predict",
@@ -192,11 +197,17 @@ def predict(
                 str(chans[-1]),
                 "-model-storage-manager",
                 str(storage_manager),
+                "-j",
+                str(n_threads),
             ]
             if time_freq_smearing is not None:
                 cmd.append("-apply-time-frequency-smearing")
-            # disable reordering of data
-            cmd.append("-no-reorder")
+            cmd.append("-parallel-reordering")
+            cmd.append(str(n_threads))
+            if not first_facet:
+              cmd.append("-reuse-reordered")
+              first_facet=0
+            cmd.append("-save-reordered")
             cmd.append(msfile)
             try:
                 subprocess.run(cmd, check=True).returncode
@@ -204,6 +215,8 @@ def predict(
                 print(err, file=sys.stderr)
                 err_code = err.returncode
                 break
+            end_time=time.time()
+            print(f'XXXX {end_time-start_time}')
 
     return err_code
 
@@ -320,6 +333,7 @@ def main():
         args.time_freq_smearing,
         args.storage_manager,
         args.predict_bandwidth,
+        args.threads,
     )
 
 
