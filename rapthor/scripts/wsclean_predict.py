@@ -8,6 +8,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 import stat
 import shutil
+import time
 import uuid
 import json
 import subprocess
@@ -17,7 +18,6 @@ import numpy as np
 import casacore.tables as ct
 from lsmtool.facet import read_ds9_region_file
 
-import time
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
