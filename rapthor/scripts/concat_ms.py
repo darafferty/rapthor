@@ -177,7 +177,6 @@ def concat_freq_command(msfiles, data_colname, output_file, make_dummies=True):
         "steps=[]",
         "msin.orderms=False",
         "msin.missingdata=True",
-        "msout.writefullresflag=False",
         "msout.storagemanager=Dysco",
     ]
     return cmd
