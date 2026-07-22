@@ -202,9 +202,10 @@ def predict(
                 cmd.append("-apply-time-frequency-smearing")
             cmd.append("-parallel-reordering")
             cmd.append(str(n_threads))
-            if not first_facet:
-                cmd.append("-reuse-reordered")
+            if first_facet:
                 first_facet = 0
+            else:
+                cmd.append("-reuse-reordered")
             cmd.append("-save-reordered")
             cmd.append(msfile)
             try:
