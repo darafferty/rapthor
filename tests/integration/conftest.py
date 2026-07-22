@@ -429,4 +429,3 @@ def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_pred
 def ms_for_normalisation(tmp_path, test_ms, resource_dir):
     """Provide a synthetic MS with denser UV coverage for normalization tests."""
     return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_for_normalization")
-
