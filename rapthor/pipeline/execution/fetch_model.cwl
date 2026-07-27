@@ -15,7 +15,7 @@ inputs:
     doc: Output sky model filename
     type: string
 outputs:
-  - id: skymodel
+  - id: model
     type: File
     outputBinding:
       glob: $(inputs.skymodel)
