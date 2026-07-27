@@ -85,6 +85,10 @@ requirements:
             var settings = inputs.settings;
             settings.global.dir_working = runtime.outdir;
             settings.global.input_ms = inputs.msin.path;
+            settings.imaging.photometry_skymodel = inputs.photometry_check_model.path;
+            settings.imaging.astrometry_skymodel = inputs.astrometry_check_model.path;
+            settings.imaging.normalization_skymodels = [inputs.photometry_normalization_model_1.path, inputs.photometry_normalization_model_2.path];
+            settings.imaging.normalization_reference_frequencies = [inputs.photometry_normalization_frequency_1, inputs.photometry_normalization_frequency_2];
             var result = "";
             ["global", "calibration", "imaging", "cluster"].forEach(element => {
                 result += objectToParsetString(settings[element], element) + "\n\n"

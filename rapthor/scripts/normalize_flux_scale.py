@@ -766,9 +766,24 @@ def _get_survey_metadata(reference_skymodels=None, reference_frequencies=None):
         log.info(
             "Using reference sky models provided as input for normalization, instead of external survey catalogs."
         )
+        reference_corrections = []
+        reference_errors = []
+        for freq in reference_frequencies:
+            survey = _identify_survey_from_frequency(freq)
+            if survey is not None:
+                reference_corrections.append(SURVEY_METADATA[survey]["flux_correction"])
+                reference_errors.append(SURVEY_METADATA[survey]["flux_err"])
+            else:
+                reference_corrections.append(1.0)
+                reference_errors.append(0.0)
         return {
-            survey: {"flux_correction": 1.0, "flux_err": 0.0, "frequency": freq}
-            for survey, freq in zip(reference_skymodels, reference_frequencies)
+            survey: {"flux_correction": corr, "flux_err": err, "frequency": freq}
+            for survey, freq, corr, err in zip(
+                reference_skymodels,
+                reference_frequencies,
+                reference_corrections,
+                reference_errors,
+            )
         }
     else:
         log.info(
@@ -776,6 +791,25 @@ def _get_survey_metadata(reference_skymodels=None, reference_frequencies=None):
             + ", ".join(SURVEY_METADATA.keys())
         )
         return _sort_metadata_by_frequency(SURVEY_METADATA)
+
+
+def _identify_survey_from_frequency(survey_frequency):
+    """Attempt to identify a survey from its frequency.
+
+    Parameters
+    ----------
+    survey_frequency : float
+        The survey reference frequency in Hz
+
+    Returns
+    -------
+    survey_name : str or None
+        Name of the survey if identified; None otherwise.
+    """
+    for survey_name in SURVEY_METADATA.keys():
+        if survey_frequency == SURVEY_METADATA[survey_name]["frequency"]:
+            return survey_name
+    return None
 
 
 def _sort_metadata_by_frequency(survey_metadata):
