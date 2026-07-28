@@ -19,6 +19,8 @@ inputs:
   default: out.ms
   inputBinding:
     position: 1
+    prefix: --msout=
+    separate: false
 
 outputs:
 - id: msout

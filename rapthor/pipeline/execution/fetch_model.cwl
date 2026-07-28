@@ -5,12 +5,14 @@ cwlVersion: v1.2
 inputs:
   - id: msin
     type: Directory
+    inputBinding:
+      position: 0
   - id: survey
     doc: Survey to query
     type: string
   - id: radius
     doc: Query radius in deg
-    type: float
+    type: string
   - id: skymodel
     doc: Output sky model filename
     type: string
@@ -41,7 +43,7 @@ requirements:
 
          msin = sys.argv[1]
          inputs = json.loads(r'''$(inputs)''')
-         survy = inputs['survey']
+         survey = inputs['survey']
          radius = float(inputs['radius'])
          skymodel = inputs['skymodel']
 

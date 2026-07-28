@@ -9,6 +9,7 @@ requirements:
 - class: MultipleInputFeatureRequirement
 - class: ScatterFeatureRequirement
 - class: SubworkflowFeatureRequirement
+- class: StepInputExpressionRequirement
 
 inputs:
 - id: surls
@@ -151,11 +152,11 @@ steps:
       source: fetch_panstarrs_model/model
     - id: photometry_normalization_model_1
       source: fetch_vlssr_model/model
-    - id: photometry_normalization_frequecy_1
+    - id: photometry_normalization_frequency_1
       valueFrom: "74e6"
     - id: photometry_normalization_model_2
       source: fetch_wenss_model/model
-    - id: photometry_normalization_frequecy_2
+    - id: photometry_normalization_frequency_2
       valueFrom: "327e6"
     - id: settings
       source: settings
