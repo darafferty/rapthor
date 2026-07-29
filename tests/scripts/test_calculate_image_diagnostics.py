@@ -4,8 +4,8 @@ Test suite for rapthor.scripts.calculate_image_diagnostics.
 
 import json
 import logging
+from pathlib import Path
 from unittest.mock import patch
-from zipfile import Path
 
 import astropy.units as u
 import lsmtool
@@ -980,6 +980,6 @@ def test_compute_facets_rms_noise(facet_region_ds9, rendered_regions):
 
 
 def test_compute_facets_rms_noise_return_empty_if_invalid(tmpdir, rendered_regions):
-    invalid_file = tmpdir / "invalid_regions.ds9"
+    invalid_file = Path(tmpdir / "invalid_regions.ds9")
     with pytest.raises(FileNotFoundError):
         compute_facet_rms_noise(invalid_file, rendered_regions, rendered_regions)

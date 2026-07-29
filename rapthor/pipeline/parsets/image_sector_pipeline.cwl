@@ -85,6 +85,13 @@ inputs:
       (length = 1).
     type: float
 
+  - id: image_frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done
+      (length = 1).
+    type: float
+
   - id: image_maxinterval
     label: BDA maxinterval
     doc: |
@@ -92,6 +99,12 @@ inputs:
       done (length = n_obs).
     type: int[]
 
+  - id: image_minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done.
+    type: int[]
+      
   - id: previous_mask_filename
     label: Filename of previous mask
     doc: |
@@ -188,6 +201,13 @@ inputs:
     doc: |
       The filename of the h5parm file with the direction-dependent calibration
       solutions (length = 1).
+    type: File?
+
+  - id: prepare_data_h5parm
+    label: Filename of pre-apply h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions to pre-apply
+      before imaging (length = 1).
     type: File?
 
   - id: fulljones_h5parm
@@ -727,8 +747,12 @@ steps:
         source: image_timestep
       - id: maxinterval
         source: image_maxinterval
+      - id: minchannels
+        source: image_minchannels
       - id: timebase
         source: image_timebase
+      - id: frequencybase
+        source: image_frequencybase
       - id: beamdir
         source: phasecenter
       - id: numthreads
@@ -738,7 +762,7 @@ steps:
         source: central_patch_name
 {% endif %}
       - id: h5parm
-        source: h5parm
+        source: prepare_data_h5parm
       - id: fulljones_h5parm
         source: fulljones_h5parm
       - id: normalize_h5parm
@@ -747,7 +771,7 @@ steps:
         source: prepare_data_steps
       - id: applycal_steps
         source: prepare_data_applycal_steps
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval]
+    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval, minchannels]
     scatterMethod: dotproduct
     out:
       - id: msimg
@@ -1153,8 +1177,6 @@ steps:
         source: source_finder
       - id: ncores
         source: max_threads
-      - id: save_filtered_model_image
-        source: save_filtered_model_image
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky

@@ -19,6 +19,14 @@ arguments:
   - applybeam.usemodeldata=True
   - applybeam.invert=False
   - applycal.type=applycal
+  - applycal.correction=phase000
+  - applycal.fastphase.correction=phase000
+  - applycal.fastphase.solset=sol000
+  - applycal.slowgain.correction=amplitude000
+  - applycal.slowgain.solset=sol000
+  - applycal.fulljones.correction=fulljones
+  - applycal.fulljones.solset=sol000
+  - applycal.fulljones.soltab=[amplitude000,phase000]
   - applycal.normalization.correction=amplitude000
   - applycal.normalization.solset=sol000
   - applycal.normalization.usemodeldata=True
@@ -95,8 +103,8 @@ inputs:
   - id: applycal_steps
     label: List of applycal steps
     doc: |
-      The list of applycal steps to perform. Currently, only "normalization"
-      is allowed.
+      The list of applycal steps to perform before solving. Supported steps are
+      "fastphase", "slowgain", "fulljones", and "normalization".
     type: string?
     inputBinding:
       prefix: applycal.steps=
@@ -110,6 +118,24 @@ inputs:
     type: File?
     inputBinding:
       prefix: applycal.normalization.parmdb=
+      separate: False
+
+  - id: applycal_h5parm
+    label: Filename of scalar h5parm
+    doc: |
+      The filename of the scalar phase/gain h5parm file to preapply before the solve.
+    type: File?
+    inputBinding:
+      prefix: applycal.parmdb=
+      separate: False
+
+  - id: fulljones_h5parm
+    label: Filename of full-Jones h5parm
+    doc: |
+      The filename of the full-Jones h5parm file to preapply before the solve.
+    type: File?
+    inputBinding:
+      prefix: applycal.fulljones.parmdb=
       separate: False
 
   - id: timebase

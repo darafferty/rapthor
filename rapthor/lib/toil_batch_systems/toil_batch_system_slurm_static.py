@@ -31,16 +31,15 @@ import os
 import subprocess
 import time
 import traceback
+from typing import Optional, Type
 
-from typing import Type, Optional
-from toil.batchSystems.registry import add_batch_system_factory
-from toil.batchSystems.singleMachine import SingleMachineBatchSystem, Info
 from toil.batchSystems.abstractBatchSystem import (
+    EXIT_STATUS_UNAVAILABLE_VALUE,
     AbstractBatchSystem,
     UpdatedBatchJobInfo,
-    EXIT_STATUS_UNAVAILABLE_VALUE,
 )
-
+from toil.batchSystems.registry import add_batch_system_factory
+from toil.batchSystems.singleMachine import Info, SingleMachineBatchSystem
 from toil.common import Config
 from toil.job import (
     AcceleratorRequirement,

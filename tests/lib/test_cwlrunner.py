@@ -74,6 +74,7 @@ class Sector:
             "ms_filename": "filename.ms",
             "ms_prep_filename": None,
             "image_freqstep": None,
+            "image_bda_minchannels": None,
             "image_timestep": None,
             "image_bda_maxinterval": None,
         }
@@ -131,6 +132,7 @@ class Field:
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
         self.image_bda_timebase = 0
+        self.image_bda_frequencybase = 0
         self.slow_timestep_sec = 1
         self.apply_time_frequency_smearing = True
         self.correct_smearing_in_imaging = True

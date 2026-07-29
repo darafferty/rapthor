@@ -3,15 +3,18 @@
 Script to restore a skymodel into an image
 """
 
-from argparse import ArgumentParser, RawTextHelpFormatter
-from typing import Tuple, Union
-import numpy as np
-from astropy.io.fits import open as fits_open, writeto as fits_write, CompImageHDU, FitsHDU
-import subprocess 
-from pathlib import Path
 import logging
-from tempfile import NamedTemporaryFile
 import shutil
+import subprocess
+from argparse import ArgumentParser, RawTextHelpFormatter
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from typing import Tuple, Union
+
+import numpy as np
+from astropy.io.fits import CompImageHDU, FitsHDU
+from astropy.io.fits import open as fits_open
+from astropy.io.fits import writeto as fits_write
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -43,7 +46,8 @@ def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size:
         str(reference_image),
         str(source_catalog),
         str(output_image),
-        "-beam-size", str(beam_size)
+        "-beam-size",
+        str(beam_size),
     ]
     subprocess.run(cmd, check=True)
     logger.info("Restored image saved to %s", output_image)
@@ -54,8 +58,14 @@ def log_fits_info(fits_obj):
     for i, name, version, type, cards, dimensions, format, _ in fits_obj.info(output=False):
         logger.info(
             "HDU %s: name=%s, version=%s, type=%s, cards=%s, dimensions=%s, format=%s",
-            i, name, version, type, cards, dimensions, format
-        )   
+            i,
+            name,
+            version,
+            type,
+            cards,
+            dimensions,
+            format,
+        )
 
 
 def get_primary_hdu_or_compressed(fits_obj) -> Union[FitsHDU, CompImageHDU]:
@@ -72,10 +82,7 @@ def get_primary_hdu_or_compressed(fits_obj) -> Union[FitsHDU, CompImageHDU]:
     FitsHDU | CompImageHDU
         The primary HDU or compressed image HDU
     """
-    compressed_hdu = next(
-        (hdu for hdu in fits_obj
-        if isinstance(hdu, CompImageHDU)), None
-    )
+    compressed_hdu = next((hdu for hdu in fits_obj if isinstance(hdu, CompImageHDU)), None)
     if compressed_hdu:
         return compressed_hdu
     else:
@@ -138,7 +145,7 @@ def make_zero_image(reference_image: Path) -> Tuple[Path, float]:
         return output_image, min_scale
 
 
-def compress_image_if_needed(input_image: Path, output_image: Path)-> Path:
+def compress_image_if_needed(input_image: Path, output_image: Path) -> Path:
     """
     Compress the image if the output filename indicates compression.
 
@@ -192,14 +199,20 @@ def main(source_catalog: Path, reference_image: Path, output_image: Path):
 
 
 if __name__ == "__main__":
-    descriptiontext = "Restore a skymodel text file into an image.\n" \
-                      "The restored image will have the same dimensions and WCS as the reference image." \
-                      
-
+    descriptiontext = (
+        "Restore a skymodel text file into an image.\n"
+        "The restored image will have the same dimensions and WCS as the reference image."
+    )
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument("source_catalog", help="Filename of input FITS source catalog", type=Path)
-    parser.add_argument("reference_image", help="Filename of image to use as reference for restoration", type=Path)
-    parser.add_argument("output_image", help="Filename of output restored image, if (fs.gz, fits.gz, etc..) extension is used" \
-                                             " it will be compressed", type=Path)
+    parser.add_argument(
+        "reference_image", help="Filename of image to use as reference for restoration", type=Path
+    )
+    parser.add_argument(
+        "output_image",
+        help="Filename of output restored image, if (fs.gz, fits.gz, etc..) extension is used"
+        " it will be compressed",
+        type=Path,
+    )
     args = parser.parse_args()
     main(args.source_catalog, args.reference_image, args.output_image)

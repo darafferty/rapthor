@@ -105,11 +105,28 @@ inputs:
       (length = n_sectors).
     type: float[]
 
+  - id: image_frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done
+      (length = n_sectors).
+    type: float[]
+
   - id: image_maxinterval
     label: BDA maxinterval
     doc: |
       The maximum interval duration (in time slots) over which BDA time averaging is
       done (length = n_obs * n_sectors).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
+
+  - id: image_minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done (length = n_obs * n_sectors).
     type:
       type: array
       items:
@@ -214,11 +231,18 @@ inputs:
       The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
     type: string?
 
+  - id: prepare_data_h5parm
+    label: Filename of pre-apply h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions to pre-apply
+      before imaging (length = 1).
+    type: File?
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions (length =
-      1).
+      The filename of the h5parm file with the direction-dependent calibration
+      solutions to apply during imaging (length = 1).
     type: File?
 
   - id: fulljones_h5parm
@@ -780,6 +804,10 @@ steps:
         source: ntimes
       - id: image_freqstep
         source: image_freqstep
+      - id: image_minchannels
+        source: image_minchannels
+      - id: image_frequencybase
+        source: image_frequencybase
       - id: image_timestep
         source: image_timestep
       - id: image_maxinterval
@@ -820,6 +848,8 @@ steps:
         source: prepare_data_steps
       - id: prepare_data_applycal_steps
         source: prepare_data_applycal_steps
+      - id: prepare_data_h5parm
+        source: prepare_data_h5parm
       - id: h5parm
         source: h5parm
       - id: fulljones_h5parm
@@ -955,7 +985,8 @@ steps:
       - id: peel_bright_sources
         source: peel_bright_sources
     scatter: [obs_filename, prepare_filename, concat_filename, residual_filename, starttime, ntimes,
-              image_freqstep, image_timestep, image_maxinterval, image_timebase,
+              image_freqstep, image_minchannels, image_frequencybase, image_timestep, image_maxinterval,
+              image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
               filtered_model_image_name, parallel_gridding_tasks,

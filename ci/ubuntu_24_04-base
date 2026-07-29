@@ -10,7 +10,7 @@ ARG DP3_COMMIT=18e793a4
 ARG EVERYBEAM_COMMIT=master
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
-ARG SAGECAL_COMMIT=master
+ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
 ARG WSCLEAN_COMMIT=master
 
 # Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
@@ -204,7 +204,7 @@ RUN pip install -r requirements.txt
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS runner
+FROM ubuntu:24.04 AS runtime
 
 COPY --from=builder /usr/local /usr/local
 
@@ -215,7 +215,7 @@ ARG DP3_COMMIT=18e793a4
 ARG EVERYBEAM_COMMIT=master
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
-ARG SAGECAL_COMMIT=master
+ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
 ARG WSCLEAN_COMMIT=master
 
 # Add version information to the metadata of the image
@@ -269,3 +269,36 @@ RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version && \
     fpack -H
+
+
+#---------------------------------------------------------------------------
+# Development target. It extends the CI runner so the OS, Python version,
+# compiled tools, and runtime dependencies are identical to CI.
+#---------------------------------------------------------------------------
+FROM runtime AS dev
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3-venv \
+        time && \
+    rm -rf /var/lib/apt/lists/*
+
+# CI installs Rapthor and its test dependencies in an isolated tox environment.
+# Do the same here so pip installs NumPy-compatible wheels instead of reusing
+# Python extensions from the runtime image that were built against NumPy 1.x.
+ENV VIRTUAL_ENV=/opt/rapthor-venv
+RUN python3 -m venv ${VIRTUAL_ENV}
+
+ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam \
+    PATH="${VIRTUAL_ENV}/bin:${PATH}" \
+    PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /app
+
+CMD ["/bin/bash"]
+
+
+# Keep the CI runner as the default final target while allowing the dev
+# container to branch from the same runtime image above.
+FROM runtime AS runner

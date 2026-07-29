@@ -180,7 +180,7 @@ commands = [
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
-        "--cov-report", "html",
+        # "--cov-report", "html",
         "--cov=rapthor",
         "--cov-append",
         "tests/{posargs}",
@@ -209,7 +209,7 @@ commands = [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "--durations=0",
+        "--durations-path", "{env:CI_PROJECT_DIR:}/tests/integration/.test_durations",
         "--splits", "{env:CI_NODE_TOTAL:1}",
         "--group", "{env:CI_NODE_INDEX:1}",
         "tests",
@@ -241,20 +241,7 @@ commands = [
 skip_install = true
 deps = "ruff"
 format_targets = [
-    "rapthor/lib/__init__.py",
-    "rapthor/lib/cluster.py",
-    "rapthor/lib/cwl.py",
-    "rapthor/lib/cwlrunner.py",
-    "rapthor/lib/operation.py",
-    "rapthor/lib/observation.py",
-    "rapthor/lib/parset.py",
-    "rapthor/lib/strategy.py",
-    "rapthor/operations/calibrate.py",
-    "rapthor/operations/image.py",
-    "rapthor/process.py",
-    "rapthor/scripts/calculate_image_diagnostics.py",
-    "rapthor/scripts/normalize_flux_scale.py",
-    "rapthor/testing.py",
+    "rapthor",
     "tests"
 ]
 

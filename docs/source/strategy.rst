@@ -17,7 +17,10 @@ Rapthor parset. The options for this parameter are described below:
 
         If an initial sky model is automatically generated from the data (see
         :ref:`auto_sky_generation`), the phase-only cycles are not generally
-        needed and are therefore skipped.
+        needed and are therefore skipped. However, if a sky model is downloaded
+        from a survey catalog or supplied directly by the user, the phase-only
+        cycles are not skipped. In these cases, if the phase-only cycles are not needed,
+        they can be disabled by supplying a custom strategy (see :ref:`custom_strategy`).
 
 ``strategy = image``
     This strategy performs imaging only; no calibration is done. As such, a file
@@ -78,10 +81,11 @@ cycle.
     (for self calibration), `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`_
     (for imaging only) and `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_ska_low.py>`_
-    (for SKA low). Files that duplicate the default strategies are available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/flexible_calibration_strategy.py>`_
+    (for more control over the calibration strategy). Files that duplicate the default strategies are available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
-    (for self calibration) and `here
+    (for self calibration; note that, in contrast to the built-in self calibration strategy,
+    phase-only cycles are never done) and `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
     (for imaging only).
 
@@ -185,3 +189,14 @@ The following processing parameters can be set for each cycle:
     failure_ratio
         Float that sets the minimum ratio of the current image noise to the theoretical image noise above which selfcal is considered to have failed (must be > 1).
 
+    calibration_strategy
+        Dictionary that sets the sequence of solves for this cycle. The keys of the dictionary are "di" and "dd", which set the direction-independent and direction-dependent calibration strategies, respectively. The value for each key is a list of solve names to run for that calibration mode.
+
+        Allowed solve names are:
+
+        - "fast_phase": run the fast (scalarphase) solve.
+        - "medium_phase": run the medium-fast (scalarphase) solve.
+        - "slow_gain": run the slow (diagonal) solve.
+        - "full_jones": run the full-Jones solve.
+
+        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles.

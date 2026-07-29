@@ -206,6 +206,9 @@ The available options are described below under their respective sections.
     use_wsclean_predict
         Use image-based prediction using WSClean (default = ``False``)? Usage similar to ``use_image_based_predict`` above (but mutually exclusive).
 
+    wsclean_predict_bw
+        Bandwidth (Hz) to create separate images for prediction. The full bandwidth of the data will be divided into chunks of channels whose frequency width given by this value. If the division if not an integer, an approximate (not uniform) division will be made.
+
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
         default = ``qr``).
@@ -461,16 +464,14 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 0). A value of 0 will disable the averaging. Activating this option
-        may improve the speed of imaging.
+        Maximum baseline used in baseline-dependent averaging (BDA) in time direction
+        during imaging, in m (default = 0). A value of 0 will disable the averaging.
+        Activating this option may improve the speed of imaging.
 
-        .. note::
-
-            Currently, correction for time and frequency smearing cannot be done
-            when BDA is used during imaging. If the averaging of the input data
-            is such that time or frequency smearing is significant within the field
-            of view of interest, then the use of BDA is not recommended.
+    bda_frequencybase
+        Maximum baseline used in baseline-dependent averaging (BDA) in frequency
+        direction during imaging, in m (default = 0). A value of 0 will disable the
+        averaging.
 
     dde_method
         Method to use to correct for direction-dependent effects during imaging:
