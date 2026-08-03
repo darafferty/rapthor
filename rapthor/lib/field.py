@@ -285,13 +285,11 @@ class Field(object):
                     "separation_tolerance_arcsec option in the parset if necessary."
                 )
 
-        # Check that all observations have the same stations
-        self.stations = obs0.stations
+        # Get station names across all observations
+        all_stations = []
         for obs in self.full_observations:
-            if self.stations != obs.stations:
-                raise ValueError(
-                    f"Stations in MS {obs.ms_filename} differ from those in MS {obs0.ms_filename}"
-                )
+            all_stations.extend(obs.stations)
+        self.stations = list(set(all_stations))
 
         # Find mean elevation and FOV over all observations
         self.diam = np.mean([obs.diam for obs in self.full_observations])

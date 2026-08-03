@@ -770,6 +770,10 @@ class Calibrate(Operation):
         """
         Returns list of superterp station names
 
+        Note: the stations returned include those across all observations; if
+        a particular observation lacks a given station, that station is ignored
+        by DP3 during calibration of that observation
+
         Returns
         -------
         stations : list
@@ -798,6 +802,10 @@ class Calibrate(Operation):
     def _get_core_stations(self, include_nearest_remote=True):
         """
         Returns list of station names for core calibration
+
+        Note: the stations returned include those across all observations; if
+        a particular observation lacks a given station, that station is ignored
+        by DP3 during calibration of that observation
 
         Parameters
         ----------
