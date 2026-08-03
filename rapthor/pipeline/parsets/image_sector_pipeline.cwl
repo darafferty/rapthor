@@ -47,6 +47,8 @@ inputs:
       files and used for imaging (length = 1).
     type: string
 
+
+
   - id: residual_filename
     label: Filename of residual MS
     doc: |
@@ -776,6 +778,7 @@ steps:
     out:
       - id: msimg
 
+{% if concat_in_time %}
   - id: concat_in_time
     label: Concatenate MS file in time
     doc: |
@@ -792,6 +795,7 @@ steps:
         valueFrom: 'time'
     out:
       - id: msconcat
+{% endif %}
 
   - id: premask
     label: Make an image mask
@@ -887,8 +891,13 @@ steps:
 # end apply_screens / not apply_screens
 
     in:
+{% if concat_in_time %}
       - id: msin
         source: concat_in_time/msconcat
+{% else %}
+      - id: msin_list
+        source: prepare_imaging_data/msimg
+{% endif %}
       - id: name
         source: image_name
       - id: mask

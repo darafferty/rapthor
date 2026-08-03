@@ -138,6 +138,16 @@ class Image(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset["cluster_specific"]["max_cores"]
+        if any(
+            [
+                set(self.field.stations) != set(obs.stations)
+                for obs in self.field.observations
+            ]
+        ):
+            # One or more observations have differing stations: concatenation cannot be done
+            concat_in_time = False
+        else:
+            concat_in_time = True
 
         self.allow_internet_access = self.field.parset["cluster_specific"]["allow_internet_access"]
         self.parset_parms = {
@@ -156,6 +166,7 @@ class Image(Operation):
             "photometry_skymodel": self.photometry_skymodel,
             "astrometry_skymodel": self.astrometry_skymodel,
             "allow_internet_access": self.allow_internet_access,
+            "concat_in_time": concat_in_time,
         }
 
     def _has_dd_scalar_h5parm(self):
