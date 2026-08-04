@@ -17,7 +17,10 @@ Rapthor parset. The options for this parameter are described below:
 
         If an initial sky model is automatically generated from the data (see
         :ref:`auto_sky_generation`), the phase-only cycles are not generally
-        needed and are therefore skipped.
+        needed and are therefore skipped. If a sky model is downloaded from a
+        survey catalog or supplied directly by the user, the phase-only cycles
+        are not skipped. In these cases, a custom strategy can disable them
+        when they are not needed (see :ref:`custom_strategy`).
 
 ``strategy = image``
     This strategy performs imaging only; no calibration is done. As such, a file
@@ -81,7 +84,8 @@ cycle.
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/flexible_calibration_strategy.py>`_
     (for more control over the calibration strategy). Files that duplicate the default strategies are available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
-    (for self calibration) and `here
+    (for self calibration; unlike the built-in self calibration strategy, this
+    file never runs phase-only cycles) and `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
     (for imaging only).
 

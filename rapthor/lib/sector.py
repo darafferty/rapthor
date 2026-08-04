@@ -155,10 +155,6 @@ class Sector(object):
             # If no limit is set at this point, use the memory of the current machine
             self.mem_limit_gb = cluster.get_available_memory()
         self.reweight = imaging_parameters["reweight"]
-        self.target_fast_timestep = self.field.fast_timestep_sec
-        self.target_slow_timstep = self.field.slow_timestep_sec
-        self.target_fast_freqstep = self.field.parset["calibration_specific"]["fast_freqstep_hz"]
-        self.target_slow_freqstep = self.field.parset["calibration_specific"]["slow_freqstep_hz"]
         self.apply_screens = self.field.apply_screens
 
         # Set image size based on current sector polygon
@@ -260,6 +256,31 @@ class Sector(object):
 
         # Set the observation-specific parameters
         max_peak_smearing = imaging_parameters["max_peak_smearing"]
+        min_solve_timestep = min(
+            self.field.fast_timestep_sec,
+            self.field.medium_timestep_sec,
+            self.field.slow_timestep_sec,
+            self.field.fulljones_timestep_sec,
+        )
+        min_solve_timestep_short_baselines = min(
+            # Fast phase constrains core stations together and therefore does not
+            # limit averaging on short baselines.
+            self.field.medium_timestep_sec,
+            self.field.slow_timestep_sec,
+            self.field.fulljones_timestep_sec,
+        )
+        calibration_parameters = self.field.parset["calibration_specific"]
+        min_solve_freqstep = min(
+            calibration_parameters["fast_freqstep_hz"],
+            calibration_parameters["medium_freqstep_hz"],
+            calibration_parameters["slow_freqstep_hz"],
+            calibration_parameters["fulljones_freqstep_hz"],
+        )
+        min_solve_freqstep_short_baselines = min(
+            calibration_parameters["medium_freqstep_hz"],
+            calibration_parameters["slow_freqstep_hz"],
+            calibration_parameters["fulljones_freqstep_hz"],
+        )
         for obs in self.observations:
             # Set imaging parameters
             obs.set_imaging_parameters(
@@ -268,10 +289,10 @@ class Sector(object):
                 max_peak_smearing,
                 self.width_ra,
                 self.width_dec,
-                self.target_fast_timestep,
-                self.target_slow_timstep,
-                self.target_fast_freqstep,
-                self.target_slow_freqstep,
+                min_solve_timestep,
+                min_solve_timestep_short_baselines,
+                min_solve_freqstep,
+                min_solve_freqstep_short_baselines,
                 preapply_dd_solutions,
             )
 

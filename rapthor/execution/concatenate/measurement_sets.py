@@ -113,7 +113,6 @@ def concat_freq_command(
         "steps=[]",
         "msin.orderms=False",
         "msin.missingdata=True",
-        "msout.writefullresflag=False",
         "msout.storagemanager=Dysco",
     ]
 

@@ -1,6 +1,6 @@
 # Rapthor Switch-Readiness Plan
 
-Status snapshot: 2026-07-16.
+Status snapshot: 2026-08-04.
 
 ## Goal
 
@@ -105,6 +105,14 @@ external Dask, and MPI WSClean are a separate production-readiness track.
 
 ## Immediate Task List
 
+- [ ] **Verify the August master sync.**
+  The three commits added to `master` after the July sync have been ported:
+  calibration-aware imaging/BDA frequency limits, clearer built-in strategy
+  documentation, and removal of DP3's unsupported `writefullresflag` option.
+  Focused unit and command-contract tests pass, as does the real-DP3
+  frequency-only imaging-BDA integration scenario. Archive a fresh
+  science-equivalence result before treating the existing science decision as
+  applying to this update.
 - [x] **Verify the recent master-sync changes.**
   Add the focused unit and integration coverage in step 0, strengthen the two
   affected branch-vs-master option scenarios, and archive a fresh science-gate

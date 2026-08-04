@@ -129,7 +129,6 @@ def test_concatenate_command_matches_initial_reference_fixture():
             "steps=[]",
             "msin.orderms=False",
             "msin.missingdata=True",
-            "msout.writefullresflag=False",
             "msout.storagemanager=Dysco",
         ]
     ) == normalize_command(expected)

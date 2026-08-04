@@ -67,3 +67,13 @@ The rationale behind the two extra steps for a versioned release is that we want
 ### Creating the release in the GitLab GUI
 
 Once the CI/CD pipeline has run, and the new release has been tagged, a new release can be created in the GitLab GUI. Navigate to `Deploy > Releases`, click on the `Create new release` button, and proceed as you would normally do when creating a new release.
+
+### Formatting the code
+
+Before submitting changes to Python files, apply Ruff's import sorting and
+formatter:
+
+```bash
+ruff check --fix --select I <files>
+ruff format <files>
+```

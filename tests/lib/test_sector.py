@@ -39,6 +39,35 @@ def test_set_prediction_parameters_forwards_sector_name_and_patches(sector, monk
     ]
 
 
+def test_set_imaging_parameters_uses_short_baseline_solution_limits(sector, monkeypatch):
+    calls = []
+    sector.channel_width_hz = 4e6
+    sector.max_nmiter = 12
+    sector.field.fast_timestep_sec = 20.0
+    sector.field.medium_timestep_sec = 60.0
+    sector.field.slow_timestep_sec = 120.0
+    sector.field.fulljones_timestep_sec = 240.0
+    calibration_parameters = sector.field.parset["calibration_specific"]
+    calibration_parameters["fast_freqstep_hz"] = 100e3
+    calibration_parameters["medium_freqstep_hz"] = 400e3
+    calibration_parameters["slow_freqstep_hz"] = 800e3
+    calibration_parameters["fulljones_freqstep_hz"] = 1.6e6
+
+    for observation in sector.observations:
+        monkeypatch.setattr(
+            observation,
+            "set_imaging_parameters",
+            lambda *args: calls.append(args),
+        )
+
+    sector.set_imaging_parameters(preapply_dd_solutions=True)
+
+    assert len(calls) == len(sector.observations)
+    for call in calls:
+        assert call[5:9] == (20.0, 60.0, 100e3, 400e3)
+        assert call[9] is True
+
+
 def test_get_nwavelengths_scales_with_cell_size_and_time(sector):
     cellsize_deg = 1.0 / 3600.0
     timestep_sec = 10.0

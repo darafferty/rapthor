@@ -505,10 +505,10 @@ class Observation(object):
         max_peak_smearing,
         width_ra,
         width_dec,
-        solve_fast_timestep,
-        solve_slow_timestep,
-        solve_fast_freqstep,
-        solve_slow_freqstep,
+        min_solve_timestep,
+        min_solve_timestep_short_baselines,
+        min_solve_freqstep,
+        min_solve_freqstep_short_baselines,
         preapply_dd_solutions,
     ):
         """
@@ -524,19 +524,19 @@ class Observation(object):
             Width in RA of image in degrees
         width_dec : float
             Width in Dec of image in degrees
-        solve_fast_timestep : float
-            Solution interval in sec for fast solve
-        solve_slow_timestep : float
-            Solution interval in sec for slow solve
-        solve_fast_freqstep : float
-            Solution interval in Hz for fast solve
-        solve_slow_freqstep : float
-            Solution interval in Hz for slow solve
+        min_solve_timestep : float
+            Minimum solution interval in sec over all solves
+        min_solve_timestep_short_baselines : float
+            Minimum solution interval in sec over solves relevant for short baselines
+        min_solve_freqstep : float
+            Minimum solution interval in Hz over all solves
+        min_solve_freqstep_short_baselines : float
+            Minimum solution interval in Hz over solves relevant for short baselines
         preapply_dd_solutions : bool
             If True, use setup appropriate for case in which all DD
             solutions are preapplied before imaging is done
         """
-        mean_freq_mhz = self.referencefreq / 1e6
+        mean_freq_hz = self.referencefreq
         peak_smearing_rapthor = np.sqrt(1.0 - max_peak_smearing)
         chan_width_hz = self.channelwidth
         nchan = self.numchannels
@@ -571,24 +571,28 @@ class Observation(object):
             self.get_target_timewidth(delta_theta_deg, resolution_deg, peak_smearing_rapthor),
         )
 
-        if not preapply_dd_solutions:
-            # Ensure we don't average more than the solve time step, as we want to
-            # preserve the time resolution so that the soltuions can be applied
-            # properly during imaging
-            target_timewidth_sec = min(target_timewidth_sec, solve_fast_timestep)
-
-        target_bandwidth_mhz = min(
-            2.0,
+        target_bandwidth_hz = min(
+            2e6,
             self.get_target_bandwidth(
-                mean_freq_mhz, delta_theta_deg, resolution_deg, peak_smearing_rapthor
+                mean_freq_hz, delta_theta_deg, resolution_deg, peak_smearing_rapthor
             ),
         )
-        target_bandwidth_mhz = min(target_bandwidth_mhz, solve_slow_freqstep / 1e6)
+
+        if not preapply_dd_solutions:
+            # Preserve enough resolution to apply every relevant solution during
+            # imaging. Normal averaging affects all baselines, so use the smallest
+            # interval over all solve types.
+            target_timewidth_sec = min(target_timewidth_sec, min_solve_timestep)
+            target_bandwidth_hz = min(target_bandwidth_hz, min_solve_freqstep)
+
         self.log.debug("Target averaging timewidth for imaging is %.1f s", target_timewidth_sec)
-        self.log.debug("Target averaging bandwidth for imaging is %.1f MHz", target_bandwidth_mhz)
+        self.log.debug(
+            "Target averaging bandwidth for imaging is %.1f MHz",
+            target_bandwidth_hz / 1e6,
+        )
 
         # Find averaging steps for above target values
-        image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))
+        image_freqstep = max(1, min(int(round(target_bandwidth_hz / chan_width_hz)), nchan))
         self.parameters["image_freqstep"] = self.get_nearest_freqstep(image_freqstep)
         self.parameters["image_timestep"] = max(1, int(round(target_timewidth_sec / timestep_sec)))
         self.log.debug(
@@ -600,19 +604,22 @@ class Observation(object):
             "s" if self.parameters["image_timestep"] > 1 else "",
         )
 
-        # Find BDA maxinterval: the max time interval in time slots over which to average
-        # (for the shortest baselines). We set this to be the slow solve time step to ensure
-        # we don't average more than the timescale of the slow corrections
+        # BDA limits apply to the shortest baselines, so only consider solutions
+        # that are relevant on those baselines.
         target_maxinterval = min(
-            self.numsamples, int(round(solve_slow_timestep / timestep_sec))
+            self.numsamples,
+            int(round(min_solve_timestep_short_baselines / timestep_sec)),
         )  # time slots
         self.parameters["image_bda_maxinterval"] = max(1, target_maxinterval)
 
-        min_freqstep = min(
-            self.get_nearest_freqstep(solve_fast_freqstep / chan_width_hz),
-            self.get_nearest_freqstep(solve_slow_freqstep / chan_width_hz),
+        target_freqstep = min(
+            nchan,
+            max(
+                1,
+                self.get_nearest_freqstep(min_solve_freqstep_short_baselines / chan_width_hz),
+            ),
         )
-        self.parameters["image_bda_minchannels"] = max(1, int(nchan / min_freqstep))
+        self.parameters["image_bda_minchannels"] = max(1, int(nchan / target_freqstep))
         self.log.debug(
             "If BDA is enabled, maxinterval = %.1f s and minchannels = %d will be used for imaging",
             self.parameters["image_bda_maxinterval"] * timestep_sec,

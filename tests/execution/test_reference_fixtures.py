@@ -19,7 +19,6 @@ def test_command_reference_fixture_is_tokenized():
         "steps=[]",
         "msin.orderms=False",
         "msin.missingdata=True",
-        "msout.writefullresflag=False",
         "msout.storagemanager=Dysco",
     ]
 

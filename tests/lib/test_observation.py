@@ -394,13 +394,18 @@ class TestObservation:
         assert observation.parameters["predict_ntimes"] == 0
 
     @pytest.mark.parametrize(
-        "preapply_dd_solutions, expected_image_timestep",
-        [(False, 2), (True, 3)],
+        "preapply_dd_solutions, expected_image_timestep, expected_image_freqstep",
+        [(False, 2, 1), (True, 3, 8)],
     )
     def test_set_imaging_parameters(
-        self, observation, test_ms, preapply_dd_solutions, expected_image_timestep
+        self,
+        observation,
+        test_ms,
+        preapply_dd_solutions,
+        expected_image_timestep,
+        expected_image_freqstep,
     ):
-        """Preapplied DD solutions allow more time averaging during imaging."""
+        """Preapplied DD solutions allow more time/frequency averaging."""
         observation.set_imaging_parameters(
             sector_name="sector_1",
             cellsize_arcsec=3.0,
@@ -411,19 +416,19 @@ class TestObservation:
             # cadence so solutions can still be applied accurately. That caps the
             # image timestep at 20 s / 10.0139008 s ~= 2 slots. With preapplied DD
             # solutions, the smearing limit is the active constraint, giving 3 slots.
-            solve_fast_timestep=20.0,
-            solve_slow_timestep=60.0,
-            solve_fast_freqstep=observation.channelwidth,
-            solve_slow_freqstep=observation.channelwidth * 4,
+            min_solve_timestep=20.0,
+            min_solve_timestep_short_baselines=60.0,
+            min_solve_freqstep=observation.channelwidth,
+            min_solve_freqstep_short_baselines=observation.channelwidth * 4,
             preapply_dd_solutions=preapply_dd_solutions,
         )
 
         assert observation.parameters["ms_filename"] == test_ms
         assert observation.parameters["ms_prep_filename"] == "test.sector_1_prep.ms"
-        assert observation.parameters["image_freqstep"] == 4
+        assert observation.parameters["image_freqstep"] == expected_image_freqstep
         assert observation.parameters["image_timestep"] == expected_image_timestep
         assert observation.parameters["image_bda_maxinterval"] == 6
-        assert observation.parameters["image_bda_minchannels"] == observation.numchannels
+        assert observation.parameters["image_bda_minchannels"] == 2
 
     @pytest.mark.parametrize(
         "freqstep, expected",

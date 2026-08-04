@@ -64,7 +64,6 @@ def test_concat_freq_command_uses_real_measurement_set_metadata(test_ms):
         "steps=[]",
         "msin.orderms=False",
         "msin.missingdata=True",
-        "msout.writefullresflag=False",
         "msout.storagemanager=Dysco",
     ]
 
