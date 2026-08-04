@@ -1,6 +1,6 @@
 # Rapthor Equivalence Decision Report
 
-Latest status scan: 2026-07-16
+Latest status scan: 2026-08-04
 
 Science contract:
 `docs/source/development/science_equivalence_contract.rst`
@@ -39,7 +39,7 @@ individual runs.
 
 | Gate | Latest Result | Evidence | Decision |
 | --- | --- | --- | --- |
-| Science equivalence | **Pass / accepted with classified post-sync differences** | `2026-07-16-post-master-sync-saved-reference`, `2026-07-16-post-master-sync-option-matrix`, current-only frequency-BDA evidence, and earlier DD/full-Jones repeatability evidence | Scientific contract remains accepted for the covered LOFAR HBA paths; the retained differences are an EveryBeam baseline shift and a deliberate fix for incomplete master WSClean prediction. |
+| Science equivalence | **Pass / accepted with classified saved-reference warnings** | `2026-08-04-august-master-sync`, July post-sync evidence, and earlier DD/full-Jones repeatability evidence | Exact August `master`/current comparisons pass strictly for the newly ported BDA frequency limits and normalization. Old-reference normalization and peeling image residuals remain visible as rebuilt external-tool baseline warnings. |
 | Performance equivalence | **Pass for phase-only core and DD/full-Jones** | `2026-07-11-phase-only-core-repeatability-gate`, `2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate` | Performance equivalence is established for the current optimisation phase; continue targeted benchmarking for new scalability changes. |
 
 ## What Was Being Decided
@@ -77,6 +77,7 @@ Confidence: **high for the tested LOFAR HBA self-calibration paths**.
 
 Latest tracked science evidence:
 
+- `docs/source/development/science_equivalence_runs/2026-08-04-august-master-sync/`
 - `docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-saved-reference/`
 - `docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-option-matrix/`
 - `docs/source/development/science_equivalence_runs/2026-07-16-frequency-only-imaging-bda-current/`
@@ -88,8 +89,15 @@ Latest tracked science evidence:
 
 The current branch passes the science gate because:
 
-- six post-sync saved-reference scenarios pass strictly after the LSMTool and
-  EveryBeam updates
+- the August active saved-reference matrix has five strict passes; its
+  normalization and peeling warnings are limited to three old-reference FITS
+  image comparisons, while operation, product, structure, h5parm, and text
+  checks pass
+- controlled same-stack comparisons against exact August `master` commit
+  `b307e769` pass strictly for the newly ported calibration-aware BDA frequency
+  limits and for normalization, including the normalization frequency cube
+- the old-reference failures and original tolerances remain preserved; no
+  comparator was weakened and no saved product was refreshed to force a pass
 - the old saved normalization cube difference is stable, concentrated at beam
   boundary pixels, and absent from a controlled same-stack `master`/current
   normalization comparison
@@ -149,6 +157,7 @@ scalability phase.
 
 | Evidence | Result | Why it matters |
 | --- | --- | --- |
+| August master-sync verification | Accepted with classified saved-reference warnings; two same-stack branch comparisons pass strictly | Verifies the newly ported BDA frequency limits and separates rebuilt-tool image drift from current-vs-master behavior without changing tolerances. |
 | Post-master-sync saved-reference gate | Six strict passes; normalization dependency shift classified | Confirms the refactor remains stable after LSMTool/EveryBeam updates without hiding an old beam-boundary baseline change behind broader tolerances. |
 | Post-master-sync option checks | Normalization passes; WSClean prediction divergence accepted as a master bug fix | Separates dependency effects from branch effects and proves current covers every requested prediction channel. |
 | Frequency-only imaging BDA | Current-only pass | Closes a recently ported path for which master cannot provide a scientifically valid reference. |

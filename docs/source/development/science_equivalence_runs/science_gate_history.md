@@ -8,7 +8,7 @@ Generated: 2026-06-11
 
 Archived for post-cutover cleanup: 2026-06-12
 
-Latest on-disk report scan: 2026-07-16
+Latest on-disk report scan: 2026-08-04
 
 Method contract: `docs/source/development/science_equivalence_contract.rst`
 
@@ -31,7 +31,7 @@ active CWL equivalence harness, CWL workflow/parset files, and `cwltool`
 validation tests have since been removed as part of post-cutover cleanup. This
 file is now the historical parity record.
 
-Current gate verdict as of 2026-07-16: the saved-reference matrix, focused
+Current gate verdict as of 2026-08-04: the saved-reference matrix, focused
 DD-plus-DI full-Jones branch-vs-master rerun, three-repeat normalized
 branch-repeatability envelope, and full integration suite support accepting the
 current branch for the covered scientific contract. Remaining cross-branch
@@ -56,6 +56,13 @@ master uses inclusive array endpoints for WSClean's end-exclusive channel
 ranges and leaves two of eight channels unpredicted; current covers all eight
 exactly once. The strict reports remain unchanged and both classifications are
 archived.
+The 2026-08-04 gate verifies the next master sync. Five active saved-reference
+scenarios pass strictly; normalization and peeling retain three old-reference
+FITS pixel failures under the rebuilt tool stack. Fresh same-stack comparisons
+against exact master commit `b307e769` pass strictly for both the newly ported
+calibration-aware BDA frequency limits and normalization. This isolates the
+saved-image residuals from branch behavior. The raw strict failures remain
+visible, and neither tolerances nor references were changed.
 The multi-sector mosaic option-matrix row is documented as a current-branch
 coverage/stored-reference target rather than a branch-vs-master gate because
 legacy `master` fails before comparison in the CWL multi-sector image scatter.
@@ -342,6 +349,37 @@ lock the corrected command and coverage semantics.
 Decision: the science gate remains accepted for the covered LOFAR HBA
 contract. Neither classified difference is an unexplained current-branch
 regression, and no scientific tolerance was relaxed.
+
+## 2026-08-04 August Master-Sync Verification
+
+The August sync was checked at current commit `59be6d94` against exact master
+commit `b307e769`. The archived evidence is:
+
+```text
+docs/source/development/science_equivalence_runs/2026-08-04-august-master-sync/
+```
+
+The active saved-reference run records five strict passes:
+`dd_only_calibration`, `di_only_calibration`,
+`full_stokes_clean_disabled`, `image_cube`, and `restart`. `normalization`
+and `peeling` preserve three strict image-pixel failures against the older
+saved products. Their operation order, output records, required products,
+FITS structure, h5parm products, and text products all pass.
+
+Two same-stack branch comparisons distinguish those dependency-sensitive
+saved products from a branch regression. The new BDA frequency-limit scenario
+passes strictly with three operations, seven FITS products, two h5parm
+products, ten text products, and matching diagnostics. The normalization-rich
+scenario also passes strictly, including its frequency cube, with four
+operations, eight FITS products, three h5parm products, twelve text products,
+and matching diagnostics. Its cube residual RMS is `4.187e-8`, compared with
+`1.2374e-5` against the old saved image.
+
+Decision: accept the August sync for the covered contract with the
+saved-reference image differences retained as classified external-tool
+baseline warnings. No tolerance or saved reference was changed. The branch
+reports' single-run timings are observational only and do not replace the
+repeatability-aware performance gate.
 
 ## Current Strengthened Saved-Reference Run
 

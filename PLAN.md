@@ -33,6 +33,10 @@ and known limitations must all be visible to reviewers.
   branch-vs-master evidence. The post-sync gate retains one classified
   EveryBeam baseline shift and one intentional WSClean channel-coverage fix;
   neither is an unexplained current-branch regression.
+- The August master sync is verified at current commit `59be6d94` against
+  exact master commit `b307e769`. Controlled BDA-frequency-limit and
+  normalization comparisons pass strictly; old-reference normalization and
+  peeling image residuals remain documented external-tool baseline warnings.
 
 **Performance:** accepted for the current optimisation phase.
 
@@ -105,14 +109,17 @@ external Dask, and MPI WSClean are a separate production-readiness track.
 
 ## Immediate Task List
 
-- [ ] **Verify the August master sync.**
+- [x] **Verify the August master sync.**
   The three commits added to `master` after the July sync have been ported:
   calibration-aware imaging/BDA frequency limits, clearer built-in strategy
   documentation, and removal of DP3's unsupported `writefullresflag` option.
   Focused unit and command-contract tests pass, as does the real-DP3
-  frequency-only imaging-BDA integration scenario. Archive a fresh
-  science-equivalence result before treating the existing science decision as
-  applying to this update.
+  frequency-only imaging-BDA integration scenario. The fresh saved-reference
+  and exact branch-vs-master evidence is archived under
+  `docs/source/development/science_equivalence_runs/2026-08-04-august-master-sync/`.
+  Same-stack BDA-frequency-limit and normalization scenarios pass strictly;
+  the retained old-reference normalization and peeling image residuals are
+  classified without changing tolerances.
 - [x] **Verify the recent master-sync changes.**
   Add the focused unit and integration coverage in step 0, strengthen the two
   affected branch-vs-master option scenarios, and archive a fresh science-gate

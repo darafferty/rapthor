@@ -162,6 +162,13 @@ long`.
   normalization and WSClean-prediction comparisons. Normalization passes;
   WSClean prediction records the intentional current fix for master's missing
   end-of-chunk channels, with the raw strict failure preserved.
+- `2026-08-04-august-master-sync/`: verification of the August master sync.
+  Five active saved-reference scenarios pass strictly; normalization and
+  peeling retain old-reference FITS pixel warnings. Controlled same-stack
+  comparisons against exact `master` commit `b307e769` pass strictly for the
+  newly ported BDA frequency limits and for normalization, classifying the
+  saved-image shift as an external-tool baseline change rather than branch
+  divergence. No tolerance was relaxed.
 - `2026-07-05-di-multicycle-carryover-master-ref/`: two selfcal/image cycles
   of master-compatible DD fast+medium phase-only calibration followed by DI
   full-Jones. This exposed and fixed a current-branch full-Jones
