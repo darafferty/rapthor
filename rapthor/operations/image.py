@@ -138,12 +138,7 @@ class Image(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset["cluster_specific"]["max_cores"]
-        if any(
-            [
-                set(self.field.stations) != set(obs.stations)
-                for obs in self.field.observations
-            ]
-        ):
+        if any([set(self.field.stations) != set(obs.stations) for obs in self.field.observations]):
             # One or more observations have differing stations: concatenation cannot be done
             self.concat_in_time = False
         else:
@@ -423,7 +418,9 @@ class Image(Operation):
                 )  # set by ImageNormalize.finalize()
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
-        self.field.make_residual_visibilities = self.field.make_residual_visibilities and self.concat_in_time
+        self.field.make_residual_visibilities = (
+            self.field.make_residual_visibilities and self.concat_in_time
+        )
         nsectors = len(self.imaging_sectors)
         obs_filename = []
         prepare_filename = []

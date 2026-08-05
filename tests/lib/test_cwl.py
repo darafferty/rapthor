@@ -217,6 +217,7 @@ class TestImageWorkflow:
                 "preapply_dde_solutions": (False, True),
                 "save_source_list": (False, True),
                 "compress_images": (False, True),
+                "concat_in_time": (False, True),
             }
         )
     )
