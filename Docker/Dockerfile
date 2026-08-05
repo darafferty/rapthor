@@ -12,10 +12,11 @@ ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
 ARG WSCLEAN_COMMIT=master
+ARG CASACONFIG_VERSION=1.5.0
 
 # Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
 # Intel Haswell and newer, AMD Excavator and newer
-ARG PORTABLE=FALSE
+ARG PORTABLE=FALSEå
 ARG TARGET_CPU=x86-64-v3
 
 # Allow pip to break system packages; we know what we're doing
@@ -70,16 +71,23 @@ RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
 
 # Install required python packages
 RUN python3 -m pip install \
+    "casaconfig==${CASACONFIG_VERSION}" \
     'cmake<4' \
     'numpy<2'
 
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
-# leap seconds appear, ignore them or regenerate the docker image.
+# leap seconds appear, ignore them or regenerate the docker image. If the
+# ASTRON endpoint is unavailable, use casaconfig's configured mirrors.
 RUN mkdir -p /usr/local/share/casacore/data && \
-    wget -qO - https://www.astron.nl/iers/WSRT_Measures.ztar | \
-        tar -C /usr/local/share/casacore/data -xzf -
+    (wget -q --max-redirect=0 -O - https://www.astron.nl/iers/WSRT_Measures.ztar | \
+        tar -C /usr/local/share/casacore/data -xzf -) || \
+    python3 -c \
+        "from casaconfig import measures_available, measures_update; \
+versions = measures_available(); \
+measures_update(path='/usr/local/share/casacore/data', version=None, \
+use_astron_obs_table=True, force=True)"
 
 # Install Casacore
 RUN git clone --no-checkout https://github.com/casacore/casacore.git
