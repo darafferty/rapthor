@@ -85,8 +85,7 @@ RUN mkdir -p /usr/local/share/casacore/data && \
     (wget -q --max-redirect=0 -O - https://www.astron.nl/iers/WSRT_Measures.ztar | \
         tar -C /usr/local/share/casacore/data -xzf -) || \
     python3 -c \
-        "from casaconfig import measures_available, measures_update; \
-versions = measures_available(); \
+        "from casaconfig import measures_update; \
 measures_update(path='/usr/local/share/casacore/data', version=None, \
 use_astron_obs_table=True, force=True)"
 
