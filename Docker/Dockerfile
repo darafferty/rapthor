@@ -16,7 +16,7 @@ ARG CASACONFIG_VERSION=1.5.0
 
 # Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
 # Intel Haswell and newer, AMD Excavator and newer
-ARG PORTABLE=FALSEå
+ARG PORTABLE=FALSE
 ARG TARGET_CPU=x86-64-v3
 
 # Allow pip to break system packages; we know what we're doing
