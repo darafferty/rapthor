@@ -145,9 +145,9 @@ class Image(Operation):
             ]
         ):
             # One or more observations have differing stations: concatenation cannot be done
-            concat_in_time = False
+            self.concat_in_time = False
         else:
-            concat_in_time = True
+            self.concat_in_time = True
 
         self.allow_internet_access = self.field.parset["cluster_specific"]["allow_internet_access"]
         self.parset_parms = {
@@ -166,7 +166,7 @@ class Image(Operation):
             "photometry_skymodel": self.photometry_skymodel,
             "astrometry_skymodel": self.astrometry_skymodel,
             "allow_internet_access": self.allow_internet_access,
-            "concat_in_time": concat_in_time,
+            "concat_in_time": self.concat_in_time,
         }
 
     def _has_dd_scalar_h5parm(self):
@@ -423,6 +423,7 @@ class Image(Operation):
                 )  # set by ImageNormalize.finalize()
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
+        self.field.make_residual_visibilities = self.field.make_residual_visibilities and self.concat_in_time
         nsectors = len(self.imaging_sectors)
         obs_filename = []
         prepare_filename = []

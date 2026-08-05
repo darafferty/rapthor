@@ -1037,7 +1037,12 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_residual_data.cwl
     in:
       - id: msin
+{% if concat_in_time %}
         source: concat_in_time/msconcat
+{% else %}
+        source: prepare_imaging_data/msimg
+        valueFrom: $(self[0])
+{% endif %}
       - id: msout
         source: residual_filename
       - id: numthreads
@@ -1369,7 +1374,12 @@ steps:
       - id: source_catalog
         source: make_catalog_from_image_cube/source_catalog
       - id: ms_file
+{% if concat_in_time %}
         source: concat_in_time/msconcat
+{% else %}
+        source: prepare_imaging_data/msimg
+        valueFrom: $(self[0])
+{% endif %}
       - id: normalize_h5parm
         source: output_normalize_h5parm
       - id: reference_skymodels
