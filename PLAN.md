@@ -1,6 +1,6 @@
 # Rapthor Switch-Readiness Plan
 
-Status snapshot: 2026-08-04.
+Status snapshot: 2026-08-06.
 
 ## Goal
 
@@ -37,6 +37,10 @@ and known limitations must all be visible to reviewers.
   exact master commit `b307e769`. Controlled BDA-frequency-limit and
   normalization comparisons pass strictly; old-reference normalization and
   peeling image residuals remain documented external-tool baseline warnings.
+- The subsequent `master` build-reliability fix at `488f5c00` is ported to the
+  production, CI, and development Dockerfiles. Casacore measures data now fall
+  back to the GitLab-hosted archive when the primary ASTRON endpoint is
+  unavailable. This does not change pipeline or scientific behavior.
 
 **Performance:** accepted for the current optimisation phase.
 
@@ -109,6 +113,11 @@ external Dask, and MPI WSClean are a separate production-readiness track.
 
 ## Immediate Task List
 
+- [x] **Port the August 6 master build fix.**
+  Port `488f5c00` and apply the measures-table fallback consistently to all
+  current-branch container builds. Verify the endpoint behavior and successful
+  fallback command without rerunning science equivalence, since no runtime or
+  scientific code changes.
 - [x] **Verify the August master sync.**
   The three commits added to `master` after the July sync have been ported:
   calibration-aware imaging/BDA frequency limits, clearer built-in strategy

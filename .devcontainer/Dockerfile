@@ -146,10 +146,18 @@ RUN wget -q https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BO
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
-# leap seconds appear, ignore them or regenerate the docker image.
+# leap seconds appear, ignore them or regenerate the docker image. If the
+# ASTRON endpoint is unavailable, use the backup hosted on git.astron.nl.
 RUN mkdir -p /usr/local/share/casacore/data && \
-    wget -qO - https://www.astron.nl/iers/WSRT_Measures.ztar | \
-        tar -C /usr/local/share/casacore/data -xzf -
+    (wget -nv --timeout=5 --tries=3 \
+        -O /tmp/WSRT_Measures.ztar \
+        https://www.astron.nl/iers/WSRT_Measures.ztar || \
+     wget -nv --timeout=5 --tries=3 \
+        -O /tmp/WSRT_Measures.ztar \
+        https://git.astron.nl/cobalt/cobalt/-/jobs/1832331/artifacts/raw/WSRT_Measures.ztar) && \
+    tar -C /usr/local/share/casacore/data \
+        -xzf /tmp/WSRT_Measures.ztar && \
+    rm /tmp/WSRT_Measures.ztar
 
 # Install Casacore
 RUN git clone --no-checkout https://github.com/casacore/casacore.git
