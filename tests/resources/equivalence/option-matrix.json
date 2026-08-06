@@ -1,0 +1,61 @@
+{
+  "description": "Canonical branch-vs-master science and performance equivalence scenarios.",
+  "scenarios": [
+    {
+      "id": "phase-only-core",
+      "base_parset": "inputs/base/master_benchmark_phase_only.parset",
+      "current_parset": "inputs/current/current_benchmark_phase_only.parset",
+      "repeatability_repetitions": 3,
+      "notes": "Core DD fast+medium phase scenario used by the combined science and performance gate."
+    },
+    {
+      "id": "dd-phase-plus-di-fulljones",
+      "base_parset": "inputs/base/master_dd_phase_plus_di_fulljones.parset",
+      "current_parset": "inputs/current/current_dd_phase_plus_di_fulljones.parset",
+      "repeatability_repetitions": 3,
+      "notes": "Mixed DD phase and DI full-Jones scenario used by the combined science and performance gate."
+    },
+    {
+      "id": "normalization-rich-demo",
+      "base_parset": "inputs/base/normalization_rich_demo.parset",
+      "current_parset": "inputs/current/normalization_rich_demo.parset",
+      "notes": "Flux-scale normalization using two provided reference sky models."
+    },
+    {
+      "id": "prediction-path-image-based",
+      "base_parset": "inputs/base/prediction_path_image_based.parset",
+      "current_parset": "inputs/current/prediction_path_image_based.parset",
+      "notes": "DD phase calibration using the DP3 image-based prediction path."
+    },
+    {
+      "id": "prediction-path-wsclean",
+      "base_parset": "inputs/base/prediction_path_wsclean.parset",
+      "current_parset": "inputs/current/prediction_path_wsclean.parset",
+      "notes": "DD phase calibration using WSClean prediction over multiple frequency bands."
+    },
+    {
+      "id": "bda-averaging",
+      "base_parset": "inputs/base/bda_averaging.parset",
+      "current_parset": "inputs/current/bda_averaging.parset",
+      "notes": "Calibration BDA plus imaging averaging and BDA."
+    },
+    {
+      "id": "bda-frequency-limits",
+      "base_parset": "inputs/base/bda_frequency_limits.parset",
+      "current_parset": "inputs/current/bda_frequency_limits.parset",
+      "notes": "August master-sync regression scenario for calibration-aware imaging/BDA frequency limits."
+    },
+    {
+      "id": "multi-sector-mosaic",
+      "skip_reason": "master CWL image scatter fails for multi-sector imaging because one generated scatter input is not per-sector; keep this covered by current-branch integration and benchmark runs until a stored mosaic reference is available",
+      "base_parset": "inputs/base/multi_sector_mosaic.parset",
+      "current_parset": "inputs/current/multi_sector_mosaic.parset",
+      "notes": "DD calibration, imaging, and mosaic assembly on a 2x2 sector grid."
+    },
+    {
+      "id": "screens",
+      "skip_reason": "requires reliable IDGCal/screen support in the target environment",
+      "notes": "Retained as an explicit coverage gap until screen workflows run reproducibly."
+    }
+  ]
+}

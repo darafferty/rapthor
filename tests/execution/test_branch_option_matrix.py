@@ -5,15 +5,17 @@ import sys
 from pathlib import Path
 
 SCRIPT_PATH = Path(__file__).parents[2] / "scripts" / "dev" / "run_branch_option_matrix.py"
-OPTION_MATRIX_PATH = (
-    Path(__file__).parents[2]
-    / "docs"
-    / "source"
-    / "development"
-    / "science_equivalence_runs"
-    / "2026-07-06-option-matrix"
-    / "option-matrix.json"
-)
+OPTION_MATRIX_PATH = Path(__file__).parents[1] / "resources" / "equivalence" / "option-matrix.json"
+
+ACTIVE_EQUIVALENCE_SCENARIOS = {
+    "phase-only-core",
+    "dd-phase-plus-di-fulljones",
+    "normalization-rich-demo",
+    "prediction-path-image-based",
+    "prediction-path-wsclean",
+    "bda-averaging",
+    "bda-frequency-limits",
+}
 
 
 def load_branch_option_matrix_script():
@@ -228,6 +230,31 @@ def test_multi_sector_mosaic_option_matrix_scenario_is_defined():
         assert parser["imaging"]["grid_nsectors_ra"] == "2"
         assert parser["imaging"]["dde_method"] == "single"
         assert parser["imaging"]["skip_corner_sectors"] == "False"
+
+
+def test_active_equivalence_scenarios_keep_rerunnable_inputs():
+    matrix_dir = OPTION_MATRIX_PATH.parent
+    matrix = json.loads(OPTION_MATRIX_PATH.read_text(encoding="utf-8"))
+    scenarios = {scenario["id"]: scenario for scenario in matrix["scenarios"]}
+
+    assert ACTIVE_EQUIVALENCE_SCENARIOS <= scenarios.keys()
+
+    for scenario_id in ACTIVE_EQUIVALENCE_SCENARIOS:
+        scenario = scenarios[scenario_id]
+        assert "skip_reason" not in scenario
+        for side in ("base", "current"):
+            parset = matrix_dir / scenario[f"{side}_parset"]
+            assert parset.is_file(), f"missing {scenario_id} {side} parset"
+
+            parser = configparser.ConfigParser(interpolation=None)
+            parser.read(parset)
+            strategy = Path(parser["global"]["strategy"])
+            strategy_resource = parset.parent / strategy.name
+            assert strategy_resource.is_file(), f"missing {scenario_id} {side} strategy"
+
+            parset_text = parset.read_text(encoding="utf-8")
+            assert "/docs/source/development/science_equivalence_runs/" not in parset_text
+            assert "/app/runs/" not in parset_text
 
 
 def test_option_matrix_returns_failure_when_report_fails(tmp_path, monkeypatch):
