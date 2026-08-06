@@ -55,7 +55,7 @@ def make_strategy_step(**overrides):
 
 def _write_normalization_skymodel(resource_dir, output_path):
     """Write the apparent sky model used for normalization tests."""
-    source_model_path = resource_dir / "integration_apparent_sky.txt"
+    source_model_path = resource_dir / "integration_normalization_apparent_sky.txt"
     output_path.write_text(source_model_path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
