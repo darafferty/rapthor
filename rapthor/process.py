@@ -26,26 +26,41 @@ from rapthor.operations.predict import Predict
 log = logging.getLogger("rapthor")
 
 
+def _log_calibration_memory_check_failure(cycle_number, stage, error):
+    """Report an advisory-check failure without interrupting processing."""
+    log.warning(
+        "Could not complete the advisory DP3 calibration memory %s for cycle %s: %s. "
+        "Processing will continue.",
+        stage,
+        cycle_number,
+        error,
+    )
+    log.debug("DP3 calibration memory check failure", exc_info=True)
+
+
 def check_preflight_calibration_memory(field, strategy_steps):
     """Estimate calibration memory for each strategy cycle using maximum directions."""
     memory_limit = None
     for cycle_number, step in enumerate(strategy_steps, start=1):
-        assessment = assess_calibration_memory(
-            field,
-            cycle_number=cycle_number,
-            dd_directions=step.get("max_directions", getattr(field, "max_directions", 1)),
-            step=step,
-        )
-        if assessment is None:
-            continue
-        if memory_limit is None:
-            memory_limit = get_calibration_memory_limit(field)
-        log_calibration_memory_assessment(
-            assessment,
-            memory_limit_gb=memory_limit[0],
-            memory_source=memory_limit[1],
-            stage="pre-flight max_directions upper bound",
-        )
+        try:
+            assessment = assess_calibration_memory(
+                field,
+                cycle_number=cycle_number,
+                dd_directions=step.get("max_directions", getattr(field, "max_directions", 1)),
+                step=step,
+            )
+            if assessment is None:
+                continue
+            if memory_limit is None:
+                memory_limit = get_calibration_memory_limit(field)
+            log_calibration_memory_assessment(
+                assessment,
+                memory_limit_gb=memory_limit[0],
+                memory_source=memory_limit[1],
+                stage="pre-flight max_directions upper bound",
+            )
+        except Exception as error:
+            _log_calibration_memory_check_failure(cycle_number, "pre-flight check", error)
 
 
 def check_cycle_calibration_memory(field, cycle_number):
@@ -58,21 +73,24 @@ def check_cycle_calibration_memory(field, cycle_number):
         field.set_obs_parameters()
         field._obs_parameters_cycle = cycle_number
 
-    assessment = assess_calibration_memory(
-        field,
-        cycle_number=cycle_number,
-        dd_directions=field.num_patches,
-        resolved=True,
-    )
-    if assessment is None:
-        return
-    memory_limit_gb, memory_source = get_calibration_memory_limit(field)
-    log_calibration_memory_assessment(
-        assessment,
-        memory_limit_gb=memory_limit_gb,
-        memory_source=memory_source,
-        stage="resolved facet count",
-    )
+    try:
+        assessment = assess_calibration_memory(
+            field,
+            cycle_number=cycle_number,
+            dd_directions=field.num_patches,
+            resolved=True,
+        )
+        if assessment is None:
+            return
+        memory_limit_gb, memory_source = get_calibration_memory_limit(field)
+        log_calibration_memory_assessment(
+            assessment,
+            memory_limit_gb=memory_limit_gb,
+            memory_source=memory_source,
+            stage="resolved facet count",
+        )
+    except Exception as error:
+        _log_calibration_memory_check_failure(cycle_number, "resolved check", error)
 
 
 def run(parset_file, logging_level="info"):

@@ -123,6 +123,19 @@ def test_assess_calibration_memory_uses_one_direction_for_di():
     assert assessment.solve_type == "full_jones"
 
 
+def test_assess_calibration_memory_di_only_does_not_require_dd_directions():
+    field = _memory_field(calibration_strategy={"dd": [], "di": ["full_jones"]})
+
+    assessment = assess_calibration_memory(
+        field,
+        cycle_number=1,
+        dd_directions=None,
+    )
+
+    assert assessment.mode == "di"
+    assert assessment.directions == 1
+
+
 def test_assess_calibration_memory_skips_non_calibration_cycle():
     field = _memory_field()
 
@@ -317,6 +330,21 @@ def test_check_preflight_calibration_memory_skips_limit_lookup_without_solves(mo
     )
 
 
+def test_check_preflight_calibration_memory_is_advisory(monkeypatch, caplog):
+    field = _memory_field()
+
+    def fail_assessment(*args, **kwargs):
+        raise ValueError("invalid estimate input")
+
+    monkeypatch.setattr("rapthor.process.assess_calibration_memory", fail_assessment)
+
+    with caplog.at_level(logging.WARNING, logger="rapthor"):
+        check_preflight_calibration_memory(field, [{"do_calibrate": True}])
+
+    assert "Could not complete the advisory DP3 calibration memory pre-flight check" in caplog.text
+    assert "Processing will continue" in caplog.text
+
+
 def test_check_cycle_calibration_memory_resolves_observation_parameters_once(caplog):
     observation = _memory_observation()
     field = _memory_field(
@@ -340,6 +368,27 @@ def test_check_cycle_calibration_memory_resolves_observation_parameters_once(cap
     assert field._obs_parameters_cycle == 2
     assert "resolved facet count" in caplog.text
     assert "4 direction(s)" in caplog.text
+
+
+def test_check_cycle_calibration_memory_assessment_is_advisory(monkeypatch, caplog):
+    observation = _memory_observation()
+    field = _memory_field(
+        observations=[observation],
+        calibration_strategy={"dd": ["fast_phase"]},
+    )
+    field.num_patches = 4
+    field._obs_parameters_cycle = 1
+
+    def fail_assessment(*args, **kwargs):
+        raise KeyError("missing interval")
+
+    monkeypatch.setattr("rapthor.process.assess_calibration_memory", fail_assessment)
+
+    with caplog.at_level(logging.WARNING, logger="rapthor"):
+        check_cycle_calibration_memory(field, cycle_number=1)
+
+    assert "Could not complete the advisory DP3 calibration memory resolved check" in caplog.text
+    assert "Processing will continue" in caplog.text
 
 
 def test_check_cycle_calibration_memory_skips_observation_setup_without_solves():

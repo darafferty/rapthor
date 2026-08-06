@@ -69,6 +69,8 @@ def assess_calibration_memory(
     calibration_strategy = resolve_field_calibration_strategy(field, step, resolved)
     assessments = []
     for mode, solves in calibration_strategy.items():
+        if not solves:
+            continue
         directions = 1 if mode == "di" else int(dd_directions)
         if directions <= 0:
             continue
