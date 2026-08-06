@@ -82,7 +82,7 @@ RUN python3 -m pip install \
 RUN mkdir -p /usr/local/share/casacore/data \
     && (wget -nv --timeout 5 --tries=3 https://www.astron.nl/iers/WSRT_Measures.ztar \
     || wget -nv --timeout 5 --tries=3 https://git.astron.nl/cobalt/cobalt/-/jobs/1832331/artifacts/raw/WSRT_Measures.ztar ) \
-	&& tar xfz WSRT_Measures.ztar \
+	&& tar -C /usr/local/share/casacore/data -xzf WSRT_Measures.ztar \
 	&& rm WSRT_Measures.ztar
 
 # Install Casacore
