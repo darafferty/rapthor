@@ -296,3 +296,10 @@ class Predict(Operation):
             if field_obs.name == obs.name and field_obs.starttime == obs.starttime:
                 field_obs.infix = ""
                 setattr(field_obs, attr, new_path)
+                if (
+                    attr == "ms_predict_di_filename"
+                    and "predict_di_output_filename" in field_obs.parameters
+                ):
+                    field_obs.parameters["predict_di_output_filename"] = [new_path] * len(
+                        field_obs.parameters["predict_di_output_filename"]
+                    )

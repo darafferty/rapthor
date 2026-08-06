@@ -209,6 +209,8 @@ class TestPredict:
         sector_obs.ms_field = "sector_field1"
         sector_obs.ms_predict_di = "predict_di.ms"
         observation.ms_field = "field1"
+        if mode == "di":
+            observation.parameters["predict_di_output_filename"] = [None, None]
 
         if has_outlier_sector:
             field.sectors.append(outlier_sector)
@@ -230,6 +232,10 @@ class TestPredict:
 
         if mode == "di":
             assert observation.ms_predict_di_filename.endswith("predict_di.ms")
+            assert observation.parameters["predict_di_output_filename"] == [
+                observation.ms_predict_di_filename,
+                observation.ms_predict_di_filename,
+            ]
 
         assert Path(predict.done_file).exists()
 

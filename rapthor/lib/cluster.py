@@ -3,11 +3,56 @@ Module that holds all compute-cluster-related functions
 """
 
 import logging
+import math
 import subprocess
-
-import numpy as np
+from typing import TypedDict
 
 log = logging.getLogger("rapthor:cluster")
+
+
+class DP3MemoryEstimate(TypedDict):
+    """Peak-memory terms for one DP3 calibration solve."""
+
+    time_steps: int
+    visibility_copies_gb: float
+    weights_gb: float
+    weighted_data_gb: float
+    peak_memory_gb: float
+
+
+def estimate_dp3_peak_memory(
+    *,
+    baselines: int,
+    channels: int,
+    solution_interval_seconds: float,
+    sampling_interval_seconds: float,
+    directions: int,
+) -> DP3MemoryEstimate:
+    """Estimate current DP3 calibration peak memory in decimal gigabytes."""
+    inputs = {
+        "baselines": baselines,
+        "channels": channels,
+        "solution_interval_seconds": solution_interval_seconds,
+        "sampling_interval_seconds": sampling_interval_seconds,
+        "directions": directions,
+    }
+    for name, value in inputs.items():
+        if value <= 0:
+            raise ValueError(f"{name} must be positive")
+
+    time_steps = math.ceil(solution_interval_seconds / sampling_interval_seconds)
+    samples = baselines * channels * time_steps * (directions + 1)
+    visibility_copies_gb = samples * 4 * 8 / 1e9
+    weights_gb = samples * 4 * 4 / 1e9
+    weighted_data_gb = samples * 4 * 8 / 1e9
+
+    return {
+        "time_steps": time_steps,
+        "visibility_copies_gb": visibility_copies_gb,
+        "weights_gb": weights_gb,
+        "weighted_data_gb": weighted_data_gb,
+        "peak_memory_gb": visibility_copies_gb + weights_gb + weighted_data_gb,
+    }
 
 
 def get_available_memory():
@@ -54,8 +99,8 @@ def get_chunk_size(cluster_parset, numsamples, numobs, solint):
     # Try to make at least as many chunks (over all observations) as there are
     # nodes and ensure that the solint is a divisor of samples_per_chunk
     # (otherwise we could get a lot of solutions with less than the target size)
-    target_numchunks = np.ceil(cluster_parset["max_nodes"] / numobs)
-    samples_per_chunk = int(np.ceil(numsamples / target_numchunks))
+    target_numchunks = math.ceil(cluster_parset["max_nodes"] / numobs)
+    samples_per_chunk = math.ceil(numsamples / target_numchunks)
     samples_per_chunk -= samples_per_chunk % solint
     if samples_per_chunk < solint:
         samples_per_chunk = solint

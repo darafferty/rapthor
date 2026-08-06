@@ -749,6 +749,19 @@ The available options are described below under their respective sections.
         When :term:`batch_system` = ``slurm``, the amount of memory per node in GB to
         request (default = 0 = all).
 
+        Rapthor also uses this value for advisory DP3 calibration memory checks. A
+        pre-flight check uses the strategy's maximum number of directions, and a second
+        check before each calibration cycle uses the resolved facet count and DP3 solve
+        intervals. If ``mem_per_node_gb`` is zero, the checks compare against memory
+        available on the machine running Rapthor.
+
+        The estimate uses decimal GB and the current DP3 peak-memory model of 80 bytes
+        per visibility sample, including the original data buffer, visibility copies,
+        weights, and weighted data but excluding the legacy solve buffer. It uses the
+        unaveraged channel count because calibration BDA is baseline-dependent. The
+        result is conservative and advisory: Rapthor logs likely out-of-memory
+        configurations but does not change settings or stop processing.
+
     max_cores
         Maximum number of cores per task to use on each node (default = 0 = all).
 

@@ -8,6 +8,12 @@ import os
 import numpy as np
 
 from rapthor import _logging
+from rapthor.lib.calibration_memory import (
+    assess_calibration_memory,
+    get_calibration_memory_limit,
+    has_calibration_solves,
+    log_calibration_memory_assessment,
+)
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy, validate_strategy
@@ -18,6 +24,55 @@ from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import Predict
 
 log = logging.getLogger("rapthor")
+
+
+def check_preflight_calibration_memory(field, strategy_steps):
+    """Estimate calibration memory for each strategy cycle using maximum directions."""
+    memory_limit = None
+    for cycle_number, step in enumerate(strategy_steps, start=1):
+        assessment = assess_calibration_memory(
+            field,
+            cycle_number=cycle_number,
+            dd_directions=step.get("max_directions", getattr(field, "max_directions", 1)),
+            step=step,
+        )
+        if assessment is None:
+            continue
+        if memory_limit is None:
+            memory_limit = get_calibration_memory_limit(field)
+        log_calibration_memory_assessment(
+            assessment,
+            memory_limit_gb=memory_limit[0],
+            memory_source=memory_limit[1],
+            stage="pre-flight max_directions upper bound",
+        )
+
+
+def check_cycle_calibration_memory(field, cycle_number):
+    """Estimate calibration memory using resolved facets and solve intervals."""
+    if not field.do_calibrate:
+        return
+    if not has_calibration_solves(field, resolved=True):
+        return
+    if getattr(field, "_obs_parameters_cycle", None) != cycle_number:
+        field.set_obs_parameters()
+        field._obs_parameters_cycle = cycle_number
+
+    assessment = assess_calibration_memory(
+        field,
+        cycle_number=cycle_number,
+        dd_directions=field.num_patches,
+        resolved=True,
+    )
+    if assessment is None:
+        return
+    memory_limit_gb, memory_source = get_calibration_memory_limit(field)
+    log_calibration_memory_assessment(
+        assessment,
+        memory_limit_gb=memory_limit_gb,
+        memory_source=memory_source,
+        stage="resolved facet count",
+    )
 
 
 def run(parset_file, logging_level="info"):
@@ -61,6 +116,7 @@ def run(parset_file, logging_level="info"):
         return
     # Cross-check strategy with parset for compatibility.
     validate_strategy(strategy_steps, parset)
+    check_preflight_calibration_memory(field, strategy_steps)
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:
@@ -182,6 +238,7 @@ def run_steps(field, steps, final=False):
         if field.do_calibrate:
             # Set whether screens should be generated
             field.generate_screens = (field.dde_mode == "hybrid") and final
+            check_cycle_calibration_memory(field, cycle_number)
             for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
                 if not enabled:
                     continue
