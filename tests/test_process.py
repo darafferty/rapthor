@@ -47,6 +47,7 @@ def _memory_field(*, observations=None, calibration_strategy=None):
         medium_timestep_sec=12,
         slow_timestep_sec=16,
         fulljones_timestep_sec=20,
+        max_directions=5,
         parset={"cluster_specific": {"mem_per_node_gb": 0}},
     )
     field.set_obs_parameters = lambda: None
@@ -125,6 +126,21 @@ def test_calibration_memory_uses_one_direction_for_di():
     assert assessment.solve_type == "full_jones"
 
 
+def test_calibration_memory_logs_max_directions_for_di(caplog):
+    field = _memory_field(calibration_strategy={"di": ["full_jones"]})
+    step = {
+        "do_calibrate": True,
+        "calibration_strategy": field.calibration_strategy,
+        "fulljones_timestep_sec": 20,
+        "max_directions": 4,
+    }
+
+    with caplog.at_level(logging.INFO, logger="rapthor"):
+        check_calibration_memory(field, 1, 4, step)
+
+    assert "with 1 direction(s) (max_directions=4)" in caplog.text
+
+
 def test_di_only_calibration_memory_does_not_require_dd_directions():
     field = _memory_field(calibration_strategy={"dd": [], "di": ["full_jones"]})
     step = {
@@ -173,7 +189,7 @@ def test_check_calibration_memory_uses_current_machine(monkeypatch, caplog):
     with caplog.at_level(logging.INFO, logger="rapthor"):
         check_calibration_memory(field, 1, 5, _memory_step())
 
-    assert "24.00 GB of memory available on current machine" in caplog.text
+    assert "24.000 GB of memory available on current machine" in caplog.text
 
 
 def test_check_calibration_memory_handles_probe_failure(monkeypatch, caplog):
@@ -222,7 +238,7 @@ def test_calibration_memory_treats_exact_limit_as_fitting(caplog):
     with caplog.at_level(logging.INFO, logger="rapthor"):
         check_calibration_memory(field, 1, 5, _memory_step())
 
-    assert "0.00 GB headroom" in caplog.text
+    assert "0.000 GB headroom" in caplog.text
     assert "likely out of memory" not in caplog.text
 
 
@@ -260,6 +276,8 @@ def test_check_preflight_calibration_memory_checks_each_calibration_cycle(caplog
     assert caplog.text.count("pre-flight max_directions upper bound") == 2
     assert "cycle 1" in caplog.text
     assert "cycle 2" in caplog.text
+    assert "max_directions=3" in caplog.text
+    assert "max_directions=5" in caplog.text
 
 
 def test_check_preflight_calibration_memory_uses_field_default_max_directions(caplog):
@@ -279,7 +297,7 @@ def test_check_preflight_calibration_memory_uses_field_default_max_directions(ca
             ],
         )
 
-    assert "6 direction(s)" in caplog.text
+    assert "6 direction(s) (max_directions=6)" in caplog.text
 
 
 def test_check_preflight_calibration_memory_skips_limit_lookup_without_solves(monkeypatch):
@@ -351,7 +369,9 @@ def test_resolved_calibration_memory_assessment_is_advisory(monkeypatch, caplog)
     with caplog.at_level(logging.WARNING, logger="rapthor"):
         check_calibration_memory(field, 1, 4)
 
-    assert "Could not complete the advisory DP3 calibration memory resolved facet count" in caplog.text
+    assert (
+        "Could not complete the advisory DP3 calibration memory resolved facet count" in caplog.text
+    )
     assert "Processing will continue" in caplog.text
 
 

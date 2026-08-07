@@ -97,23 +97,26 @@ def _memory_limit(field):
         return None, "memory available on current machine could not be determined"
 
 
-def _log_calibration_memory(estimate, cycle_number, stage, memory_limit, memory_source):
+def _log_calibration_memory(
+    estimate, cycle_number, stage, max_directions, memory_limit, memory_source
+):
     """Log the capacity result and detailed calculation terms."""
     task_details = (
         f"DP3 calibration memory {stage} for cycle {cycle_number}: "
         f"{estimate.mode.upper()} {estimate.solve_type} on "
         f"{estimate.observation_name} with {estimate.directions} direction(s) "
-        f"is estimated at {estimate.peak_memory_gb:.2f} GB"
+        f"(max_directions={max_directions}) "
+        f"is estimated at {estimate.peak_memory_gb:.3f} GB"
     )
     if memory_limit is None:
         log.warning("%s; capacity comparison skipped because %s", task_details, memory_source)
     else:
         margin = memory_limit - estimate.peak_memory_gb
-        details = f"{task_details} against {memory_limit:.2f} GB of {memory_source}"
+        details = f"{task_details} against {memory_limit:.3f} GB of {memory_source}"
         if margin < 0:
-            log.warning("%s; likely out of memory by %.2f GB", details, -margin)
+            log.warning("%s; likely out of memory by %.3f GB", details, -margin)
         else:
-            log.info("%s; %.2f GB headroom", details, margin)
+            log.info("%s; %.3f GB headroom", details, margin)
 
     log.debug(
         "DP3 memory terms for cycle %s: baselines=%s, channels=%s, sampling_interval=%.3f "
@@ -138,9 +141,7 @@ def check_calibration_memory(field, cycle_number, dd_directions, step=None):
     are resolved first and the current field settings are used. The check is advisory:
     errors are logged and do not interrupt processing.
     """
-    stage = (
-        "pre-flight max_directions upper bound" if step is not None else "resolved facet count"
-    )
+    stage = "pre-flight max_directions upper bound" if step is not None else "resolved facet count"
     try:
         if not _setting(field, step, "do_calibrate"):
             return None
@@ -160,8 +161,16 @@ def check_calibration_memory(field, cycle_number, dd_directions, step=None):
         if estimate is None:
             return None
 
+        max_directions = _setting(field, step, "max_directions")
         memory_limit, memory_source = _memory_limit(field)
-        _log_calibration_memory(estimate, cycle_number, stage, memory_limit, memory_source)
+        _log_calibration_memory(
+            estimate,
+            cycle_number,
+            stage,
+            max_directions,
+            memory_limit,
+            memory_source,
+        )
         return estimate
     except Exception as error:
         log.warning(
