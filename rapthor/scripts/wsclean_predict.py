@@ -136,11 +136,8 @@ def predict(
 
     # model images can have arbitrary names,
     tmpdir = os.path.dirname(sky_model)
-    model_name = os.path.join(tmpdir, "predict")
-    model = model_name + "-model.fits"
-    # make a symlink in same dir with workable name
-    os.symlink(model_name + "-term-0.fits", model)
-
+    model_images = list()
+    model_counter = 0
     for freqs, chans in zip(freq_chunks, chan_chunks):
         if len(freqs) > 1:
             chunk_bandwidth = freqs[-1] - freqs[0] + (freq_list[1] - freq_list[0])
@@ -150,6 +147,8 @@ def predict(
         err_code = 0
         # only one spectral term is created
         # output will be $(model_name)-term-0.fits
+        model_name = os.path.join(tmpdir, f"predict-{model_counter:04d}")
+        model_images.append(model_name)
         cmd = [
             "wsclean",
             "-draw-model",
@@ -175,45 +174,54 @@ def predict(
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
             err_code = err.returncode
+        model_counter += 1
 
-        err_code = 0
-        first_facet = 1
-        for facet in facet_names:
-            cmd = [
-                "wsclean",
-                "-predict",
-                "-facet-regions",
-                str(ds9_region_file),
-                "-model-column",
-                str(facet),
-                "-select-facets",
-                str(facet),
-                "-name",
-                str(model_name),
-                "-channel-range",
-                str(chans[0]),
-                str(chans[-1]),
-                "-model-storage-manager",
-                str(storage_manager),
-                "-j",
-                str(n_threads),
-            ]
-            if time_freq_smearing is not None:
-                cmd.append("-apply-time-frequency-smearing")
-            cmd.append("-parallel-reordering")
-            cmd.append(str(n_threads))
-            if first_facet:
-                first_facet = 0
-            else:
-                cmd.append("-reuse-reordered")
-            cmd.append("-save-reordered")
-            cmd.append(msfile)
-            try:
-                subprocess.run(cmd, check=True).returncode
-            except subprocess.CalledProcessError as err:
-                print(err, file=sys.stderr)
-                err_code = err.returncode
-                break
+    # make a symlink in same dir with workable name
+    for model in model_images:
+        # link predict-xxxx-term-0.fits as predict-xxxx-model.fits
+        try:
+            os.symlink(model + "-term-0.fits", model + "-model.fits")
+        except FileExistsError:
+            pass
+
+    err_code = 0
+    first_facet = 1
+    model_name = os.path.join(tmpdir, "predict")
+    for facet in facet_names:
+        cmd = [
+            "wsclean",
+            "-predict",
+            "-facet-regions",
+            str(ds9_region_file),
+            "-model-column",
+            str(facet),
+            "-select-facets",
+            str(facet),
+            "-name",
+            str(model_name),
+            "-channels-out",
+            str(len(model_images)),
+            "-model-storage-manager",
+            str(storage_manager),
+            "-j",
+            str(n_threads),
+        ]
+        if time_freq_smearing is not None:
+            cmd.append("-apply-time-frequency-smearing")
+        cmd.append("-parallel-reordering")
+        cmd.append(str(n_threads))
+        if first_facet:
+            first_facet = 0
+        else:
+            cmd.append("-reuse-reordered")
+        cmd.append("-save-reordered")
+        cmd.append(msfile)
+        try:
+            subprocess.run(cmd, check=True).returncode
+        except subprocess.CalledProcessError as err:
+            print(err, file=sys.stderr)
+            err_code = err.returncode
+            break
 
     return err_code
 
