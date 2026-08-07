@@ -166,6 +166,7 @@ def generated_parset_path_normalisation(
         input_skymodel_path,
         apparent_skymodel_path,
         normalization_skymodel_paths,
+        cpu_limit=6,
     )
     return output_parset_path
 
@@ -419,6 +420,7 @@ def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_pred
         output_parset_path,
         input_skymodel_path,
         apparent_skymodel_path,
+        cpu_limit=6,
     )
     return output_parset_path
 
