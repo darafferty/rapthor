@@ -762,6 +762,30 @@ The available options are described below under their respective sections.
         result is conservative and advisory: Rapthor logs likely out-of-memory
         configurations but does not change settings or stop processing.
 
+        Rapthor calculates the estimated peak memory as follows::
+
+            baselines = nstations * (nstations + 1) // 2
+            time_steps = ceil(solution_interval_seconds / sampling_interval_seconds)
+            samples = baselines * channels * time_steps * (directions + 1)
+
+            visibility_copies_gb = samples * 4 * 8 / 1e9
+            weights_gb = samples * 4 * 4 / 1e9
+            weighted_data_gb = samples * 4 * 8 / 1e9
+            peak_memory_gb = visibility_copies_gb + weights_gb + weighted_data_gb
+
+        The baseline count includes autocorrelations. ``channels`` is the observation's
+        unaveraged channel count, and ``time_steps`` is rounded up so that a partial
+        solution interval is counted as a full time step. The four in each component is
+        the number of correlations. Complex visibility and weighted-data values use
+        eight bytes per correlation, while weights use four bytes per correlation.
+        Together these components use 80 bytes per sample.
+
+        A DI solve always uses one direction. A DD pre-flight estimate uses the strategy
+        step's ``max_directions`` value, while the resolved estimate uses the actual
+        number of calibration facets. The additional direction in ``directions + 1``
+        accounts for DP3 retaining the original data buffer alongside the
+        direction-dependent data.
+
     max_cores
         Maximum number of cores per task to use on each node (default = 0 = all).
 
