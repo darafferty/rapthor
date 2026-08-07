@@ -1,4 +1,4 @@
-"""DP3 calibration memory assessment and advisory logging."""
+"""Advisory DP3 calibration memory checks."""
 
 import logging
 from dataclasses import dataclass
@@ -14,10 +14,9 @@ log = logging.getLogger("rapthor")
 
 
 @dataclass(frozen=True)
-class CalibrationMemoryAssessment:
-    """Largest estimated DP3 calibration task for one processing cycle."""
+class CalibrationMemoryEstimate:
+    """Inputs and memory terms for one DP3 calibration task."""
 
-    cycle_number: int
     mode: str
     solve_type: str
     observation_name: str
@@ -26,144 +25,151 @@ class CalibrationMemoryAssessment:
     channels: int
     sampling_interval_seconds: float
     solution_interval_seconds: float
-    estimate: DP3MemoryEstimate
+    memory: DP3MemoryEstimate
+
+    @property
+    def peak_memory_gb(self) -> float:
+        """Estimated peak memory in decimal gigabytes."""
+        return self.memory["peak_memory_gb"]
 
 
-def _strategy_value(field, step, name):
-    if step is not None and name in step:
-        return step[name]
-    return getattr(field, name)
+def _setting(field, step, name):
+    """Read a setting from a strategy step, falling back to the field default."""
+    return step[name] if step is not None and name in step else getattr(field, name)
 
 
-def resolve_field_calibration_strategy(field, step=None, resolved=False):
-    """Resolve explicit or legacy solve lists from a field and optional strategy step."""
-    calibration_strategy = _strategy_value(field, step, "calibration_strategy")
-    if resolved and getattr(field, "_calibration_strategy_defaulted", False):
-        calibration_strategy = None
-    strategy, _ = resolve_calibration_strategy(
-        calibration_strategy=calibration_strategy,
-        do_slowgain_solve=_strategy_value(field, step, "do_slowgain_solve"),
-        do_fulljones_solve=_strategy_value(field, step, "do_fulljones_solve"),
-    )
-    return strategy
+def _largest_calibration_memory_estimate(field, strategy, dd_directions, step):
+    """Return the largest task estimate without logging or changing field state."""
+    resolved = step is None
+    largest = None
 
-
-def has_calibration_solves(field, step=None, resolved=False):
-    """Return whether a field or strategy step requests at least one solve."""
-    strategy = resolve_field_calibration_strategy(field, step, resolved)
-    return any(strategy.values())
-
-
-def assess_calibration_memory(
-    field,
-    *,
-    cycle_number,
-    dd_directions,
-    step=None,
-    resolved=False,
-):
-    """Return the largest per-task DP3 calibration memory estimate for a cycle."""
-    if not _strategy_value(field, step, "do_calibrate"):
-        return None
-
-    calibration_strategy = resolve_field_calibration_strategy(field, step, resolved)
-    assessments = []
-    for mode, solves in calibration_strategy.items():
+    for mode, solves in strategy.items():
         if not solves:
             continue
         directions = 1 if mode == "di" else int(dd_directions)
         if directions <= 0:
             continue
+
         for solve_type in solves:
             for observation in field.observations:
                 if resolved:
                     timestep_key = INTERVAL_KEYS_BY_SOLVE[solve_type][0]
-                    solution_timesteps = max(observation.parameters[timestep_key])
-                    solution_interval_seconds = solution_timesteps * observation.timepersample
+                    solution_interval = max(observation.parameters[timestep_key])
+                    solution_interval *= observation.timepersample
                 else:
-                    target_key = TARGET_TIMESTEP_BY_SOLVE[solve_type]
-                    solution_interval_seconds = _strategy_value(field, step, target_key)
+                    timestep_key = TARGET_TIMESTEP_BY_SOLVE[solve_type]
+                    solution_interval = _setting(field, step, timestep_key)
 
                 station_count = len(observation.stations)
                 baselines = station_count * (station_count + 1) // 2
-                estimate = estimate_dp3_peak_memory(
+                estimate = CalibrationMemoryEstimate(
+                    mode=mode,
+                    solve_type=solve_type,
+                    observation_name=observation.name,
+                    directions=directions,
                     baselines=baselines,
                     channels=observation.numchannels,
-                    solution_interval_seconds=solution_interval_seconds,
                     sampling_interval_seconds=observation.timepersample,
-                    directions=directions,
-                )
-                assessments.append(
-                    CalibrationMemoryAssessment(
-                        cycle_number=cycle_number,
-                        mode=mode,
-                        solve_type=solve_type,
-                        observation_name=observation.name,
-                        directions=directions,
+                    solution_interval_seconds=solution_interval,
+                    memory=estimate_dp3_peak_memory(
                         baselines=baselines,
                         channels=observation.numchannels,
+                        solution_interval_seconds=solution_interval,
                         sampling_interval_seconds=observation.timepersample,
-                        solution_interval_seconds=solution_interval_seconds,
-                        estimate=estimate,
-                    )
+                        directions=directions,
+                    ),
                 )
+                if largest is None or estimate.peak_memory_gb > largest.peak_memory_gb:
+                    largest = estimate
 
-    if not assessments:
-        return None
-    return max(assessments, key=lambda assessment: assessment.estimate["peak_memory_gb"])
+    return largest
 
 
-def get_calibration_memory_limit(field):
-    """Return the applicable memory limit and a user-facing description of its source."""
-    configured_limit_gb = field.parset["cluster_specific"]["mem_per_node_gb"]
-    if configured_limit_gb > 0:
-        return configured_limit_gb, "configured per-node memory"
+def _memory_limit(field):
+    """Return the applicable memory limit and its user-facing source."""
+    configured_limit = field.parset["cluster_specific"]["mem_per_node_gb"]
+    if configured_limit > 0:
+        return configured_limit, "configured per-node memory"
+
     try:
         return get_available_memory(), "memory available on current machine"
     except Exception:
         return None, "memory available on current machine could not be determined"
 
 
-def log_calibration_memory_assessment(
-    assessment,
-    *,
-    memory_limit_gb,
-    memory_source,
-    stage,
-):
-    """Log an advisory capacity result for a DP3 calibration memory estimate."""
-    peak_memory_gb = assessment.estimate["peak_memory_gb"]
+def _log_calibration_memory(estimate, cycle_number, stage, memory_limit, memory_source):
+    """Log the capacity result and detailed calculation terms."""
     task_details = (
-        f"DP3 calibration memory {stage} for cycle {assessment.cycle_number}: "
-        f"{assessment.mode.upper()} {assessment.solve_type} on "
-        f"{assessment.observation_name} with {assessment.directions} direction(s) "
-        f"is estimated at {peak_memory_gb:.2f} GB"
+        f"DP3 calibration memory {stage} for cycle {cycle_number}: "
+        f"{estimate.mode.upper()} {estimate.solve_type} on "
+        f"{estimate.observation_name} with {estimate.directions} direction(s) "
+        f"is estimated at {estimate.peak_memory_gb:.2f} GB"
     )
-    if memory_limit_gb is None:
-        log.warning(
-            "%s; capacity comparison skipped because %s",
-            task_details,
-            memory_source,
-        )
+    if memory_limit is None:
+        log.warning("%s; capacity comparison skipped because %s", task_details, memory_source)
     else:
-        memory_margin_gb = memory_limit_gb - peak_memory_gb
-        details = f"{task_details} against {memory_limit_gb:.2f} GB of {memory_source}"
-        if memory_margin_gb < 0:
-            log.warning("%s; likely out of memory by %.2f GB", details, -memory_margin_gb)
+        margin = memory_limit - estimate.peak_memory_gb
+        details = f"{task_details} against {memory_limit:.2f} GB of {memory_source}"
+        if margin < 0:
+            log.warning("%s; likely out of memory by %.2f GB", details, -margin)
         else:
-            log.info("%s; %.2f GB headroom", details, memory_margin_gb)
+            log.info("%s; %.2f GB headroom", details, margin)
 
     log.debug(
         "DP3 memory terms for cycle %s: baselines=%s, channels=%s, sampling_interval=%.3f "
         "s, solution_interval=%.3f s, time_steps=%s, visibility_copies=%.3f GB, "
         "weights=%.3f GB, weighted_data=%.3f GB",
-        assessment.cycle_number,
-        assessment.baselines,
-        assessment.channels,
-        assessment.sampling_interval_seconds,
-        assessment.solution_interval_seconds,
-        assessment.estimate["time_steps"],
-        assessment.estimate["visibility_copies_gb"],
-        assessment.estimate["weights_gb"],
-        assessment.estimate["weighted_data_gb"],
+        cycle_number,
+        estimate.baselines,
+        estimate.channels,
+        estimate.sampling_interval_seconds,
+        estimate.solution_interval_seconds,
+        estimate.memory["time_steps"],
+        estimate.memory["visibility_copies_gb"],
+        estimate.memory["weights_gb"],
+        estimate.memory["weighted_data_gb"],
     )
+
+
+def check_calibration_memory(field, cycle_number, dd_directions, step=None):
+    """Estimate and log the largest DP3 calibration task for one cycle.
+
+    ``step`` is supplied for a pre-flight check. Without it, observation parameters
+    are resolved first and the current field settings are used. The check is advisory:
+    errors are logged and do not interrupt processing.
+    """
+    stage = (
+        "pre-flight max_directions upper bound" if step is not None else "resolved facet count"
+    )
+    try:
+        if not _setting(field, step, "do_calibrate"):
+            return None
+
+        strategy, _ = resolve_calibration_strategy(
+            calibration_strategy=_setting(field, step, "calibration_strategy"),
+            do_slowgain_solve=_setting(field, step, "do_slowgain_solve"),
+            do_fulljones_solve=_setting(field, step, "do_fulljones_solve"),
+        )
+        if not any(strategy.values()):
+            return None
+
+        if step is None:
+            field.set_obs_parameters()
+
+        estimate = _largest_calibration_memory_estimate(field, strategy, dd_directions, step)
+        if estimate is None:
+            return None
+
+        memory_limit, memory_source = _memory_limit(field)
+        _log_calibration_memory(estimate, cycle_number, stage, memory_limit, memory_source)
+        return estimate
+    except Exception as error:
+        log.warning(
+            "Could not complete the advisory DP3 calibration memory %s for cycle %s: %s. "
+            "Processing will continue.",
+            stage,
+            cycle_number,
+            error,
+        )
+        log.debug("DP3 calibration memory check failure", exc_info=True)
+        return None

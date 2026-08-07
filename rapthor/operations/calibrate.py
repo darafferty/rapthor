@@ -102,9 +102,7 @@ class Calibrate(Operation):
         """
         # First set the calibration parameters for each observation
         field = self.field
-        if getattr(field, "_obs_parameters_cycle", None) != self.index:
-            field.set_obs_parameters()
-            field._obs_parameters_cycle = self.index
+        field.set_obs_parameters()
         # Get the start times and number of times for the time chunks (fast and slow
         # calibration)
         starttime = field.get_obs_parameters("starttime")

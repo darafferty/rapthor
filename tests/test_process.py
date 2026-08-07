@@ -7,14 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from rapthor.lib.calibration_memory import (
-    assess_calibration_memory,
-    get_calibration_memory_limit,
-    log_calibration_memory_assessment,
-)
+from rapthor.lib.calibration_memory import check_calibration_memory
 from rapthor.process import (
     _do_calibrate_mode,
-    check_cycle_calibration_memory,
     check_preflight_calibration_memory,
     chunk_observations,
     do_final_pass,
@@ -42,7 +37,7 @@ def _memory_observation(
 
 
 def _memory_field(*, observations=None, calibration_strategy=None):
-    return SimpleNamespace(
+    field = SimpleNamespace(
         observations=observations or [_memory_observation()],
         calibration_strategy=calibration_strategy,
         do_calibrate=True,
@@ -54,9 +49,20 @@ def _memory_field(*, observations=None, calibration_strategy=None):
         fulljones_timestep_sec=20,
         parset={"cluster_specific": {"mem_per_node_gb": 0}},
     )
+    field.set_obs_parameters = lambda: None
+    return field
 
 
-def test_assess_preflight_calibration_memory_uses_max_directions_and_largest_solve():
+def _memory_step(**overrides):
+    return {
+        "do_calibrate": True,
+        "calibration_strategy": {"dd": ["fast_phase"]},
+        "fast_timestep_sec": 8,
+        **overrides,
+    }
+
+
+def test_preflight_calibration_memory_uses_max_directions_and_largest_solve():
     field = _memory_field()
     step = {
         "do_calibrate": True,
@@ -65,11 +71,11 @@ def test_assess_preflight_calibration_memory_uses_max_directions_and_largest_sol
         "slow_timestep_sec": 20,
     }
 
-    assessment = assess_calibration_memory(
+    assessment = check_calibration_memory(
         field,
-        cycle_number=1,
-        dd_directions=7,
-        step=step,
+        1,
+        7,
+        step,
     )
 
     assert assessment.mode == "dd"
@@ -77,10 +83,10 @@ def test_assess_preflight_calibration_memory_uses_max_directions_and_largest_sol
     assert assessment.directions == 7
     assert assessment.baselines == 3
     assert assessment.solution_interval_seconds == 20
-    assert assessment.estimate["time_steps"] == 5
+    assert assessment.memory["time_steps"] == 5
 
 
-def test_assess_resolved_calibration_memory_uses_actual_intervals_and_largest_task():
+def test_resolved_calibration_memory_uses_actual_intervals_and_largest_task():
     first = _memory_observation(
         "first.ms",
         channels=2,
@@ -96,88 +102,81 @@ def test_assess_resolved_calibration_memory_uses_actual_intervals_and_largest_ta
         calibration_strategy={"dd": ["fast_phase"]},
     )
 
-    assessment = assess_calibration_memory(
-        field,
-        cycle_number=2,
-        dd_directions=4,
-        resolved=True,
-    )
+    assessment = check_calibration_memory(field, 2, 4)
 
     assert assessment.observation_name == "second.ms"
     assert assessment.directions == 4
     assert assessment.solution_interval_seconds == 12
-    assert assessment.estimate["peak_memory_gb"] == pytest.approx(3 * 8 * 3 * (4 + 1) * 80 / 1e9)
+    assert assessment.peak_memory_gb == pytest.approx(3 * 8 * 3 * (4 + 1) * 80 / 1e9)
 
 
-def test_assess_calibration_memory_uses_one_direction_for_di():
+def test_calibration_memory_uses_one_direction_for_di():
     field = _memory_field(calibration_strategy={"di": ["full_jones"]})
+    step = {
+        "do_calibrate": True,
+        "calibration_strategy": field.calibration_strategy,
+        "fulljones_timestep_sec": 20,
+    }
 
-    assessment = assess_calibration_memory(
-        field,
-        cycle_number=1,
-        dd_directions=50,
-    )
+    assessment = check_calibration_memory(field, 1, 50, step)
 
     assert assessment.mode == "di"
     assert assessment.directions == 1
     assert assessment.solve_type == "full_jones"
 
 
-def test_assess_calibration_memory_di_only_does_not_require_dd_directions():
+def test_di_only_calibration_memory_does_not_require_dd_directions():
     field = _memory_field(calibration_strategy={"dd": [], "di": ["full_jones"]})
+    step = {
+        "do_calibrate": True,
+        "calibration_strategy": field.calibration_strategy,
+        "fulljones_timestep_sec": 20,
+    }
 
-    assessment = assess_calibration_memory(
-        field,
-        cycle_number=1,
-        dd_directions=None,
-    )
+    assessment = check_calibration_memory(field, 1, None, step)
 
     assert assessment.mode == "di"
     assert assessment.directions == 1
 
 
-def test_assess_calibration_memory_skips_non_calibration_cycle():
+def test_calibration_memory_skips_non_calibration_cycle():
     field = _memory_field()
 
-    assessment = assess_calibration_memory(
-        field,
-        cycle_number=1,
-        dd_directions=5,
-        step={"do_calibrate": False},
-    )
+    assessment = check_calibration_memory(field, 1, 5, {"do_calibrate": False})
 
     assert assessment is None
 
 
-def test_assess_calibration_memory_skips_explicit_strategy_without_solves():
+def test_calibration_memory_skips_explicit_strategy_without_solves():
     field = _memory_field(calibration_strategy={"di": [], "dd": []})
 
-    assessment = assess_calibration_memory(
-        field,
-        cycle_number=1,
-        dd_directions=5,
-    )
+    assessment = check_calibration_memory(field, 1, 5)
 
     assert assessment is None
 
 
-def test_get_calibration_memory_limit_prefers_configured_limit(monkeypatch):
+def test_check_calibration_memory_prefers_configured_limit(monkeypatch, caplog):
     field = _memory_field()
     field.parset["cluster_specific"]["mem_per_node_gb"] = 32
-    get_available_memory = pytest.fail
-    monkeypatch.setattr("rapthor.lib.calibration_memory.get_available_memory", get_available_memory)
+    monkeypatch.setattr("rapthor.lib.calibration_memory.get_available_memory", pytest.fail)
 
-    assert get_calibration_memory_limit(field) == (32, "configured per-node memory")
+    with caplog.at_level(logging.INFO, logger="rapthor"):
+        check_calibration_memory(field, 1, 5, _memory_step())
+
+    assert "configured per-node memory" in caplog.text
 
 
-def test_get_calibration_memory_limit_uses_current_machine(monkeypatch):
+def test_check_calibration_memory_uses_current_machine(monkeypatch, caplog):
     field = _memory_field()
     monkeypatch.setattr("rapthor.lib.calibration_memory.get_available_memory", lambda: 24)
 
-    assert get_calibration_memory_limit(field) == (24, "memory available on current machine")
+    with caplog.at_level(logging.INFO, logger="rapthor"):
+        check_calibration_memory(field, 1, 5, _memory_step())
+
+    assert "24.00 GB of memory available on current machine" in caplog.text
 
 
-def test_get_calibration_memory_limit_handles_probe_failure(monkeypatch):
+def test_check_calibration_memory_handles_probe_failure(monkeypatch, caplog):
     field = _memory_field()
 
     def fail_memory_probe():
@@ -185,31 +184,19 @@ def test_get_calibration_memory_limit_handles_probe_failure(monkeypatch):
 
     monkeypatch.setattr("rapthor.lib.calibration_memory.get_available_memory", fail_memory_probe)
 
-    assert get_calibration_memory_limit(field) == (
-        None,
-        "memory available on current machine could not be determined",
-    )
+    with caplog.at_level(logging.WARNING, logger="rapthor"):
+        check_calibration_memory(field, 1, 5, _memory_step())
+
+    assert "capacity comparison skipped" in caplog.text
+    assert "memory available on current machine could not be determined" in caplog.text
 
 
-def test_log_calibration_memory_assessment_warns_when_limit_is_exceeded(caplog):
-    assessment = assess_calibration_memory(
-        _memory_field(),
-        cycle_number=3,
-        dd_directions=5,
-        step={
-            "do_calibrate": True,
-            "calibration_strategy": {"dd": ["fast_phase"]},
-            "fast_timestep_sec": 8,
-        },
-    )
+def test_calibration_memory_warns_when_limit_is_exceeded(caplog):
+    field = _memory_field()
+    field.parset["cluster_specific"]["mem_per_node_gb"] = 0.000001
 
     with caplog.at_level(logging.DEBUG, logger="rapthor"):
-        log_calibration_memory_assessment(
-            assessment,
-            memory_limit_gb=0.000001,
-            memory_source="configured per-node memory",
-            stage="pre-flight max_directions upper bound",
-        )
+        check_calibration_memory(field, 3, 5, _memory_step())
 
     assert "likely out of memory" in caplog.text
     assert "cycle 3" in caplog.text
@@ -217,63 +204,38 @@ def test_log_calibration_memory_assessment_warns_when_limit_is_exceeded(caplog):
     assert "configured per-node memory" in caplog.text
 
 
-def test_log_calibration_memory_assessment_logs_headroom_when_estimate_fits(caplog):
-    assessment = assess_calibration_memory(
-        _memory_field(calibration_strategy={"di": ["full_jones"]}),
-        cycle_number=1,
-        dd_directions=5,
-    )
+def test_calibration_memory_logs_headroom_when_estimate_fits(caplog):
+    field = _memory_field()
+    field.parset["cluster_specific"]["mem_per_node_gb"] = 1
 
     with caplog.at_level(logging.INFO, logger="rapthor"):
-        log_calibration_memory_assessment(
-            assessment,
-            memory_limit_gb=1,
-            memory_source="configured per-node memory",
-            stage="resolved facet count",
-        )
+        check_calibration_memory(field, 1, 5, _memory_step())
 
     assert "headroom" in caplog.text
     assert "likely out of memory" not in caplog.text
 
 
-def test_log_calibration_memory_assessment_treats_exact_limit_as_fitting(caplog):
-    assessment = assess_calibration_memory(
-        _memory_field(calibration_strategy={"di": ["full_jones"]}),
-        cycle_number=1,
-        dd_directions=5,
-    )
+def test_calibration_memory_treats_exact_limit_as_fitting(caplog):
+    field = _memory_field()
+    field.parset["cluster_specific"]["mem_per_node_gb"] = 3 * 2 * 2 * (5 + 1) * 80 / 1e9
 
     with caplog.at_level(logging.INFO, logger="rapthor"):
-        log_calibration_memory_assessment(
-            assessment,
-            memory_limit_gb=assessment.estimate["peak_memory_gb"],
-            memory_source="configured per-node memory",
-            stage="resolved facet count",
-        )
+        check_calibration_memory(field, 1, 5, _memory_step())
 
     assert "0.00 GB headroom" in caplog.text
     assert "likely out of memory" not in caplog.text
 
 
-def test_log_calibration_memory_assessment_logs_estimate_without_memory_limit(caplog):
-    assessment = assess_calibration_memory(
-        _memory_field(),
-        cycle_number=1,
-        dd_directions=5,
-        step={
-            "do_calibrate": True,
-            "calibration_strategy": {"dd": ["fast_phase"]},
-            "fast_timestep_sec": 8,
-        },
-    )
+def test_calibration_memory_logs_estimate_without_memory_limit(monkeypatch, caplog):
+    field = _memory_field()
+
+    def fail_memory_probe():
+        raise RuntimeError("memory probe failed")
+
+    monkeypatch.setattr("rapthor.lib.calibration_memory.get_available_memory", fail_memory_probe)
 
     with caplog.at_level(logging.WARNING, logger="rapthor"):
-        log_calibration_memory_assessment(
-            assessment,
-            memory_limit_gb=None,
-            memory_source="memory available on current machine could not be determined",
-            stage="pre-flight max_directions upper bound",
-        )
+        check_calibration_memory(field, 1, 5, _memory_step())
 
     assert "capacity comparison skipped" in caplog.text
     assert "memory available on current machine could not be determined" in caplog.text
@@ -322,7 +284,7 @@ def test_check_preflight_calibration_memory_uses_field_default_max_directions(ca
 
 def test_check_preflight_calibration_memory_skips_limit_lookup_without_solves(monkeypatch):
     field = _memory_field()
-    monkeypatch.setattr("rapthor.process.get_calibration_memory_limit", pytest.fail)
+    monkeypatch.setattr("rapthor.lib.calibration_memory.get_available_memory", pytest.fail)
 
     check_preflight_calibration_memory(
         field,
@@ -330,22 +292,22 @@ def test_check_preflight_calibration_memory_skips_limit_lookup_without_solves(mo
     )
 
 
-def test_check_preflight_calibration_memory_is_advisory(monkeypatch, caplog):
+def test_check_calibration_memory_is_advisory(monkeypatch, caplog):
     field = _memory_field()
 
-    def fail_assessment(*args, **kwargs):
+    def fail_estimate(*args, **kwargs):
         raise ValueError("invalid estimate input")
 
-    monkeypatch.setattr("rapthor.process.assess_calibration_memory", fail_assessment)
+    monkeypatch.setattr("rapthor.lib.calibration_memory.estimate_dp3_peak_memory", fail_estimate)
 
     with caplog.at_level(logging.WARNING, logger="rapthor"):
-        check_preflight_calibration_memory(field, [{"do_calibrate": True}])
+        check_calibration_memory(field, 1, 5, _memory_step())
 
-    assert "Could not complete the advisory DP3 calibration memory pre-flight check" in caplog.text
+    assert "Could not complete the advisory DP3 calibration memory" in caplog.text
     assert "Processing will continue" in caplog.text
 
 
-def test_check_cycle_calibration_memory_resolves_observation_parameters_once(caplog):
+def test_check_calibration_memory_resolves_observation_parameters(caplog):
     observation = _memory_observation()
     field = _memory_field(
         observations=[observation],
@@ -362,40 +324,42 @@ def test_check_cycle_calibration_memory_resolves_observation_parameters_once(cap
     field.set_obs_parameters = set_obs_parameters
 
     with caplog.at_level(logging.INFO, logger="rapthor"):
-        check_cycle_calibration_memory(field, cycle_number=2)
+        check_calibration_memory(field, 2, 4)
 
     assert calls == ["set"]
-    assert field._obs_parameters_cycle == 2
     assert "resolved facet count" in caplog.text
     assert "4 direction(s)" in caplog.text
 
 
-def test_check_cycle_calibration_memory_assessment_is_advisory(monkeypatch, caplog):
+def test_resolved_calibration_memory_assessment_is_advisory(monkeypatch, caplog):
     observation = _memory_observation()
     field = _memory_field(
         observations=[observation],
         calibration_strategy={"dd": ["fast_phase"]},
     )
     field.num_patches = 4
-    field._obs_parameters_cycle = 1
 
-    def fail_assessment(*args, **kwargs):
+    def set_obs_parameters():
+        observation.parameters["solint_fast_timestep"] = [2]
+
+    def fail_estimate(*args, **kwargs):
         raise KeyError("missing interval")
 
-    monkeypatch.setattr("rapthor.process.assess_calibration_memory", fail_assessment)
+    field.set_obs_parameters = set_obs_parameters
+    monkeypatch.setattr("rapthor.lib.calibration_memory.estimate_dp3_peak_memory", fail_estimate)
 
     with caplog.at_level(logging.WARNING, logger="rapthor"):
-        check_cycle_calibration_memory(field, cycle_number=1)
+        check_calibration_memory(field, 1, 4)
 
-    assert "Could not complete the advisory DP3 calibration memory resolved check" in caplog.text
+    assert "Could not complete the advisory DP3 calibration memory resolved facet count" in caplog.text
     assert "Processing will continue" in caplog.text
 
 
-def test_check_cycle_calibration_memory_skips_observation_setup_without_solves():
+def test_calibration_memory_skips_observation_setup_without_solves():
     field = _memory_field(calibration_strategy={"di": [], "dd": []})
     field.set_obs_parameters = pytest.fail
 
-    check_cycle_calibration_memory(field, cycle_number=1)
+    check_calibration_memory(field, 1, 5)
 
 
 def test_run_validates_strategy_before_preflight(monkeypatch):
@@ -595,6 +559,7 @@ def test_run_steps_preserves_calibration_strategy_order(
     class Field:
         cycle_number = 1
         dde_mode = "single"
+        num_patches = 1
         do_predict = False
         do_image = False
         do_check = False
@@ -604,7 +569,9 @@ def test_run_steps_preserves_calibration_strategy_order(
 
     monkeypatch.setattr("rapthor.process.Predict", RecordingPredict)
     monkeypatch.setattr("rapthor.process.Calibrate", RecordingCalibrate)
-    monkeypatch.setattr("rapthor.process.check_cycle_calibration_memory", lambda field, index: None)
+    monkeypatch.setattr(
+        "rapthor.process.check_calibration_memory", lambda field, index, directions: None
+    )
 
     run_steps(
         Field(),
@@ -625,6 +592,7 @@ def test_run_steps_checks_cycle_memory_after_update_before_calibration(monkeypat
     class Field:
         cycle_number = 1
         dde_mode = "single"
+        num_patches = 1
         do_predict = False
         do_image = False
         do_check = False
@@ -641,11 +609,11 @@ def test_run_steps_checks_cycle_memory_after_update_before_calibration(monkeypat
         def run(self):
             calls.append(("calibrate", self.index))
 
-    def check_memory(field, cycle_number):
+    def check_memory(field, cycle_number, directions):
         calls.append(("memory", cycle_number))
 
     monkeypatch.setattr("rapthor.process.Calibrate", RecordingCalibrate)
-    monkeypatch.setattr("rapthor.process.check_cycle_calibration_memory", check_memory)
+    monkeypatch.setattr("rapthor.process.check_calibration_memory", check_memory)
 
     run_steps(
         Field(),

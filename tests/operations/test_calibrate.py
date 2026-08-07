@@ -827,24 +827,6 @@ class TestCalibrate:
         assert calibrate.input_parms["solve1_smoothnessreffrequency"] == [0, 0]
         assert calibrate.input_parms["do_slowgain_solve"] is False
 
-    def test_set_input_parameters_dd_reuses_cycle_observation_parameters(self, calibrate_field):
-        calibrate_field.calibration_strategy = {"dd": ["fast_phase"]}
-        calibrate_field._calibration_strategy_defaulted = False
-        calibrate_field._obs_parameters_cycle = 1
-
-        Calibrate("dd", field=calibrate_field, index=1).set_input_parameters()
-
-        calibrate_field.set_obs_parameters.assert_not_called()
-
-    def test_set_input_parameters_di_reuses_cycle_observation_parameters(self, calibrate_field):
-        calibrate_field.calibration_strategy = {"di": ["full_jones"]}
-        calibrate_field._calibration_strategy_defaulted = False
-        calibrate_field._obs_parameters_cycle = 1
-
-        Calibrate("di", field=calibrate_field, index=1).set_input_parameters()
-
-        calibrate_field.set_obs_parameters.assert_not_called()
-
     def test_set_input_parameters_di_uses_explicit_solve_strategy(self, calibrate_field):
         calibrate_field.calibration_strategy = {"di": ["fast_phase", "medium_phase"]}
         calibrate_field._calibration_strategy_defaulted = False
