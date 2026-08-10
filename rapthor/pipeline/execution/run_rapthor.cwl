@@ -110,7 +110,7 @@ requirements:
       # Download and install casacore data files, and make them findable
       data_dir="\${VIRTUAL_ENV}/share/casacore/data"
       mkdir -p "\${data_dir}"
-      wget -qO - ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar | \
+      wget -qO - https://iers.astron.nl/WSRT_Measures.ztar | \
         tar -C "\${data_dir}" -xzf -
       echo "measures.directory: \${data_dir}" > "\${HOME}/.casarc"
 
