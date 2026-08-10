@@ -30,13 +30,13 @@
     "tests/integration/test_sector_diagnostics.py::test_rapthor_generates_diagnostics_per_facets[generated_parset_path0]": 588.0,
     "tests/integration/test_shared_facet_rw.py::test_rapthor_run_single_loop[generated_parset_path0-shared_facet_rw_false]": 629.0,
     "tests/integration/test_shared_facet_rw.py::test_rapthor_run_single_loop[generated_parset_path0-shared_facet_rw_true]": 0.01,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-full-1-generated_parset_path0]": 513.0,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-full-2-generated_parset_path0]": 528.0,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-single-1-generated_parset_path0]": 456.0,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-single-2-generated_parset_path0]": 460.0,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-full-1-generated_parset_path0]": 516.0,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-full-2-generated_parset_path0]": 491.0,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-single-1-generated_parset_path0]": 422.02160039171576,
-    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-single-2-generated_parset_path0]": 392.3311254810542,
-    "tests/operations/integration/test_image_to_mosaic.py::test_image_I_to_mosaic": 6.556420878507197
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-full-1-generated_parset_path0]": 138.0,
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-full-2-generated_parset_path0]": 151.0,
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-single-1-generated_parset_path0]": 143.0,
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[True-single-2-generated_parset_path0]": 144.0,
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-full-1-generated_parset_path0]": 154.0,
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-full-2-generated_parset_path0]": 151.0,
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-single-1-generated_parset_path0]": 144.0,
+    "tests/integration/test_wsclean_parallel_gridding.py::test_rapthor_parallel_gridding[False-single-2-generated_parset_path0]": 143.0,
+    "tests/operations/integration/test_image_to_mosaic.py::test_image_I_to_mosaic": 9.0
 }
