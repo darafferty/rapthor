@@ -118,7 +118,7 @@ def predict(
     if n_chan > 1:
         bandwidth = freq_list[-1] - freq_list[0] + (freq_list[1] - freq_list[0])
     else:
-        bandwidth = frequency_bandwidth[1]
+        bandwidth = float(frequency_bandwidth[1])
     # split channels into chunks of predict_bandwidth
     if bandwidth > predict_bandwidth:
         n_chunks = int(bandwidth / predict_bandwidth)
@@ -176,13 +176,24 @@ def predict(
             err_code = err.returncode
         model_counter += 1
 
-    # make a symlink in same dir with workable name
-    for model in model_images:
-        # link predict-xxxx-term-0.fits as predict-xxxx-model.fits
+    n_models = len(model_images)
+    if n_models > 1:
+        # make a symlink in same dir with workable name
+        for model in model_images:
+            # link predict-xxxx-term-0.fits as predict-xxxx-model.fits
+            try:
+                os.symlink(model + "-term-0.fits", model + "-model.fits")
+            except FileExistsError:
+                raise
+    else:
+        model = model_images[0]
+        # single model image, drop -xxxx-
         try:
-            os.symlink(model + "-term-0.fits", model + "-model.fits")
+            os.symlink(
+                model + "-term-0.fits", os.path.join(os.path.dirname(model), "predict-model.fits")
+            )
         except FileExistsError:
-            pass
+            raise
 
     err_code = 0
     first_facet = 1
@@ -200,7 +211,7 @@ def predict(
             "-name",
             str(model_name),
             "-channels-out",
-            str(len(model_images)),
+            str(n_models),
             "-model-storage-manager",
             str(storage_manager),
             "-j",
