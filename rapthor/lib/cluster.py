@@ -5,12 +5,13 @@ Module that holds all compute-cluster-related functions
 import logging
 import math
 import subprocess
-from typing import TypedDict
+from dataclasses import dataclass
 
 log = logging.getLogger("rapthor:cluster")
 
 
-class DP3MemoryEstimate(TypedDict):
+@dataclass(frozen=True)
+class DP3MemoryEstimate:
     """Peak-memory terms for one DP3 calibration solve."""
 
     time_steps: int
@@ -46,13 +47,13 @@ def estimate_dp3_peak_memory(
     weights_gb = samples * 4 * 4 / 1e9
     weighted_data_gb = samples * 4 * 8 / 1e9
 
-    return {
-        "time_steps": time_steps,
-        "visibility_copies_gb": visibility_copies_gb,
-        "weights_gb": weights_gb,
-        "weighted_data_gb": weighted_data_gb,
-        "peak_memory_gb": visibility_copies_gb + weights_gb + weighted_data_gb,
-    }
+    return DP3MemoryEstimate(
+        time_steps=time_steps,
+        visibility_copies_gb=visibility_copies_gb,
+        weights_gb=weights_gb,
+        weighted_data_gb=weighted_data_gb,
+        peak_memory_gb=visibility_copies_gb + weights_gb + weighted_data_gb,
+    )
 
 
 def get_available_memory():

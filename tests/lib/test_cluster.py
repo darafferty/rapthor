@@ -17,11 +17,11 @@ def test_estimate_dp3_peak_memory():
         directions=2,
     )
 
-    assert estimate["time_steps"] == 3
-    assert estimate["visibility_copies_gb"] == pytest.approx(54 * 4 * 8 / 1e9)
-    assert estimate["weights_gb"] == pytest.approx(54 * 4 * 4 / 1e9)
-    assert estimate["weighted_data_gb"] == pytest.approx(54 * 4 * 8 / 1e9)
-    assert estimate["peak_memory_gb"] == pytest.approx(54 * 80 / 1e9)
+    assert estimate.time_steps == 3
+    assert estimate.visibility_copies_gb == pytest.approx(54 * 4 * 8 / 1e9)
+    assert estimate.weights_gb == pytest.approx(54 * 4 * 4 / 1e9)
+    assert estimate.weighted_data_gb == pytest.approx(54 * 4 * 8 / 1e9)
+    assert estimate.peak_memory_gb == pytest.approx(54 * 80 / 1e9)
 
 
 @pytest.mark.parametrize(

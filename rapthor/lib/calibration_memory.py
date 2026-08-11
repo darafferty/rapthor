@@ -30,7 +30,7 @@ class CalibrationMemoryEstimate:
     @property
     def peak_memory_gb(self) -> float:
         """Estimated peak memory in decimal gigabytes."""
-        return self.memory["peak_memory_gb"]
+        return self.memory.peak_memory_gb
 
 
 def _setting(field, step, name):
@@ -127,10 +127,10 @@ def _log_calibration_memory(
         estimate.channels,
         estimate.sampling_interval_seconds,
         estimate.solution_interval_seconds,
-        estimate.memory["time_steps"],
-        estimate.memory["visibility_copies_gb"],
-        estimate.memory["weights_gb"],
-        estimate.memory["weighted_data_gb"],
+        estimate.memory.time_steps,
+        estimate.memory.visibility_copies_gb,
+        estimate.memory.weights_gb,
+        estimate.memory.weighted_data_gb,
     )
 
 

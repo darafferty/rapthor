@@ -84,7 +84,7 @@ def test_preflight_calibration_memory_uses_max_directions_and_largest_solve():
     assert assessment.directions == 7
     assert assessment.baselines == 3
     assert assessment.solution_interval_seconds == 20
-    assert assessment.memory["time_steps"] == 5
+    assert assessment.memory.time_steps == 5
 
 
 def test_resolved_calibration_memory_uses_actual_intervals_and_largest_task():
