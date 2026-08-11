@@ -8,6 +8,7 @@ tests/test.ms_di.ms
 runs/
 examples/generated/
 test.ms_di.ms/
+ci/i/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -11,6 +11,8 @@ from pathlib import Path
 import numpy as np
 from astropy.table import Table
 
+import rapthor.lib.miscellaneous as misc
+
 REPO_ROOT_DIR = Path(__file__).parent.parent
 
 
@@ -99,6 +101,7 @@ def generate_parset_from_template(
     input_skymodel_path=None,
     apparent_skymodel_path=None,
     normalization_skymodel_paths=None,
+    cpu_limit=None,
 ):
     """
     Generate a complete parset from a template, optionally update the input
@@ -130,12 +133,21 @@ def generate_parset_from_template(
         Path to the apparent skymodel file to set in the parset.
     normalization_skymodel_paths : list of str, optional (default=None)
         List of paths to the normalization skymodel files to set in the parset.
+    cpu_limit : int, optional (default=None)
+        Maximum number of CPUs to request. The generated parset uses the lower
+        of this limit and the CPUs available to the current process.
 
     Returns
     -------
     configparser.ConfigParser
         The updated parset as a ConfigParser object.
     """
+    cpu_count = None
+    if cpu_limit is not None:
+        if cpu_limit < 1:
+            raise ValueError("cpu_limit must be at least 1")
+        cpu_count = min(cpu_limit, misc.nproc())
+
     parset_path = REPO_ROOT_DIR / template_parset_path
     if input_skymodel_path:
         input_skymodel_path = REPO_ROOT_DIR / input_skymodel_path
@@ -168,6 +180,14 @@ def generate_parset_from_template(
         },
         "imaging": {},
     }
+    if cpu_count is not None:
+        config["cluster"].update(
+            {
+                "cpus_per_task": cpu_count,
+                "max_cores": cpu_count,
+                "max_threads": cpu_count,
+            }
+        )
     if input_skymodel_path:
         config["global"]["input_skymodel"] = input_skymodel_path
         config["imaging"]["photometry_skymodel"] = input_skymodel_path

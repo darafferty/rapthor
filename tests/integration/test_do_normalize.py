@@ -17,8 +17,8 @@ from .utils import get_working_dir_from_parset, update_parset_path
     [
         None,
         [
-            "tests/resources/integration_apparent_sky.txt",
-            "tests/resources/integration_true_sky.txt",
+            "tests/resources/integration_normalization_apparent_sky.txt",
+            "tests/resources/integration_normalization_true_sky.txt",
         ],
     ],
     ids=["downloaded_surveys", "reference_skymodels"],
@@ -29,8 +29,8 @@ from .utils import get_working_dir_from_parset, update_parset_path
     [
         (
             "tests/resources/integration_template.parset",
-            "tests/resources/integration_true_sky.txt",
-            "tests/resources/integration_apparent_sky.txt",
+            "tests/resources/integration_normalization_true_sky.txt",
+            "tests/resources/integration_normalization_apparent_sky.txt",
         )
     ],
     indirect=True,
@@ -70,8 +70,8 @@ def test_rapthor_run_single_loop_with_do_normalize(
     [
         (
             "tests/resources/integration_template.parset",
-            "tests/resources/integration_true_sky.txt",
-            "tests/resources/integration_apparent_sky.txt",
+            "tests/resources/integration_normalization_true_sky.txt",
+            "tests/resources/integration_normalization_apparent_sky.txt",
         )
     ],
     indirect=True,
@@ -113,8 +113,8 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
     [
         (
             "tests/resources/integration_template.parset",
-            "tests/resources/integration_true_sky.txt",
-            "tests/resources/integration_apparent_sky.txt",
+            "tests/resources/integration_normalization_true_sky.txt",
+            "tests/resources/integration_normalization_apparent_sky.txt",
         )
     ],
     indirect=True,
@@ -161,8 +161,8 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
         assert normalize_logs, f"No normalize_flux_scale logs found in {normalize_logs_dir}"
         normalize_log_text = "\n".join(log_path.read_text() for log_path in normalize_logs)
         assert "--reference_skymodels" in normalize_log_text
-        assert "integration_apparent_sky.txt" in normalize_log_text
-        assert "integration_true_sky.txt" in normalize_log_text
+        assert "integration_normalization_apparent_sky.txt" in normalize_log_text
+        assert "integration_normalization_true_sky.txt" in normalize_log_text
         assert (
             "Using reference sky models provided as input for normalization" in normalize_log_text
         )
@@ -185,8 +185,8 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
     [
         (
             "tests/resources/integration_template.parset",
-            "tests/resources/integration_true_sky.txt",
-            "tests/resources/integration_apparent_sky.txt",
+            "tests/resources/integration_normalization_true_sky.txt",
+            "tests/resources/integration_normalization_apparent_sky.txt",
         )
     ],
     indirect=True,

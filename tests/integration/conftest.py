@@ -26,12 +26,12 @@ COMMON_STRATEGY_SETTINGS = {
     # Turn off flux-scale bootstrapping
     "do_normalize": False,
     # PyBDSF settings
-    "auto_mask": 5.0,
-    "auto_mask_nmiter": 2,
+    "auto_mask": 7.0,
+    "auto_mask_nmiter": 1,
     "threshisl": 3.0,
     "threshpix": 5.0,
     # Constrain max nr of imaging major cycles
-    "max_nmiter": 12,
+    "max_nmiter": 2,
     # Disable regrouping of sky model
     "regroup_model": True,
     # Max distance allowed between selected DDE calibrators
@@ -51,12 +51,6 @@ def resource_dir():
 def make_strategy_step(**overrides):
     """Helper to create a strategy step with settings and overrides."""
     return {**COMMON_STRATEGY_SETTINGS, **overrides}
-
-
-def _write_normalization_skymodel(resource_dir, output_path):
-    """Write the apparent sky model used for normalization tests."""
-    source_model_path = resource_dir / "integration_apparent_sky.txt"
-    output_path.write_text(source_model_path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 def _set_synthetic_uvw_geometry(ms_path):
@@ -97,7 +91,7 @@ def _set_synthetic_uvw_geometry(ms_path):
         table.putcol("UVW", uvw)
 
 
-def _make_predicted_test_ms(tmp_path, test_ms, output_name):
+def _make_predicted_test_ms(tmp_path, test_ms, output_name, apparent_skymodel_name):
     """Return a small MS whose DATA column contains the integration sky model."""
     ms_path = tmp_path / f"{output_name}.ms"
     shutil.copytree(test_ms, ms_path)
@@ -107,8 +101,7 @@ def _make_predicted_test_ms(tmp_path, test_ms, output_name):
         data[...] = 0.0j
         table.putcol("DATA", data)
 
-    skymodel_path = tmp_path / f"{output_name}_apparent_sky.txt"
-    _write_normalization_skymodel(Path(__file__).parents[1] / "resources", skymodel_path)
+    skymodel_path = Path(__file__).parents[1] / "resources" / apparent_skymodel_name
 
     predicted_ms = tmp_path / f"{output_name}_predicted.ms"
     dp3_command = (
@@ -173,6 +166,7 @@ def generated_parset_path_normalisation(
         input_skymodel_path,
         apparent_skymodel_path,
         normalization_skymodel_paths,
+        cpu_limit=6,
     )
     return output_parset_path
 
@@ -406,7 +400,12 @@ def two_loop_strategy_with_calibration_strategy(tmp_path):
 @pytest.fixture
 def ms_with_predicted_sources(tmp_path, test_ms):
     """Provide a synthetic MS with enough source signal for image-based model updates."""
-    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_with_predicted_sources")
+    return _make_predicted_test_ms(
+        tmp_path,
+        test_ms,
+        "test_ms_with_predicted_sources",
+        "integration_apparent_sky.txt",
+    )
 
 
 @pytest.fixture
@@ -421,11 +420,17 @@ def generated_parset_path_with_predicted_sources(request, tmp_path, ms_with_pred
         output_parset_path,
         input_skymodel_path,
         apparent_skymodel_path,
+        cpu_limit=6,
     )
     return output_parset_path
 
 
 @pytest.fixture
-def ms_for_normalisation(tmp_path, test_ms, resource_dir):
+def ms_for_normalisation(tmp_path, test_ms):
     """Provide a synthetic MS with denser UV coverage for normalization tests."""
-    return _make_predicted_test_ms(tmp_path, test_ms, "test_ms_for_normalization")
+    return _make_predicted_test_ms(
+        tmp_path,
+        test_ms,
+        "test_ms_for_normalization",
+        "integration_normalization_apparent_sky.txt",
+    )
