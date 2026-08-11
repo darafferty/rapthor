@@ -73,24 +73,26 @@ class Observation(object):
         """
         # Get time info
         with pt.table(self.ms_filename, ack=False) as tab:
+            time = tab.getcol("TIME")
             if self.starttime is None:
-                self.starttime = np.min(tab.getcol("TIME"))
+                self.starttime = np.min(time)
             else:
-                valid_times = np.where(tab.getcol("TIME") >= self.starttime)[0]
+                valid_times = np.where(time >= self.starttime)[0]
                 if len(valid_times) == 0:
                     raise ValueError(
                         f"Start time of {self.starttime} is greater than the last time in the MS"
                     )
-                self.starttime = tab.getcol("TIME")[valid_times[0]]
+                self.starttime = time[valid_times[0]]
+
             if self.endtime is None:
-                self.endtime = np.max(tab.getcol("TIME"))
+                self.endtime = np.max(time)
             else:
-                valid_times = np.where(tab.getcol("TIME") <= self.endtime)[0]
+                valid_times = np.where(time <= self.endtime)[0]
                 if len(valid_times) == 0:
                     raise ValueError(
                         f"End time of {self.endtime} is less than the first time in the MS"
                     )
-                self.endtime = tab.getcol("TIME")[valid_times[-1]]
+                self.endtime = time[valid_times[-1]]
 
             # Expand the time range covered by the observation slightly to avoid
             # rounding issues. For example, DPPP takes ceil(startTimeParset -
@@ -99,8 +101,8 @@ class Observation(object):
             self.timepersample = tab.getcell("EXPOSURE", 0)
             self.starttime -= self.timepersample / 100
             self.endtime += self.timepersample / 100
-            self.startsat_startofms = self.starttime <= np.min(tab.getcol("TIME"))
-            self.goesto_endofms = self.endtime >= np.max(tab.getcol("TIME"))
+            self.startsat_startofms = self.starttime <= np.min(time)
+            self.goesto_endofms = self.endtime >= np.max(time)
             self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
 
         # Get frequency info
