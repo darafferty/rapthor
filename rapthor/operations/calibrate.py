@@ -3,9 +3,11 @@ Module that holds the Calibrate classes
 """
 
 import glob
+import json
 import os
 import shutil
 from dataclasses import dataclass
+from pathlib import Path
 
 import lsmtool
 import numpy as np
@@ -139,20 +141,16 @@ class Calibrate(Operation):
             # Smoothness constraints
             smoothness_dd_factors = {}
             smoothness_constraints = {}
-            for field_key, input_key in zip(
-                ("fast", "medium", "slow", "medium"), ("solve1", "solve2", "solve3", "solve4")
-            ):
-                dd_factor_key_field = f"{field_key}_smoothness_dd_factors"
-                dd_factor_key_inputs = f"{input_key}_smoothness_dd_factors"
-                constraint_key = f"{input_key}_smoothnessconstraint"
-                dd_factor = smoothness_dd_factors[dd_factor_key_inputs] = field.get_obs_parameters(
-                    dd_factor_key_field
+            for slot, field_key in enumerate(("fast", "medium", "slow", "medium"), start=1):
+                solve_slot = f"solve{slot}"
+                dd_factor = smoothness_dd_factors[f"{solve_slot}_smoothness_dd_factors"] = (
+                    field.get_obs_parameters(f"{field_key}_smoothness_dd_factors")
                 )
 
-                factor_constraint_key = f"{field_key}_smoothnessconstraint"
-                smoothness_constraints[constraint_key] = getattr(
-                    field, factor_constraint_key
+                smoothness_constraints[f"{solve_slot}_smoothnessconstraint"] = getattr(
+                    field, f"{field_key}_smoothnessconstraint"
                 ) / np.min(dd_factor)
+
             # Antenna constraints
             antenna_constraints = self.resolve_antenna_constraints()
             fast_antennaconstraint = str(antenna_constraints)
@@ -330,8 +328,8 @@ class Calibrate(Operation):
                 "combined_h5parms": self.combined_h5parms,
                 "solve1_antennaconstraint": fast_antennaconstraint,
                 "solve2_antennaconstraint": medium_antennaconstraint,
-                "solve4_antennaconstraint": medium_antennaconstraint,
                 "solve3_antennaconstraint": "[]",
+                "solve4_antennaconstraint": medium_antennaconstraint,
                 "idgcal_antennaconstraint": (
                     "[]"  # TODO: set different constraints for phase and gain solves
                 ),
@@ -663,7 +661,7 @@ class Calibrate(Operation):
         """
 
         # Check whether all observations have regular channelization
-        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        all_regular = all(obs.channels_are_regular for obs in self.field.observations)
 
         # Base solve chain depending on BDA + solver configuration
         if solve_steps is None:
@@ -677,7 +675,8 @@ class Calibrate(Operation):
         if (
             (bda_timebase > 0 or bda_frequencybase > 0)
             and all_regular
-            and not (self.field.use_image_based_predict or self.field.use_wsclean_predict)
+            and not self.field.use_image_based_predict
+            and not self.field.use_wsclean_predict
         ):
             common_steps = ["avg", *common_steps, "null"]
 
@@ -692,17 +691,15 @@ class Calibrate(Operation):
                 if preapply_solutions
                 else ["predict", "applybeam"]
             )
-            dp3_steps = preprocessing_steps + common_steps
+            return preprocessing_steps + common_steps
         elif self.field.use_wsclean_predict:
             # No predict, should be a separate step (not DP3)
             preprocessing_steps = []
             # Averaging does not work because model data columns
             # also need to be averaged, so remove this step
-            dp3_steps = preprocessing_steps + common_steps
+            return preprocessing_steps + common_steps
         else:
-            dp3_steps = common_steps
-
-        return dp3_steps
+            return common_steps
 
     def _build_applycal(self, field):
         """
