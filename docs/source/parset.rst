@@ -300,6 +300,16 @@ The available options are described below under their respective sections.
     tolerance
         Tolerance used to check convergence during calibration (default = 5e-3).
 
+    antenna_constraints
+        Antenna constraints. List of lists specifying groups of antennas that are to
+        be constrained to have the same solution. The antenna constraints will be
+        applied to the fast and medium phase solves. For LOFAR data, the default
+        behaviour is to constrain the core stations and the nearest remote stations
+        together as a group. The antenna groups are automatically loaded based on the 
+        detected antenna being LBA or HBA. In order to enable this, a boolean value 
+        can be supplied. A value of ``False`` and ``[]`` are equivalent, and
+        will fit all stations independently.
+
     fast_freqstep_hz
         Frequency step used during the fast calibration, in Hz (default = 1e6).
 
