@@ -979,7 +979,33 @@ def test_compute_facets_rms_noise(facet_region_ds9, rendered_regions):
                 assert metric in output[facet.name][image_type]
 
 
-def test_compute_facets_rms_noise_return_empty_if_invalid(tmpdir, rendered_regions):
+def test_compute_facets_rms_noise_raises_for_missing_region_file(tmpdir, rendered_regions):
     invalid_file = Path(tmpdir / "invalid_regions.ds9")
     with pytest.raises(FileNotFoundError):
         compute_facet_rms_noise(invalid_file, rendered_regions, rendered_regions)
+
+
+def test_compute_facets_rms_noise_skips_empty_facet_selection(
+    monkeypatch,
+    caplog,
+    identity_wcs_image,
+    facet_factory,
+):
+    facets = [
+        facet_factory("inside", [(2, 2), (7, 2), (7, 7), (2, 7)]),
+        facet_factory("outside", [(12, 2), (14, 2), (14, 7), (12, 7)]),
+    ]
+    monkeypatch.setattr(
+        "rapthor.scripts.calculate_image_diagnostics.read_ds9_region_file",
+        lambda _: facets,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        output = compute_facet_rms_noise(
+            "facets.reg",
+            identity_wcs_image,
+            identity_wcs_image,
+        )
+
+    assert set(output) == {"inside"}
+    assert "Skipping RMS metrics for facet 'outside': no image pixels selected" in caplog.text
