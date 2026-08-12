@@ -470,7 +470,10 @@ def facets(facet_region_ds9):
 
 @pytest.fixture
 def identity_wcs_image():
-    """Return an in-memory image whose world and pixel coordinates are identical."""
+    """
+    Return an in-memory image whose world and pixel coordinates are identical.
+    The image has 10x10 pixels and thus corners at (0, 0) and (9, 9).
+    """
     image = FITSImage.__new__(FITSImage)
     image.img_data = np.arange(100, dtype=float).reshape(10, 10)
     image.get_wcs = lambda: SimpleNamespace(world_to_pixel_values=lambda vertices: vertices)
