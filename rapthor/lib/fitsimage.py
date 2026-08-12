@@ -289,9 +289,7 @@ class FITSImage(object):
         pixel_polygon = Polygon(pixels_vertices)
         image_footprint, (yy, xx) = self._get_bounding_box_from_polygon(pixel_polygon)
 
-        selected_image_region = np.array(self.img_data[image_footprint])
-        if not np.issubdtype(selected_image_region.dtype, np.inexact):
-            selected_image_region = selected_image_region.astype(float)
+        selected_image_region = np.array(self.img_data[image_footprint], dtype=float)
         inside = polygon_contains_xy(pixel_polygon, xx.ravel(), yy.ravel()).reshape(
             selected_image_region.shape
         )
