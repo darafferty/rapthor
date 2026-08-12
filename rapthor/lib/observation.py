@@ -138,7 +138,7 @@ class Observation(object):
             )
 
         # Get pointing info
-        with pt.table(self.ms_filename + "::FIELD", ack=False) as obs:
+        with pt.table(f"{self.ms_filename}::FIELD", ack=False) as obs:
             self.ra, self.dec = normalize_ra_dec(
                 np.degrees(float(obs.col("REFERENCE_DIR")[0][0][0])),
                 np.degrees(float(obs.col("REFERENCE_DIR")[0][0][1])),
@@ -148,16 +148,9 @@ class Observation(object):
         with pt.table(f"{self.ms_filename}::ANTENNA", ack=False) as ant:
             self.stations = ant.col("NAME")[:]
             self.diam = float(ant.col("DISH_DIAMETER")[0])
-            if "HBA" in self.stations[0]:
-                self.antenna = "HBA"
-            elif "LBA" in self.stations[0]:
-                self.antenna = "LBA"
-            else:
-                # Set antenna to HBA to at least let Rapthor proceed.
-                self.antenna = "HBA"
-                self.log.warning(
-                    "Antenna type not recognized (only LBA and HBA data are supported at this time)"
-                )
+
+        # Set antenna to HBA to at least let Rapthor proceed if not recognized.
+        self.antenna = self._get_antenna() or "HBA"
 
         # Find mean elevation and time range for periods where the elevation
         # falls below the lowest 20% of all values. We sample every 10000 entries to
@@ -207,6 +200,17 @@ class Observation(object):
             # Too few times (or none) at lower elevations, so just ignore them
             self.high_el_starttime = self.starttime
             self.high_el_endtime = self.endtime
+
+    def _get_antenna(self):
+
+        for antenna in ["HBA", "LBA"]:
+            if antenna in self.stations[0]:
+                return antenna
+
+        self.log.warning(
+            "Antenna type not recognized (only LBA and HBA data are supported at this time)"
+        )
+        return None
 
     def set_calibration_parameters(
         self,
@@ -276,7 +280,6 @@ class Observation(object):
                 ],
                 solve_max_factor,
             )
-
             # Determine how many calibration chunks to make (to allow parallel jobs)
             samplesperchunk = get_chunk_size(
                 parset["cluster_specific"], self.numsamples, nobs, solint_max_timestep
@@ -306,10 +309,11 @@ class Observation(object):
         else:
             # For other data, use the primary MS files
             self.parameters["timechunk_filename"] = [self.ms_filename] * self.ntimechunks
+
         self.parameters["predict_di_output_filename"] = [
             self.ms_predict_di_filename
         ] * self.ntimechunks
-        self.parameters["starttime"] = [misc.convert_mjd2mvt(t) for t in starttimes]
+        self.parameters["starttime"] = list(map(misc.convert_mjd2mvt, starttimes))
         self.parameters["ntimes"] = [samplesperchunk] * self.ntimechunks
 
         # Set last entry in ntimes list to extend to end of observation
@@ -362,11 +366,6 @@ class Observation(object):
         # slow solves (the full-Jones solve is direction-independent so is not included).
         # The list values are defined as the number of solutions that will be obtained for
         # each base solution interval, with one entry per direction
-        input_solint_keys = {
-            "slow": "solint_slow_timestep",
-            "medium": "solint_medium_timestep",
-            "fast": "solint_fast_timestep",
-        }
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
         if smoothness_max_factor > 1:
@@ -378,8 +377,6 @@ class Observation(object):
         else:
             smoothness_dd_factors = [1] * len(calibrator_fluxes)
         for solve_type in ["fast", "medium", "slow"]:
-            solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
-
             if solve_max_factor > 1:
                 # Find the initial estimate for the number of solutions, relative to that
                 # for a source with a flux equal to the target flux and at most
@@ -397,6 +394,8 @@ class Observation(object):
                 # therefore a higher SNR) and so is generally safer than going the other
                 # way (towards low SNRs)
                 solutions_per_direction = []
+                solint = self.parameters[f"solint_{solve_type}_timestep"][0]  # number of time slots
+
                 for n_sols in n_solutions:
                     while solint % n_sols:
                         n_sols -= 1
@@ -454,10 +453,10 @@ class Observation(object):
             The maximum solution interval in number of timesteps.
         """
         max_solint_seconds = max(solints_seconds)
-        max_solint_timesteps = max(
-            1, math.ceil(max_solint_seconds / self.timepersample) * solve_max_factor
+        return max(
+            1,
+            math.ceil(max_solint_seconds / self.timepersample) * solve_max_factor,
         )
-        return max_solint_timesteps
 
     def set_prediction_parameters(self, sector_name, patch_names):
         """
@@ -487,7 +486,7 @@ class Observation(object):
         self.ms_field = f"{root_filename}{self.infix}_field"
 
         # The filename of the model data for direction-independent calibration
-        self.ms_predict_di = self.ms_subtracted_filename + "_di.ms"
+        self.ms_predict_di = f"{self.ms_subtracted_filename}_di.ms"
 
         # The sky model patch names
         self.parameters["patch_names"] = patch_names
@@ -648,11 +647,9 @@ class Observation(object):
         """
         # Generate a list of possible values for freqstep
         if not hasattr(self, "freq_divisors"):
-            tmp_divisors = []
-            for step in range(self.numchannels, 0, -1):
-                if (self.numchannels % step) == 0:
-                    tmp_divisors.append(step)
-            self.freq_divisors = np.array(tmp_divisors)
+            self.freq_divisors = np.array(
+                [step for step in range(self.numchannels, 0, -1) if (self.numchannels % step) == 0]
+            )
 
         # Find nearest
         idx = np.argmin(np.abs(self.freq_divisors - freqstep))
@@ -702,11 +699,7 @@ class Observation(object):
             Time width in seconds for target reduction_factor
 
         """
-        delta_time = np.sqrt(
-            (1.0 - reduction_factor) / (1.22e-9 * (delta_theta / resolution) ** 2.0)
-        )
-
-        return delta_time
+        return np.sqrt((1.0 - reduction_factor) / (1.22e-9 * (delta_theta / resolution) ** 2.0))
 
     def get_bandwidth_smearing_factor(self, freq, delta_freq, delta_theta, resolution):
         """
@@ -725,15 +718,13 @@ class Observation(object):
 
         Returns
         -------
-        reduction_facgtor : float
+        reduction_factor : float
             Ratio of pre-to-post averaging peak flux density
 
         """
         beta = (delta_freq / freq) * (delta_theta / resolution)
         gamma = 2 * (np.log(2) ** 0.5)
-        reduction_factor = ((np.pi**0.5) / (gamma * beta)) * (erf(beta * gamma / 2.0))
-
-        return reduction_factor
+        return (np.pi**0.5) / (gamma * beta) * erf(beta * gamma / 2.0)
 
     def get_target_bandwidth(self, freq, delta_theta, resolution, reduction_factor):
         """
