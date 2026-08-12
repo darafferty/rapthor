@@ -16,7 +16,10 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 
 import casacore.tables as ct
 import numpy as np
+import math
+import lsmtool
 from lsmtool.facet import read_ds9_region_file
+from scipy import constants
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -31,7 +34,7 @@ def make_writable(msfile):
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
-    # copy msfile to newms
+    # copy msfile to newms (TBD: use DP3 to average data if needed)
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
     # change root dir +rwx
     current_mode = os.stat(newms).st_mode
@@ -76,6 +79,66 @@ def remove_columns_from_ms(msfile, ds9_region_file):
         if colname in colnames:
             tt.removecols(colname)
     tt.close()
+
+
+def optimal_imaging_parameters(msname, skymodel, ra, dec):
+    """
+    Return optimal image parameters (n_pixels, cell_size)
+    for sky model rendering
+    see sec. sky model resampling on wsclean manual
+    """
+
+    # window size used in -sinc-window-size
+    window_size = 127
+    # beta
+    beta = 100
+
+    # determine max value of (l,m) in the sky model (radians)
+    sky = lsmtool.load(skymodel)
+    distances = sky.getDistance(ra, dec)
+    max_dist = np.argmax(distances)
+    print(distances)
+    print(distances.shape)
+    print(f"max distance {max_dist} {distances[max_dist]}")
+    # Sin projection to get l,m distance
+    max_lm = math.sin(math.radians(distances[max_dist]))
+    print(f"lmax {max_lm} rad")
+    d0 = max_lm
+
+    # determine max values of u,v,w in the data (m)
+    uvw = ct.table(msname).getcol("UVW")
+    print(uvw.shape)
+    max_u = np.argmax(uvw[:, 0])
+    max_v = np.argmax(uvw[:, 1])
+    max_w = np.argmax(uvw[:, 2])
+    print(f"uvw max {uvw[max_u, 0]} {uvw[max_v, 1]} {uvw[max_w, 2]}")
+    max_uv = max(uvw[max_u, 0], uvw[max_v, 1])
+    max_w = uvw[max_w, 2]
+
+    # determine the max frequency Hz (done also in predict, could be combined)
+    freq = ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+    print(freq.shape)
+    max_f = np.argmax(freq[0, :])
+    print(f"freq max {freq[0, max_f]}")
+    max_freq = freq[0, max_f]
+
+    # convert uvw to wavelengths
+    max_uv *= max_freq / constants.c
+    max_w *= max_freq / constants.c
+    print(f"max uv {max_uv} w {max_w}")
+
+    # base cell size
+    s0 = 1 / (2 * max_uv)
+    # lobe size of conv. kernel
+    f0 = math.sqrt(1 + (beta / math.pi) ** 2) / window_size
+
+    d = d0 + window_size * s0
+    s = s0  # /(1+2*f0+2*d*max_w)
+
+    n_pix = int(d / s)
+    print(f"d={d} s={s} n_pix={n_pix}")
+
+    return 1, 1
 
 
 def predict(
@@ -336,6 +399,11 @@ def main():
     out_dict = {"msout": msname, "patches": facet_names}
     with open(output_info, "w") as f:
         json.dump(out_dict, f)
+
+    # determine optimal parameters for model image rendering
+    n_pix, cell_size = optimal_imaging_parameters(
+        msname, args.skymodel, args.ra_dec[0], args.ra_dec[1]
+    )
 
     # draw model and predict
     return predict(
