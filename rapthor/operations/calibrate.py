@@ -154,8 +154,8 @@ class Calibrate(Operation):
                     field, factor_constraint_key
                 ) / np.min(dd_factor)
             # Antenna constraints
-            core_stations = self._get_core_stations()
-            fast_antennaconstraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
+            antenna_constraints = self.resolve_antenna_constraints()
+            fast_antennaconstraint = str(antenna_constraints)
             medium_antennaconstraint = fast_antennaconstraint  # ???
 
             solve_plan = self._build_solve_plan()
