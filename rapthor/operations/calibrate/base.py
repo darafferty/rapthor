@@ -113,8 +113,8 @@ class Calibrate(FlowOperation):
             model_image_ra_dec = [str(value) for value in model_image_ra_dec]
             model_image_imsize = [int(value) for value in model_image_imsize]
 
-            core_stations = self._get_core_stations()
-            core_antenna_constraint = f"[[{','.join(core_stations)}]]" if core_stations else "[]"
+            antenna_constraints = self.resolve_antenna_constraints()
+            core_antenna_constraint = str(antenna_constraints).replace("'", "").replace(" ", "")
             dd_solve_slot_inputs = self._build_default_dd_solve_slot_inputs()
 
             solve_plan = self._build_solve_plan()
