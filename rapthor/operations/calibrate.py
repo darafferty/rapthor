@@ -20,6 +20,12 @@ from rapthor.lib.calibration import (
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
 
+ANTENNA_CONSTRAINTS_PATH = Path(__file__).parent.parent / "settings/antenna_constraints"
+ANTENNA_CONSTRAINTS_FILES = {
+    "HBA": ANTENNA_CONSTRAINTS_PATH / "lofar_HBA_core_extended.json",
+    "LBA": ANTENNA_CONSTRAINTS_PATH / "lofar_LBA_core_extended.json",
+}
+
 
 @dataclass(frozen=True)
 class CalibrationSolve:
@@ -895,6 +901,74 @@ class Calibrate(Operation):
                 all_core.extend(["RS106LBA", "RS205LBA", "RS305LBA", "RS306LBA", "RS503LBA"])
 
         return [a for a in all_core if a in self.field.stations]
+
+    def resolve_antenna_constraints(self):
+        """
+        Resolves the antenna constraints for the calibration based on the field's
+        configuration and the parset settings.
+        """
+        antenna_constraints = self.parset["calibration_specific"]["antenna_constraints"]
+        if antenna_constraints is True:
+            if ANTENNA_CONSTRAINTS_FILES.get(self.field.antenna):
+                path = ANTENNA_CONSTRAINTS_FILES[self.field.antenna]
+                return self._load_antenna_constraints(path)
+
+            self.log.warning("No antenna constraints file found for antenna %s", self.field.antenna)
+            return []
+
+        if antenna_constraints:
+            return self._resolve_antenna_constraints(antenna_constraints)
+
+        return []
+
+    def _load_antenna_constraints(self, filename):
+        """
+        Loads antenna constraints from a JSON file and filters them based on
+        the field's stations.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to the JSON file containing antenna constraints.
+
+        Returns
+        -------
+        antenna_constraints : list of list of str
+            Filtered antenna groups containing only stations present in the
+            field.
+        """
+        path = lsmtool.io.check_file_exists(filename)
+        with path.open("r") as fp:
+            antenna_constraints = json.load(fp)
+
+        return self._resolve_antenna_constraints(antenna_constraints)
+
+    def _resolve_antenna_constraints(self, antenna_constraints):
+        """
+        Identify stations present in the field and return the resolved names of all stations in
+        the given list of antenna groups.
+        """
+        field_stations = set(self.field.stations)
+        resolved_groups = []
+        for constrained_group in antenna_constraints:
+            # Get the list of station names that match the constrained group,
+            # ignoring any stations not in the field
+            station_names = []
+            for station in constrained_group:
+                station = station.strip()
+                station_name = next(
+                    (field_station for field_station in field_stations if station in field_station),
+                    None,
+                )
+                if station_name:
+                    station_names.append(station_name)
+                else:
+                    self.log.warning(
+                        "Station '%s' from antenna constraints not found in field stations. Ignoring.",
+                        station,
+                    )
+            resolved_groups.append(sorted(station_names))
+        return resolved_groups
 
     def _get_model_image_parameters(self):
         """
