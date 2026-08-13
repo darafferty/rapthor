@@ -4,9 +4,11 @@ Definition of the Field class
 
 import copy
 import glob
+import json
 import logging
 import os
 from collections import namedtuple
+from pathlib import Path
 from typing import Dict, List
 
 import astropy.units as u
@@ -34,6 +36,18 @@ from matplotlib.patches import Ellipse
 from matplotlib.pyplot import close, figure
 
 from rapthor.lib.calibration import resolve_calibration_strategy
+
+ANTENNA_CONSTRAINTS_PATH = Path(__file__).parent.parent / "settings/antenna_constraints"
+ANTENNA_CONSTRAINTS_FILES = {
+    "HBA": ANTENNA_CONSTRAINTS_PATH / "lofar_HBA_core_extended.json",
+    "LBA": ANTENNA_CONSTRAINTS_PATH / "lofar_LBA_core_extended.json",
+}
+
+
+def load_json(filename):
+    path = lsmtool.io.check_file_exists(filename)
+    with path.open("r") as fp:
+        return json.load(fp)
 
 
 class Field(object):
@@ -100,6 +114,7 @@ class Field(object):
         self.smoothnessconstraint_fulljones = self.parset["calibration_specific"][
             "fulljones_smoothnessconstraint"
         ]
+        self.antenna_constraints = self.parset["calibration_specific"]["antenna_constraints"]
         self.propagatesolutions = self.parset["calibration_specific"]["propagatesolutions"]
         self.solveralgorithm = self.parset["calibration_specific"]["solveralgorithm"]
         self.onebeamperpatch = self.parset["calibration_specific"]["onebeamperpatch"]
@@ -245,7 +260,7 @@ class Field(object):
             "s" if len(self.epoch_starttimes) > 1 else "",
         )
         self.epoch_observations = []
-        for i, epoch_starttime in enumerate(self.epoch_starttimes):
+        for epoch_starttime in self.epoch_starttimes:
             epoch_observations = [
                 obs for obs in self.full_observations if obs.starttime == epoch_starttime
             ]
@@ -293,6 +308,9 @@ class Field(object):
             all_stations.extend(obs.stations)
         self.stations = list(set(all_stations))
 
+        # Resolve antenna constraints based on the field's stations and the parset settings
+        self.antenna_constraints = self.resolve_antenna_constraints()
+
         # Find mean elevation and FOV over all observations
         self.diam = np.mean([obs.diam for obs in self.full_observations])
         el_rad_list = []
@@ -328,6 +346,114 @@ class Field(object):
         mid_time = np.average(times, weights=weights)
         mid_index = np.argmin(np.abs(np.array(times) - mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
+
+    def resolve_antenna_constraints(self):
+        """
+        Resolves the antenna constraints for the calibration based on the field's
+        configuration and the parset settings.
+        """
+        antenna_constraints = self.antenna_constraints
+        if antenna_constraints is True:
+            if ANTENNA_CONSTRAINTS_FILES.get(self.antenna):
+                path = ANTENNA_CONSTRAINTS_FILES[self.antenna]
+                return self._load_antenna_constraints(path)
+
+            self.log.warning("No antenna constraints file found for antenna %s", self.antenna)
+            return []
+
+        if antenna_constraints:
+            return self._resolve_antenna_constraints(antenna_constraints)
+
+        return []
+
+    def _load_antenna_constraints(self, filename):
+        """
+        Loads antenna constraints from a JSON file and filters them based on
+        the field's stations.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to the JSON file containing antenna constraints.
+
+        Returns
+        -------
+        antenna_constraints : list of list of str
+            Filtered antenna groups containing only stations present in the
+            field.
+        """
+        antenna_constraints = load_json(filename)
+        return self._resolve_antenna_constraints(antenna_constraints)
+
+    def _resolve_antenna_constraints(self, antenna_constraints):
+        """
+        Resolve the names of the stations in the field for the input list of
+        antenna groups that solutions are to be constrained for in calibration.
+
+        The input is a list of lists of station names, where each sublist
+        represents a group of stations that will be fit together.
+
+        Parameters
+        ----------
+        antenna_constraints : list of list of str
+            List of antenna groups to resolve against the field's stations.
+
+        Yields
+        ------
+        field_stations : list of str
+            Resolved group of field stations.
+
+        Raises
+        ------
+        ValueError
+            If no stations in an input group could be resolved against the field's stations.
+        """
+        # Make sure we have a list of lists
+        if isinstance(antenna_constraints[0], str):
+            antenna_constraints = [antenna_constraints]
+
+        for stations_group in antenna_constraints:
+            if field_stations := sorted(self._resolve_field_stations(stations_group)):
+                yield field_stations
+                continue
+
+            raise ValueError(
+                f"Could not resolve any stations in the antenna constraints group: {stations_group}"
+            )
+
+    def _resolve_field_stations(self, station_names):
+        """
+        Resolve the input station names against the field's stations.
+
+        Given a list of input station names, check this against the list of
+        names in the `stations` attribute and return the resolved station
+        station names. The input station name will match against a field
+        station if the name is contained in the field station name.
+
+        Parameters
+        ----------
+        station_names : list of str
+            List of input station names to resolve against the field's stations.
+
+        Yields
+        ------
+        station_name : str
+            Name of field station.
+        """
+        field_stations = self.stations
+        for station in station_names:
+            # Find the name of the station in the field that contains the name of the given station
+            station = station.strip()
+            if station_name := next(
+                (field_station for field_station in field_stations if station in field_station),
+                None,
+            ):
+                yield station_name
+            # else:
+            #     self.log.warning(
+            #         "Station %r from antenna constraints list not found in field stations. Ignoring.",
+            #         station,
+            #         )
 
     def chunk_observations(self, mintime, prefer_high_el_periods=True):
         """
