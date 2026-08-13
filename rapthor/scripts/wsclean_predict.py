@@ -396,9 +396,15 @@ def main():
         msname, args.skymodel, args.ra_dec[0], args.ra_dec[1]
     )
     # override provided imsize and cellsize
+    max_npix = max(args.imsize[0], args.imsize[1])
     cellsize_deg = math.degrees(cell_size)
-    given_extent = max(args.imsize[0], args.imsize[1]) * args.cellsize
-    n_pix = max(int(given_extent / cellsize_deg), max(args.imsize[0], args.imsize[1]))
+    given_extent = max_npix * args.cellsize
+    n_pix = max(int(given_extent / cellsize_deg), max_npix)
+    # if n_pix is greater than x3 times original image size, limit
+    # the size (because of computational limitations)
+    if n_pix > 3 * max_npix:
+        n_pix = 3 * max_npix
+        cellsize_deg = given_extent / n_pix
     imsize = args.imsize
     imsize[0] = n_pix
     imsize[1] = n_pix
