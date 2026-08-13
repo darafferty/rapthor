@@ -379,7 +379,6 @@ class TestCalibrate:
             )
             == expected
         )
-
     @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
     def test_get_model_image_parameters(
         self, single_source_sky_model, calibrate_field, mocker, cycle, have_full_field_sector
