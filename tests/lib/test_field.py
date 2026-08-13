@@ -1,9 +1,107 @@
+import logging
 from pathlib import Path
 
 import pytest
+from lsmtool.testing import get_context
 
 from rapthor.lib.field import Field
 from rapthor.lib.strategy import set_image_strategy
+
+logging.getLogger("matplotlib.font_manager").disabled = True
+
+EXPECTED_ANTENNA_CONSTRAINTS = {
+    "HBA": [
+        "CS001HBA0",
+        "CS002HBA0",
+        "CS003HBA0",
+        "CS004HBA0",
+        "CS005HBA0",
+        "CS006HBA0",
+        "CS007HBA0",
+        "CS011HBA0",
+        "CS013HBA0",
+        "CS017HBA0",
+        "CS021HBA0",
+        "CS024HBA0",
+        "CS026HBA0",
+        "CS028HBA0",
+        "CS030HBA0",
+        "CS031HBA0",
+        "CS032HBA0",
+        "CS101HBA0",
+        "CS103HBA0",
+        "CS201HBA0",
+        "CS301HBA0",
+        "CS302HBA0",
+        "CS401HBA0",
+        "CS501HBA0",
+        "CS001HBA1",
+        "CS002HBA1",
+        "CS003HBA1",
+        "CS004HBA1",
+        "CS005HBA1",
+        "CS006HBA1",
+        "CS007HBA1",
+        "CS011HBA1",
+        "CS013HBA1",
+        "CS017HBA1",
+        "CS021HBA1",
+        "CS024HBA1",
+        "CS026HBA1",
+        "CS028HBA1",
+        "CS030HBA1",
+        "CS031HBA1",
+        "CS032HBA1",
+        "CS101HBA1",
+        "CS103HBA1",
+        "CS201HBA1",
+        "CS301HBA1",
+        "CS302HBA1",
+        "CS401HBA1",
+        "CS501HBA1",
+        "RS106HBA0",
+        "RS205HBA0",
+        "RS305HBA0",
+        "RS306HBA0",
+        "RS503HBA0",
+        "RS106HBA1",
+        "RS205HBA1",
+        "RS305HBA1",
+        "RS306HBA1",
+        "RS503HBA1",
+    ],
+    "LBA": [
+        "CS001LBA",
+        "CS002LBA",
+        "CS003LBA",
+        "CS004LBA",
+        "CS005LBA",
+        "CS006LBA",
+        "CS007LBA",
+        "CS011LBA",
+        "CS013LBA",
+        "CS017LBA",
+        "CS021LBA",
+        "CS024LBA",
+        "CS026LBA",
+        "CS028LBA",
+        "CS030LBA",
+        "CS031LBA",
+        "CS032LBA",
+        "CS101LBA",
+        "CS103LBA",
+        "CS201LBA",
+        "CS301LBA",
+        "CS302LBA",
+        "CS401LBA",
+        "CS501LBA",
+        "RS106LBA",
+        "RS205LBA",
+        "RS305LBA",
+        "RS306LBA",
+        "RS503LBA",
+    ],
+}
 
 
 @pytest.fixture
@@ -275,3 +373,128 @@ def test_set_calibration_strategy_preserves_order_of_solves(field, solve_order):
     for key in user_provided_strategy.keys():
         assert list(field.calibration_strategy[key]) == list(user_provided_strategy[key])
     assert field.calibration_strategy == user_provided_strategy
+
+
+@pytest.mark.parametrize(
+    "input_constraints, expected_result",
+    [
+        # nominal case. all stations are present in the constraints
+        (
+            [
+                [
+                    "CS001HBA0",
+                    "CS002HBA0",
+                    "CS002HBA1",
+                    "CS004HBA1",
+                ],
+                [
+                    "RS106HBA",
+                    "RS208HBA",
+                    "RS305HBA",
+                    "RS307HBA",
+                ],
+            ],
+            [
+                [
+                    "CS001HBA0",
+                    "CS002HBA0",
+                    "CS002HBA1",
+                    "CS004HBA1",
+                ],
+                [
+                    "RS106HBA",
+                    "RS208HBA",
+                    "RS305HBA",
+                    "RS307HBA",
+                ],
+            ],
+        ),
+        # Constraints contain stations that are not present in the field. These
+        # should be filtered out.
+        (
+            [
+                [
+                    "CS001HBA0",
+                    "CS002HBA0",
+                    "CS002HBA1",
+                    "CS004HBA1",
+                    "CS999HBA0",  # Not present in the field
+                ],
+                [
+                    "RS106HBA",
+                    "RS208HBA",
+                    "RS305HBA",
+                    "RS307HBA",
+                    "RS999HBA",  # Not present in the field
+                ],
+            ],
+            [
+                [
+                    "CS001HBA0",
+                    "CS002HBA0",
+                    "CS002HBA1",
+                    "CS004HBA1",
+                ],
+                [
+                    "RS106HBA",
+                    "RS208HBA",
+                    "RS305HBA",
+                    "RS307HBA",
+                ],
+            ],
+        ),
+        # Single list of stations instead of a list of lists. Should be
+        # wrapped in a list when resolved
+        (
+            [
+                "CS001HBA0",
+                "CS002HBA0",
+                "CS002HBA1",
+                "CS004HBA1",
+            ],
+            [
+                [
+                    "CS001HBA0",
+                    "CS002HBA0",
+                    "CS002HBA1",
+                    "CS004HBA1",
+                ]
+            ],
+        ),
+        # Constraints with no stations present in the field. Should raise a
+        # ValueError.
+        (
+            [
+                [
+                    "CS999HBA0",  # Not present in the field
+                ],
+            ],
+            ValueError,
+        ),
+    ],
+)
+def test_resolve_antenna_constraints(field, input_constraints, expected_result):
+    """Test that the antenna constraints are resolved correctly."""
+    with get_context(expected_result):
+        result = list(field._resolve_antenna_constraints(input_constraints))
+        assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "antenna, antenna_constraints, expected_result",
+    [
+        pytest.param(
+            "HBA", True, EXPECTED_ANTENNA_CONSTRAINTS["HBA"], id="default LOFAR HBA constraints"
+        ),
+        pytest.param(
+            "LBA", True, EXPECTED_ANTENNA_CONSTRAINTS["LBA"], id="default LOFAR LBA constraints"
+        ),
+    ],
+)
+def test_antenna_constraints(field, antenna, antenna_constraints, expected_result):
+    """Test that the default antenna constraints are loaded correctly from file."""
+    field.antenna = antenna
+    field.antenna_constraints = antenna_constraints
+
+    result = field.resolve_antenna_constraints()
+    assert result == expected_result
