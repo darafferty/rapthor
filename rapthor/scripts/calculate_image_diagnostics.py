@@ -26,7 +26,7 @@ from lsmtool.facet import SquareFacet, read_ds9_region_file
 from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.fitsimage import FITSImage
+from rapthor.lib.fitsimage import EmptyFacetSelectionError, FITSImage
 from rapthor.lib.observation import Observation
 
 if matplotlib.get_backend() != "Agg":
@@ -695,24 +695,27 @@ def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_
     Returns
     -------
     dict
-        Dictionary of facet-level RMS diagnostics.
+        Dictionary of facet-level RMS diagnostics for facets that overlap both
+        RMS images.
     """
-    try:
-        facets = read_ds9_region_file(facet_region_file)
-        facets_summary = {}
-        for facet in facets:
+    facets = read_ds9_region_file(facet_region_file)
+    facets_summary = {}
+    for facet in facets:
+        try:
             selected_flat_noise = rms_img_flat_noise.select_facet(facet)
             selected_beam_corrected = rms_img_true_sky.select_facet(facet)
-            facet_summary = {
-                "flat_noise": _compute_image_stats(selected_flat_noise),
-                "beam_corrected": _compute_image_stats(selected_beam_corrected),
-            }
-            facets_summary[facet.name] = facet_summary
-        return facets_summary
-    except Exception as e:
-        logger.warning("Could not determine per facets metrics")
-        logger.exception(e)
-        raise e
+        except EmptyFacetSelectionError:
+            logger.warning(
+                "Skipping RMS metrics for facet %r: no image pixels selected",
+                facet.name,
+            )
+            continue
+        facet_summary = {
+            "flat_noise": _compute_image_stats(selected_flat_noise),
+            "beam_corrected": _compute_image_stats(selected_beam_corrected),
+        }
+        facets_summary[facet.name] = facet_summary
+    return facets_summary
 
 
 def main(

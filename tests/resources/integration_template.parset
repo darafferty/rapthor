@@ -54,6 +54,7 @@ shared_facet_rw = False
 normalization_skymodels =
 normalization_reference_frequencies =
 dde_method = full
+do_multiscale_clean = True
   
 [cluster]
 batch_system = single_machine
