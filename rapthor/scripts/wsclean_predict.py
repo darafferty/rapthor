@@ -6,6 +6,7 @@ Script to predict using wsclean
 import argparse
 import json
 import logging
+import math
 import os
 import shutil
 import stat
@@ -15,9 +16,8 @@ import uuid
 from argparse import ArgumentParser, RawTextHelpFormatter
 
 import casacore.tables as ct
-import numpy as np
-import math
 import lsmtool
+import numpy as np
 from lsmtool.facet import read_ds9_region_file
 from scipy import constants
 
