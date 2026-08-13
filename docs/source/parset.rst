@@ -756,10 +756,10 @@ The available options are described below under their respective sections.
         available on the machine running Rapthor.
 
         The estimate uses decimal GB and the current DP3 peak-memory model of 80 bytes
-        per visibility sample, including the original data buffer, visibility copies,
-        weights, and weighted data but excluding the legacy solve buffer. It uses the
+        per visibility sample. The estimate accounts for the original data buffer, visibility copies,
+        weights, and weighted data but excludes the legacy solve buffer. It uses the
         unaveraged channel count because calibration BDA is baseline-dependent. The
-        result is conservative and advisory: Rapthor logs likely out-of-memory
+        result is conservative and should be taken as advisory: Rapthor logs likely out-of-memory
         configurations but does not change settings or stop processing.
 
         Rapthor calculates the estimated peak memory as follows::
