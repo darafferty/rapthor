@@ -61,6 +61,7 @@ batch_system = single_machine
 max_nodes = 1
 cpus_per_task = 0
 mem_per_node_gb = 0
+fail_on_calibration_oom_risk = False
 max_cores = 0
 max_threads = 0
 deconvolution_threads = 3

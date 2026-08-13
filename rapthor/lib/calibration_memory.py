@@ -1,7 +1,8 @@
-"""Advisory DP3 calibration memory checks."""
+"""DP3 calibration memory checks and optional high-risk enforcement."""
 
 import logging
 from dataclasses import dataclass
+from typing import Optional
 
 from rapthor.lib.calibration import (
     INTERVAL_KEYS_BY_SOLVE,
@@ -11,6 +12,12 @@ from rapthor.lib.calibration import (
 from rapthor.lib.cluster import DP3MemoryEstimate, estimate_dp3_peak_memory, get_available_memory
 
 log = logging.getLogger("rapthor")
+
+FAIL_ON_CALIBRATION_OOM_RISK = "fail_on_calibration_oom_risk"
+
+
+class CalibrationMemoryRiskError(RuntimeError):
+    """Raised when strict memory checking identifies a likely calibration OOM."""
 
 
 @dataclass(frozen=True)
@@ -31,6 +38,65 @@ class CalibrationMemoryEstimate:
     def peak_memory_gb(self) -> float:
         """Estimated peak memory in decimal gigabytes."""
         return self.memory.peak_memory_gb
+
+
+@dataclass(frozen=True)
+class CalibrationMemoryAssessment:
+    """Capacity comparison for the largest DP3 calibration task in one cycle."""
+
+    estimate: CalibrationMemoryEstimate
+    cycle_number: int
+    stage: str
+    max_directions: int
+    memory_limit_gb: Optional[float]
+    memory_source: str
+
+    @property
+    def margin_gb(self) -> Optional[float]:
+        """Available headroom, or ``None`` when capacity is unknown."""
+        if self.memory_limit_gb is None:
+            return None
+        return self.memory_limit_gb - self.estimate.peak_memory_gb
+
+    @property
+    def high_risk(self) -> bool:
+        """Whether the estimate is strictly greater than the known limit."""
+        return self.margin_gb is not None and self.margin_gb < 0
+
+    @property
+    def task_details(self) -> str:
+        """Describe the task and its estimated peak memory."""
+        estimate = self.estimate
+        return (
+            f"DP3 calibration memory {self.stage} for cycle {self.cycle_number}: "
+            f"{estimate.mode.upper()} {estimate.solve_type} on "
+            f"{estimate.observation_name} with {estimate.directions} direction(s) "
+            f"(max_directions={self.max_directions}) "
+            f"is estimated at {estimate.peak_memory_gb:.3f} GB"
+        )
+
+    @property
+    def capacity_message(self) -> str:
+        """Describe the capacity result used for logging and enforcement."""
+        margin = self.margin_gb
+        if margin is None:
+            return f"{self.task_details}; capacity comparison skipped because {self.memory_source}"
+
+        details = (
+            f"{self.task_details} against {self.memory_limit_gb:.3f} GB of {self.memory_source}"
+        )
+        if margin < 0:
+            return f"{details}; likely out of memory by {-margin:.3f} GB"
+        return f"{details}; {margin:.3f} GB headroom"
+
+    @property
+    def failure_message(self) -> str:
+        """Return the actionable error emitted when strict checking is enabled."""
+        return (
+            f"{self.capacity_message}. Rapthor is stopping because "
+            f"{FAIL_ON_CALIBRATION_OOM_RISK}=True. Set "
+            f"{FAIL_ON_CALIBRATION_OOM_RISK}=False to continue despite this risk."
+        )
 
 
 def _setting(field, step, name):
@@ -97,32 +163,19 @@ def _memory_limit(field):
         return None, "memory available on current machine could not be determined"
 
 
-def _log_calibration_memory(
-    estimate, cycle_number, stage, max_directions, memory_limit, memory_source
-):
+def _log_calibration_memory(assessment):
     """Log the capacity result and detailed calculation terms."""
-    task_details = (
-        f"DP3 calibration memory {stage} for cycle {cycle_number}: "
-        f"{estimate.mode.upper()} {estimate.solve_type} on "
-        f"{estimate.observation_name} with {estimate.directions} direction(s) "
-        f"(max_directions={max_directions}) "
-        f"is estimated at {estimate.peak_memory_gb:.3f} GB"
-    )
-    if memory_limit is None:
-        log.warning("%s; capacity comparison skipped because %s", task_details, memory_source)
+    estimate = assessment.estimate
+    if assessment.memory_limit_gb is None or assessment.high_risk:
+        log.warning(assessment.capacity_message)
     else:
-        margin = memory_limit - estimate.peak_memory_gb
-        details = f"{task_details} against {memory_limit:.3f} GB of {memory_source}"
-        if margin < 0:
-            log.warning("%s; likely out of memory by %.3f GB", details, -margin)
-        else:
-            log.info("%s; %.3f GB headroom", details, margin)
+        log.info(assessment.capacity_message)
 
     log.debug(
         "DP3 memory terms for cycle %s: baselines=%s, channels=%s, sampling_interval=%.3f "
         "s, solution_interval=%.3f s, time_steps=%s, visibility_copies=%.3f GB, "
         "weights=%.3f GB, weighted_data=%.3f GB",
-        cycle_number,
+        assessment.cycle_number,
         estimate.baselines,
         estimate.channels,
         estimate.sampling_interval_seconds,
@@ -137,11 +190,14 @@ def _log_calibration_memory(
 def check_calibration_memory(field, cycle_number, dd_directions, step=None):
     """Estimate and log the largest DP3 calibration task for one cycle.
 
-    ``step`` is supplied for a pre-flight check. Without it, observation parameters
-    are resolved first and the current field settings are used. The check is advisory:
-    errors are logged and do not interrupt processing.
+    ``step`` is supplied for a pre-flight check. Without it, the current resolved
+    observation parameters and field settings are used. Calculation failures remain
+    advisory. A known over-limit estimate raises :class:`CalibrationMemoryRiskError`
+    when the corresponding cluster option is enabled.
     """
     stage = "pre-flight max_directions upper bound" if step is not None else "resolved facet count"
+    assessment = None
+    fail_on_risk = False
     try:
         if not _setting(field, step, "do_calibrate"):
             return None
@@ -154,24 +210,22 @@ def check_calibration_memory(field, cycle_number, dd_directions, step=None):
         if not any(strategy.values()):
             return None
 
-        if step is None:
-            field.set_obs_parameters()
-
         estimate = _largest_calibration_memory_estimate(field, strategy, dd_directions, step)
         if estimate is None:
             return None
 
         max_directions = _setting(field, step, "max_directions")
         memory_limit, memory_source = _memory_limit(field)
-        _log_calibration_memory(
-            estimate,
-            cycle_number,
-            stage,
-            max_directions,
-            memory_limit,
-            memory_source,
+        assessment = CalibrationMemoryAssessment(
+            estimate=estimate,
+            cycle_number=cycle_number,
+            stage=stage,
+            max_directions=max_directions,
+            memory_limit_gb=memory_limit,
+            memory_source=memory_source,
         )
-        return estimate
+        _log_calibration_memory(assessment)
+        fail_on_risk = field.parset["cluster_specific"].get(FAIL_ON_CALIBRATION_OOM_RISK, False)
     except Exception as error:
         log.warning(
             "Could not complete the advisory DP3 calibration memory %s for cycle %s: %s. "
@@ -182,3 +236,7 @@ def check_calibration_memory(field, cycle_number, dd_directions, step=None):
         )
         log.debug("DP3 calibration memory check failure", exc_info=True)
         return None
+
+    if fail_on_risk and assessment.high_risk:
+        raise CalibrationMemoryRiskError(assessment.failure_message)
+    return assessment.estimate

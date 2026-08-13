@@ -43,6 +43,7 @@
                       'debug_workflow': False,
                       'deconvolution_threads': 3,
                       'dir_local': None,
+                      'fail_on_calibration_oom_risk': False,
                       'local_scratch_dir': None,
                       'global_scratch_dir': None,
                       'keep_temporary_files': False,

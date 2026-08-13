@@ -117,6 +117,7 @@ batch_system = slurm
 max_nodes = 8
 cpus_per_task = 40
 mem_per_node_gb = 256
+fail_on_calibration_oom_risk = True
 max_cores = 32
 max_threads = 64
 deconvolution_threads = 16

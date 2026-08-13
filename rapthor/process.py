@@ -195,6 +195,7 @@ def run_steps(field, steps, final=False):
         if field.do_calibrate:
             # Set whether screens should be generated
             field.generate_screens = (field.dde_mode == "hybrid") and final
+            field.set_obs_parameters()
             check_calibration_memory(field, cycle_number, field.num_patches)
             for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
                 if not enabled:
