@@ -411,6 +411,7 @@ def test_rapthor_run_multi_cycles(
             # calibrator model.
             "selfcal_data_fraction": "1.0",
             "reweight": "False",
+            "do_multiscale_clean": "False",
         },
     )
 

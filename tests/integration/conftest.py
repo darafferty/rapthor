@@ -97,9 +97,18 @@ def _make_predicted_test_ms(tmp_path, test_ms, output_name, apparent_skymodel_na
     shutil.copytree(test_ms, ms_path)
     _set_synthetic_uvw_geometry(ms_path)
     with pt.table(str(ms_path), readonly=False, ack=False) as table:
-        data = table.getcol("DATA")
-        data[...] = 0.0j
-        table.putcol("DATA", data)
+        # The UVW and data describe a new synthetic observation, so flags and
+        # weights from the seed MS are not applicable to it.
+        for column_name, fill_value in (
+            ("DATA", 0.0j),
+            ("FLAG", False),
+            ("FLAG_ROW", False),
+            ("WEIGHT", 1.0),
+            ("WEIGHT_SPECTRUM", 1.0),
+        ):
+            values = table.getcol(column_name)
+            values.fill(fill_value)
+            table.putcol(column_name, values)
 
     skymodel_path = Path(__file__).parents[1] / "resources" / apparent_skymodel_name
 
