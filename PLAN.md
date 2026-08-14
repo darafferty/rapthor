@@ -1,6 +1,6 @@
 # Rapthor Switch-Readiness Plan
 
-Status snapshot: 2026-08-06.
+Status snapshot: 2026-08-14.
 
 ## Goal
 
@@ -37,10 +37,14 @@ and known limitations must all be visible to reviewers.
   exact master commit `b307e769`. Controlled BDA-frequency-limit and
   normalization comparisons pass strictly; old-reference normalization and
   peeling image residuals remain documented external-tool baseline warnings.
-- The subsequent `master` build-reliability fix at `488f5c00` is ported to the
-  production, CI, and development Dockerfiles. Casacore measures data now fall
-  back to the GitLab-hosted archive when the primary ASTRON endpoint is
-  unavailable. This does not change pipeline or scientific behavior.
+- The August 7-14 `master` changes are ported into the Prefect/Dask
+  architecture: the production imaging frequency-BDA default, the official
+  IERS/WSRT measures URL, robust RMS diagnostics for facets outside an image,
+  and advisory/strict DP3 calibration memory checks. Legacy solve toggles and
+  retired CWL mechanics were deliberately not reintroduced.
+- The archived science evidence predates the new default imaging frequency BDA.
+  Its explicit scenarios remain valid, but the default imaging path must be
+  refreshed before this latest master sync is considered fully verified.
 
 **Performance:** accepted for the current optimisation phase.
 
@@ -51,7 +55,8 @@ and known limitations must all be visible to reviewers.
 - Detailed performance evidence lives under
   `docs/source/development/performance_equivalence_runs/`.
 
-**Manual testing:** not complete. This is the main remaining switch blocker.
+**Master-sync verification and manual testing:** not complete. These are the
+main remaining switch blockers.
 
 The next phase is to make it easy for developers who were not involved in the
 refactor to run the branch, adapt their own parsets, inspect the new
@@ -113,11 +118,27 @@ external Dask, and MPI WSClean are a separate production-readiness track.
 
 ## Immediate Task List
 
+- [x] **Port the August 7-14 master changes.**
+  Port `3fd9e69f`, `bc2c65a7`, `da442dfc`, and the applicable behavior from
+  `043c15d4`. Keep calibration solve selection strategy-only. The
+  `e8873f19` flat-noise symlink is CWL-specific; the migrated helper already
+  supplies explicit RMS output paths and now has a regression test proving it.
+  The strategy settings from the integration-speed commit `c3fac822` were
+  already present, so do not destabilize the branch's established CI split.
+- [ ] **Verify the August 14 master sync.**
+  In the prepared dev container, run the focused cluster, calibration-memory,
+  parset/config, pipeline-flow, FITS/facet-diagnostics, skymodel-filter, image,
+  and calibration suites. Run the strict OOM preflight integration case added
+  by this sync and confirm that no calibration command starts. Then run the
+  default imaging path with frequency BDA and archive the targeted science
+  comparison against exact `master` commit `043c15d4`. A full gate is only
+  required if that targeted comparison exposes unexplained product differences.
+
 - [x] **Port the August 6 master build fix.**
-  Port `488f5c00` and apply the measures-table fallback consistently to all
-  current-branch container builds. Verify the endpoint behavior and successful
-  fallback command without rerunning science equivalence, since no runtime or
-  scientific code changes.
+  Port `488f5c00` consistently to all current-branch container builds. This
+  historical fallback was subsequently superseded by `bc2c65a7`; all maintained
+  builds now use the official `https://iers.astron.nl/WSRT_Measures.ztar`
+  endpoint without the temporary CI-artifact fallback.
 - [x] **Verify the August master sync.**
   The three commits added to `master` after the July sync have been ported:
   calibration-aware imaging/BDA frequency limits, clearer built-in strategy

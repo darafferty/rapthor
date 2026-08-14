@@ -3,7 +3,7 @@
 Changelog
 =========
 
-Version 2.2 (unreleased)
+Version 3.0 (unreleased)
 ------------------------
 
 This release changes Rapthor's production execution path from CWL/Toil to
@@ -36,6 +36,14 @@ Prefect/Dask.
     - Frequency BDA during imaging now uses WSClean's required reordering path.
       EveryBeam 0.8.3 or later is required so primary-beam products can be
       generated from the resulting multi-spectral-window Measurement Set.
+    - Frequency BDA during imaging is now enabled by default with a 20 km
+      baseline limit, matching the current production default on ``master``.
+    - Rapthor now estimates DP3 calibration memory before the run and again
+      after each cycle's facets and solve intervals are resolved. Estimates are
+      advisory by default; ``fail_on_calibration_oom_risk`` enables strict
+      pre-operation failure for known high-risk configurations.
+    - Per-facet RMS diagnostics now skip facets that do not overlap the RMS
+      image instead of failing the whole diagnostics step.
 
 
 Version 2.1 (2025/12/04)
