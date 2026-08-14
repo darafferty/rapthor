@@ -354,14 +354,16 @@ class Field(object):
         """
         antenna_constraints = self.antenna_constraints
         if antenna_constraints is True:
+            self.log.info("Loading default antenna constraints for %s.", self.antenna)
             if ANTENNA_CONSTRAINTS_FILES.get(self.antenna):
                 path = ANTENNA_CONSTRAINTS_FILES[self.antenna]
                 return self._load_antenna_constraints(path)
 
-            self.log.warning("No antenna constraints file found for antenna %s", self.antenna)
+            self.log.warning("No antenna constraints file found for antenna %r", self.antenna)
             return []
 
         if antenna_constraints:
+            self.log.info("Resolving custom antenna constraints for %s.", self.antenna)
             return self._resolve_antenna_constraints(antenna_constraints)
 
         return []
@@ -418,7 +420,8 @@ class Field(object):
                 continue
 
             raise ValueError(
-                f"Could not resolve any stations in the antenna constraints group: {stations_group}"
+                "Could not match any field stations to the station names given in "
+                f"antenna constraints: {stations_group}"
             )
 
     def _resolve_field_stations(self, station_names):
