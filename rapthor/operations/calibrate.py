@@ -11,29 +11,14 @@ import lsmtool
 import numpy as np
 
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.calibration import (
+    FIELD_PREFIX_BY_SOLVE,
+    INTERVAL_KEYS_BY_SOLVE,
+    MODE_BY_SOLVE,
+    resolve_calibration_solves,
+)
 from rapthor.lib.cwl import CWLDir, CWLFile
 from rapthor.lib.operation import Operation
-
-FIELD_PREFIX_BY_SOLVE = {
-    "fast_phase": "fast",
-    "medium_phase": "medium",
-    "slow_gains": "slow",
-    "full_jones": "fulljones",
-}
-
-MODE_BY_SOLVE = {
-    "fast_phase": "scalarphase",
-    "medium_phase": "scalarphase",
-    "slow_gains": "diagonal",
-    "full_jones": "fulljones",
-}
-
-INTERVAL_KEYS_BY_SOLVE = {
-    "fast_phase": ("solint_fast_timestep", "solint_fast_freqstep"),
-    "medium_phase": ("solint_medium_timestep", "solint_medium_freqstep"),
-    "slow_gains": ("solint_slow_timestep", "solint_slow_freqstep"),
-    "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
-}
 
 
 @dataclass(frozen=True)
@@ -495,18 +480,14 @@ class Calibrate(Operation):
 
     def _requested_calibration_solves(self):
         strategy = getattr(self.field, "calibration_strategy", None)
-        if strategy is not None and self.mode in strategy:
-            return list(strategy.get(self.mode) or []), getattr(
-                self.field, "_calibration_strategy_defaulted", False
-            )
-
-        if self.mode == "dd":
-            solves = ["fast_phase", "medium_phase"]
-            if self.field.do_slowgain_solve:
-                solves.append("slow_gains")
-            return solves, True
-
-        return ["full_jones"], True
+        if getattr(self.field, "_calibration_strategy_defaulted", False):
+            strategy = None
+        return resolve_calibration_solves(
+            self.mode,
+            calibration_strategy=strategy,
+            do_slowgain_solve=self.field.do_slowgain_solve,
+            do_fulljones_solve=getattr(self.field, "do_fulljones_solve", self.mode == "di"),
+        )
 
     def _build_solve_plan(self):
         requested_solves, defaulted_strategy = self._requested_calibration_solves()

@@ -380,6 +380,11 @@ max_nodes = 0
 cpus_per_task = 0
 mem_per_node_gb = 0
 
+# Stop processing when a DP3 calibration memory estimate is greater than the
+# applicable per-node memory limit (default = False). If mem_per_node_gb is
+# zero, memory available on the machine running Rapthor is used as the limit.
+fail_on_calibration_oom_risk = False
+
 # Maximum number of cores and threads per task to use on each node (default = 0
 # = all)
 max_cores = 0

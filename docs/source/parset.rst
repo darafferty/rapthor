@@ -749,6 +749,67 @@ The available options are described below under their respective sections.
         When :term:`batch_system` = ``slurm``, the amount of memory per node in GB to
         request (default = 0 = all).
 
+        Rapthor also uses this value for DP3 calibration memory checks. A
+        pre-flight check uses the strategy's maximum number of directions, and a second
+        check before each calibration cycle uses the resolved facet count and DP3 solve
+        intervals. If ``mem_per_node_gb`` is zero, the checks compare against memory
+        available on the machine running Rapthor. Slurm users should set
+        ``mem_per_node_gb`` because memory available on the machine running Rapthor may
+        not represent memory available on a compute node.
+
+        The estimate uses decimal GB and the current DP3 peak-memory model of 80 bytes
+        per visibility sample. The estimate accounts for the original data buffer, visibility copies,
+        weights, and weighted data but excludes the legacy solve buffer. It uses the
+        unaveraged channel count because calibration BDA is baseline-dependent. The
+        result is conservative. By default, Rapthor logs likely out-of-memory
+        configurations but does not change settings or stop processing. Set
+        :term:`fail_on_calibration_oom_risk` to stop before processing a configuration
+        whose estimate is greater than the applicable limit.
+
+        Rapthor calculates the estimated peak memory as follows::
+
+            baselines = nstations * (nstations + 1) // 2
+            time_steps = ceil(solution_interval_seconds / sampling_interval_seconds)
+            samples = baselines * channels * time_steps * (directions + 1)
+
+            visibility_copies_gb = samples * 4 * 8 / 1e9
+            weights_gb = samples * 4 * 4 / 1e9
+            weighted_data_gb = samples * 4 * 8 / 1e9
+            peak_memory_gb = visibility_copies_gb + weights_gb + weighted_data_gb
+
+        The baseline count includes autocorrelations. ``channels`` is the observation's
+        unaveraged channel count, and ``time_steps`` is rounded up so that a partial
+        solution interval is counted as a full time step. The four in each component is
+        the number of correlations. Complex visibility and weighted-data values use
+        eight bytes per correlation, while weights use four bytes per correlation.
+        Together these components use 80 bytes per sample.
+
+        An interactive notebook exploring how estimated peak memory varies with  
+        number of baselines, channels, solution interval and directions is available 
+        `here <https://gitlab.com/ska-telescope/sdp/science-pipeline-workflows/ska-sdp-ical/-/blob/main/notebooks/dp3_calibrate_memory.py>`_.
+        (instructions for running it `here <https://developer.skao.int/projects/ska-sdp-ical/en/latest/dp3_memory_explorer.html>`_).
+
+
+        A DI solve always uses one direction. A DD pre-flight estimate uses the strategy
+        step's ``max_directions`` value, while the resolved estimate uses the actual
+        number of calibration facets. The additional direction in ``directions + 1``
+        accounts for DP3 retaining the original data buffer alongside the
+        direction-dependent data.
+
+    fail_on_calibration_oom_risk
+        Stop Rapthor when a DP3 calibration memory estimate is greater than the
+        applicable memory limit (default = ``False``). This policy is applied both to
+        the pre-flight ``max_directions`` upper bound and to the resolved estimate made
+        immediately before each calibration cycle. An estimate exactly equal to the
+        limit is allowed.
+
+        When enabled, a high-risk estimate raises an error before the affected pipeline
+        operation starts, and the ``rapthor`` command exits with a non-zero status. The
+        error reports the check stage, cycle, solve, observation, estimate, limit, and
+        overage. If memory capacity cannot be determined or the estimate itself cannot
+        be calculated, Rapthor logs an advisory warning and continues because a high
+        OOM risk has not been established.
+
     max_cores
         Maximum number of cores per task to use on each node (default = 0 = all).
 
