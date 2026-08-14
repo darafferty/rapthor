@@ -1,29 +1,46 @@
 """Shared scientific metadata for supported calibration solve types."""
 
-SOLUTION_INTERVAL_BY_SOLVE_TYPE = {
-    "fast_phase": "fast",
-    "medium_phase": "medium",
-    "slow_gains": "slow",
-    "full_jones": "fulljones",
-}
+from dataclasses import dataclass
 
-MODE_BY_SOLVE = {
-    "fast_phase": "scalarphase",
-    "medium_phase": "scalarphase",
-    "slow_gains": "diagonal",
-    "full_jones": "fulljones",
-}
 
-INTERVAL_KEYS_BY_SOLVE = {
-    "fast_phase": ("solint_fast_timestep", "solint_fast_freqstep"),
-    "medium_phase": ("solint_medium_timestep", "solint_medium_freqstep"),
-    "slow_gains": ("solint_slow_timestep", "solint_slow_freqstep"),
-    "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
-}
+@dataclass(frozen=True)
+class CalibrationSolveMetadata:
+    """Scientific and configuration metadata for one strategy solve type."""
 
-TARGET_TIMESTEP_BY_SOLVE = {
-    "fast_phase": "fast_timestep_sec",
-    "medium_phase": "medium_timestep_sec",
-    "slow_gains": "slow_timestep_sec",
-    "full_jones": "fulljones_timestep_sec",
+    solution_interval_family: str
+    dp3_mode: str
+    timestep_key: str
+    frequency_step_key: str
+    target_timestep_key: str
+
+
+CALIBRATION_SOLVE_METADATA = {
+    "fast_phase": CalibrationSolveMetadata(
+        solution_interval_family="fast",
+        dp3_mode="scalarphase",
+        timestep_key="solint_fast_timestep",
+        frequency_step_key="solint_fast_freqstep",
+        target_timestep_key="fast_timestep_sec",
+    ),
+    "medium_phase": CalibrationSolveMetadata(
+        solution_interval_family="medium",
+        dp3_mode="scalarphase",
+        timestep_key="solint_medium_timestep",
+        frequency_step_key="solint_medium_freqstep",
+        target_timestep_key="medium_timestep_sec",
+    ),
+    "slow_gains": CalibrationSolveMetadata(
+        solution_interval_family="slow",
+        dp3_mode="diagonal",
+        timestep_key="solint_slow_timestep",
+        frequency_step_key="solint_slow_freqstep",
+        target_timestep_key="slow_timestep_sec",
+    ),
+    "full_jones": CalibrationSolveMetadata(
+        solution_interval_family="fulljones",
+        dp3_mode="fulljones",
+        timestep_key="solint_fulljones_timestep",
+        frequency_step_key="solint_fulljones_freqstep",
+        target_timestep_key="fulljones_timestep_sec",
+    ),
 }

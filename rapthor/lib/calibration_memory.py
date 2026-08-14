@@ -2,9 +2,9 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
+from typing import Mapping, Optional
 
-from rapthor.lib.calibration import INTERVAL_KEYS_BY_SOLVE, TARGET_TIMESTEP_BY_SOLVE
+from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
 from rapthor.lib.cluster import DP3MemoryEstimate, estimate_dp3_peak_memory, get_available_memory
 from rapthor.lib.strategy import default_calibration_strategy
 
@@ -96,40 +96,31 @@ class CalibrationMemoryAssessment:
         )
 
 
-def check_calibration_memory(field, cycle_number, dd_directions, step=None):
+def check_calibration_memory(
+    field: object,
+    cycle_number: int,
+    dd_directions: Optional[int],
+    strategy_step: Optional[Mapping[str, object]] = None,
+) -> Optional[CalibrationMemoryEstimate]:
     """Estimate and log the largest DP3 calibration task for one cycle.
 
-    ``step`` is supplied for a preflight check. Without it, the current resolved
-    observation parameters and field settings are used. Calculation failures remain
-    advisory. A known over-limit estimate raises :class:`CalibrationMemoryRiskError`
-    when the corresponding cluster option is enabled.
+    ``strategy_step`` is supplied for a preflight check. Without it, the current
+    resolved observation parameters and field settings are used. Calculation
+    failures remain advisory. A known over-limit estimate raises
+    :class:`CalibrationMemoryRiskError` when the corresponding cluster option is
+    enabled.
     """
-    stage = "pre-flight max_directions upper bound" if step is not None else "resolved facet count"
-    assessment = None
-    fail_on_risk = False
+    stage = _memory_check_stage(strategy_step)
     try:
-        if not _setting(field, step, "do_calibrate"):
-            return None
-
-        strategy = _setting(field, step, "calibration_strategy")
-        strategy = strategy or default_calibration_strategy()
-        if not any(strategy.values()):
-            return None
-
-        estimate = _largest_calibration_memory_estimate(field, strategy, dd_directions, step)
-        if estimate is None:
-            return None
-
-        max_directions = _setting(field, step, "max_directions")
-        memory_limit, memory_source = _memory_limit(field)
-        assessment = CalibrationMemoryAssessment(
-            estimate=estimate,
-            cycle_number=cycle_number,
-            stage=stage,
-            max_directions=max_directions,
-            memory_limit_gb=memory_limit,
-            memory_source=memory_source,
+        assessment = _assess_calibration_memory(
+            field,
+            cycle_number,
+            dd_directions,
+            strategy_step,
+            stage,
         )
+        if assessment is None:
+            return None
         _log_calibration_memory(assessment)
         fail_on_risk = field.parset["cluster_specific"].get(FAIL_ON_CALIBRATION_OOM_RISK, False)
     except Exception as error:
@@ -148,14 +139,67 @@ def check_calibration_memory(field, cycle_number, dd_directions, step=None):
     return assessment.estimate
 
 
-def _setting(field, step, name):
+def _memory_check_stage(strategy_step: Optional[Mapping[str, object]]) -> str:
+    """Describe whether a check uses configured or resolved calibration inputs."""
+    if strategy_step is not None:
+        return "pre-flight max_directions upper bound"
+    return "resolved facet count"
+
+
+def _assess_calibration_memory(
+    field: object,
+    cycle_number: int,
+    dd_directions: Optional[int],
+    strategy_step: Optional[Mapping[str, object]],
+    stage: str,
+) -> Optional[CalibrationMemoryAssessment]:
+    """Build the capacity assessment for the largest task in one cycle."""
+    if not _strategy_setting(field, strategy_step, "do_calibrate"):
+        return None
+
+    strategy = _strategy_setting(field, strategy_step, "calibration_strategy")
+    strategy = strategy or default_calibration_strategy()
+    if not any(strategy.values()):
+        return None
+
+    estimate = _largest_calibration_memory_estimate(
+        field,
+        strategy,
+        dd_directions,
+        strategy_step,
+    )
+    if estimate is None:
+        return None
+
+    memory_limit, memory_source = _memory_limit(field)
+    return CalibrationMemoryAssessment(
+        estimate=estimate,
+        cycle_number=cycle_number,
+        stage=stage,
+        max_directions=_strategy_setting(field, strategy_step, "max_directions"),
+        memory_limit_gb=memory_limit,
+        memory_source=memory_source,
+    )
+
+
+def _strategy_setting(
+    field: object,
+    strategy_step: Optional[Mapping[str, object]],
+    name: str,
+) -> object:
     """Read a setting from a strategy step, falling back to the field default."""
-    return step[name] if step is not None and name in step else getattr(field, name)
+    if strategy_step is not None and name in strategy_step:
+        return strategy_step[name]
+    return getattr(field, name)
 
 
-def _largest_calibration_memory_estimate(field, strategy, dd_directions, step):
+def _largest_calibration_memory_estimate(
+    field: object,
+    strategy: Mapping[str, list[str]],
+    dd_directions: Optional[int],
+    strategy_step: Optional[Mapping[str, object]],
+) -> Optional[CalibrationMemoryEstimate]:
     """Return the largest task estimate without logging or changing field state."""
-    resolved = step is None
     largest = None
 
     for mode, solves in strategy.items():
@@ -167,37 +211,68 @@ def _largest_calibration_memory_estimate(field, strategy, dd_directions, step):
 
         for solve_type in solves:
             for observation in field.observations:
-                if resolved:
-                    timestep_key = INTERVAL_KEYS_BY_SOLVE[solve_type][0]
-                    solution_interval = max(observation.parameters[timestep_key])
-                    solution_interval *= observation.timepersample
-                else:
-                    timestep_key = TARGET_TIMESTEP_BY_SOLVE[solve_type]
-                    solution_interval = _setting(field, step, timestep_key)
-
-                station_count = len(observation.stations)
-                baselines = station_count * (station_count + 1) // 2
-                estimate = CalibrationMemoryEstimate(
-                    mode=mode,
-                    solve_type=solve_type,
-                    observation_name=observation.name,
-                    directions=directions,
-                    baselines=baselines,
-                    channels=observation.numchannels,
-                    sampling_interval_seconds=observation.timepersample,
-                    solution_interval_seconds=solution_interval,
-                    memory=estimate_dp3_peak_memory(
-                        baselines=baselines,
-                        channels=observation.numchannels,
-                        solution_interval_seconds=solution_interval,
-                        sampling_interval_seconds=observation.timepersample,
-                        directions=directions,
-                    ),
+                solution_interval_seconds = _solution_interval_seconds(
+                    field,
+                    observation,
+                    solve_type,
+                    strategy_step,
+                )
+                estimate = _estimate_calibration_task(
+                    mode,
+                    solve_type,
+                    observation,
+                    directions,
+                    solution_interval_seconds,
                 )
                 if largest is None or estimate.peak_memory_gb > largest.peak_memory_gb:
                     largest = estimate
 
     return largest
+
+
+def _solution_interval_seconds(
+    field: object,
+    observation: object,
+    solve_type: str,
+    strategy_step: Optional[Mapping[str, object]],
+) -> float:
+    """Resolve one solve interval from preflight settings or observation state."""
+    metadata = CALIBRATION_SOLVE_METADATA[solve_type]
+    if strategy_step is not None:
+        return _strategy_setting(field, strategy_step, metadata.target_timestep_key)
+
+    solution_interval_samples = max(observation.parameters[metadata.timestep_key])
+    return solution_interval_samples * observation.timepersample
+
+
+def _estimate_calibration_task(
+    mode: str,
+    solve_type: str,
+    observation: object,
+    directions: int,
+    solution_interval_seconds: float,
+) -> CalibrationMemoryEstimate:
+    """Estimate one observation/solve task using resolved scientific inputs."""
+    station_count = len(observation.stations)
+    baselines = station_count * (station_count + 1) // 2
+    memory = estimate_dp3_peak_memory(
+        baselines=baselines,
+        channels=observation.numchannels,
+        solution_interval_seconds=solution_interval_seconds,
+        sampling_interval_seconds=observation.timepersample,
+        directions=directions,
+    )
+    return CalibrationMemoryEstimate(
+        mode=mode,
+        solve_type=solve_type,
+        observation_name=observation.name,
+        directions=directions,
+        baselines=baselines,
+        channels=observation.numchannels,
+        sampling_interval_seconds=observation.timepersample,
+        solution_interval_seconds=solution_interval_seconds,
+        memory=memory,
+    )
 
 
 def _memory_limit(field):

@@ -243,9 +243,7 @@ def run_pipeline_steps(
         field.update(step, cycle_number, final=final)
 
         if field.do_calibrate:
-            field.generate_screens = (field.dde_mode == "hybrid") and final
-            field.set_obs_parameters()
-            check_calibration_memory(field, cycle_number, field.num_patches)
+            _prepare_calibration_cycle(field, cycle_number, final)
             for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
                 if not enabled:
                     continue
@@ -371,6 +369,11 @@ def run_pipeline_preflight(
         requested_features=requested_features,
         supported_features=SUPPORTED_PIPELINE_FEATURES,
     )
+    _check_preflight_calibration_memory(field, strategy_steps)
+
+
+def _check_preflight_calibration_memory(field: object, strategy_steps: list[dict]) -> None:
+    """Check each configured cycle using its maximum possible DD directions."""
     for cycle_number, step in enumerate(strategy_steps, start=1):
         check_calibration_memory(
             field,
@@ -378,6 +381,13 @@ def run_pipeline_preflight(
             step.get("max_directions", getattr(field, "max_directions", 1)),
             step,
         )
+
+
+def _prepare_calibration_cycle(field: object, cycle_number: int, final: bool) -> None:
+    """Resolve solve intervals and check memory before calibration starts."""
+    field.generate_screens = field.dde_mode == "hybrid" and final
+    field.set_obs_parameters()
+    check_calibration_memory(field, cycle_number, field.num_patches)
 
 
 def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionConfig) -> None:

@@ -23,6 +23,7 @@ from rapthor.execution.image.diagnostic_calculation import (
     fits_to_makesourcedb,
 )
 from rapthor.lib import fitsimage
+from rapthor.lib.fitsimage import EmptyFacetSelectionError
 
 # ---------------------------------------------------------------------------- #
 
@@ -811,8 +812,6 @@ def test_compute_facet_rms_noise_summarizes_each_facet(monkeypatch, tmp_path):
 
 
 def test_compute_facet_rms_noise_skips_facets_outside_images(monkeypatch, tmp_path, caplog):
-    from rapthor.lib.fitsimage import EmptyFacetSelectionError
-
     region_file = tmp_path / "facets.reg"
     region_file.write_text("region")
     facets = [SimpleNamespace(name="inside"), SimpleNamespace(name="outside")]

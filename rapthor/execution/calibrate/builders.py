@@ -16,6 +16,7 @@ from rapthor.execution.payloads import (
     validate_basename,
     validate_required_list,
 )
+from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
 from rapthor.lib.records import directory_record_path
 
 DEFAULT_WSCLEAN_PREDICT_BANDWIDTH_HZ = 2.0e6
@@ -24,12 +25,6 @@ DEFAULT_WSCLEAN_PREDICT_BANDWIDTH_HZ = 2.0e6
 # before DD solves. `fastphase` applies phase000, `slowgain` applies
 # amplitude000, and DI fast+medium already points at the combined phase product.
 SUPPORTED_DD_PREAPPLY_STEPS = {"fastphase", "slowgain", "fulljones", "normalization"}
-MODE_BY_SOLVE_TYPE = {
-    "fast_phase": "scalarphase",
-    "medium_phase": "scalarphase",
-    "slow_gains": "diagonal",
-    "full_jones": "fulljones",
-}
 SOLUTION_LABELS_BY_SOLVE_TYPE = {
     "fast_phase": {"fast"},
     "medium_phase": {"medium1", "medium2"},
@@ -341,9 +336,10 @@ def _solve_type_from_slot(input_parms: Mapping[str, object], slot: int) -> str:
         return "unsupported"
 
     solve_type = str(explicit_type)
-    if solve_type not in MODE_BY_SOLVE_TYPE:
+    metadata = CALIBRATION_SOLVE_METADATA.get(solve_type)
+    if metadata is None:
         return "unsupported"
-    if str(input_parms.get(f"solve{slot}_mode")) != MODE_BY_SOLVE_TYPE[solve_type]:
+    if str(input_parms.get(f"solve{slot}_mode")) != metadata.dp3_mode:
         return "unsupported"
 
     solution_label = input_parms.get(f"solve{slot}_solution_label")

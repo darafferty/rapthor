@@ -1,6 +1,4 @@
-"""
-Module that holds all compute-cluster-related functions
-"""
+"""Compute-cluster sizing and resource helpers."""
 
 import logging
 import math
@@ -8,6 +6,11 @@ import subprocess
 from dataclasses import dataclass
 
 log = logging.getLogger("rapthor:cluster")
+
+_CORRELATIONS_PER_SAMPLE = 4
+_COMPLEX64_BYTES = 8
+_FLOAT32_BYTES = 4
+_BYTES_PER_DECIMAL_GB = 1e9
 
 
 @dataclass(frozen=True)
@@ -42,10 +45,12 @@ def estimate_dp3_peak_memory(
             raise ValueError(f"{name} must be positive")
 
     time_steps = math.ceil(solution_interval_seconds / sampling_interval_seconds)
-    samples = baselines * channels * time_steps * (directions + 1)
-    visibility_copies_gb = samples * 4 * 8 / 1e9
-    weights_gb = samples * 4 * 4 / 1e9
-    weighted_data_gb = samples * 4 * 8 / 1e9
+    direction_buffers = directions + 1
+    visibility_samples = baselines * channels * time_steps * direction_buffers
+    correlation_values = visibility_samples * _CORRELATIONS_PER_SAMPLE
+    visibility_copies_gb = correlation_values * _COMPLEX64_BYTES / _BYTES_PER_DECIMAL_GB
+    weights_gb = correlation_values * _FLOAT32_BYTES / _BYTES_PER_DECIMAL_GB
+    weighted_data_gb = correlation_values * _COMPLEX64_BYTES / _BYTES_PER_DECIMAL_GB
 
     return DP3MemoryEstimate(
         time_steps=time_steps,

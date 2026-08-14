@@ -5,17 +5,13 @@ from typing import Mapping, Optional
 
 import numpy as np
 
-from rapthor.lib.calibration import (
-    INTERVAL_KEYS_BY_SOLVE,
-    MODE_BY_SOLVE,
-    SOLUTION_INTERVAL_BY_SOLVE_TYPE,
-)
+from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
 from rapthor.lib.strategy import default_calibration_strategy
 
 
 def solution_interval_for_solve_type(solve_type: str) -> str:
     """Return the Field solution-interval family used by a solve type."""
-    return SOLUTION_INTERVAL_BY_SOLVE_TYPE[solve_type]
+    return CALIBRATION_SOLVE_METADATA[solve_type].solution_interval_family
 
 
 SUPERTERP_STATIONS_BY_ANTENNA = {
@@ -196,7 +192,7 @@ def build_calibration_solve_plan(
     medium_count = 0
     solve_plan = []
     for slot, solve_type in enumerate(expanded_solves, start=1):
-        if solve_type not in MODE_BY_SOLVE:
+        if solve_type not in CALIBRATION_SOLVE_METADATA:
             raise ValueError(f"Unsupported solve type: {solve_type}")
         if solve_type == "medium_phase":
             medium_count += 1
@@ -284,19 +280,19 @@ def build_calibration_solve_slot(
     medium_count: int,
 ) -> CalibrationSolve:
     """Build one resolved solve-slot entry."""
+    metadata = CALIBRATION_SOLVE_METADATA[solve_type]
     solution_label = solve_solution_label(solve_type, medium_count)
     output_prefix, collected_h5parm = solve_output_names(mode, solve_type, solution_label)
-    timestep_key, freqstep_key = INTERVAL_KEYS_BY_SOLVE[solve_type]
 
     return CalibrationSolve(
         solve_type=solve_type,
         solution_label=solution_label,
         slot=slot,
-        mode=MODE_BY_SOLVE[solve_type],
+        mode=metadata.dp3_mode,
         output_prefix=output_prefix,
         collected_h5parm=collected_h5parm,
-        timestep_key=timestep_key,
-        freqstep_key=freqstep_key,
+        timestep_key=metadata.timestep_key,
+        freqstep_key=metadata.frequency_step_key,
         medium_index=medium_count if solve_type == "medium_phase" else None,
     )
 
