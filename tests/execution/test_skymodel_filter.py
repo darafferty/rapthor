@@ -41,6 +41,32 @@ def test_filter_skymodel_cli_defaults_match_helper_defaults():
     assert args.source_finder == DEFAULT_SOURCE_FINDER
 
 
+def test_filter_skymodel_passes_explicit_output_paths_to_lsmtool(tmp_path, monkeypatch):
+    """The migrated helper does not rely on PyBDSF's input-image directory."""
+    captured = {}
+
+    def capture_outputs(*args, **kwargs):
+        captured.update(kwargs)
+        return 3
+
+    monkeypatch.setattr(skymodel_filter_module, "lsmtool_filter_skymodel", capture_outputs)
+    output_root = tmp_path / "sector_1"
+
+    filter_image_skymodel(
+        str(tmp_path / "flat_noise.fits"),
+        str(tmp_path / "true_sky.fits"),
+        str(tmp_path / "true_sky.txt"),
+        str(tmp_path / "apparent_sky.txt"),
+        str(output_root),
+        str(tmp_path / "vertices.npy"),
+        [],
+    )
+
+    assert captured["output_flat_noise_rms"] == f"{output_root}.flat_noise_rms.fits"
+    assert captured["output_true_rms"] == f"{output_root}.true_sky_rms.fits"
+    assert captured["output_catalog"] == f"{output_root}.source_catalog.fits"
+
+
 def test_filter_skymodel_writes_empty_outputs_for_all_blank_image(tmp_path, monkeypatch):
     """All-blank images should produce valid empty outputs instead of failing."""
 
