@@ -784,6 +784,12 @@ The available options are described below under their respective sections.
         eight bytes per correlation, while weights use four bytes per correlation.
         Together these components use 80 bytes per sample.
 
+        An interactive notebook exploring how estimated peak memory varies with  
+        number of baselines, channels, solution interval and directions is available 
+        `here <https://gitlab.com/ska-telescope/sdp/science-pipeline-workflows/ska-sdp-ical/-/blob/main/notebooks/dp3_calibrate_memory.py>`_.
+        (instructions for running it `here <https://developer.skao.int/projects/ska-sdp-ical/en/latest/dp3_memory_explorer.html>`_).
+
+
         A DI solve always uses one direction. A DD pre-flight estimate uses the strategy
         step's ``max_directions`` value, while the resolved estimate uses the actual
         number of calibration facets. The additional direction in ``directions + 1``
