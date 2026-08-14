@@ -116,18 +116,23 @@ def run_shell_command(
     returncode = 0
     error = None
     profile = {}
+    output_log_path = None
+    task_metadata = current_prefect_task_metadata()
     try:
         operation_cls = shell_operation_cls or _load_shell_operation_cls()
-        if (
-            shell_operation_cls is None
-            and execution_config.stream_output
-            and _is_prefect_shell_operation_cls(operation_cls)
-        ):
-            return _run_streaming_shell_command(
+        if shell_operation_cls is None and _is_prefect_shell_operation_cls(operation_cls):
+            if execution_config.log_commands:
+                output_log_path = command_output_log_path(
+                    shell_command,
+                    task_metadata=task_metadata,
+                )
+            return _run_captured_shell_command(
                 shell_command,
                 execution_config,
                 started_at,
                 profile,
+                output_log_path=output_log_path,
+                task_metadata=task_metadata,
             )
 
         operation = operation_cls(**shell_operation_kwargs(shell_command, execution_config))
@@ -154,6 +159,8 @@ def run_shell_command(
             returncode=returncode,
             error=error,
             profile=profile,
+            output_log_path=output_log_path,
+            task_metadata=task_metadata,
         )
 
 
@@ -183,6 +190,26 @@ def command_log_path(working_directory: Optional[str]) -> Optional[Path]:
     return workdir.parent.parent / "logs" / "commands.jsonl"
 
 
+def command_output_log_path(
+    shell_command: ShellCommand,
+    task_metadata: Optional[Mapping[str, object]] = None,
+) -> Optional[Path]:
+    """Return the durable combined-output log path for a shell task."""
+    command_record_path = command_log_path(shell_command.working_directory)
+    if command_record_path is None:
+        return None
+
+    metadata = dict(current_prefect_task_metadata() if task_metadata is None else task_metadata)
+    command = normalize_command(shell_command.command)
+    label = (
+        metadata.get("task_run_name")
+        or shell_command.name
+        or (Path(command[0]).name if command else "command")
+    )
+    operation = Path(str(shell_command.working_directory)).name
+    return command_record_path.parent / operation / f"{_log_filename(label)}.log"
+
+
 def write_command_log_record(
     shell_command: ShellCommand,
     execution_config: ExecutionConfig,
@@ -194,6 +221,8 @@ def write_command_log_record(
     returncode: Optional[int] = None,
     error: Optional[str] = None,
     profile: Optional[Mapping[str, object]] = None,
+    output_log_path: Optional[Path] = None,
+    task_metadata: Optional[Mapping[str, object]] = None,
 ) -> Optional[Path]:
     """Append a structured command record for integration assertions."""
     if not execution_config.log_commands:
@@ -228,11 +257,13 @@ def write_command_log_record(
         record["error"] = error
     if profile:
         record["profile"] = dict(profile)
+    if output_log_path is not None:
+        record["output_log"] = str(output_log_path)
 
-    task_metadata = current_prefect_task_metadata()
-    if task_metadata:
+    metadata = current_prefect_task_metadata() if task_metadata is None else task_metadata
+    if metadata:
         record.update(
-            {key: value for key, value in task_metadata.items() if value not in (None, "", [])}
+            {key: value for key, value in metadata.items() if value not in (None, "", [])}
         )
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -509,21 +540,35 @@ def _profiled_process_args(
     return profiled_args
 
 
-def _run_streaming_shell_command(
+def _run_captured_shell_command(
     shell_command: ShellCommand,
     execution_config: ExecutionConfig,
     started_at: datetime,
     profile: dict,
+    *,
+    output_log_path: Optional[Path],
+    task_metadata: Mapping[str, object],
 ) -> list[str]:
-    command_logger = _get_command_logger()
+    command_logger = _get_command_logger() if execution_config.stream_output else None
     buffered_log_lines = []
     output_lines = []
     process = None
     reader_thread = None
     temp_file = None
+    output_log_handle = None
     resource_before = None
     process_start_time = None
     try:
+        if output_log_path is not None:
+            output_log_path.parent.mkdir(parents=True, exist_ok=True)
+            output_log_handle = output_log_path.open("a", encoding="utf-8", buffering=1)
+            _write_command_output_header(
+                output_log_handle,
+                shell_command,
+                started_at,
+                task_metadata=task_metadata,
+            )
+
         temp_file = tempfile.NamedTemporaryFile(
             prefix="rapthor-prefect-",
             suffix=".sh",
@@ -566,7 +611,8 @@ def _run_streaming_shell_command(
             try:
                 raw_line = output_queue.get(timeout=STREAM_LOG_FLUSH_INTERVAL_SECONDS)
             except queue.Empty:
-                _flush_stream_log(command_logger, buffered_log_lines)
+                if command_logger is not None:
+                    _flush_stream_log(command_logger, buffered_log_lines)
                 continue
 
             if raw_line is _STREAM_DONE:
@@ -574,11 +620,15 @@ def _run_streaming_shell_command(
 
             lines = _output_lines(raw_line)
             output_lines.extend(lines)
-            buffered_log_lines.extend(lines)
-            if len(buffered_log_lines) >= STREAM_LOG_MAX_LINES_PER_RECORD:
-                _flush_stream_log(command_logger, buffered_log_lines)
+            if output_log_handle is not None:
+                output_log_handle.write(raw_line.decode(errors="replace"))
+            if command_logger is not None:
+                buffered_log_lines.extend(lines)
+                if len(buffered_log_lines) >= STREAM_LOG_MAX_LINES_PER_RECORD:
+                    _flush_stream_log(command_logger, buffered_log_lines)
 
-        _flush_stream_log(command_logger, buffered_log_lines)
+        if command_logger is not None:
+            _flush_stream_log(command_logger, buffered_log_lines)
 
         process.wait()
         resource_after = _resource_usage_snapshot() if resource_before is not None else None
@@ -605,6 +655,12 @@ def _run_streaming_shell_command(
             reader_thread.join(timeout=1)
         if temp_file is not None and os.path.exists(temp_file.name):
             os.remove(temp_file.name)
+        if output_log_handle is not None:
+            _write_command_output_footer(
+                output_log_handle,
+                returncode=None if process is None else process.returncode,
+            )
+            output_log_handle.close()
 
     return output_lines
 
@@ -745,6 +801,34 @@ def _output_lines(raw_line: bytes) -> list[str]:
     return text.splitlines() or [text]
 
 
+def _write_command_output_header(
+    handle,
+    shell_command: ShellCommand,
+    started_at: datetime,
+    *,
+    task_metadata: Mapping[str, object],
+) -> None:
+    """Append a readable command preamble to a durable output log."""
+    handle.write(f"=== Rapthor command started {started_at.isoformat()} ===\n")
+    if task_metadata.get("task_run_name"):
+        handle.write(f"Task: {task_metadata['task_run_name']}\n")
+    if task_metadata.get("task_run_id"):
+        handle.write(f"Task run ID: {task_metadata['task_run_id']}\n")
+    task_tags = task_metadata.get("task_tags")
+    if isinstance(task_tags, (list, tuple, set)) and task_tags:
+        handle.write(f"Tags: {', '.join(str(tag) for tag in task_tags)}\n")
+    if shell_command.working_directory is not None:
+        handle.write(f"Working directory: {shell_command.working_directory}\n")
+    handle.write(f"Command: {shell_command.command_string}\n\n")
+
+
+def _write_command_output_footer(handle, *, returncode: Optional[int]) -> None:
+    """Append completion metadata to a durable output log."""
+    handle.write("\n")
+    handle.write(f"Exit status: {returncode if returncode is not None else 'unknown'}\n")
+    handle.write(f"=== Rapthor command finished {datetime.now(timezone.utc).isoformat()} ===\n\n")
+
+
 def _flush_stream_log(command_logger, buffered_lines: list[str]) -> None:
     if not buffered_lines:
         return
@@ -857,3 +941,10 @@ def _slug(value: str, max_length: int = 80) -> str:
     if not slug:
         return "command"
     return slug[:max_length].strip("-") or "command"
+
+
+def _log_filename(value: object, max_length: int = 120) -> str:
+    filename = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._-")
+    if not filename:
+        return "command"
+    return filename[:max_length].rstrip("._-") or "command"

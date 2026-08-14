@@ -15,6 +15,7 @@ from rapthor.execution.shell import (
     _profiled_process_args,
     collapse_perf_script,
     command_log_path,
+    command_output_log_path,
     parse_gnu_time_metrics,
     render_perf_flamegraph_svg,
     run_external_command,
@@ -251,6 +252,12 @@ def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_pat
         assert Path(profile["artifacts"]["gnu_time"]).is_file()
     assert profile["resource_metrics"]["max_rss_kb"] > 0
     assert profile["resource_metrics"]["elapsed_seconds"] >= 0
+    output_log_path = tmp_path / "work" / "logs" / "profile_1" / "profiled-step.log"
+    assert record["output_log"] == str(output_log_path)
+    output_log = output_log_path.read_text(encoding="utf-8")
+    assert "Command:" in output_log
+    assert "profiled" in output_log
+    assert "Exit status: 0" in output_log
 
 
 def test_profiled_process_args_falls_back_when_perf_record_is_unavailable(tmp_path, monkeypatch):
@@ -318,6 +325,62 @@ def test_run_shell_command_batches_nearby_output_lines(tmp_path, caplog):
     assert "third" not in messages
 
 
+def test_run_shell_command_writes_output_without_streaming(tmp_path, caplog, monkeypatch):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+    monkeypatch.setattr(
+        "rapthor.execution.shell.current_prefect_task_metadata",
+        lambda: {
+            "task_run_name": "quiet-step",
+            "task_run_id": "task-id",
+            "task_tags": ["python", "test"],
+        },
+    )
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('durable output')"],
+            working_directory=str(pipeline_working_dir),
+            name="quiet-step",
+        ),
+        ExecutionConfig(stream_output=False, command_profile="off"),
+    )
+
+    assert result == ["durable output"]
+    assert "durable output" not in caplog.text
+    output_log_path = tmp_path / "work" / "logs" / "image_1" / "quiet-step.log"
+    output_log = output_log_path.read_text(encoding="utf-8")
+    assert "Task: quiet-step" in output_log
+    assert "Task run ID: task-id" in output_log
+    assert "Tags: python, test" in output_log
+    assert "durable output" in output_log
+    assert "Exit status: 0" in output_log
+    record = json.loads((tmp_path / "work" / "logs" / "commands.jsonl").read_text())
+    assert record["output_log"] == str(output_log_path)
+
+
+def test_run_shell_command_does_not_write_output_when_command_logging_is_disabled(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('unrecorded output')"],
+            working_directory=str(pipeline_working_dir),
+            name="unrecorded-step",
+        ),
+        ExecutionConfig(
+            stream_output=False,
+            log_commands=False,
+            command_profile="off",
+        ),
+    )
+
+    assert result == ["unrecorded output"]
+    assert not (tmp_path / "work" / "logs").exists()
+
+
 def test_run_shell_command_streaming_raises_on_failure(tmp_path, caplog):
     caplog.set_level(logging.INFO, logger="rapthor:shell")
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
@@ -346,6 +409,11 @@ def test_run_shell_command_streaming_raises_on_failure(tmp_path, caplog):
     assert record["status"] == "failed"
     assert record["returncode"] == 7
     assert "return code 7" in record["error"]
+    output_log = (tmp_path / "work" / "logs" / "calibrate_1" / "failing-step.log").read_text(
+        encoding="utf-8"
+    )
+    assert "failure line" in output_log
+    assert "Exit status: 7" in output_log
 
 
 def test_write_command_log_record_appends_backend_neutral_jsonl(tmp_path):
@@ -387,6 +455,21 @@ def test_write_command_log_record_honors_log_commands_false(tmp_path):
 
 def test_command_log_path_ignores_non_operation_workdir(tmp_path):
     assert command_log_path(str(tmp_path / "not-an-operation")) is None
+
+
+def test_command_output_log_path_uses_task_run_name(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
+
+    output_log_path = command_output_log_path(
+        ShellCommand(
+            ["DP3", "msin=input.ms"],
+            working_directory=str(pipeline_working_dir),
+            name="solve",
+        ),
+        task_metadata={"task_run_name": "solve_chunk_2"},
+    )
+
+    assert output_log_path == (tmp_path / "work" / "logs" / "calibrate_1" / "solve_chunk_2.log")
 
 
 def test_run_shell_command_requires_prefect_shell_without_injection(monkeypatch):

@@ -353,13 +353,18 @@ output path.
 The demo parset streams external command output to Prefect task logs by default without
 the repeated Prefect Shell ``PID ... stream output`` prefixes. Pass
 ``--no-stream-output`` or set ``prefect_stream_output = False`` to suppress
-external command output in the dashboard. Rapthor's Python logging is also
-forwarded to the active Prefect flow or task run. Plot files are also published as
-Prefect artifacts as plotting tasks and operation finalizers create them, so
-calibration PNGs and image diagnostic PDFs can be inspected from the dashboard
-during the run. Image diagnostic JSON files are rendered as Markdown artifacts
-with formatted JSON content. FITS image product previews are disabled by
-default because they add runtime and disk usage for large datasets. Set
+external command output in the dashboard. This setting does not disable durable
+logs: when ``prefect_log_commands = True``, Rapthor writes combined stdout/stderr
+to ``dir_working/logs/<operation>/<task-run-name>.log``. These files remain
+available without a Prefect server or dashboard and retain output from failed
+commands. Rapthor's Python logging is also forwarded to the active Prefect flow
+or task run and written to ``dir_working/logs/rapthor.log``. Plot files are also
+published as Prefect artifacts as plotting tasks and operation finalizers
+create them, so calibration PNGs and image diagnostic PDFs can be inspected
+from the dashboard during the run. Image diagnostic JSON files are rendered as
+Markdown artifacts with formatted JSON content. FITS image product previews are
+disabled by default because they add runtime and disk usage for large datasets.
+Set
 ``prefect_publish_fits_previews = True`` for demo or debugging runs to render
 those FITS products to PNG previews and publish them as image artifacts; the
 demo parsets enable this, while the benchmark parset leaves it disabled. FITS
@@ -377,13 +382,15 @@ When running in the VS Code development container, the plot index rewrites
 ``/app`` paths to the host workspace path using ``RAPTHOR_HOST_WORKSPACE`` so
 the local file links can be opened from the browser.
 Rapthor also records external command timings in
-``dir_working/logs/commands.jsonl`` and publishes a command timing summary as a
-Prefect Markdown artifact. With ``prefect_command_profile = auto`` (the
-default), streamed external commands are also profiled with GNU
-``/usr/bin/time -v`` when available, or with Python's process resource counters
-as a portable fallback. The command log and Prefect artifact then include CPU
-percentage, user/system time, peak resident memory, filesystem input/output
-counts, page faults, and context switches for tools such as DP3 and WSClean.
+``dir_working/logs/commands.jsonl``; each command record links to its readable
+combined-output log under ``dir_working/logs/<operation>/``. Rapthor publishes a
+command timing summary as a Prefect Markdown artifact. With
+``prefect_command_profile = auto`` (the default), external commands are also
+profiled with GNU ``/usr/bin/time -v`` when available, or with Python's process
+resource counters as a portable fallback. The command log and Prefect artifact
+then include CPU percentage, user/system time, peak resident memory, filesystem
+input/output counts, page faults, and context switches for tools such as DP3
+and WSClean.
 Rapthor also publishes a compact PNG summary chart showing the slowest commands
 and their CPU, memory, and I/O profile. The checked-in demo parset and generated
 demo/benchmark parsets set ``prefect_command_profile = time`` because it works

@@ -939,15 +939,20 @@ The available options are described below under their respective sections.
 
     prefect_stream_output
         Stream external command output, such as DP3 and WSClean logs, into the
-        Prefect task logs (default = ``True``).
+        Prefect task logs (default = ``True``). This controls forwarding to
+        Prefect only; durable output remains available when
+        :term:`prefect_log_commands` is enabled.
 
     prefect_retries
         Number of Prefect task retries for operation tasks (default = ``0``).
 
     prefect_log_commands
         Record external command metadata in
-        ``dir_working/logs/commands.jsonl`` and publish a Prefect command
-        metrics artifact (default = ``True``).
+        ``dir_working/logs/commands.jsonl``, write combined stdout/stderr to
+        ``dir_working/logs/<operation>/<task-run-name>.log``, and publish a
+        Prefect command metrics artifact (default = ``True``). These files are
+        independent of Prefect server or dashboard availability and include
+        output from failed commands.
 
     prefect_command_profile
         External command profiling mode (default = ``auto``). Supported values

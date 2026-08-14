@@ -255,6 +255,13 @@ science decision is applied to the staged branch.
   frequency-BDA scenarios if performance claims will be made for them. The
   existing core performance gates remain applicable to the unchanged default
   paths and need only be refreshed at the final switch gate.
+- [x] **Persist external-command output without relying on a Prefect server.**
+  Capture combined stdout/stderr for every external command under
+  `dir_working/logs/<operation>/<task-run-name>.log`, retain command and exit
+  metadata in each readable log, and link the file from `commands.jsonl`.
+  `prefect_stream_output` controls forwarding to Prefect only; durable logs are
+  controlled by `prefect_log_commands` and remain available for no-dashboard
+  and failed runs.
 - [ ] Decide whether SKA-Low is part of the branch-switch scope. If it is,
   restore/modernize the SKA-Low defaults and add a representative smoke and
   equivalence path. If it is not, record SKA-Low as an explicit limitation;

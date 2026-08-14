@@ -181,6 +181,9 @@ For each manual run, check:
 * the final command return code
 * ``dir_working/logs/rapthor.log``
 * ``dir_working/logs/commands.jsonl``
+* external-tool output under
+  ``dir_working/logs/<operation>/<task-run-name>.log`` (also available without
+  a Prefect dashboard)
 * ``dir_working/pipelines/<operation>/pipeline_inputs.json``
 * ``dir_working/pipelines/<operation>/.outputs.json``
 * FITS images under ``dir_working/images/``
