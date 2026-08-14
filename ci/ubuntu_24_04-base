@@ -6,8 +6,8 @@ FROM ubuntu:24.04 AS builder
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
-ARG DP3_COMMIT=18e793a4
-ARG EVERYBEAM_COMMIT=bc4116ee9609c7a1c81c7f6e3d8f08f2a38ad949
+ARG DP3_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
@@ -102,15 +102,13 @@ RUN wget -q https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BO
 
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
-# Note: The file is updated daily. When warnings regarding leap seconds appear,
-# ignore them or regenerate the docker image.
-RUN mkdir -p /usr/local/share/casacore/data && \
-    wget -nv --timeout=5 --tries=3 \
-        -O /tmp/WSRT_Measures.ztar \
-        https://iers.astron.nl/WSRT_Measures.ztar && \
-    tar -C /usr/local/share/casacore/data \
-        -xzf /tmp/WSRT_Measures.ztar && \
-    rm /tmp/WSRT_Measures.ztar
+# Note: The file on the ftp site is updated daily. When warnings regarding
+# leap seconds appear, ignore them or regenerate the docker image. If the
+# ASTRON endpoint is unavailable, use backup from git.astron.nl.
+RUN mkdir -p /usr/local/share/casacore/data \
+    && wget -nv --timeout 5 --tries=3 https://iers.astron.nl/WSRT_Measures.ztar \
+    && tar -C /usr/local/share/casacore/data -xzf WSRT_Measures.ztar \
+    && rm WSRT_Measures.ztar
 
 # Install Casacore
 RUN git clone --no-checkout https://github.com/casacore/casacore.git
@@ -248,7 +246,7 @@ RUN python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__vers
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS runner
+FROM ubuntu:24.04 AS runtime
 
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /opt/boost-numpy /opt/boost-numpy
@@ -256,8 +254,8 @@ COPY --from=builder /opt/boost-numpy /opt/boost-numpy
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
-ARG DP3_COMMIT=18e793a4
-ARG EVERYBEAM_COMMIT=bc4116ee9609c7a1c81c7f6e3d8f08f2a38ad949
+ARG DP3_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
@@ -322,3 +320,36 @@ RUN aoflagger --version && \
     wsclean --version && \
     fpack -H && \
     python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__version__} runtime import check passed')"
+
+
+#---------------------------------------------------------------------------
+# Development target. It extends the CI runner so the OS, Python version,
+# compiled tools, and runtime dependencies are identical to CI.
+#---------------------------------------------------------------------------
+FROM runtime AS dev
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3-venv \
+        time && \
+    rm -rf /var/lib/apt/lists/*
+
+# CI installs Rapthor and its test dependencies in an isolated tox environment.
+# Do the same here so pip installs NumPy-compatible wheels instead of reusing
+# Python extensions from the runtime image that were built against NumPy 1.x.
+ENV VIRTUAL_ENV=/opt/rapthor-venv
+RUN python3 -m venv ${VIRTUAL_ENV}
+
+ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam \
+    PATH="${VIRTUAL_ENV}/bin:${PATH}" \
+    PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /app
+
+CMD ["/bin/bash"]
+
+
+# Keep the CI runner as the default final target while allowing the dev
+# container to branch from the same runtime image above.
+FROM runtime AS runner
