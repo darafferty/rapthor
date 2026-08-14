@@ -181,6 +181,7 @@ def test_filter_skymodel_ncores_default_is_proposed_production_value(parset_scen
 
     assert parset["cluster_specific"]["filter_skymodel_ncores"] == 15
 
+
 def test_calibration_oom_risk_policy_is_boolean(parset_scenario):
     _append_to_parset(
         parset_scenario.parset,

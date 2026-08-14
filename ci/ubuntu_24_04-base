@@ -328,9 +328,15 @@ RUN aoflagger --version && \
 #---------------------------------------------------------------------------
 FROM runtime AS dev
 
+# The isolated development environment rebuilds PyBDSF against NumPy 2, so it
+# needs the compiler toolchain and Python headers that are omitted from runtime.
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
+        build-essential \
+        gfortran \
+        ninja-build \
+        python3-dev \
         python3-venv \
         time && \
     rm -rf /var/lib/apt/lists/*
@@ -344,6 +350,10 @@ RUN python3 -m venv ${VIRTUAL_ENV}
 ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam \
     PATH="${VIRTUAL_ENV}/bin:${PATH}" \
     PIP_ROOT_USER_ACTION=ignore
+
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-binary=bdsf bdsf && \
+    python3 -c "import bdsf, numpy; print(f'PyBDSF development import check passed with NumPy {numpy.__version__}')"
 
 WORKDIR /app
 
