@@ -1,5 +1,6 @@
 {'apparent_skymodel': None,
- 'calibration_specific': {'bda_frequencybase': 20000.0,
+ 'calibration_specific': {'antenna_constraints': True,
+                          'bda_frequencybase': 20000.0,
                           'bda_timebase': 20000.0,
                           'correct_time_frequency_smearing': False,
                           'fast_freqstep_hz': 1000000.0,

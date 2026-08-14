@@ -37,6 +37,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.fast_smoothnessconstraint = 1.0
             self.medium_smoothnessconstraint = 1.0
             self.slow_smoothnessconstraint = 1.0
+            self.antenna_constraints = True
             self.data_colname = "DATA"
 
             # Callables that need to be mocked
