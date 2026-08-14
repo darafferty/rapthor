@@ -6,13 +6,16 @@ import pytest
 from rapthor.execution.config import PREFECT_API_URL_ENV, ExecutionConfig
 from rapthor.execution.runtime_bootstrap import (
     PREFECT_HOME_ENV,
+    PREFECT_LOCAL_TMPDIR_ENV,
     PREFECT_SERVER_ANALYTICS_ENABLED_ENV,
     RuntimeBootstrapError,
+    SLURM_TMPDIR_ENV,
     bootstrapped_runtime,
     prefect_api_health_url,
     prefect_dashboard_url,
     preflight_runtime,
     resolve_prefect_api,
+    resolve_prefect_local_tmpdir,
 )
 
 
@@ -93,6 +96,28 @@ def test_ephemeral_prefect_api_ignores_configured_url():
     )
 
     assert api_url is None
+
+
+def test_prefect_local_tmpdir_uses_slurm_storage_instead_of_shared_tmpdir(tmp_path):
+    shared_tmpdir = tmp_path / "shared"
+    slurm_tmpdir = tmp_path / "slurm-local"
+    environ = {
+        "TMPDIR": str(shared_tmpdir),
+        SLURM_TMPDIR_ENV: str(slurm_tmpdir),
+    }
+
+    assert resolve_prefect_local_tmpdir(environ) == slurm_tmpdir
+    assert slurm_tmpdir.is_dir()
+
+
+def test_prefect_local_tmpdir_honors_explicit_override(tmp_path):
+    explicit_tmpdir = tmp_path / "explicit-local"
+    environ = {
+        PREFECT_LOCAL_TMPDIR_ENV: str(explicit_tmpdir),
+        SLURM_TMPDIR_ENV: str(tmp_path / "slurm-local"),
+    }
+
+    assert resolve_prefect_local_tmpdir(environ) == explicit_tmpdir
 
 
 def test_preflight_external_dask_checks_worker_count(caplog):

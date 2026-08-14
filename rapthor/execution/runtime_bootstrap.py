@@ -7,6 +7,7 @@ import os
 from collections.abc import MutableMapping
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Callable, Iterator, Optional
 from urllib.error import HTTPError, URLError
@@ -20,7 +21,10 @@ log = logging.getLogger("rapthor:runtime")
 
 PREFECT_API_HEALTH_TIMEOUT_SECONDS = 2.0
 PREFECT_HOME_ENV = "PREFECT_HOME"
+PREFECT_LOCAL_TMPDIR_ENV = "RAPTHOR_PREFECT_LOCAL_TMPDIR"
 PREFECT_SERVER_ANALYTICS_ENABLED_ENV = "PREFECT_SERVER_ANALYTICS_ENABLED"
+SLURM_TMPDIR_ENV = "SLURM_TMPDIR"
+DEFAULT_PREFECT_LOCAL_TMPDIR = Path("/tmp")
 
 
 class RuntimeBootstrapError(RuntimeError):
@@ -80,6 +84,27 @@ def check_prefect_api(api_url: str, timeout: float = PREFECT_API_HEALTH_TIMEOUT_
             f"{api_url!r}. Check PREFECT_API_URL or set "
             "cluster.prefect_api_mode = ephemeral to let Prefect use a temporary local API."
         ) from err
+
+
+def resolve_prefect_local_tmpdir(environ: MutableMapping[str, str]) -> Path:
+    """Return writable node-local storage for an ephemeral Prefect database."""
+    configured_root = environ.get(PREFECT_LOCAL_TMPDIR_ENV) or environ.get(SLURM_TMPDIR_ENV)
+    temporary_root = Path(configured_root) if configured_root else DEFAULT_PREFECT_LOCAL_TMPDIR
+
+    try:
+        temporary_root.mkdir(parents=True, exist_ok=True)
+    except OSError as err:
+        raise RuntimeBootstrapError(
+            f"Could not create the Prefect temporary directory {temporary_root}. "
+            f"Set {PREFECT_LOCAL_TMPDIR_ENV} to writable node-local storage."
+        ) from err
+
+    if not temporary_root.is_dir() or not os.access(temporary_root, os.W_OK | os.X_OK):
+        raise RuntimeBootstrapError(
+            f"Prefect temporary directory {temporary_root} is not writable. "
+            f"Set {PREFECT_LOCAL_TMPDIR_ENV} to writable node-local storage."
+        )
+    return temporary_root
 
 
 def resolve_prefect_api(
@@ -176,9 +201,16 @@ def bootstrapped_runtime(
             # An empty PREFECT_API_URL lets Prefect use its temporary local API/server.
             log.info("Ignoring any Prefect profile API URL for this run.")
             environ[PREFECT_API_URL_ENV] = ""
-            temporary_prefect_home = TemporaryDirectory(prefix="rapthor-prefect-")
+            prefect_temporary_root = resolve_prefect_local_tmpdir(environ)
+            temporary_prefect_home = TemporaryDirectory(
+                prefix="rapthor-prefect-",
+                dir=prefect_temporary_root,
+            )
             environ[PREFECT_HOME_ENV] = temporary_prefect_home.name
-            log.info("Using isolated temporary Prefect home for this run.")
+            log.info(
+                "Using isolated temporary Prefect home %s for this run.",
+                temporary_prefect_home.name,
+            )
         else:
             environ[PREFECT_API_URL_ENV] = plan.prefect_api_url
 

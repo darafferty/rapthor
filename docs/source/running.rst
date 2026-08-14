@@ -71,6 +71,26 @@ dashboard by accident. Export ``PREFECT_API_URL`` or set ``prefect_api_url`` in
 the parset when you want a persistent dashboard. Rapthor also sets
 ``PREFECT_SERVER_ANALYTICS_ENABLED=false`` for the run.
 
+The temporary Prefect home contains a SQLite database and must be on
+node-local storage rather than a shared NFS, Lustre, or FSx filesystem.
+Rapthor chooses ``RAPTHOR_PREFECT_LOCAL_TMPDIR`` when set, then
+``SLURM_TMPDIR``, and otherwise ``/tmp``. This choice is independent of the
+general ``TMPDIR``, which may still point at spacious shared storage for large
+scientific intermediate products. On a cluster without a suitable
+``SLURM_TMPDIR``, set an explicit node-local location before launch:
+
+.. code-block:: console
+
+    $ export RAPTHOR_PREFECT_LOCAL_TMPDIR=/local/scratch/$USER
+    $ rapthor input.parset
+
+Messages such as ``Service 'EventsWorker' failed`` usually mean that the
+Prefect client could not persist or deliver observability events. Inspect the
+exception immediately before that message. For an ephemeral SLURM run, first
+confirm that the logged ``Using isolated temporary Prefect home`` path is on
+node-local storage and has free space. The scientific pipeline can continue
+after an event-delivery failure, but dashboard events or logs may be missing.
+
 For production systems that need to launch several Rapthor jobs before a
 Postgres-backed Prefect service is available, prefer this no-server mode for
 each independent job. Give every job a unique ``global.dir_working`` and leave
