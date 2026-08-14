@@ -16,6 +16,10 @@ from shapely import contains_xy as polygon_contains_xy
 from shapely.geometry import Polygon
 
 
+class EmptyFacetSelectionError(ValueError):
+    """Raised when no image pixel centres fall inside a facet."""
+
+
 def _wcs_from_header(header):
     """Build a WCS while hiding known benign FITS header normalizations."""
     with warnings.catch_warnings():
@@ -280,18 +284,19 @@ class FITSImage(object):
         self.weight_data = self.weight_data**2.0
 
     def _get_bounding_box_from_polygon(self, polygon):
-        image_max_y, image_max_x = self.img_data.shape[-2:]
+        """Return the image-clipped bounding box and its pixel-coordinate grids."""
+        image_height, image_width = self.img_data.shape[-2:]
         min_x, min_y, max_x, max_y = polygon.bounds
-        x_0 = max(0, int(np.floor(min_x)))
-        y_0 = max(0, int(np.floor(min_y)))
-        x_1 = min(image_max_x, int(np.ceil(max_x)) + 1)
-        y_1 = min(image_max_y, int(np.ceil(max_y)) + 1)
-        if x_1 <= x_0 or y_1 <= y_0:
-            return np.s_[0:0, 0:0], [np.empty((0, 0)), np.empty((0, 0))]
-        yy, xx = np.indices((y_1 - y_0, x_1 - x_0))
-        yy += y_0
-        xx += x_0
-        return np.s_[y_0:y_1, x_0:x_1], [yy, xx]
+        x_start = min(max(0, int(np.floor(min_x))), image_width)
+        y_start = min(max(0, int(np.floor(min_y))), image_height)
+        x_stop = min(max(0, int(np.ceil(max_x)) + 1), image_width)
+        y_stop = min(max(0, int(np.ceil(max_y)) + 1), image_height)
+        if x_start >= x_stop or y_start >= y_stop:
+            raise EmptyFacetSelectionError("Facet does not contain any image pixels")
+        yy, xx = np.indices((y_stop - y_start, x_stop - x_start))
+        yy += y_start
+        xx += x_start
+        return np.s_[y_start:y_stop, x_start:x_stop], (yy, xx)
 
     def select_facet(self, facet):
         """
@@ -304,12 +309,12 @@ class FITSImage(object):
         )
         pixel_polygon = Polygon(zip(x_vertices, y_vertices))
         image_footprint, (yy, xx) = self._get_bounding_box_from_polygon(pixel_polygon)
-        selected_image_region = np.array(self.img_data[image_footprint])
-        if selected_image_region.size == 0:
-            return selected_image_region
+        selected_image_region = np.array(self.img_data[image_footprint], dtype=float)
         inside = polygon_contains_xy(pixel_polygon, xx.ravel(), yy.ravel()).reshape(
             selected_image_region.shape
         )
+        if not np.any(inside):
+            raise EmptyFacetSelectionError("Facet does not contain any image pixels")
         selected_image_region[~inside] = np.nan
         return selected_image_region
 

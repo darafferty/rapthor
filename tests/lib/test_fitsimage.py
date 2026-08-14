@@ -11,7 +11,7 @@ from astropy.io import fits as pyfits
 from astropy.wcs import FITSFixedWarning
 
 import rapthor.lib.fitsimage as fitsimage
-from rapthor.lib.fitsimage import FITSCube, FITSImage
+from rapthor.lib.fitsimage import EmptyFacetSelectionError, FITSCube, FITSImage
 
 
 def _write_fits_image(path, *, data=None, frequency_hz=150e6, crval=(10.0, 20.0)):
@@ -141,6 +141,33 @@ def test_fits_image_select_facet_returns_pixels_inside_polygon(tmp_path):
 
     assert selected.shape == (3, 3)
     assert selected[np.isfinite(selected)].tolist() == [12.0]
+
+
+@pytest.mark.parametrize(
+    "pixel_vertices",
+    [
+        np.array([[10.0, 1.0], [12.0, 1.0], [12.0, 3.0], [10.0, 3.0]]),
+        np.array([[1.1, 1.1], [1.4, 1.1], [1.4, 1.4], [1.1, 1.4]]),
+    ],
+    ids=["outside-image", "no-pixel-centres"],
+)
+def test_fits_image_select_facet_rejects_empty_selection(tmp_path, pixel_vertices):
+    image = FITSImage(_write_fits_image(tmp_path / "image.fits", data=np.arange(25).reshape(5, 5)))
+    image.get_wcs = lambda: SimpleNamespace(world_to_pixel_values=lambda ra, dec: (ra, dec))
+
+    with pytest.raises(EmptyFacetSelectionError, match="does not contain any image pixels"):
+        image.select_facet(SimpleNamespace(vertices=pixel_vertices))
+
+
+def test_fits_image_select_facet_converts_integer_pixels_for_nan_masking(tmp_path):
+    image = FITSImage(_write_fits_image(tmp_path / "image.fits", data=np.arange(25).reshape(5, 5)))
+    image.get_wcs = lambda: SimpleNamespace(world_to_pixel_values=lambda ra, dec: (ra, dec))
+    facet = SimpleNamespace(vertices=np.array([[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0]]))
+
+    selected = image.select_facet(facet)
+
+    assert selected.dtype.kind == "f"
+    assert np.isnan(selected).any()
 
 
 def test_fits_image_calc_noise_shift_and_weight(tmp_path):

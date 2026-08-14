@@ -810,6 +810,31 @@ def test_compute_facet_rms_noise_summarizes_each_facet(monkeypatch, tmp_path):
     assert facets_rms["facet_1"]["beam_corrected"]["max"] == 6.0
 
 
+def test_compute_facet_rms_noise_skips_facets_outside_images(monkeypatch, tmp_path, caplog):
+    from rapthor.lib.fitsimage import EmptyFacetSelectionError
+
+    region_file = tmp_path / "facets.reg"
+    region_file.write_text("region")
+    facets = [SimpleNamespace(name="inside"), SimpleNamespace(name="outside")]
+
+    class FakeRmsImage:
+        def select_facet(self, facet):
+            if facet.name == "outside":
+                raise EmptyFacetSelectionError("outside image")
+            return np.array([[1.0, 2.0]])
+
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.read_ds9_region_file",
+        lambda path: facets,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        facets_rms = compute_facet_rms_noise(region_file, FakeRmsImage(), FakeRmsImage())
+
+    assert list(facets_rms) == ["inside"]
+    assert "Skipping RMS metrics for facet 'outside'" in caplog.text
+
+
 def test_compute_facet_rms_noise_returns_empty_for_missing_region(tmp_path):
     assert compute_facet_rms_noise(tmp_path / "missing.reg", object(), object()) == {}
     assert compute_facet_rms_noise(None, object(), object()) == {}
