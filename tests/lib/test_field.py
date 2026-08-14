@@ -484,17 +484,25 @@ def test_resolve_antenna_constraints(field, input_constraints, expected_result):
     "antenna, antenna_constraints, expected_result",
     [
         pytest.param(
-            "HBA", True, EXPECTED_ANTENNA_CONSTRAINTS["HBA"], id="default LOFAR HBA constraints"
+            "HBA",
+            True,
+            [["CS001HBA0", "CS002HBA0", "CS002HBA1", "CS004HBA1"]],
+            id="LOFAR HBA constraints default",
         ),
+        pytest.param("HBA", False, [], id="LOFAR HBA constraints False"),
+        pytest.param("HBA", [], [], id="default LOFAR HBA constraints empty"),
         pytest.param(
-            "LBA", True, EXPECTED_ANTENNA_CONSTRAINTS["LBA"], id="default LOFAR LBA constraints"
+            "LBA",
+            True,
+            ValueError,
+            id="default LOFAR LBA constraints",
         ),
     ],
 )
 def test_antenna_constraints(field, antenna, antenna_constraints, expected_result):
-    """Test that the default antenna constraints are loaded correctly from file."""
+    """Test that the antenna constraints are loaded c."""
     field.antenna = antenna
     field.antenna_constraints = antenna_constraints
-
-    result = field.resolve_antenna_constraints()
-    assert result == expected_result
+    with get_context(expected_result):
+        result = list(field.resolve_antenna_constraints())
+        assert result == expected_result
