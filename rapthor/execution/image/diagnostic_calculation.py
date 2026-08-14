@@ -22,7 +22,7 @@ from lsmtool.facet import SquareFacet, read_ds9_region_file
 from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.fitsimage import FITSImage
+from rapthor.lib.fitsimage import EmptyFacetSelectionError, FITSImage
 from rapthor.lib.observation import Observation
 
 if matplotlib.get_backend() != "Agg":
@@ -851,8 +851,15 @@ def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_
 
     facets_summary = {}
     for facet in facets:
-        selected_flat_noise = rms_img_flat_noise.select_facet(facet)
-        selected_true_sky = rms_img_true_sky.select_facet(facet)
+        try:
+            selected_flat_noise = rms_img_flat_noise.select_facet(facet)
+            selected_true_sky = rms_img_true_sky.select_facet(facet)
+        except EmptyFacetSelectionError:
+            logger.warning(
+                "Skipping RMS metrics for facet %r: no image pixels selected",
+                facet.name,
+            )
+            continue
         facets_summary[facet.name] = {
             "flat_noise": _compute_image_stats(selected_flat_noise),
             "beam_corrected": _compute_image_stats(selected_true_sky),

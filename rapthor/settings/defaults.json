@@ -128,6 +128,7 @@
         "local_dask_workers": 0,
         "cpus_per_task": 0,
         "mem_per_node_gb": 0,
+        "fail_on_calibration_oom_risk": false,
         "max_cores": 0,
         "max_threads": 0,
         "filter_skymodel_ncores": 15,

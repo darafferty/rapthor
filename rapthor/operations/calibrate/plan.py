@@ -5,34 +5,18 @@ from typing import Mapping, Optional
 
 import numpy as np
 
+from rapthor.lib.calibration import (
+    INTERVAL_KEYS_BY_SOLVE,
+    MODE_BY_SOLVE,
+    SOLUTION_INTERVAL_BY_SOLVE_TYPE,
+)
 from rapthor.lib.strategy import default_calibration_strategy
-
-SOLUTION_INTERVAL_BY_SOLVE_TYPE = {
-    "fast_phase": "fast",
-    "medium_phase": "medium",
-    "slow_gains": "slow",
-    "full_jones": "fulljones",
-}
 
 
 def solution_interval_for_solve_type(solve_type: str) -> str:
     """Return the Field solution-interval family used by a solve type."""
     return SOLUTION_INTERVAL_BY_SOLVE_TYPE[solve_type]
 
-
-MODE_BY_SOLVE = {
-    "fast_phase": "scalarphase",
-    "medium_phase": "scalarphase",
-    "slow_gains": "diagonal",
-    "full_jones": "fulljones",
-}
-
-INTERVAL_KEYS_BY_SOLVE = {
-    "fast_phase": ("solint_fast_timestep", "solint_fast_freqstep"),
-    "medium_phase": ("solint_medium_timestep", "solint_medium_freqstep"),
-    "slow_gains": ("solint_slow_timestep", "solint_slow_freqstep"),
-    "full_jones": ("solint_fulljones_timestep", "solint_fulljones_freqstep"),
-}
 
 SUPERTERP_STATIONS_BY_ANTENNA = {
     "HBA": (

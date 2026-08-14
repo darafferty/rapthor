@@ -13,6 +13,7 @@ from rapthor.execution.pipeline.flow import (
     PipelineOperationFactories,
     pipeline_flow,
     run_pipeline,
+    run_pipeline_preflight,
     run_pipeline_steps,
 )
 from rapthor.execution.pipeline.plan import (
@@ -48,6 +49,9 @@ class RecordingField:
     use_mpi: bool = False
     generate_screens: bool = False
     apply_screens: bool = False
+    num_patches: int = 1
+    max_directions: int = 5
+    observations: list[object] = field(default_factory=list)
     image_cube_stokes_list: list[str] = field(default_factory=lambda: ["I"])
     parset: dict = field(
         default_factory=lambda: {"imaging_specific": {"skip_final_major_iteration": True}}
@@ -72,6 +76,9 @@ class RecordingField:
     def define_full_field_sector(self, radius):
         self.full_field_radius = radius
         self.events.append({"operation": "define_full_field_sector", "radius": radius})
+
+    def set_obs_parameters(self):
+        pass
 
 
 def _record(field, operation, mode, index):
@@ -443,6 +450,47 @@ def test_run_pipeline_steps_calibration_strategy_handoffs(
     )
 
     _assert_strategy_handoffs(field, expected_order, expected_handoffs)
+
+
+def test_run_pipeline_preflight_checks_calibration_memory_for_each_cycle(monkeypatch):
+    calls = []
+    field = RecordingField(max_directions=4)
+    steps = [
+        {"do_calibrate": True, "max_directions": 3},
+        {"do_calibrate": False},
+    ]
+    monkeypatch.setattr(
+        "rapthor.execution.pipeline.flow.preflight_execution",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.pipeline.flow.check_calibration_memory",
+        lambda field, cycle, directions, step: calls.append((cycle, directions, step)),
+    )
+
+    run_pipeline_preflight(field, steps, ExecutionConfig(task_runner="sync"), set())
+
+    assert calls == [(1, 3, steps[0]), (2, 4, steps[1])]
+
+
+def test_run_pipeline_steps_checks_resolved_memory_before_calibration(monkeypatch):
+    calls = []
+    field = RecordingField()
+    field.set_obs_parameters = lambda: calls.append("resolve")
+    monkeypatch.setattr(
+        "rapthor.execution.pipeline.flow.check_calibration_memory",
+        lambda checked_field, cycle, directions: calls.append(
+            ("memory", checked_field, cycle, directions)
+        ),
+    )
+
+    run_pipeline_steps(
+        field,
+        [_single_step({"dd": ["fast_phase"]}, do_image=False)],
+        operation_factories=RECORDING_FACTORIES,
+    )
+
+    assert calls == ["resolve", ("memory", field, 1, 1)]
 
 
 def test_run_pipeline_steps_stops_after_selfcal_converges():

@@ -37,6 +37,7 @@ class ExecutionConfig:
     local_dask_workers: int = 0
     cpus_per_task: int = 0
     mem_per_node_gb: int = 0
+    fail_on_calibration_oom_risk: bool = False
     use_container: bool = False
     container_type: Optional[str] = None
     local_scratch_dir: Optional[str] = None
@@ -117,6 +118,10 @@ class ExecutionConfig:
             cpus_per_task=_as_non_negative_int(cluster.get("cpus_per_task", 0), "cpus_per_task"),
             mem_per_node_gb=_as_non_negative_int(
                 cluster.get("mem_per_node_gb", 0), "mem_per_node_gb"
+            ),
+            fail_on_calibration_oom_risk=_as_bool(
+                cluster.get("fail_on_calibration_oom_risk", False),
+                "fail_on_calibration_oom_risk",
             ),
             use_container=_as_bool(cluster.get("use_container", False), "use_container"),
             container_type=_optional_str(cluster.get("container_type")),

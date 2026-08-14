@@ -20,6 +20,7 @@ from rapthor.execution.pipeline.plan import (
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.task_runner import run_flow_with_task_runner
+from rapthor.lib.calibration_memory import check_calibration_memory
 
 log = logging.getLogger("rapthor")
 
@@ -243,6 +244,8 @@ def run_pipeline_steps(
 
         if field.do_calibrate:
             field.generate_screens = (field.dde_mode == "hybrid") and final
+            field.set_obs_parameters()
+            check_calibration_memory(field, cycle_number, field.num_patches)
             for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
                 if not enabled:
                     continue
@@ -368,6 +371,13 @@ def run_pipeline_preflight(
         requested_features=requested_features,
         supported_features=SUPPORTED_PIPELINE_FEATURES,
     )
+    for cycle_number, step in enumerate(strategy_steps, start=1):
+        check_calibration_memory(
+            field,
+            cycle_number,
+            step.get("max_directions", getattr(field, "max_directions", 1)),
+            step,
+        )
 
 
 def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionConfig) -> None:
@@ -401,6 +411,7 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "local_dask_workers": execution_config.local_dask_workers,
             "cpus_per_task": execution_config.cpus_per_task,
             "mem_per_node_gb": execution_config.mem_per_node_gb,
+            "fail_on_calibration_oom_risk": execution_config.fail_on_calibration_oom_risk,
             "use_container": execution_config.use_container,
             "container_type": execution_config.container_type,
             "local_scratch_dir": execution_config.local_scratch_dir,

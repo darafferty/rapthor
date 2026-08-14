@@ -784,6 +784,46 @@ The available options are described below under their respective sections.
         When :term:`batch_system` = ``slurm``, the amount of memory per node in GB to
         request (default = 0 = all).
 
+        Rapthor also uses this value for DP3 calibration memory checks. A preflight
+        check uses each strategy step's maximum number of directions, and a second
+        check before each calibration cycle uses the resolved facet count and DP3
+        solve intervals. If ``mem_per_node_gb`` is zero, the checks compare against
+        memory available on the machine running Rapthor. Slurm and external-Dask users
+        should set ``mem_per_node_gb`` because local available memory may not represent
+        memory on a worker node.
+
+        The estimate uses decimal GB and a conservative current DP3 peak-memory model
+        of 80 bytes per visibility sample. It includes the original data buffer,
+        visibility copies, weights, and weighted data, and uses the unaveraged channel
+        count because calibration BDA is baseline-dependent. By default, Rapthor logs
+        likely out-of-memory configurations but continues processing.
+
+        The estimated peak memory is calculated as follows::
+
+            baselines = nstations * (nstations + 1) // 2
+            time_steps = ceil(solution_interval_seconds / sampling_interval_seconds)
+            samples = baselines * channels * time_steps * (directions + 1)
+
+            visibility_copies_gb = samples * 4 * 8 / 1e9
+            weights_gb = samples * 4 * 4 / 1e9
+            weighted_data_gb = samples * 4 * 8 / 1e9
+            peak_memory_gb = visibility_copies_gb + weights_gb + weighted_data_gb
+
+        A DI solve always uses one direction. A DD preflight estimate uses the
+        strategy step's ``max_directions`` value, while the resolved estimate uses the
+        actual number of calibration facets. The additional direction in
+        ``directions + 1`` accounts for DP3 retaining the original data buffer.
+
+    fail_on_calibration_oom_risk
+        Stop Rapthor when a DP3 calibration memory estimate is greater than the
+        applicable memory limit (default = ``False``). This applies to both the
+        preflight upper bound and the resolved estimate immediately before each
+        calibration cycle. An estimate exactly equal to the limit is allowed.
+
+        When enabled, a high-risk estimate raises an actionable error before the
+        affected pipeline operation starts. If capacity cannot be determined or the
+        estimate cannot be calculated, the check remains advisory.
+
     max_cores
         Maximum number of cores per task to use on each node (default = 0 = all).
 

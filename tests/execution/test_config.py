@@ -31,6 +31,7 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
     assert config.postage_stamp_preview_size_px == 96
     assert config.fits_preview_clip_percentile == 99.9
     assert config.batch_system == "single_machine"
+    assert config.fail_on_calibration_oom_risk is False
     assert config.local_scratch_dir is None
 
 
@@ -58,6 +59,7 @@ def test_execution_config_reads_cluster_specific_values():
                 "local_dask_workers": 3,
                 "cpus_per_task": 32,
                 "mem_per_node_gb": 256,
+                "fail_on_calibration_oom_risk": True,
                 "use_container": True,
                 "container_type": "singularity",
                 "local_scratch_dir": "/local",
@@ -87,11 +89,19 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.local_dask_workers == 3
     assert config.cpus_per_task == 32
     assert config.mem_per_node_gb == 256
+    assert config.fail_on_calibration_oom_risk is True
     assert config.use_container is True
     assert config.container_type == "singularity"
     assert config.local_scratch_dir == "/local"
     assert config.global_scratch_dir == "/shared"
     assert config.deprecated_dir_local == "/deprecated"
+
+
+def test_execution_config_rejects_invalid_calibration_oom_policy():
+    with pytest.raises(ValueError, match="fail_on_calibration_oom_risk must be a boolean"):
+        ExecutionConfig.from_parset(
+            {"cluster_specific": {"fail_on_calibration_oom_risk": "sometimes"}}
+        )
 
 
 def test_execution_config_reads_prefect_run_tags_from_sequence():
