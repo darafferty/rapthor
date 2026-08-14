@@ -125,7 +125,7 @@ def optimal_rendering_parameters(msname, skymodel, ra, dec):
     f0 = math.sqrt(1 + (beta / math.pi) ** 2) / window_size
 
     d = d0 + window_size * s0
-    s = s0 / (1 + 2 * f0 + 2 * s0 * max_w)
+    s = s0 / (1 + 2 * f0 + s0 * d * max_w)
 
     n_pix = int(d / s)
 
