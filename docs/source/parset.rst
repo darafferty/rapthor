@@ -483,7 +483,8 @@ The available options are described below under their respective sections.
 
     bda_frequencybase
         Maximum baseline used in baseline-dependent frequency averaging (BDA) during
-        imaging, in m (default = 0). A value of 0 will disable frequency BDA.
+        imaging, in m (default = 20000). A value of 0 will disable frequency BDA.
+        Activating this option may improve the speed of imaging.
 
         Frequency BDA produces a Measurement Set with multiple spectral windows.
         Primary-beam correction for this layout requires EveryBeam 0.8.3 or later.

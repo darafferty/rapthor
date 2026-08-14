@@ -182,6 +182,12 @@ def test_filter_skymodel_ncores_default_is_proposed_production_value(parset_scen
     assert parset["cluster_specific"]["filter_skymodel_ncores"] == 15
 
 
+def test_default_imaging_frequency_bda_uses_production_value(parset_scenario):
+    parset = parset_read(str(parset_scenario.parset))
+
+    assert parset["imaging_specific"]["bda_frequencybase"] == 20000.0
+
+
 def test_filter_skymodel_ncores_zero_uses_max_threads(parset_scenario):
     _append_to_parset(
         parset_scenario.parset,
