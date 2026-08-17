@@ -124,7 +124,7 @@ include = ["rapthor*"]
 
 [tool.setuptools.package-data]
 rapthor = [
-    "settings/*",
+    "settings/**",
     "skymodels/*"
 ]
 
