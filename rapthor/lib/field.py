@@ -2,7 +2,6 @@
 Definition of the Field class
 """
 
-import copy
 import glob
 import json
 import logging
@@ -1704,9 +1703,9 @@ class Field(object):
         else:
             sector_sizes = [sector.width_ra * sector.width_dec for sector in self.imaging_sectors]
             sector = self.imaging_sectors[np.argmax(sector_sizes)]
-            sector.log, sector_log = None, sector.log  # deepcopy cannot copy the log object
-            normalize_sector = copy.deepcopy(sector)
-            sector.log = sector_log
+            normalize_sector = Sector(
+                sector.name, sector.ra, sector.dec, sector.width_ra, sector.width_dec, sector.field
+            )
             normalize_sector.log = logging.getLogger(f"rapthor:{sector.name}")
 
         self.normalize_sector = normalize_sector
