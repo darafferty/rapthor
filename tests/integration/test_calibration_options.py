@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from .utils import get_working_dir_from_parset, update_parset_path, make_rapthor_command
+from .utils import get_working_dir_from_parset, make_rapthor_command, update_parset_path
 
 
 @pytest.mark.integration

@@ -10,8 +10,8 @@ from .utils import (
     get_working_dir_from_parset,
     get_wsclean_output_mtimes,
     make_failing_filter_skymodel,
-    update_parset_path,
     make_rapthor_command,
+    update_parset_path,
 )
 
 
