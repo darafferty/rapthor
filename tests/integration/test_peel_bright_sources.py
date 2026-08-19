@@ -4,7 +4,12 @@ import subprocess
 
 import pytest
 
-from .utils import find_command_records, get_working_dir_from_parset, update_parset_path
+from .utils import (
+    find_command_records,
+    get_working_dir_from_parset,
+    update_parset_path,
+    make_rapthor_command,
+)
 
 
 @pytest.mark.integration
@@ -33,9 +38,8 @@ def test_rapthor_run_single_loop_peel_bright_sources(
         },
     )
 
-    command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
-        command,
+        make_rapthor_command(updated_parset_path),
         capture_output=True,
         text=True,
         check=False,

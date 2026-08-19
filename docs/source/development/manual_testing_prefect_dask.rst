@@ -17,7 +17,7 @@ How To Run Rapthor
 
 Choose the runtime mode that matches the test:
 
-* :ref:`local_runtime` for the simplest ``rapthor input.parset`` run, with an
+* :ref:`local_runtime` for the simplest ``rapthor3 input.parset`` run, with an
   isolated temporary Prefect API and local Dask.
 * :ref:`persistent_prefect_dashboard` when the run should remain visible in a
   local Prefect dashboard.
@@ -171,7 +171,7 @@ See :ref:`prefect_demo_helper` for generated rich and multi-sector datasets,
 resource overrides, Dask performance reports, and preview artifacts. The
 helper is intended for demos and benchmark automation; developers testing
 their own parsets should continue to launch Rapthor with
-``rapthor input.parset``.
+``rapthor3 input.parset``.
 
 What To Inspect
 ---------------

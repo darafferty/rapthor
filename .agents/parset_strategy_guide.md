@@ -38,7 +38,7 @@ options, specifically check `docs/source/running.rst`,
 test templates under `tests/resources/` that snapshot parset dictionaries.
 
 The roadmap also calls for a lightweight smoke lane that starts from
-`rapthor input.parset`, not only internal bootstrap helpers. If you change CLI
+`rapthor3 input.parset`, not only internal bootstrap helpers. If you change CLI
 startup, parset materialization, path handling, or runtime bootstrap, look for
 or add coverage at that user-facing entry point.
 

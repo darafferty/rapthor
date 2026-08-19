@@ -17,14 +17,14 @@ Rapthor can be run from the command line as follows:
 
 .. code-block:: console
 
-    $ rapthor rapthor.parset
+    $ rapthor3 rapthor.parset
 
 where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
 number of options are available and are described below:
 
 .. code-block:: console
 
-    Usage: rapthor parset
+    Usage: rapthor3 parset
 
     Options:
       --version             show program's version number and exit
@@ -53,7 +53,7 @@ For the simplest local run, use the installed command directly:
 
 .. code-block:: console
 
-    $ rapthor input.parset
+    $ rapthor3 input.parset
 
 Interactive testers do not need Slurm or Spack. Use the dev container, an
 existing site environment, or an editable install of this branch as long as the
@@ -82,7 +82,7 @@ scientific intermediate products. On a cluster without a suitable
 .. code-block:: console
 
     $ export RAPTHOR_PREFECT_LOCAL_TMPDIR=/local/scratch/$USER
-    $ rapthor input.parset
+    $ rapthor3 input.parset
 
 Messages such as ``Service 'EventsWorker' failed`` usually mean that the
 Prefect client could not persist or deliver observability events. Inspect the
@@ -113,7 +113,7 @@ explicitly export its API URL before running Rapthor:
 .. code-block:: console
 
     $ export PREFECT_API_URL=http://127.0.0.1:4200/api
-    $ rapthor input.parset
+    $ rapthor3 input.parset
 
 The setup script starts only Prefect; it does not invoke Rapthor. It uses an
 isolated temporary Prefect home, waits for the API health check, and cleans up
@@ -195,7 +195,7 @@ export ``DASK_SCHEDULER``:
 .. code-block:: console
 
     $ export DASK_SCHEDULER=tcp://127.0.0.1:8786
-    $ rapthor input.parset
+    $ rapthor3 input.parset
 
 If ``PREFECT_API_URL`` is set but you want Prefect's one-off local API/server
 for this run, set ``prefect_api_mode = ephemeral`` in the ``[cluster]`` section
@@ -213,7 +213,7 @@ runtime commands remain canonical on this page.
 Optional Prefect dashboard demo helper
 --------------------------------------
 
-The explicit server setup above followed by ``rapthor input.parset`` is the
+The explicit server setup above followed by ``rapthor3 input.parset`` is the
 recommended workflow for testers using their own data. A local helper remains
 available for repeatable bundled demos and benchmark automation:
 

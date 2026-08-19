@@ -82,7 +82,7 @@ Prefect/Dask Connector View
 Purpose
 ~~~~~~~
 
-Show how a normal ``rapthor input.parset`` run connects the top-level pipeline
+Show how a normal ``rapthor3 input.parset`` run connects the top-level pipeline
 flow, operation flows, task bodies, Dask workers, external tools, and output
 records.
 
