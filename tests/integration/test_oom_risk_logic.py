@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from .utils import update_parset_path, make_rapthor_command
+from .utils import make_rapthor_command, update_parset_path
 
 INTEGRATION_PARSET = (
     "tests/resources/integration_template.parset",

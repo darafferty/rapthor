@@ -7,8 +7,8 @@ import pytest
 from .utils import (
     find_command_records,
     get_working_dir_from_parset,
-    update_parset_path,
     make_rapthor_command,
+    update_parset_path,
 )
 
 
