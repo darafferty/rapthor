@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from losoto.h5parm import h5parm
 
-from .utils import get_working_dir_from_parset, update_parset_path
+from .utils import get_working_dir_from_parset, update_parset_path, make_rapthor_command
 
 
 @pytest.mark.internet
@@ -36,9 +36,8 @@ def test_rapthor_run_single_loop_with_do_normalize(
             "strategy": str(single_loop_do_normalize_strategy_path),
         },
     )
-    command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
-        command,
+        make_rapthor_command(updated_parset_path),
         capture_output=True,
         text=True,
         check=False,
@@ -78,9 +77,8 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
         },
     )
 
-    command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
-        command,
+        make_rapthor_command(updated_parset_path),
         capture_output=True,
         text=True,
         check=False,
@@ -123,9 +121,8 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
         },
     )
 
-    command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
-        command,
+        make_rapthor_command(updated_parset_path),
         capture_output=True,
         text=True,
         check=False,

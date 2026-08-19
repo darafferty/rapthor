@@ -21,7 +21,7 @@ The user-facing command remains:
 
 .. code-block:: bash
 
-   rapthor input.parset
+   rapthor3 input.parset
 
 The change is an execution-architecture decision, not a change to Rapthor's
 scientific purpose. The self-calibration loop, calibration products, sky-model
@@ -67,7 +67,7 @@ The main drivers are:
   task bodies should be unit-testable without generating workflow files.
 * **Scalability:** execution should support local Dask, external Dask, Slurm,
   and MPI WSClean paths.
-* **Runtime UX:** ``rapthor input.parset`` should work with low friction,
+* **Runtime UX:** ``rapthor3 input.parset`` should work with low friction,
   including without a pre-existing Prefect server or Dask cluster.
 * **Evidence-driven switching:** the branch should replace ``master`` only with
   documented science and performance evidence.

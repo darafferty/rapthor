@@ -56,7 +56,7 @@ python -m pytest -m "not integration and not prefect" -n auto --dist worksteal -
 | Import boundaries or retired scripts | `tests/architecture/` | non-integration tests |
 | CLI entry points | focused CLI/adapter tests near owner package | non-integration tests |
 | Parset/default option | focused parsing/default tests plus docs/templates check | non-integration tests |
-| Runtime bootstrap, preflight, or CLI startup | `tests/test_cli.py`, `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap*.py` | user-facing `rapthor input.parset` smoke lane |
+| Runtime bootstrap, preflight, or CLI startup | `tests/test_cli.py`, `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap*.py` | user-facing `rapthor3 input.parset` smoke lane |
 | Scientific product behavior | focused command/payload/finalizer tests | integration or equivalence check |
 | Dask task boundaries or scalability | flow tests plus payload serialization/size guards | benchmark or rich-demo run |
 | Benchmark harness/reporting | runner/report parsing tests | manual or scheduled benchmark job |

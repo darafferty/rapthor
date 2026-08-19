@@ -59,7 +59,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
-rapthor = "rapthor.cli:main"
+rapthor3 = "rapthor.cli:main"
 concat_linc_files = "rapthor.execution.concatenate.linc_cli:main"
 
 [project.optional-dependencies]

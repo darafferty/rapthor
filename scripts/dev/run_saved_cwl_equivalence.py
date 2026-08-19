@@ -322,7 +322,7 @@ def _run_rapthor(parset_path: Path, result: ComparisonResult) -> None:
     env["PREFECT_HOME"] = str(result.run_dir.parent / "prefect-home")
     env["SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR"] = "0.0.0"
     completed = subprocess.run(
-        ["rapthor", str(parset_path)],
+        ["rapthor3", str(parset_path)],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

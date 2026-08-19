@@ -36,7 +36,7 @@ flowchart TB
     products["Working directory, logs, profiles, products"]
     browser["Local browser via direct access or SSH tunnels"]
 
-    scientist -->|runs rapthor input.parset| rapthor_proc
+    scientist -->|runs rapthor3 input.parset| rapthor_proc
     scientist -->|edits| parset
     parset -->|selects runtime shape| rapthor_proc
 

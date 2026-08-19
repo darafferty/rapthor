@@ -11,7 +11,7 @@ paths, easier to observe, easier to debug, and pleasant to develop. The
 user-facing workflow stays:
 
 ```bash
-rapthor input.parset
+rapthor3 input.parset
 ```
 
 This branch should replace `master` only when the decision is evidence-driven:
@@ -36,7 +36,7 @@ The branch is ready to recommend over `master` when all of these are true:
    h5parm/image-only workflows, local versus external Dask, and Prefect
    dashboard setup.
 4. **Runtime UX is low-friction.**
-   `rapthor input.parset` works with no existing Prefect server or Dask
+   `rapthor3 input.parset` works with no existing Prefect server or Dask
    cluster, and users can opt into persistent dashboards or external Dask with
    copy/paste commands. Production users can also run multiple independent
    Rapthor jobs without a shared Prefect server until a Postgres-backed Prefect

@@ -11,6 +11,7 @@ from .utils import (
     get_wsclean_output_mtimes,
     make_failing_filter_skymodel,
     update_parset_path,
+    make_rapthor_command,
 )
 
 
@@ -53,7 +54,7 @@ def test_rapthor_restart_after_filter_failure_skips_wsclean(
     )
 
     first_result = subprocess.run(
-        ["rapthor", str(failing_parset_path)],
+        make_rapthor_command(failing_parset_path),
         capture_output=True,
         text=True,
         check=False,
@@ -74,7 +75,7 @@ def test_rapthor_restart_after_filter_failure_skips_wsclean(
 
     # Use the default environment, which has the working skymodel filter adapter.
     second_result = subprocess.run(
-        ["rapthor", str(failing_parset_path)],
+        make_rapthor_command(failing_parset_path),
         capture_output=True,
         text=True,
         check=False,
