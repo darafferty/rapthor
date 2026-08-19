@@ -8,6 +8,7 @@ import pytest
 from losoto.h5parm import h5parm
 
 from .utils import get_working_dir_from_parset, update_parset_path, make_rapthor_command
+from .utils import make_rapthor_command, update_parset_path
 
 
 @pytest.mark.internet
