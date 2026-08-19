@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from .utils import update_parset_path
+from .utils import update_parset_path, make_rapthor_command
 
 INTEGRATION_PARSET = (
     "tests/resources/integration_template.parset",
@@ -37,7 +37,7 @@ def test_cli_stops_before_calibration_when_strict_oom_check_fails(
     )
 
     result = subprocess.run(
-        ["rapthor", str(strict_parset_path)],
+        make_rapthor_command(strict_parset_path),
         capture_output=True,
         text=True,
         check=False,

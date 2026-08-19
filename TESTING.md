@@ -193,7 +193,7 @@ automatic source check is not enough.
 | Operation adapter behavior | Focused `tests/operations/` file | Operation integration if external tools are involved |
 | Payload validators or command builders | Focused `tests/execution/` file | Owner-package tests and command/reference tests |
 | Prefect/Dask scheduling or task-runner behavior | Prefect-marked execution tests | Non-integration Prefect suite |
-| Runtime bootstrap, preflight, or CLI startup | `tests/test_cli.py`, `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap*.py` | User-facing `rapthor input.parset` smoke lane |
+| Runtime bootstrap, preflight, or CLI startup | `tests/test_cli.py`, `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap*.py` | User-facing `rapthor3 input.parset` smoke lane |
 | Scientific product behavior | Focused command/payload/finalizer tests | Integration or equivalence check |
 | Dask task boundaries or scalability | Flow tests plus payload serialization/size guards | Benchmark or rich-demo run |
 | Benchmark harness/reporting | `tests/execution/test_benchmarking.py` and demo-data generator tests | Manual or scheduled benchmark job |

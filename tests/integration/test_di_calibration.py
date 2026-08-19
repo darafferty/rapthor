@@ -6,6 +6,7 @@ from .utils import (
     first_command_arguments,
     get_working_dir_from_parset,
     update_parset_path,
+    make_rapthor_command,
 )
 
 
@@ -43,8 +44,9 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
 
-    command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=True
+    )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
@@ -106,8 +108,9 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
 
-    command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=True
+    )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
@@ -165,8 +168,9 @@ def test_rapthor_run_di_fast_phase_medium_phase(
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
 
-    command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=True
+    )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
@@ -223,8 +227,9 @@ def test_rapthor_run_di_fast_phase_medium_slow(
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
 
-    command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=True
+    )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
@@ -288,8 +293,9 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
 
-    command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=True
+    )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_di_1 completed" in output
@@ -353,8 +359,9 @@ def test_rapthor_run_mixed_di_dd_order(
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
 
-    command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=True
+    )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     for operation in expected_order:

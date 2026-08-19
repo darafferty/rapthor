@@ -27,14 +27,14 @@ Rapthor can be run from the command line as follows:
 
 .. code-block:: console
 
-    $ rapthor rapthor.parset
+    $ rapthor3 rapthor.parset
 
 where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
 number of options are available and are described below:
 
 .. code-block:: console
 
-    Usage: rapthor parset
+    Usage: rapthor3 parset
 
     Options:
       --version             show program's version number and exit
@@ -104,7 +104,7 @@ export ``DASK_SCHEDULER``:
 .. code-block:: console
 
     $ export DASK_SCHEDULER=tcp://127.0.0.1:8786
-    $ rapthor input.parset
+    $ rapthor3 input.parset
 
 
 DP3 calibration and prediction subprocesses remove the inherited

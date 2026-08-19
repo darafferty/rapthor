@@ -20,5 +20,5 @@ def test_rapthor_help(help_option):
         check=False,
     )
     assert result.returncode == 0
-    assert "Usage: rapthor <parset>" in result.stdout
+    assert "Usage: rapthor3 <parset>" in result.stdout
     assert "Options:" in result.stdout
