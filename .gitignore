@@ -4,11 +4,14 @@
 rapthor/_version.py
 test/resources/
 tests/resources/test.ms
+tests/resources/test_integration.ms
 tests/test.ms_di.ms
 runs/
 examples/generated/
 test.ms_di.ms/
 ci/i/
+rpp-tests/
+benchmark-tests/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

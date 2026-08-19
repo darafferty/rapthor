@@ -69,7 +69,7 @@ test =  [
     "pytest-socket",
     "pandas"
 ]
-dev = ["ruff", {include-group = "test"} ]
+dev = ["ruff", "line_profiler", {include-group = "test"} ]
 
 
 [tool.pytest.ini_options]

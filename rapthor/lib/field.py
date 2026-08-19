@@ -10,6 +10,7 @@ from collections import namedtuple
 from typing import Dict, List
 
 import astropy.units as u
+import line_profiler
 import lsmtool
 import lsmtool.skymodel
 import matplotlib
@@ -502,6 +503,7 @@ class Field(object):
         else:
             return None
 
+    @line_profiler.profile
     def make_skymodels(
         self,
         skymodel_true_sky,
@@ -942,6 +944,7 @@ class Field(object):
         # Save the final target flux
         self.target_flux = target_flux
 
+    @line_profiler.profile
     def update_skymodels(
         self,
         index,

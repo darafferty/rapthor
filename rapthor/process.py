@@ -5,6 +5,7 @@ Module that performs the processing
 import logging
 import os
 
+import line_profiler
 import numpy as np
 
 from rapthor import _logging
@@ -32,6 +33,7 @@ def check_preflight_calibration_memory(field, strategy_steps):
         )
 
 
+@line_profiler.profile
 def run(parset_file, logging_level="info"):
     """
     Processes a dataset using direction-dependent calibration and imaging
@@ -49,6 +51,8 @@ def run(parset_file, logging_level="info"):
     # Set up logger
     log.info("Setting log level to %s", logging_level.upper())
     _logging.set_level(logging_level)
+    is_profiling = os.environ.get("LINE_PROFILE")
+    log.info(f"Profiling = {is_profiling}")
 
     # Initialize field object and do concatenation if needed
     field = Field(parset)
@@ -169,6 +173,7 @@ def run(parset_file, logging_level="info"):
     log.info("Rapthor has finished :)")
 
 
+@line_profiler.profile
 def run_steps(field, steps, final=False):
     """
     Runs the steps in a reduction
