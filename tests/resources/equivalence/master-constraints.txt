@@ -1,0 +1,2 @@
+# The legacy master container builds compiled astronomy extensions for NumPy 1.
+numpy<2

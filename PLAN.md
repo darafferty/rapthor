@@ -1,6 +1,6 @@
 # Rapthor Switch-Readiness Plan
 
-Status snapshot: 2026-08-14.
+Status snapshot: 2026-08-20.
 
 ## Goal
 
@@ -42,9 +42,13 @@ and known limitations must all be visible to reviewers.
   IERS/WSRT measures URL, robust RMS diagnostics for facets outside an image,
   and advisory/strict DP3 calibration memory checks. Legacy solve toggles and
   retired CWL mechanics were deliberately not reintroduced.
-- The archived science evidence predates the new default imaging frequency BDA.
-  Its explicit scenarios remain valid, but the default imaging path must be
-  refreshed before this latest master sync is considered fully verified.
+- The default frequency-BDA path and the generated-initial-sky-model grouping
+  path are now verified against exact ``master`` commit ``043c15d4``. Three
+  repetitions per branch pass for the unaveraged grouping control, the
+  production imaging-BDA grouping case, and the targeted BDA frequency-limit
+  scenario. Compact reports are retained under
+  ``runs/equivalence-gate-20260820-august-sync/`` and the rerunnable inputs are
+  versioned under ``tests/resources/equivalence/``.
 
 **Performance:** accepted for the current optimisation phase.
 
@@ -125,7 +129,27 @@ external Dask, and MPI WSClean are a separate production-readiness track.
   supplies explicit RMS output paths and now has a regression test proving it.
   The strategy settings from the integration-speed commit `c3fac822` were
   already present, so do not destabilize the branch's established CI split.
-- [ ] **Verify the August 14 master sync.**
+- [x] **Add generated-initial-sky-model equivalence coverage.**
+  Add paired ``initial-skymodel-regroup`` and
+  ``initial-skymodel-bda-regroup`` option-matrix scenarios. Both generate the
+  initial image and sky model, apply the 1 Jy/one-direction grouping contract,
+  and continue into calibration; only the BDA scenario averages the imaging
+  input. Include ``initial_image`` diagnostics in branch reports and compare
+  source identities, patch membership, positions, fluxes, spectral terms, and
+  shape parameters rather than accepting equal source/patch counts alone.
+- [x] **Run and archive the generated-initial-sky-model pair.**
+  Compare the two new scenarios against the exact production `master` ref
+  used by the manual ICAL comparison. If the control passes and the BDA case
+  differs, localize the first divergence across the prepared MS, initial
+  WSClean products, PyBDSF catalog, and grouped sky model. Do not classify the
+  gap as closed until both scenarios pass or the difference has a documented,
+  scientifically reviewed explanation. Both three-repetition gates pass:
+  9/9 cross-branch pairs are repeatability-bounded in the no-imaging-BDA
+  control; the production-BDA case has two strict passes and 7/9
+  repeatability-bounded pairs. Source identity, patch membership, grouped
+  direction, source count, flux, spectral, h5parm, FITS, catalog, and initial
+  image-diagnostic evidence remains visible in the reports.
+- [x] **Verify the August 14 master sync.**
   In the prepared dev container, run the focused cluster, calibration-memory,
   parset/config, pipeline-flow, FITS/facet-diagnostics, skymodel-filter, image,
   and calibration suites. Run the strict OOM preflight integration case added
@@ -133,6 +157,11 @@ external Dask, and MPI WSClean are a separate production-readiness track.
   default imaging path with frequency BDA and archive the targeted science
   comparison against exact `master` commit `043c15d4`. A full gate is only
   required if that targeted comparison exposes unexplained product differences.
+  The focused suites pass (354 ownership-boundary tests, 29 field/facet tests,
+  and 71 equivalence-harness tests). The strict OOM integration case passes and
+  confirms that calibration never starts. The frequency-BDA gate passes all
+  9/9 cross-branch pairs; current median runtime is 125.944 s versus 298.744 s
+  for master in this environment.
 
 - [x] **Port the August 6 master build fix.**
   Port `488f5c00` consistently to all current-branch container builds. This

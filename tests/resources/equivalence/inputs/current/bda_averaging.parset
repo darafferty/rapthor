@@ -46,6 +46,7 @@ idg_mode = cpu
 reweight = False
 average_visibilities = True
 bda_timebase = 20000.0
+bda_frequencybase = 20000.0
 save_image_cube = False
 image_cube_stokes_list = [I]
 make_quv_images = False

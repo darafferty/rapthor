@@ -253,6 +253,111 @@ def test_ds9_region_equivalence_catches_label_changes(tmp_path):
     assert result.failures == ["DS9 region labels differ for facets.reg"]
 
 
+def test_skymodel_equivalence_compares_values_not_text_formatting(tmp_path):
+    reference = """
+    FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', LogarithmicSI, ReferenceFrequency='150000000.0', MajorAxis, MinorAxis, Orientation
+
+     , , Patch_A, 01:00:00.000, 30.00.00.000
+    source_a, POINT, Patch_A, 01:00:00.000, 30.00.00.000, 1.0, [-0.8, 0.1], false, 150000000.0, 0, 0, 0
+    """
+    current = """
+    FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', LogarithmicSI, ReferenceFrequency='150000000.0', MajorAxis, MinorAxis, Orientation
+     , , Patch_A, 1:00:00.000, 30:00:00.000
+    source_a, point, Patch_A, 1:00:00.000, 30:00:00.000, 1.0005, [-0.8,0.1], FALSE, 150000000.0, 0.0, 0.0, 0.0
+    """
+
+    result = _compare_text_product(
+        load_equivalence_script(),
+        tmp_path,
+        reference,
+        current,
+        filename="initial.apparent_sky.txt",
+    )
+
+    assert result.failures == []
+    assert result.product_statistics["text"] == [
+        {
+            "product": "initial.apparent_sky.txt",
+            "kind": "skymodel",
+            "reference_sources": 1,
+            "current_sources": 1,
+            "reference_patches": 1,
+            "current_patches": 1,
+            "reference_total_flux_jy": 1.0,
+            "current_total_flux_jy": 1.0005,
+            "max_abs_flux_delta_jy": pytest.approx(0.0005),
+        }
+    ]
+
+
+def test_skymodel_equivalence_catches_flux_change_with_matching_counts(tmp_path):
+    reference = """
+    FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', LogarithmicSI, ReferenceFrequency='150000000.0', MajorAxis, MinorAxis, Orientation
+     , , Patch_A, 01:00:00.000, 30.00.00.000
+    source_a, POINT, Patch_A, 01:00:00.000, 30.00.00.000, 1.0, [-0.8], false, 150000000.0, 0, 0, 0
+    """
+    current = reference.replace(", 1.0, [-0.8]", ", 0.8, [-0.8]")
+
+    result = _compare_text_product(
+        load_equivalence_script(),
+        tmp_path,
+        reference,
+        current,
+        filename="initial.apparent_sky.txt",
+    )
+
+    assert result.failures == [
+        "sky-model source field differs for initial.apparent_sky.txt:source_a:flux_jy"
+    ]
+
+
+def test_skymodel_equivalence_catches_source_and_patch_changes(tmp_path):
+    reference = """
+    FORMAT = Name, Type, Patch, Ra, Dec, I
+     , , Patch_A, 01:00:00.000, 30.00.00.000
+    source_a, POINT, Patch_A, 01:00:00.000, 30.00.00.000, 1.0
+    """
+    current = """
+    FORMAT = Name, Type, Patch, Ra, Dec, I
+     , , Patch_B, 01:00:00.000, 30.00.00.000
+    source_b, POINT, Patch_B, 01:00:00.000, 30.00.00.000, 1.0
+    """
+
+    result = _compare_text_product(
+        load_equivalence_script(),
+        tmp_path,
+        reference,
+        current,
+        filename="calibration_skymodel.txt",
+    )
+
+    assert result.failures == [
+        "sky-model sources differ for calibration_skymodel.txt",
+        "sky-model patches differ for calibration_skymodel.txt",
+    ]
+
+
+def test_skymodel_equivalence_uses_declared_compact_column_layout(tmp_path):
+    reference = """
+    FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency=150000000.0
+    source_a, POINT, 01:00:00.000, 30.00.00.000, 1.0
+    """
+    current = reference.replace(", 1.0", ", 0.8")
+
+    result = _compare_text_product(
+        load_equivalence_script(),
+        tmp_path,
+        reference,
+        current,
+        filename="initial_skymodel.txt",
+    )
+
+    assert result.failures == [
+        "sky-model source field differs for initial_skymodel.txt:source_a:flux_jy"
+    ]
+    assert result.product_statistics["text"][0]["reference_patches"] == 0
+
+
 def _write_output_record(root, operation, data):
     output_dir = root / "pipelines" / operation
     output_dir.mkdir(parents=True)

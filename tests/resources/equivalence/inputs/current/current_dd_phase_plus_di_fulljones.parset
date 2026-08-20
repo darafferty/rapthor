@@ -17,6 +17,8 @@ facet_layout = None
 dde_mode = faceting
 
 [calibration]
+bda_timebase = 0.0
+bda_frequencybase = 0.0
 fast_freqstep_hz = 48828.125
 medium_freqstep_hz = 97656.25
 slow_freqstep_hz = 195312.5
@@ -39,6 +41,8 @@ grid_nsectors_ra = 1
 idg_mode = cpu
 reweight = False
 average_visibilities = False
+bda_timebase = 0.0
+bda_frequencybase = 0.0
 save_image_cube = False
 image_cube_stokes_list = [I]
 make_quv_images = False

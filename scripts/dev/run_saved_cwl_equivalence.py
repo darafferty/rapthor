@@ -894,18 +894,216 @@ def _compare_h5(
             )
 
 
-def _skymodel_summary(path: Path) -> dict[str, Any]:
-    lines = [
-        line.strip()
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
+def _split_skymodel_fields(line: str) -> list[str]:
+    """Split an LSMTool row without splitting spectral-index lists."""
+    fields = []
+    field_chars = []
+    bracket_depth = 0
+    quote = None
+    for character in line:
+        if quote is not None:
+            field_chars.append(character)
+            if character == quote:
+                quote = None
+            continue
+        if character in {"'", '"'}:
+            quote = character
+            field_chars.append(character)
+        elif character == "[":
+            bracket_depth += 1
+            field_chars.append(character)
+        elif character == "]":
+            bracket_depth = max(0, bracket_depth - 1)
+            field_chars.append(character)
+        elif character == "," and bracket_depth == 0:
+            fields.append("".join(field_chars).strip())
+            field_chars = []
+        else:
+            field_chars.append(character)
+    fields.append("".join(field_chars).strip())
+    return fields
+
+
+def _sexagesimal_degrees(value: str, *, hours: bool) -> float:
+    """Convert LSMTool colon/dot sexagesimal coordinates to degrees."""
+    value = value.strip()
+    if ":" in value:
+        separator = ":"
+    elif value.count(".") >= 2:
+        separator = "."
+    else:
+        return float(value)
+    first, second, third = value.split(separator, maxsplit=2)
+    sign = -1.0 if first.startswith("-") else 1.0
+    leading = abs(float(first))
+    degrees = leading + float(second) / 60.0 + float(third) / 3600.0
+    if hours:
+        degrees *= 15.0
+    return sign * degrees
+
+
+def _skymodel_spectral_terms(value: str) -> tuple[float, ...]:
+    parsed = ast.literal_eval(value or "[]")
+    if isinstance(parsed, (int, float)):
+        return (float(parsed),)
+    return tuple(float(item) for item in parsed)
+
+
+def _skymodel_float(value: str) -> float:
+    if not value:
+        return 0.0
+    return float(value)
+
+
+def _skymodel_format(format_line: str) -> tuple[list[str], dict[str, str]]:
+    columns = []
+    defaults = {}
+    for field_spec in _split_skymodel_fields(format_line.partition("=")[2]):
+        name, separator, default = field_spec.partition("=")
+        normalized_name = name.strip().lower()
+        columns.append(normalized_name)
+        if separator:
+            defaults[normalized_name] = default.strip().strip("'\"")
+    return columns, defaults
+
+
+def _skymodel_row(
+    fields: list[str], columns: list[str], defaults: dict[str, str]
+) -> dict[str, str]:
+    row = dict(defaults)
+    for index, column in enumerate(columns):
+        if index < len(fields) and fields[index]:
+            row[column] = fields[index]
+    return row
+
+
+def _skymodel_semantics(path: Path) -> dict[str, dict[str, Any]]:
+    """Parse source and patch values that define an LSMTool sky model."""
+    sources = {}
+    patches = {}
+    columns = []
+    defaults = {}
+    for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.upper().startswith("FORMAT"):
+            columns, defaults = _skymodel_format(raw_line)
+            continue
+        if not columns:
+            raise ValueError(f"sky model has no FORMAT declaration: {path}")
+        fields = _split_skymodel_fields(raw_line)
+        row = _skymodel_row(fields, columns, defaults)
+        name = row.get("name", "")
+        source_type = row.get("type", "")
+        patch = row.get("patch", "")
+        position = (
+            _sexagesimal_degrees(row["ra"], hours=True),
+            _sexagesimal_degrees(row["dec"], hours=False),
+        )
+        if not name:
+            if patch:
+                patches[patch] = position
+            continue
+        sources[name] = {
+            "type": source_type.upper(),
+            "patch": patch,
+            "position_deg": position,
+            "flux_jy": _skymodel_float(row.get("i", "")),
+            "spectral_index": _skymodel_spectral_terms(row.get("spectralindex", "[]")),
+            "logarithmic_si": row.get("logarithmicsi", "").strip().lower(),
+            "reference_frequency_hz": _skymodel_float(row.get("referencefrequency", "")),
+            "major_axis_arcsec": _skymodel_float(row.get("majoraxis", "")),
+            "minor_axis_arcsec": _skymodel_float(row.get("minoraxis", "")),
+            "orientation_deg": _skymodel_float(row.get("orientation", "")),
+        }
+    return {"sources": sources, "patches": patches}
+
+
+def _skymodel_values_close(left: Any, right: Any, *, atol: float, rtol: float) -> bool:
+    left_array = np.asarray(left, dtype=float)
+    right_array = np.asarray(right, dtype=float)
+    return left_array.shape == right_array.shape and bool(
+        np.allclose(left_array, right_array, atol=atol, rtol=rtol, equal_nan=True)
+    )
+
+
+def _compare_skymodel(
+    reference: Path,
+    current: Path,
+    result: ComparisonResult,
+    *,
+    atol: float,
+    rtol: float,
+) -> None:
+    reference_model = _skymodel_semantics(reference)
+    current_model = _skymodel_semantics(current)
+    reference_sources = reference_model["sources"]
+    current_sources = current_model["sources"]
+    reference_patches = reference_model["patches"]
+    current_patches = current_model["patches"]
+    common_sources = sorted(reference_sources.keys() & current_sources.keys())
+    flux_deltas = [
+        abs(reference_sources[name]["flux_jy"] - current_sources[name]["flux_jy"])
+        for name in common_sources
     ]
-    patches = {
-        parts[2].strip()
-        for line in lines
-        if len(parts := line.split(",")) >= 3 and parts[2].strip()
-    }
-    return {"lines": len(lines), "patches": len(patches)}
+    result.product_statistics.setdefault("text", []).append(
+        {
+            "product": current.name,
+            "kind": "skymodel",
+            "reference_sources": len(reference_sources),
+            "current_sources": len(current_sources),
+            "reference_patches": len(reference_patches),
+            "current_patches": len(current_patches),
+            "reference_total_flux_jy": sum(
+                source["flux_jy"] for source in reference_sources.values()
+            ),
+            "current_total_flux_jy": sum(source["flux_jy"] for source in current_sources.values()),
+            "max_abs_flux_delta_jy": max(flux_deltas, default=0.0),
+        }
+    )
+
+    if reference_sources.keys() != current_sources.keys():
+        result.failures.append(f"sky-model sources differ for {current.name}")
+    if reference_patches.keys() != current_patches.keys():
+        result.failures.append(f"sky-model patches differ for {current.name}")
+
+    numeric_fields = (
+        "position_deg",
+        "flux_jy",
+        "spectral_index",
+        "reference_frequency_hz",
+        "major_axis_arcsec",
+        "minor_axis_arcsec",
+        "orientation_deg",
+    )
+    for name in common_sources:
+        reference_source = reference_sources[name]
+        current_source = current_sources[name]
+        for field_name in ("type", "patch", "logarithmic_si"):
+            if reference_source[field_name] != current_source[field_name]:
+                result.failures.append(
+                    f"sky-model source field differs for {current.name}:{name}:{field_name}"
+                )
+        for field_name in numeric_fields:
+            if not _skymodel_values_close(
+                reference_source[field_name],
+                current_source[field_name],
+                atol=atol,
+                rtol=rtol,
+            ):
+                result.failures.append(
+                    f"sky-model source field differs for {current.name}:{name}:{field_name}"
+                )
+
+    for patch in sorted(reference_patches.keys() & current_patches.keys()):
+        if not _skymodel_values_close(
+            reference_patches[patch],
+            current_patches[patch],
+            atol=atol,
+            rtol=rtol,
+        ):
+            result.failures.append(f"sky-model patch position differs for {current.name}:{patch}")
 
 
 def _beam_table(path: Path) -> np.ndarray:
@@ -1053,8 +1251,7 @@ def _compare_text_product(
         _compare_ds9_region(reference, current, result, atol=atol, rtol=rtol)
         return
     if reference.suffix == ".txt" and ("sky" in reference.name or "model" in reference.name):
-        if _skymodel_summary(reference) != _skymodel_summary(current):
-            result.failures.append(f"sky-model summary differs for {current.name}")
+        _compare_skymodel(reference, current, result, atol=atol, rtol=rtol)
     elif reference.read_text(encoding="utf-8", errors="replace") != current.read_text(
         encoding="utf-8", errors="replace"
     ):

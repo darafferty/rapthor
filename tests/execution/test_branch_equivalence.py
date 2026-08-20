@@ -251,6 +251,8 @@ def test_setup_base_python_environment_creates_venv_and_installs_checkout(tmp_pa
         "revision": "abc123",
         "install_spec": ".",
         "system_site_packages": False,
+        "pip_constraint": None,
+        "pip_constraint_sha256": None,
     }
     assert any(call[0][:3] == [sys.executable, "-m", "venv"] for call in calls)
     assert any(call[0][1:5] == ["-m", "pip", "install", "-e"] for call in calls)
@@ -298,6 +300,62 @@ def test_setup_base_python_environment_can_use_system_site_packages(tmp_path, mo
     assert json.loads((venv / ".rapthor-branch-equivalence.json").read_text())[
         "system_site_packages"
     ]
+
+
+def test_setup_base_python_environment_applies_pip_constraint(tmp_path, monkeypatch):
+    module = load_branch_equivalence_script()
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    venv = checkout / ".venv"
+    constraint = tmp_path / "constraints.txt"
+    constraint.write_text("numpy<2\n", encoding="utf-8")
+    calls = []
+
+    class Completed:
+        stdout = ""
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            completed = Completed()
+            completed.stdout = "abc123\n"
+            return completed
+        if command[:3] == [sys.executable, "-m", "venv"]:
+            bindir = module._venv_bin_dir(venv)
+            bindir.mkdir(parents=True)
+            module._venv_python(venv).write_text("", encoding="utf-8")
+            return Completed()
+        if command[1:4] == ["-m", "pip", "install"]:
+            module._venv_rapthor(venv).write_text("", encoding="utf-8")
+            return Completed()
+        return Completed()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    module._setup_base_python_environment(
+        repo_root=checkout,
+        venv_dir=venv,
+        install_spec=".",
+        pip_constraint=constraint,
+    )
+
+    install_command = next(call[0] for call in calls if call[0][1:4] == ["-m", "pip", "install"])
+    assert install_command == [
+        str(module._venv_python(venv)),
+        "-m",
+        "pip",
+        "install",
+        "--constraint",
+        str(constraint),
+        "-e",
+        ".",
+    ]
+    marker = json.loads((venv / ".rapthor-branch-equivalence.json").read_text())
+    assert marker["pip_constraint"] == str(constraint)
+    assert (
+        marker["pip_constraint_sha256"]
+        == module.hashlib.sha256(constraint.read_bytes()).hexdigest()
+    )
 
 
 def test_setup_base_python_environment_falls_back_to_virtualenv(tmp_path, monkeypatch):
@@ -743,6 +801,20 @@ def test_compare_branch_outputs_records_image_diagnostics(tmp_path):
     } in diagnostics
 
 
+def test_diagnostic_files_include_generated_initial_skymodel_image(tmp_path):
+    module = load_branch_equivalence_script()
+    plots_dir = tmp_path / "plots"
+    for operation in ("initial_image", "image_1"):
+        diagnostics_dir = plots_dir / operation
+        diagnostics_dir.mkdir(parents=True)
+        (diagnostics_dir / "field.image_diagnostics.json").write_text("{}", encoding="utf-8")
+
+    assert set(module._diagnostic_files(tmp_path)) == {
+        "initial_image/field.image_diagnostics.json",
+        "image_1/field.image_diagnostics.json",
+    }
+
+
 def test_classify_branch_differences_labels_known_residual_families(tmp_path):
     module = load_branch_equivalence_script()
     result = module.saved_equivalence.ComparisonResult("synthetic", tmp_path / "run")
@@ -1079,9 +1151,53 @@ def test_repeatability_gate_fails_unbounded_cross_branch_pair(tmp_path):
             "metric": "max_abs_delta",
             "value": 0.3,
             "same_branch_envelope": 0.1,
+            "product_tolerance_floor": None,
             "allowed_with_margin": 0.10500000000000001,
         }
     ]
+
+
+def test_repeatability_gate_applies_product_specific_numeric_floors(tmp_path):
+    module = load_branch_equivalence_script()
+    runs_by_side = {
+        "base": {
+            1: _prepared_run(module, "base", "master", tmp_path, 1),
+            2: _prepared_run(module, "base", "master", tmp_path, 2),
+        },
+        "current": {
+            1: _prepared_run(module, "current", "current", tmp_path, 1),
+            2: _prepared_run(module, "current", "current", tmp_path, 2),
+        },
+    }
+    runtime_summary = module._runtime_summary(
+        {side: list(runs.values()) for side, runs in runs_by_side.items()}
+    )
+    pair_summaries = [
+        {
+            "pair_id": "base-rep-01_vs_base-rep-02",
+            "group": "base-base",
+            "passed": False,
+            "p99_abs_delta": 1e-7,
+            "max_abs_diagnostic_relative_delta": 1e-3,
+        },
+        {
+            "pair_id": "base-rep-01_vs_current-rep-01",
+            "group": "base-current",
+            "passed": False,
+            "p99_abs_delta": 1.2e-7,
+            "max_abs_diagnostic_relative_delta": 2.5e-3,
+        },
+    ]
+
+    decision = module._repeatability_gate_decision(
+        runs_by_side=runs_by_side,
+        runtime_summary=runtime_summary,
+        pair_summaries=pair_summaries,
+    )
+
+    pair_status = decision["pair_statuses"]["base-rep-01_vs_current-rep-01"]
+    assert pair_status["status"] == "repeatability-bounded"
+    assert pair_status["blocking_metrics"] == []
 
 
 def test_repeatability_gate_fails_run_errors_before_product_decision(tmp_path):

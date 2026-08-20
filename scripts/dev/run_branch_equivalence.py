@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import configparser
+import hashlib
 import importlib.util
 import json
 import math
@@ -67,6 +68,14 @@ SMALL_IMAGE_RESIDUAL_RMS_RATIO_LIMIT = 1e-3
 SPARSE_MODEL_IMAGE_P99_LIMIT = 1e-12
 H5_NUMERIC_MAX_ABS_REPEATABILITY_LIMIT = 1e-5
 REPEATABILITY_ENVELOPE_MARGIN = 1.05
+REPEATABILITY_METRIC_FLOORS = {
+    # Float32 FITS products can differ by one or two ULPs even when their
+    # scientific residual statistics are otherwise indistinguishable.
+    "p99_abs_delta": 2e-7,
+    # RMS-derived diagnostics amplify tiny image-pixel variation. Keep their
+    # bound explicit and separate from the underlying FITS comparisons.
+    "max_abs_diagnostic_relative_delta": 5e-3,
+}
 REPEATABILITY_METRIC_KEYS = (
     "max_abs_delta",
     "p99_abs_delta",
@@ -545,12 +554,17 @@ def _base_env_marker_payload(
     install_spec: str,
     *,
     system_site_packages: bool,
-) -> dict[str, str | bool]:
+    pip_constraint: Path | None,
+) -> dict[str, str | bool | None]:
     return {
         "checkout": str(repo_root.resolve()),
         "revision": _git_revision(repo_root),
         "install_spec": install_spec,
         "system_site_packages": system_site_packages,
+        "pip_constraint": str(pip_constraint) if pip_constraint else None,
+        "pip_constraint_sha256": (
+            hashlib.sha256(pip_constraint.read_bytes()).hexdigest() if pip_constraint else None
+        ),
     }
 
 
@@ -599,6 +613,7 @@ def _setup_base_python_environment(
     venv_dir: Path,
     install_spec: str,
     system_site_packages: bool = False,
+    pip_constraint: Path | None = None,
     reinstall: bool = False,
 ) -> Path:
     """Create or refresh a base-branch venv and return its Rapthor executable."""
@@ -617,6 +632,7 @@ def _setup_base_python_environment(
         repo_root,
         install_spec,
         system_site_packages=system_site_packages,
+        pip_constraint=pip_constraint,
     )
     installed_marker = None
     if marker_path.is_file():
@@ -626,8 +642,12 @@ def _setup_base_python_environment(
             installed_marker = None
 
     if reinstall or installed_marker != desired_marker:
+        install_command = [str(python), "-m", "pip", "install"]
+        if pip_constraint is not None:
+            install_command.extend(["--constraint", str(pip_constraint)])
+        install_command.extend(["-e", install_spec])
         subprocess.run(
-            [str(python), "-m", "pip", "install", "-e", install_spec],
+            install_command,
             cwd=repo_root,
             check=True,
         )
@@ -721,7 +741,7 @@ def _diagnostic_files(work_dir: Path) -> dict[str, Path]:
         return {}
     return {
         path.relative_to(plots_dir).as_posix(): path
-        for path in sorted(plots_dir.glob("image_*/*.image_diagnostics.json"))
+        for path in sorted(plots_dir.glob("*/*.image_diagnostics.json"))
     }
 
 
@@ -1568,12 +1588,24 @@ def _repeatability_envelopes(pair_summaries: Sequence[dict[str, Any]]) -> dict[s
     return envelopes
 
 
-def _metric_within_envelope(value: float | None, envelope: float | None) -> bool:
+def _metric_allowed_value(key: str, envelope: float | None) -> float | None:
+    floor = REPEATABILITY_METRIC_FLOORS.get(key)
+    if envelope is None:
+        return floor
+    repeatability_bound = abs(float(envelope)) * REPEATABILITY_ENVELOPE_MARGIN
+    return max(repeatability_bound, floor) if floor is not None else repeatability_bound
+
+
+def _metric_within_envelope(
+    key: str,
+    value: float | None,
+    envelope: float | None,
+) -> bool:
     if value is None:
         return True
-    if envelope is None:
+    allowed = _metric_allowed_value(key, envelope)
+    if allowed is None:
         return False
-    allowed = abs(float(envelope)) * REPEATABILITY_ENVELOPE_MARGIN
     return abs(float(value)) <= allowed
 
 
@@ -1611,17 +1643,15 @@ def _pair_gate_status(
     for key in REPEATABILITY_METRIC_KEYS:
         value = _finite_pair_metric(row, key)
         envelope = envelopes["metrics"].get(key, {}).get("max")
-        if not _metric_within_envelope(value, envelope):
+        allowed = _metric_allowed_value(key, envelope)
+        if not _metric_within_envelope(key, value, envelope):
             blocking_metrics.append(
                 {
                     "metric": key,
                     "value": value,
                     "same_branch_envelope": envelope,
-                    "allowed_with_margin": (
-                        None
-                        if envelope is None
-                        else abs(float(envelope)) * REPEATABILITY_ENVELOPE_MARGIN
-                    ),
+                    "product_tolerance_floor": REPEATABILITY_METRIC_FLOORS.get(key),
+                    "allowed_with_margin": allowed,
                 }
             )
 
@@ -2764,6 +2794,14 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--base-pip-constraint",
+        type=Path,
+        help=(
+            "Pip constraint file used while installing the base checkout. "
+            "Use this to reproduce dependency pins required by an older base ref."
+        ),
+    )
+    parser.add_argument(
         "--reinstall-base-env",
         action="store_true",
         help="Force reinstalling the base checkout into its virtualenv.",
@@ -3008,6 +3046,15 @@ def run(args: argparse.Namespace) -> int:
             venv_dir=base_venv,
             install_spec=args.base_install_spec,
             system_site_packages=args.base_system_site_packages,
+            pip_constraint=(
+                _resolve_existing_path(
+                    args.base_pip_constraint,
+                    base_dir=repo_root,
+                    description="Base pip constraint",
+                )
+                if args.base_pip_constraint
+                else None
+            ),
             reinstall=args.reinstall_base_env,
         )
         base_runner_command = [str(base_rapthor)]

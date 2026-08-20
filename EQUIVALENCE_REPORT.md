@@ -1,6 +1,6 @@
 # Rapthor Equivalence Decision Report
 
-Latest status scan: 2026-08-04
+Latest status scan: 2026-08-20
 
 Science contract:
 `docs/source/development/science_equivalence_contract.rst`
@@ -39,8 +39,22 @@ individual runs.
 
 | Gate | Latest Result | Evidence | Decision |
 | --- | --- | --- | --- |
-| Science equivalence | **Pass / accepted with classified saved-reference warnings** | `2026-08-04-august-master-sync`, July post-sync evidence, and earlier DD/full-Jones repeatability evidence | Exact August `master`/current comparisons pass strictly for the newly ported BDA frequency limits and normalization. Old-reference normalization and peeling image residuals remain visible as rebuilt external-tool baseline warnings. |
+| Science equivalence | **Pass / accepted with classified repeatability differences** | `runs/equivalence-gate-20260820-august-sync/`, `2026-08-04-august-master-sync`, and earlier DD/full-Jones evidence | Exact `043c15d4` master/current repeatability gates pass for generated initial sky-model grouping with and without imaging BDA, and for the default frequency-BDA path. Earlier old-reference normalization and peeling warnings remain documented external-tool baseline differences. |
 | Performance equivalence | **Pass for phase-only core and DD/full-Jones** | `2026-07-11-phase-only-core-repeatability-gate`, `2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate` | Performance equivalence is established for the current optimisation phase; continue targeted benchmarking for new scalability changes. |
+
+The manual-testing discrepancy around generated initial sky models is now
+covered. Paired unaveraged and production-BDA scenarios generate the initial
+image and catalog, filter and regroup to the requested one-direction/1 Jy
+contract, and continue through calibration. Each branch ran three times. The
+no-imaging-BDA control passes all 9/9 cross-branch comparisons as
+repeatability-bounded; the production-BDA case has two strict passes and seven
+repeatability-bounded comparisons. Source identities, patch membership,
+positions, fluxes, spectral terms, shapes, initial image diagnostics, FITS
+products, catalogs, and h5parm solutions are included in the decision.
+All six unaveraged runs raise the requested 1.00 Jy grouping threshold to
+3.17 Jy on both branches; all six production-BDA runs raise it to 4.41 Jy on
+both branches. The original branch-dependent target-flux symptom is therefore
+not reproduced when configuration and BDA settings are matched explicitly.
 
 ## What Was Being Decided
 
@@ -77,6 +91,9 @@ Confidence: **high for the tested LOFAR HBA self-calibration paths**.
 
 Latest tracked science evidence:
 
+- `runs/equivalence-gate-20260820-august-sync/` (local compact report archive;
+  rerunnable inputs are committed under `tests/resources/equivalence/`)
+
 - `docs/source/development/science_equivalence_runs/2026-08-04-august-master-sync/`
 - `docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-saved-reference/`
 - `docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-option-matrix/`
@@ -88,6 +105,15 @@ Latest tracked science evidence:
 - `docs/source/development/science_equivalence_runs/2026-07-06-saved-reference-final-gate/`
 
 The current branch passes the science gate because:
+
+- the exact `043c15d4` generated-initial-sky-model control and production-BDA
+  scenarios pass across three master and three current repetitions each,
+  closing the target-flux grouping gap found during manual ICAL testing
+- the exact `043c15d4` frequency-BDA scenario passes all 9/9 cross-branch
+  pairs; current median runtime is `125.944 s` versus `298.744 s` for master
+  in the verification container (`-57.842%`)
+- strict OOM preflight integration coverage exits before any calibration
+  operation starts, and the focused August-sync suites pass
 
 - the August active saved-reference matrix has five strict passes; its
   normalization and peeling warnings are limited to three old-reference FITS
@@ -178,7 +204,8 @@ The gates keep strictness where strictness matters:
 - FITS image/table structure, finite masks, and key WCS/header information
 - h5parm solset and soltab names, axes, shapes, finite masks, source tables,
   and non-numeric datasets
-- sky-model source and patch counts
+- sky-model source identity, patch membership, positions, fluxes, spectral
+  terms, shapes, patch positions, and source/patch counts
 - region/facet products where they affect DD solution application
 - source-catalog and image-diagnostic products
 - finalizer-visible output records where downstream behavior depends on them

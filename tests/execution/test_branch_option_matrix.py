@@ -1,6 +1,7 @@
 import configparser
 import importlib.util
 import json
+import runpy
 import sys
 from pathlib import Path
 
@@ -15,6 +16,8 @@ ACTIVE_EQUIVALENCE_SCENARIOS = {
     "prediction-path-wsclean",
     "bda-averaging",
     "bda-frequency-limits",
+    "initial-skymodel-regroup",
+    "initial-skymodel-bda-regroup",
 }
 
 
@@ -60,6 +63,8 @@ def test_branch_command_resolves_matrix_relative_inputs(tmp_path):
             str(tmp_path / "work"),
             "--setup-base-env",
             "--base-system-site-packages",
+            "--base-pip-constraint",
+            str(matrix_dir / "constraints.txt"),
         ]
     )
 
@@ -80,10 +85,13 @@ def test_branch_command_resolves_matrix_relative_inputs(tmp_path):
     )
     assert command[command.index("--repeatability-repetitions") + 1] == "3"
     assert command[command.index("--repeatability-work-root") + 1] == str(
-        tmp_path / "work" / "normalization"
+        tmp_path / "work" / module._scenario_scratch_name("normalization")
     )
     assert "--setup-base-env" in command
     assert "--base-system-site-packages" in command
+    assert command[command.index("--base-pip-constraint") + 1] == str(
+        (matrix_dir / "constraints.txt").resolve()
+    )
 
 
 def test_option_matrix_run_summarizes_reports_and_skips(tmp_path, monkeypatch):
@@ -145,6 +153,40 @@ def test_option_matrix_run_summarizes_reports_and_skips(tmp_path, monkeypatch):
     markdown = (run_root / "option-matrix-summary.md").read_text(encoding="utf-8")
     assert "`normalization` | pass" in markdown
     assert "`screens` | skipped" in markdown
+
+
+def test_repeatability_summary_uses_gate_decision_for_bounded_pairs():
+    module = load_branch_option_matrix_script()
+    report = {
+        "pair_summaries": [
+            {
+                "pair_id": "base-rep-01_vs_base-rep-02",
+                "passed": False,
+                "warning_count": 0,
+            },
+            {
+                "pair_id": "base-rep-01_vs_current-rep-01",
+                "passed": False,
+                "warning_count": 1,
+            },
+        ],
+        "gate_decision": {
+            "overall_status": "pass",
+            "science_product_validity": {"failed_cross_pairs": []},
+            "pair_statuses": {
+                "base-rep-01_vs_base-rep-02": {"status": "repeatability-reference"},
+                "base-rep-01_vs_current-rep-01": {"status": "repeatability-bounded"},
+            },
+        },
+    }
+
+    summary = module._repeatability_report_summary(report)
+
+    assert summary["result"] == "pass"
+    assert summary["pairs"] == 2
+    assert summary["passed_pairs"] == 2
+    assert summary["failure_count"] == 0
+    assert summary["warning_count"] == 1
 
 
 def test_option_matrix_can_run_one_selected_scenario(tmp_path, monkeypatch):
@@ -230,6 +272,147 @@ def test_multi_sector_mosaic_option_matrix_scenario_is_defined():
         assert parser["imaging"]["grid_nsectors_ra"] == "2"
         assert parser["imaging"]["dde_method"] == "single"
         assert parser["imaging"]["skip_corner_sectors"] == "False"
+
+
+def test_initial_skymodel_regrouping_scenarios_cover_bda_interaction():
+    matrix_dir = OPTION_MATRIX_PATH.parent
+    matrix = json.loads(OPTION_MATRIX_PATH.read_text(encoding="utf-8"))
+    scenarios = {scenario["id"]: scenario for scenario in matrix["scenarios"]}
+
+    expected_imaging = {
+        "initial-skymodel-regroup": {
+            "average_visibilities": "False",
+            "bda_timebase": "0.0",
+            "bda_frequencybase": "0.0",
+        },
+        "initial-skymodel-bda-regroup": {
+            "average_visibilities": "True",
+            "bda_timebase": "20000.0",
+            "bda_frequencybase": "20000.0",
+        },
+    }
+
+    for scenario_id, imaging_settings in expected_imaging.items():
+        scenario = scenarios[scenario_id]
+        assert scenario["repeatability_repetitions"] == 3
+        for side in ("base", "current"):
+            parset = matrix_dir / scenario[f"{side}_parset"]
+            parser = configparser.ConfigParser(interpolation=None)
+            parser.read(parset)
+
+            assert parser["global"].getboolean("generate_initial_skymodel")
+            assert parser["global"].getboolean("regroup_input_skymodel")
+            assert parser["global"]["input_skymodel"] == "None"
+            assert parser["global"]["apparent_skymodel"] == "None"
+            for key, value in imaging_settings.items():
+                assert parser["imaging"][key] == value
+
+            strategy = runpy.run_path(str(parset.with_name(f"{parset.stem}_strategy.py")))
+            step = strategy["strategy_steps"][0]
+            assert step["target_flux"] == 1.0
+            assert step["max_directions"] == 1
+            assert step["regroup_model"] is True
+            assert step["do_calibrate"] is True
+
+            if side == "base":
+                assert step["do_fulljones_solve"] is False
+                assert step["do_slowgain_solve"] is False
+            else:
+                assert step["calibration_strategy"] == {
+                    "di": [],
+                    "dd": ["fast_phase", "medium_phase"],
+                }
+
+
+def test_active_equivalence_scenarios_pin_matching_bda_settings():
+    matrix_dir = OPTION_MATRIX_PATH.parent
+    matrix = json.loads(OPTION_MATRIX_PATH.read_text(encoding="utf-8"))
+    no_bda = ("False", "0.0", "0.0", "0.0", "0.0")
+    production_bda = ("True", "20000.0", "20000.0", "20000.0", "20000.0")
+    expected_settings = {
+        "phase-only-core": no_bda,
+        "dd-phase-plus-di-fulljones": no_bda,
+        "normalization-rich-demo": no_bda,
+        "prediction-path-image-based": no_bda,
+        "prediction-path-wsclean": no_bda,
+        "bda-averaging": production_bda,
+        "bda-frequency-limits": production_bda,
+        "initial-skymodel-regroup": (
+            "False",
+            "0.0",
+            "0.0",
+            "20000.0",
+            "20000.0",
+        ),
+        "initial-skymodel-bda-regroup": production_bda,
+    }
+    assert set(expected_settings) == ACTIVE_EQUIVALENCE_SCENARIOS
+
+    for scenario in matrix["scenarios"]:
+        if scenario.get("skip_reason"):
+            continue
+        scenario_id = scenario["id"]
+        paired_settings = []
+        for side in ("base", "current"):
+            parset = matrix_dir / scenario[f"{side}_parset"]
+            parser = configparser.ConfigParser(interpolation=None)
+            parser.read(parset)
+            settings = (
+                parser["imaging"]["average_visibilities"],
+                parser["imaging"]["bda_timebase"],
+                parser["imaging"]["bda_frequencybase"],
+                parser["calibration"]["bda_timebase"],
+                parser["calibration"]["bda_frequencybase"],
+            )
+            assert settings == expected_settings[scenario_id]
+            paired_settings.append(settings)
+
+        assert paired_settings[0] == paired_settings[1]
+
+
+def test_scenario_scratch_names_are_short_stable_and_distinct():
+    module = load_branch_option_matrix_script()
+
+    phase_name = module._scenario_scratch_name("phase-only-core")
+    mixed_name = module._scenario_scratch_name("dd-phase-plus-di-fulljones")
+
+    assert phase_name == module._scenario_scratch_name("phase-only-core")
+    assert phase_name != mixed_name
+    assert phase_name.startswith("eq-")
+    assert len(phase_name) == 11
+
+
+def test_branch_command_uses_short_unique_default_repeatability_work_root(tmp_path, monkeypatch):
+    module = load_branch_option_matrix_script()
+    matrix_dir = tmp_path / "matrix"
+    matrix_dir.mkdir()
+    for name in ("base.parset", "current.parset"):
+        (matrix_dir / name).write_text("[global]\n", encoding="utf-8")
+    monkeypatch.setattr(module.tempfile, "mkdtemp", lambda *, prefix: f"/tmp/{prefix}test")
+    args = module.parse_args(
+        [
+            "--matrix",
+            str(matrix_dir / "option-matrix.json"),
+            "--run-root",
+            str(tmp_path / "reports"),
+            "--repeatability-repetitions",
+            "3",
+        ]
+    )
+
+    command = module._branch_command(
+        scenario={
+            "id": "frequency-bda-with-a-descriptive-report-name",
+            "base_parset": "base.parset",
+            "current_parset": "current.parset",
+        },
+        scenario_id="frequency-bda-with-a-descriptive-report-name",
+        matrix_dir=matrix_dir,
+        scenario_run_root=tmp_path / "reports" / "scenario",
+        args=args,
+    )
+
+    assert command[command.index("--repeatability-work-root") + 1] == "/tmp/req-test"
 
 
 def test_active_equivalence_scenarios_keep_rerunnable_inputs():

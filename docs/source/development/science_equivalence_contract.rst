@@ -25,7 +25,8 @@ or inspect:
 * finalizer-visible output records and product locations
 * FITS images, cubes, mosaics, beams, and tables
 * h5parm solution files, solsets, soltabs, axes, directions, and values
-* sky models, patch/source counts, and text products
+* sky models, source identity, patch membership, source parameters, and text
+  products
 * region files and facet geometry products
 * source catalogs and image diagnostics
 * command records and compact logs when they explain product differences
@@ -90,7 +91,8 @@ specific tolerance:
   structure
 * h5parm solset/soltab names, axes, shapes, directions/source tables, finite
   masks, and non-numeric datasets
-* sky-model source and patch counts
+* sky-model source identities, patch membership, source types, logarithmic
+  spectral-index conventions, and source/patch counts
 * region-file structure and facet geometry when it affects DD solution
   application
 * output-record shape for products used by finalizers or downstream operations
@@ -109,11 +111,25 @@ decision, for example:
 * relative residual against a robust image scale
 * per-plane statistics for cubes and Stokes products
 * h5parm dataset min/max/finite checks and value deltas
-* source count and key source-parameter deltas
+* source count and source-parameter deltas, including sky position, Stokes-I
+  flux, spectral terms, reference frequency, shape, orientation, and patch
+  positions
 * image-diagnostic deltas such as RMS, peak, and source-count changes
+
+Scenarios that generate their own initial sky model must compare the initial
+image diagnostics as well as the resulting sky model. Matching only final
+source and patch counts is insufficient: grouping thresholds can preserve the
+counts while changing which sources are selected or their measured fluxes.
 
 When a difference is accepted because it is inside the same-branch
 repeatability envelope, the report must say so explicitly.
+
+The repeatability gate also applies two narrow product-class floors where a
+sampled maximum is not a meaningful zero-noise boundary: ``2e-7`` for the p99
+absolute delta of float32 FITS pixels, and ``0.5%`` for RMS-derived image
+diagnostics. These do not relax maximum-pixel, residual-RMS, h5parm, sky-model,
+catalog, source-count, or structural checks. Reports retain the measured value,
+same-branch envelope, and effective bound so the decision remains auditable.
 
 Intentional Branch Differences
 ------------------------------

@@ -10,9 +10,11 @@ easy to repeat without moving comparison logic out of
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Sequence
@@ -104,6 +106,12 @@ def _scenario_repeatability_repetitions(
     return int(repetitions or 1)
 
 
+def _scenario_scratch_name(scenario_id: str) -> str:
+    """Return a short stable name safe for nested CWL/Toil work paths."""
+    digest = hashlib.sha256(scenario_id.encode("utf-8")).hexdigest()[:8]
+    return f"eq-{digest}"
+
+
 def _branch_command(
     *,
     scenario: dict[str, Any],
@@ -139,15 +147,20 @@ def _branch_command(
             work_root = _resolve_matrix_path(scenario_work_root, matrix_dir=matrix_dir)
         elif args.repeatability_work_root:
             work_root = _resolve_matrix_path(args.repeatability_work_root, matrix_dir=Path.cwd())
-            work_root = work_root / scenario_id
+            work_root = work_root / _scenario_scratch_name(scenario_id)
         else:
-            work_root = None
-        if work_root is not None:
-            command.extend(["--repeatability-work-root", str(work_root)])
+            work_root = Path(tempfile.mkdtemp(prefix="req-"))
+        command.extend(["--repeatability-work-root", str(work_root)])
 
     cli_base_dir = Path.cwd()
     _add_optional_path(command, "--base-checkout", args.base_checkout, base_dir=cli_base_dir)
     _add_optional_path(command, "--base-venv", args.base_venv, base_dir=cli_base_dir)
+    _add_optional_path(
+        command,
+        "--base-pip-constraint",
+        args.base_pip_constraint,
+        base_dir=cli_base_dir,
+    )
     _add_optional_path(command, "--current-checkout", args.current_checkout, base_dir=cli_base_dir)
 
     if args.setup_base_env:
@@ -190,13 +203,21 @@ def _repeatability_report_summary(report: dict[str, Any]) -> dict[str, Any]:
             "warning_count": 0,
             "metrics": {},
         }
-    passed_pairs = sum(1 for row in pair_summaries if row.get("passed"))
+    decision = report.get("gate_decision", {})
+    pair_statuses = decision.get("pair_statuses", {})
+    accepted_statuses = {"pass", "repeatability-bounded", "repeatability-reference"}
+    passed_pairs = sum(
+        1
+        for row in pair_summaries
+        if pair_statuses.get(row.get("pair_id"), {}).get("status") in accepted_statuses
+    )
+    failed_cross_pairs = decision.get("science_product_validity", {}).get("failed_cross_pairs", [])
     return {
-        "result": "pass" if passed_pairs == len(pair_summaries) else "fail",
+        "result": decision.get("overall_status", "missing-decision"),
         "report": "repeatability-summary.json",
         "pairs": len(pair_summaries),
         "passed_pairs": passed_pairs,
-        "failure_count": max(row.get("failure_count", 0) for row in pair_summaries),
+        "failure_count": len(failed_cross_pairs),
         "warning_count": max(row.get("warning_count", 0) for row in pair_summaries),
         "metrics": {},
     }
@@ -363,6 +384,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--base-venv", type=Path)
     parser.add_argument("--base-install-spec", default=".")
     parser.add_argument("--base-system-site-packages", action="store_true")
+    parser.add_argument("--base-pip-constraint", type=Path)
     parser.add_argument("--reinstall-base-env", action="store_true")
     parser.add_argument("--current-checkout", type=Path)
     parser.add_argument("--repeatability-repetitions", type=int, default=1)
