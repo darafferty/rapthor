@@ -5,6 +5,8 @@ Definition of the master Operation class
 import json
 import logging
 import os
+import re
+from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -14,6 +16,39 @@ from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, "..", "pipeline", "parsets")))
+
+LOG_ERROR_PARSER = re.compile(
+    r"""(?xs)   # verbose, dot matches newline
+    # log format is [date] [thread] [level] [module] [workflow] message
+    \[(?P<date>[^\]]+)\]\s          # date
+    \[(?P<thread>[^\]]+)\]\s        # thread
+    \[(?P<level>[EC])\]\s           # level match error and critical
+    \[(?P<module>[^\]]+)\]\s        # module 
+    (\[(?P<workflow>[^\]]+)\]\s)?   # workflow
+    (?P<message>.+?)                # message
+    (?:\n(?=\[)|$)                  # end of log record
+    """
+)
+
+
+def extract_log_errors(log_file):
+    """
+    Extracts error messages from a cwl log file.
+
+    Parameters
+    ----------
+    log_file : Path
+        Path to the log file to be parsed.
+
+    Returns
+    -------
+    str
+        Extracted error messages from the log file.
+    """
+    parsed_error = None
+    with log_file.open("r") as log:
+        parsed_error = "\n".join(match[0] for match in re.finditer(LOG_ERROR_PARSER, log.read()))
+    return parsed_error
 
 
 class Operation(object):
@@ -262,17 +297,17 @@ class Operation(object):
         self.log.info("<-- Operation %s started", self.name)
 
         # Run current operation only if it hasn't run already.
-        success = self.is_done()
-        if not success:
-            with Timer(self.log):
-                with create_cwl_runner(self.cwl_runner, self) as runner:
-                    success = runner.run()
-                    if success:
-                        self.outputs = runner.parse_outputs()
-        else:
+        if success := self.is_done():
             self.log.info("Operation %s already done, skipping.", self.name)
             # Reloads outputs
             self.load_outputs()
+        else:
+            with Timer(self.log):
+                with create_cwl_runner(self.cwl_runner, self) as runner:
+                    result = runner.run()
+                    success = result.returncode == 0
+                    if success:
+                        self.outputs = runner.parse_outputs()
 
         # Finalize
         if success:
@@ -280,4 +315,13 @@ class Operation(object):
             self.finalize()
             self.store_outputs()
         else:
-            raise RuntimeError(f"Operation {self.name} failed due to an error")
+            log_folder = Path(self.log_dir)
+            if log_file := next(log_folder.glob("failed*"), None):
+                parsed_error = extract_log_errors(log_file)
+                if parsed_error:
+                    parsed_error = (
+                        " The following exceptions were extracted from the workflow log file"
+                        f"{log_file}:\n\n{parsed_error}"
+                    )
+
+            raise RuntimeError(f"Operation {self.name} failed due to an error.{parsed_error}")

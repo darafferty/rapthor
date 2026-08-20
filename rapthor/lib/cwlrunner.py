@@ -69,7 +69,7 @@ class BaseCWLRunner:
         os.environ.clear()
         os.environ.update(self._environment)
 
-    def execute(self, args: List[str], env: dict) -> bool:
+    def execute(self, args: List[str], env: dict):
         """
         Start the runner in a subprocess.
         Every CWL runner requires two input files:
@@ -83,21 +83,25 @@ class BaseCWLRunner:
           - `stderr` -> `self.operation.pipeline_log_file`
         """
         logger.debug("Executing command: %s", " ".join(args))
+        op = self.operation
         with (
-            open(self.operation.pipeline_outputs_file, "w") as stdout,
-            open(self.operation.pipeline_log_file, "w") as stderr,
+            open(op.pipeline_outputs_file, "w") as stdout,
+            open(op.pipeline_log_file, "w") as stderr,
         ):
-            try:
-                result = subprocess.run(
-                    args=args, env=env, stdout=stdout, stderr=stderr, check=True
+            result = subprocess.run(args=args, env=env, stdout=stdout, stderr=stderr, check=False)
+            logger.debug(str(result))
+            if result.returncode != 0:
+                logger.critical(
+                    "CWL command failed during subprocess call with return code %s:\n    "
+                    "%s"
+                    "\n\nThe following stderr was captured:\n\n    %s",
+                    result.returncode,
+                    " \\\n      ".join(result.args),
+                    result.stderr.read() if result.stderr else "",
                 )
-                logger.debug(str(result))
-                return True
-            except subprocess.CalledProcessError as err:
-                logger.critical(str(err))
-                return False
+            return result
 
-    def run(self) -> bool:
+    def run(self):
         """
         Start the runner in a subprocess.
         Every CWL runner requires two input files:
