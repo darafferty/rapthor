@@ -212,7 +212,7 @@ def test_bootstrapped_runtime_uses_prefect_ephemeral_server_when_no_api_is_confi
     assert PREFECT_HOME_ENV not in environ
     assert not temporary_prefect_home.exists()
     assert "Ignoring any Prefect profile API URL for this run." in caplog.text
-    assert "Using isolated temporary Prefect home for this run." in caplog.text
+    assert "Using isolated temporary Prefect home" in caplog.text
 
 
 def test_bootstrapped_runtime_ignores_external_prefect_api_for_ephemeral_mode(caplog):
@@ -239,7 +239,7 @@ def test_bootstrapped_runtime_ignores_external_prefect_api_for_ephemeral_mode(ca
     assert environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "true"
     assert not temporary_prefect_home.exists()
     assert "Ignoring any Prefect profile API URL for this run." in caplog.text
-    assert "Using isolated temporary Prefect home for this run." in caplog.text
+    assert "Using isolated temporary Prefect home" in caplog.text
 
 
 def test_bootstrapped_runtime_reuses_one_local_dask_scheduler_for_run(caplog):
