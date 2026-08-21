@@ -2018,6 +2018,7 @@ class Field(object):
             # Report not converged, not diverged, and not failed
             return SelfcalState(False, False, False)
 
+    @line_profiler.profile
     def update(self, step_dict, index, final=False):
         """
         Updates parameters, sky models, etc. for current cycle

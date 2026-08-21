@@ -337,7 +337,7 @@ class Sector(object):
         )
         return wsclean_nwavelengths_time
 
-    @line_profiler.line_profile
+    @line_profiler.profile
     def make_skymodel(self, index):
         """
         Makes predict sky model
