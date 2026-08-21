@@ -1,0 +1,358 @@
+/opt/rapthor-venv/lib/python3.12/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.6.0)/charset_normalizer (3.5.1) doesn't match a supported version!
+  warnings.warn(
+Contradicting options passed: Clean flag is set to onSuccess despite the stats flag requiring the jobStore to be intact at the end of the run. Setting clean to 'never'.
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:65:5: object id '../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl#max_threads' previously defined
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:480:5: object id '../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl#solve3_datause' previously defined
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:567:5: object id '../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl#solve3_smoothness_dd_factors' previously defined
+Workflow checker warning:
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1326:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1336:9:   with sink 'inh5parm1' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1326:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1336:9:   with sink 'inh5parm1' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1222:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1338:9:   with sink 'inh5parm2' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1222:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1338:9:   with sink 'inh5parm2' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:701:5:  Source 'combined_h5parms' of type ["null", "string"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1340:9:   with sink 'outh5parm' of type "string"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:708:5:  Source 'solution_combine_mode' of type ["null", "string"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1342:9:   with sink 'mode' of type "string"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:137:5:  Source 'calibrator_patch_names' of type ["null", {"type": "array", "items": "string"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1346:9:   with sink 'calibrator_names' of type {"type": "array", "items": "string"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:151:5:  Source 'calibrator_fluxes' of type ["null", {"type": "array", "items": "float"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1348:9:   with sink 'calibrator_fluxes' of type {"type": "array", "items": "float"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1086:9: Source 'output_h5parm4' of type {"type": "array", "items": ["null", "File"]} may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1267:9:   with sink 'inh5parms' of type {"type": "array", "items": "File"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:638:5:  Source 'collected_solve4_h5parm' of type ["null", "string"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1269:9:   with sink 'outputh5parm' of type "string"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1132:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1141:9:   with sink 'h5parm' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1132:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1141:9:   with sink 'h5parm' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1084:9: Source 'output_h5parm2' of type {"type": "array", "items": ["null", "File"]} may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1125:9:   with sink 'inh5parms' of type {"type": "array", "items": "File"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1132:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1160:9:   with sink 'inh5parm2' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1132:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1160:9:   with sink 'inh5parm2' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:137:5:  Source 'calibrator_patch_names' of type ["null", {"type": "array", "items": "string"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1168:9:   with sink 'calibrator_names' of type {"type": "array", "items": "string"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:151:5:  Source 'calibrator_fluxes' of type ["null", {"type": "array", "items": "float"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1170:9:   with sink 'calibrator_fluxes' of type {"type": "array", "items": "float"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:76:5:   Source 'calibration_skymodel_file' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:793:9:    with sink 'skymodel' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1175:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1365:9:   with sink 'inh5parm1' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1175:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1365:9:   with sink 'inh5parm1' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1195:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1367:9:   with sink 'inh5parm2' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1195:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1367:9:   with sink 'inh5parm2' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:701:5:  Source 'combined_h5parms' of type ["null", "string"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1369:9:   with sink 'outh5parm' of type "string"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:137:5:  Source 'calibrator_patch_names' of type ["null", {"type": "array", "items": "string"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1375:9:   with sink 'calibrator_names' of type {"type": "array", "items": "string"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:151:5:  Source 'calibrator_fluxes' of type ["null", {"type": "array", "items": "float"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1377:9:   with sink 'calibrator_fluxes' of type {"type": "array", "items": "float"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1222:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1248:9:   with sink 'h5parm' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1222:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1248:9:   with sink 'h5parm' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1222:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1232:9:   with sink 'h5parm' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1222:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1232:9:   with sink 'h5parm' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1277:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1285:9:   with sink 'h5parm' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1277:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1285:9:   with sink 'h5parm' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1195:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1206:9:   with sink 'h5parm' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1195:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1206:9:   with sink 'h5parm' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:645:5:  Source 'max_normalization_delta' of type ["null", "float"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1212:9:   with sink 'max_station_delta' of type "float"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:653:5:  Source 'scale_normalization_delta' of type ["null", "string"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1214:9:   with sink 'scale_station_delta' of type "string"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:659:5:  Source 'phase_center_ra' of type ["null", "float"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1216:9:   with sink 'phase_center_ra' of type ["float", "string"]
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:665:5:  Source 'phase_center_dec' of type ["null", "float"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1218:9:   with sink 'phase_center_dec' of type ["float", "string"]
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1175:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1306:9:   with sink 'inh5parm1' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1175:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1306:9:   with sink 'inh5parm1' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1277:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1308:9:   with sink 'inh5parm2' of type "File"
+                                                                              Source is from conditional step and may produce `null`
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1277:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1308:9:   with sink 'inh5parm2' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:694:5:  Source 'combined_solve1_solve2_solve4_h5parm' of type ["null", "string"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1310:9:   with sink 'outh5parm' of type "string"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:137:5:  Source 'calibrator_patch_names' of type ["null", {"type": "array", "items": "string"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1316:9:   with sink 'calibrator_names' of type {"type": "array", "items": "string"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:151:5:  Source 'calibrator_fluxes' of type ["null", {"type": "array", "items": "float"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1318:9:   with sink 'calibrator_fluxes' of type {"type": "array", "items": "float"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:672:5:  Source 'output_solve3_h5parm' of type ["null", {"type": "array", "items": "string"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:975:9:    with sink 'solve3_h5parm' of type {"type": "array", "items": ["null", "string"]}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:686:5:  Source 'output_solve4_h5parm' of type ["null", {"type": "array", "items": "string"}] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1027:9:   with sink 'solve4_h5parm' of type {"type": "array", "items": ["null", "string"]}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:76:5:   Source 'calibration_skymodel_file' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1433:9:   with sink 'skymodel' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1085:9: Source 'output_h5parm3' of type {"type": "array", "items": ["null", "File"]} may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1190:9:   with sink 'inh5parms' of type {"type": "array", "items": "File"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:679:5:  Source 'collected_solve3_h5parm' of type ["null", "string"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1192:9:   with sink 'outputh5parm' of type "string"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:76:5:   Source 'calibration_skymodel_file' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1413:9:   with sink 'skymodel' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:76:5:   Source 'calibration_skymodel_file' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1393:9:   with sink 'skymodel' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1356:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:731:5:    with sink 'combined_solutions' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:720:5:    pickValue is: first_non_null
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1385:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:731:5:    with sink 'combined_solutions' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:720:5:    pickValue is: first_non_null
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1175:9: Source 'combinedh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:731:5:    with sink 'combined_solutions' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:720:5:    pickValue is: first_non_null
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1149:9: Source 'plots' of type {"type": "array", "items": "File"} may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:747:5:    with sink 'medium1_phase_plots' of type {"type": "array", "items": "File"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:744:5:    Source is from conditional step, but pickValue is not used
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1195:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:751:5:    with sink 'slow_gain_solutions' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:748:5:    Source is from conditional step, but pickValue is not used
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1195:9: Source 'outh5parm' of type ["null", "File"] may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:751:5:    with sink 'slow_gain_solutions' of type "File"
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1240:9: Source 'plots' of type {"type": "array", "items": "File"} may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:755:5:    with sink 'slow_phase_plots' of type {"type": "array", "items": "File"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:752:5:    Source is from conditional step, but pickValue is not used
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:1258:9: Source 'plots' of type {"type": "array", "items": "File"} may be incompatible
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:759:5:    with sink 'slow_amp_plots' of type {"type": "array", "items": "File"}
+../tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl:756:5:    Source is from conditional step, but pickValue is not used
+[2026-08-20T08:42:48+0000] [MainThread] [W] [toil.common] Contradicting options passed: Clean flag is set to onSuccess despite the stats flag requiring the jobStore to be intact at the end of the run. Setting clean to 'never'.
+[2026-08-20T08:42:48+0000] [MainThread] [I] [toil.lib.history] Recording workflow creation of bd591e17-c004-4ebe-895a-29bc6287e86a in file:/tmp/ical-ak79q_nl/work/pipelines/calibrate_1/jobstore
+[2026-08-20T08:42:48+0000] [MainThread] [I] [toil.cwl.cwltoil] Importing tool-associated files...
+[2026-08-20T08:42:48+0000] [MainThread] [I] [toil.cwl.cwltoil] Importing input files...
+[2026-08-20T08:42:48+0000] [MainThread] [I] [toil.cwl.cwltoil] Starting workflow
+[2026-08-20T08:42:48+0000] [MainThread] [I] [toil.lib.history] Workflow bd591e17-c004-4ebe-895a-29bc6287e86a is a run of /tmp/ical-ak79q_nl/work/pipelines/calibrate_1/pipeline_parset.cwl
+[2026-08-20T08:42:48+0000] [MainThread] [I] [toil] Running Toil version 9.3.0-b1c1536aaedac21a09dc3b4c094692a929e13b28 on host 124794a7758c.
+[2026-08-20T08:42:48+0000] [MainThread] [I] [toil.realtimeLogger] Starting real-time logging.
+/opt/rapthor-venv/lib/python3.12/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.6.0)/charset_normalizer (3.5.1) doesn't match a supported version!
+  warnings.warn(
+[2026-08-20T08:42:49+0000] [MainThread] [I] [toil.leader] 0 jobs are running, 0 jobs are issued and waiting to run
+[2026-08-20T08:42:49+0000] [MainThread] [I] [toil.leader] Issued job 'CWLJob' pipeline_parset.cwl.adjust_normalize_sources.adjust_h5parm_sources.cwl kind-CWLJob/instance-a3dsb_uw v1 with job batch system ID: 2 and disk: 1.0 Gi, memory: 256.0 Mi, cores: 6, accelerators: [], preemptible: False
+[2026-08-20T08:42:49+0000] [Thread-60 (statsAndLoggingAggregator)] [W] [toil.statsAndLogging] Got message from job at time 08-20-2026 08:42:49: Job 'CWLWorkflow' pipeline_parset.cwl kind-CWLWorkflow/instance-xilkvlnu v2 used 1.00x more CPU than the requested 1 cores. Consider increasing the job's required CPU cores or limiting the number of processes/threads launched.
+/opt/rapthor-venv/lib/python3.12/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.6.0)/charset_normalizer (3.5.1) doesn't match a supported version!
+  warnings.warn(
+/opt/rapthor-venv/lib/python3.12/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.6.0)/charset_normalizer (3.5.1) doesn't match a supported version!
+  warnings.warn(
+[2026-08-20T08:42:50+0000] [MainThread] [I] [toil.leader] Issued job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v1 with job batch system ID: 4 and disk: 1.0 Gi, memory: 256.0 Mi, cores: 6, accelerators: [], preemptible: False
+[2026-08-20T08:42:50+0000] [Thread-60 (statsAndLoggingAggregator)] [W] [toil.statsAndLogging] Got message from job at time 08-20-2026 08:42:50: Job 'CWLScatter' kind-CWLScatter/instance-7nscxx7e v2 used 1.01x more CPU than the requested 1 cores. Consider increasing the job's required CPU cores or limiting the number of processes/threads launched.
+/opt/rapthor-venv/lib/python3.12/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.6.0)/charset_normalizer (3.5.1) doesn't match a supported version!
+  warnings.warn(
+[2026-08-20T08:42:51+0000] [Thread-57 (daddy)] [E] [toil.batchSystems.singleMachine] Got exit code 1 (indicating failure) from job _toil_worker CWLJob file:/tmp/ical-ak79q_nl/work/pipelines/calibrate_1/jobstore kind-CWLJob/instance-zpynapgv.
+[2026-08-20T08:42:51+0000] [MainThread] [W] [toil.leader] Job failed with exit value 1: 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v1
+Exit reason: None
+[2026-08-20T08:42:51+0000] [MainThread] [W] [toil.leader] The job seems to have left a log file, indicating failure: 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v2
+[2026-08-20T08:42:51+0000] [MainThread] [W] [toil.leader] Log from job "kind-CWLJob/instance-zpynapgv" follows:
+=========>
+	[2026-08-20T08:42:50+0000] [MainThread] [I] [toil.worker] ---TOIL WORKER OUTPUT LOG---
+	[2026-08-20T08:42:50+0000] [MainThread] [I] [toil] Running Toil version 9.3.0-b1c1536aaedac21a09dc3b4c094692a929e13b28 on host 124794a7758c.
+	[2026-08-20T08:42:50+0000] [MainThread] [I] [toil.worker] Working on job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v1
+	[2026-08-20T08:42:51+0000] [MainThread] [I] [toil.worker] Loaded body Job('CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v1) from description 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v1
+	[2026-08-20T08:42:51+0000] [MainThread] [W] [toil.fileStores.nonCachingFileStore] Starting job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v1 with less than 10%% of disk space remaining.
+	[2026-08-20T08:42:51+0000] [MainThread] [I] [cwltool] [job pipeline_parset.cwl.0.ddecal_solve.cwl] /tmp/ical-ak79q_nl/scratch/toil-cwl-runner.60_ygqs1$ DP3 \
+	    msout= \
+	    applybeam.type=applybeam \
+	    applybeam.beammode=array_factor \
+	    applybeam.usemodeldata=True \
+	    applybeam.invert=False \
+	    applycal.type=applycal \
+	    applycal.correction=phase000 \
+	    applycal.fastphase.correction=phase000 \
+	    applycal.fastphase.solset=sol000 \
+	    applycal.slowgain.correction=amplitude000 \
+	    applycal.slowgain.solset=sol000 \
+	    applycal.fulljones.correction=fulljones \
+	    applycal.fulljones.solset=sol000 \
+	    applycal.fulljones.soltab=[amplitude000,phase000] \
+	    applycal.normalization.correction=amplitude000 \
+	    applycal.normalization.solset=sol000 \
+	    applycal.normalization.usemodeldata=True \
+	    applycal.normalization.invert=False \
+	    avg.type=bdaaverager \
+	    predict.type=wgridderpredict \
+	    solve1.type=ddecal \
+	    solve1.usebeammodel=True \
+	    solve1.beam_interval=120 \
+	    solve1.beammode=array_factor \
+	    solve1.initialsolutions.missingantennabehavior=unit \
+	    solve1.applycal.normalization.correction=amplitude000 \
+	    solve1.applycal.normalization.solset=sol000 \
+	    solve2.type=ddecal \
+	    solve2.initialsolutions.missingantennabehavior=unit \
+	    solve2.applycal.normalization.correction=amplitude000 \
+	    solve2.applycal.normalization.solset=sol000 \
+	    solve3.type=ddecal \
+	    solve3.initialsolutions.missingantennabehavior=unit \
+	    solve3.applycal.normalization.correction=amplitude000 \
+	    solve3.applycal.normalization.solset=sol000 \
+	    solve4.type=ddecal \
+	    solve4.initialsolutions.missingantennabehavior=unit \
+	    solve4.applycal.normalization.correction=amplitude000 \
+	    solve4.applycal.normalization.solset=sol000 \
+	    msin.datacolumn=DATA \
+	    solve1.directions=[Patch_0,Patch_1,Patch_2,Patch_4] \
+	    avg.frequencybase=20000.0 \
+	    avg.maxinterval=30.0417024 \
+	    avg.minchannels=1 \
+	    msin=/tmp/ical-ak79q_nl/scratch/toil-cwl-runner.c8lop8km/stgb84ecf2f-3823-4069-9255-b1c84b8f6cd0/test_ms_for_normalization.ms \
+	    msin.ntimes=0 \
+	    numthreads=6 \
+	    solve1.onebeamperpatch=False \
+	    solve1.parallelbaselines=False \
+	    solve1.sagecalpredict=False \
+	    'solve1.antennaconstraint=<generator object Field._resolve_antenna_constraints at 0x7b9a7a988040>' \
+	    solve1.correctfreqsmearing=False \
+	    solve1.correcttimesmearing=False \
+	    solve1.datause=single \
+	    solve1.h5parm=fast_phase_0.h5parm \
+	    solve1.initialsolutions.soltab=[phase000] \
+	    solve1.keepmodel=True \
+	    solve1.llssolver=qr \
+	    solve1.maxiter=50 \
+	    solve1.mode=scalarphase \
+	    solve1.nchan=8 \
+	    solve1.propagatesolutions=True \
+	    solve1.smoothness_dd_factors=[0.9176470588235295,0.3333333333333333,0.4588235294117647,1] \
+	    solve1.smoothnessconstraint=18000000.0 \
+	    solve1.smoothnessrefdistance=0.0 \
+	    solve1.smoothnessreffrequency=144000000.0 \
+	    solve1.solint=3 \
+	    solve1.solutions_per_direction=[1,1,1,1] \
+	    solve1.solveralgorithm=directioniterative \
+	    solve1.solverlbfgs.dof=200.0 \
+	    solve1.solverlbfgs.iter=4 \
+	    solve1.solverlbfgs.minibatches=1 \
+	    solve1.stepsigma=2.0 \
+	    solve1.stepsize=0.2 \
+	    solve1.tolerance=0.001 \
+	    solve1.uvlambdamin=150 \
+	    solve2.antennaconstraint=[] \
+	    solve2.datause=single \
+	    solve2.h5parm=medium1_phase_0.h5parm \
+	    solve2.initialsolutions.soltab=[phase000] \
+	    solve2.llssolver=qr \
+	    solve2.maxiter=50 \
+	    solve2.mode=scalarphase \
+	    solve2.nchan=8 \
+	    solve2.propagatesolutions=True \
+	    solve2.reusemodel=[solve1.*] \
+	    solve2.smoothness_dd_factors=[0.9176470588235295,0.3333333333333333,0.4588235294117647,1] \
+	    solve2.smoothnessconstraint=18000000.0 \
+	    solve2.smoothnessrefdistance=0.0 \
+	    solve2.smoothnessreffrequency=144000000.0 \
+	    solve2.solint=12 \
+	    solve2.solutions_per_direction=[1,1,1,1] \
+	    solve2.solveralgorithm=directioniterative \
+	    solve2.solverlbfgs.dof=200.0 \
+	    solve2.solverlbfgs.iter=4 \
+	    solve2.solverlbfgs.minibatches=1 \
+	    solve2.stepsigma=2.0 \
+	    solve2.stepsize=0.2 \
+	    solve2.tolerance=0.001 \
+	    solve2.uvlambdamin=150 \
+	    solve3.antennaconstraint=[] \
+	    solve3.h5parm=unused_solve3_0.h5parm \
+	    solve3.initialsolutions.soltab=[phase000,amplitude000] \
+	    solve3.llssolver=qr \
+	    solve3.maxiter=50 \
+	    solve3.mode=null \
+	    solve3.nchan=8 \
+	    solve3.propagatesolutions=True \
+	    solve3.reusemodel=[solve1.*] \
+	    solve3.smoothnessconstraint=0 \
+	    solve3.solint=60 \
+	    solve3.solveralgorithm=directioniterative \
+	    solve3.solverlbfgs.dof=200.0 \
+	    solve3.solverlbfgs.iter=4 \
+	    solve3.solverlbfgs.minibatches=1 \
+	    solve3.stepsigma=2.0 \
+	    solve3.stepsize=0.2 \
+	    solve3.tolerance=0.001 \
+	    solve3.uvlambdamin=150 \
+	    solve4.antennaconstraint=[] \
+	    solve4.h5parm=unused_solve4_0.h5parm \
+	    solve4.initialsolutions.soltab=[phase000] \
+	    solve4.llssolver=qr \
+	    solve4.maxiter=50 \
+	    solve4.mode=null \
+	    solve4.nchan=8 \
+	    solve4.propagatesolutions=True \
+	    solve4.reusemodel=[solve1.*] \
+	    solve4.smoothnessconstraint=0 \
+	    solve4.smoothnessreffrequency=0 \
+	    solve4.solint=12 \
+	    solve4.solveralgorithm=directioniterative \
+	    solve4.solverlbfgs.dof=200.0 \
+	    solve4.solverlbfgs.iter=4 \
+	    solve4.solverlbfgs.minibatches=1 \
+	    solve4.stepsigma=2.0 \
+	    solve4.stepsize=0.2 \
+	    solve4.tolerance=0.001 \
+	    solve4.uvlambdamin=150 \
+	    solve1.sourcedb=/tmp/ical-ak79q_nl/scratch/toil-cwl-runner.c8lop8km/stga5ac1a5e-50e5-4fa7-9dba-d487efa0731c/calibration_skymodel.txt \
+	    msin.starttime=29Mar2013/13:59:52.907 \
+	    steps=[avg,solve1,solve2,null] \
+	    avg.timebase=20000.0
+	[2026-08-20T08:42:51+0000] [MainThread] [W] [cwltool] [job pipeline_parset.cwl.0.ddecal_solve.cwl] exited with status: 1
+	[2026-08-20T08:42:51+0000] [MainThread] [E] [cwltool] [job pipeline_parset.cwl.0.ddecal_solve.cwl] Job error:
+	("Error collecting output for parameter 'output_h5parm1': rapthor/pipeline/steps/ddecal_solve.cwl:1365:7: Did not find output file with glob pattern: ['fast_phase_0.h5parm'].", {})
+	[2026-08-20T08:42:51+0000] [MainThread] [W] [cwltool] [job pipeline_parset.cwl.0.ddecal_solve.cwl] completed permanentFail
+	[2026-08-20T08:42:51+0000] [MainThread] [E] [toil.cwl.cwltoil] Failed command standard output:
+	
+	std exception detected: Error: antennaconstraint given that should constrain a group of antennas with one antenna in it. This does not make sense (did you forget using two square brackets? [[ ant1, ant2 ]] )
+	
+	[2026-08-20T08:42:51+0000] [MainThread] [C] [toil.worker] Worker crashed with traceback:
+	Traceback (most recent call last):
+	  File "/opt/rapthor-venv/lib/python3.12/site-packages/toil/worker.py", line 591, in workerScript
+	    job._runner(
+	  File "/opt/rapthor-venv/lib/python3.12/site-packages/toil/job.py", line 3376, in _runner
+	    returnValues = self._run(jobGraph=None, fileStore=fileStore)
+	                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	  File "/opt/rapthor-venv/lib/python3.12/site-packages/toil/job.py", line 3254, in _run
+	    return self.run(fileStore)
+	           ^^^^^^^^^^^^^^^^^^^
+	  File "/opt/rapthor-venv/lib/python3.12/site-packages/toil/cwl/cwltoil.py", line 2864, in run
+	    raise cwl_utils.errors.WorkflowException(status)
+	cwl_utils.errors.WorkflowException: permanentFail
+	
+	[2026-08-20T08:42:51+0000] [MainThread] [E] [toil.worker] Exiting the worker because of a failed job on host 124794a7758c
+<=========
+[2026-08-20T08:42:51+0000] [MainThread] [W] [toil.job] Due to failure we are reducing the remaining try count of job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v2 with ID kind-CWLJob/instance-zpynapgv to 1
+[2026-08-20T08:42:51+0000] [MainThread] [W] [toil.job] We have increased the default memory of the failed job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v2 to 2147483648 bytes
+[2026-08-20T08:42:51+0000] [MainThread] [W] [toil.job] We have increased the disk of the failed job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v2 to the default of 2147483648 bytes
+[2026-08-20T08:42:51+0000] [MainThread] [I] [toil.leader] Waiting 2 seconds to retry job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v3
+[2026-08-20T08:42:51+0000] [Thread-60 (statsAndLoggingAggregator)] [I] [toil.statsAndLogging] pipeline_parset.cwl.0.ddecal_solve.cwl.stdout follows:
+=========>
+	
+	std exception detected: Error: antennaconstraint given that should constrain a group of antennas with one antenna in it. This does not make sense (did you forget using two square brackets? [[ ant1, ant2 ]] )
+<=========
+[2026-08-20T08:42:53+0000] [MainThread] [I] [toil.leader] Job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v3 has finished its backoff period
+[2026-08-20T08:42:55+0000] [MainThread] [I] [toil.realtimeLogger] Stopping real-time logging server.
+[2026-08-20T08:42:55+0000] [MainThread] [I] [toil.realtimeLogger] Joining real-time logging server thread.
+[2026-08-20T08:42:55+0000] [MainThread] [I] [toil.lib.history] Workflow bd591e17-c004-4ebe-895a-29bc6287e86a stopped. Success: False
+[2026-08-20T08:42:55+0000] [MainThread] [E] [root] The job 'CWLJob' pipeline_parset.cwl.0.ddecal_solve.cwl kind-CWLJob/instance-zpynapgv v3 is requesting 2147483648 bytes of disk for temporary space, more than the maximum of 2140368896 bytes of disk that SingleMachineBatchSystem was configured with, or enforced by --maxDisk. Try setting/changing the toil option "--workDir" or changing the base temporary directory by setting TMPDIR. Scale is set to 1.
