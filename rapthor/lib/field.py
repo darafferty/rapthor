@@ -366,7 +366,7 @@ class Field(object):
 
         if antenna_constraints:
             self.log.info("Resolving custom antenna constraints for %s.", self.antenna)
-            return self._resolve_antenna_constraints(antenna_constraints)
+            return list(self._resolve_antenna_constraints(antenna_constraints))
 
         return []
 
@@ -387,7 +387,7 @@ class Field(object):
             field.
         """
         antenna_constraints = load_json(filename)
-        return self._resolve_antenna_constraints(antenna_constraints)
+        return list(self._resolve_antenna_constraints(antenna_constraints))
 
     def _resolve_antenna_constraints(self, antenna_constraints):
         """
