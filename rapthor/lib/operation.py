@@ -45,10 +45,9 @@ def extract_log_errors(log_file):
     str
         Extracted error messages from the log file.
     """
-    parsed_error = None
     with log_file.open("r") as log:
-        parsed_error = "\n".join(match[0] for match in re.finditer(LOG_ERROR_PARSER, log.read()))
-    return parsed_error
+        parsed_errors = [match[0] for match in re.finditer(LOG_ERROR_PARSER, log.read())]
+    return parsed_errors
 
 
 class Operation(object):
@@ -315,13 +314,20 @@ class Operation(object):
             self.finalize()
             self.store_outputs()
         else:
-            log_folder = Path(self.log_dir)
-            if log_file := next(log_folder.glob("failed*"), None):
-                parsed_error = extract_log_errors(log_file)
-                if parsed_error:
-                    parsed_error = (
-                        " The following exceptions were extracted from the workflow log file"
-                        f"{log_file}:\n\n{parsed_error}"
-                    )
+            self.handle_failure()
 
-            raise RuntimeError(f"Operation {self.name} failed due to an error.{parsed_error}")
+    def handle_failure(self):
+        """
+        Handle operation failure by extracting errors from the log file if
+        possible and raising a RuntimeError.
+        """
+        parsed_errors = ""
+        if (log_file := Path(self.pipeline_log_file)).exists():
+            parsed_errors = extract_log_errors(log_file)
+            if parsed_errors:
+                parsed_errors = (
+                    " The following exceptions were extracted from the workflow log file"
+                    f"{log_file}:\n\n" + "\n   ".join(parsed_errors)
+                )
+
+        raise RuntimeError(f"Operation {self.name} failed due to an error.{parsed_errors}")
