@@ -7,6 +7,7 @@ import logging
 import os
 
 import astropy.units as u
+import line_profiler
 import lsmtool
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
@@ -336,6 +337,7 @@ class Sector(object):
         )
         return wsclean_nwavelengths_time
 
+    @line_profiler.line_profile
     def make_skymodel(self, index):
         """
         Makes predict sky model
