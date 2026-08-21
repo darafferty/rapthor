@@ -83,10 +83,9 @@ class BaseCWLRunner:
           - `stderr` -> `self.operation.pipeline_log_file`
         """
         logger.debug("Executing command: %s", " ".join(args))
-        op = self.operation
         with (
-            open(op.pipeline_outputs_file, "w") as stdout,
-            open(op.pipeline_log_file, "w") as stderr,
+            open(self.operation.pipeline_outputs_file, "w") as stdout,
+            open(self.operation.pipeline_log_file, "w") as stderr,
         ):
             result = subprocess.run(args=args, env=env, stdout=stdout, stderr=stderr, check=False)
             logger.debug(str(result))

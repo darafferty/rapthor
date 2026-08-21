@@ -14,14 +14,14 @@ from rapthor.lib.operation import Operation, extract_log_errors
 def mock_create_cwl_runner(mocker, request):
     # Mock the `create_cwl_runner` function to return a mock runner that
     # simulates running a subprocess.
-    param = getattr(request, 'param', {})
-    returncode = param.get('returncode', 0)
-    parse_outputs_return_value = param.get('parse_outputs_return_value', None)
+    param = getattr(request, "param", {})
+    returncode = param.get("returncode", 0)
+    parse_outputs_return_value = param.get("parse_outputs_return_value", None)
     return mocker.patch(
         "rapthor.lib.operation.create_cwl_runner",
-        return_value=mocker.Mock( # call returns context manager
-            __enter__=mocker.Mock( # context returns mock runner
-                return_value=mocker.Mock( # mock runner
+        return_value=mocker.Mock(  # call returns context manager
+            __enter__=mocker.Mock(  # context returns mock runner
+                return_value=mocker.Mock(  # mock runner
                     run=mocker.Mock(return_value=mocker.Mock(returncode=returncode)),
                     parse_outputs=mocker.Mock(return_value=parse_outputs_return_value),
                 ),
@@ -29,6 +29,7 @@ def mock_create_cwl_runner(mocker, request):
             __exit__=mocker.Mock(return_value=None),
         ),
     )
+
 
 class TestOperation:
     """
@@ -43,7 +44,7 @@ class TestOperation:
         field = mocker.Mock(Field)
         field.parset = parset
         return Operation(field, 0, "image")
-    
+
     @pytest.mark.parametrize(
         "mock_create_cwl_runner",
         [
@@ -62,7 +63,7 @@ class TestOperation:
         mock_create_cwl_runner.assert_called_once_with(operation.cwl_runner, operation)
         assert operation.outputs == {"mock": "outputs"}
         assert Path(operation.done_file).exists()
-    
+
     @pytest.mark.parametrize(
         "mock_create_cwl_runner",
         [
@@ -78,7 +79,7 @@ class TestOperation:
 
         with pytest.raises(RuntimeError):
             operation.run()
-            
+
         assert operation.outputs == {}
         assert not Path(operation.done_file).exists()
 
