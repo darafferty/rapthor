@@ -26,7 +26,7 @@ LOG_ERROR_PARSER = re.compile(
     \[(?P<module>[^\]]+)\]\s        # module 
     (\[(?P<workflow>[^\]]+)\]\s)?   # workflow
     (?P<message>.+?)                # message
-    (?:\n(?=\[)|$)                  # end of log record
+    (?:\n\s*(?=\[)|$)               # end of log record
     """
 )
 

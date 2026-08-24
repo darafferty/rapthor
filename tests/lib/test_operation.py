@@ -108,10 +108,9 @@ def test_extract_log_errors(request):
     """
     log_file = request.config.resource_dir / "failed_workflow_sample.log"
     records = extract_log_errors(log_file)
-    assert len(records) == 4
+    assert len(records) == 6
     assert (
-        "Failed command standard output:\n\n"
         "std exception detected: Error: antennaconstraint given that should "
         "constrain a group of antennas with one antenna in it. This does not make "
         "sense (did you forget using two square brackets? [[ ant1, ant2 ]] )"
-    ) in records[1]
+    ) in records[2]
