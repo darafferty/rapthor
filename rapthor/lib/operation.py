@@ -303,8 +303,7 @@ class Operation(object):
         else:
             with Timer(self.log):
                 with create_cwl_runner(self.cwl_runner, self) as runner:
-                    result = runner.run()
-                    success = result.returncode == 0
+                    success = runner.run()
                     if success:
                         self.outputs = runner.parse_outputs()
 

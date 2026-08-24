@@ -22,7 +22,7 @@ def mock_create_cwl_runner(mocker, request):
         return_value=mocker.Mock(  # call returns context manager
             __enter__=mocker.Mock(  # context returns mock runner
                 return_value=mocker.Mock(  # mock runner
-                    run=mocker.Mock(return_value=mocker.Mock(returncode=returncode)),
+                    run=mocker.Mock(return_value=(returncode == 0)),  # simulate run method
                     parse_outputs=mocker.Mock(return_value=parse_outputs_return_value),
                 ),
             ),
@@ -92,7 +92,9 @@ class TestOperation:
         field.parset = parset
         operation = Operation(field, 0, "image")
         operation.log_dir = str(request.config.resource_dir)
-        operation.log_file = str(request.config.resource_dir / "failed_workflow_sample.log")
+        operation.pipeline_log_file = str(
+            request.config.resource_dir / "failed_workflow_sample.log"
+        )
         with pytest.raises(
             RuntimeError, match="antennaconstraint given that should constrain a group of antennas"
         ):

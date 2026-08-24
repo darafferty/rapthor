@@ -98,9 +98,10 @@ class BaseCWLRunner:
                     " \\\n      ".join(result.args),
                     result.stderr.read() if result.stderr else "",
                 )
-            return result
 
-    def run(self):
+            return result.returncode == 0
+
+    def run(self) -> bool:
         """
         Start the runner in a subprocess.
         Every CWL runner requires two input files:
@@ -125,6 +126,7 @@ class BaseCWLRunner:
         current_env = os.environ.copy()
         python_path = os.pathsep.join([current_env.get("PYTHONPATH", ""), script_dir])
         modified_env = current_env | {"PYTHONPATH": python_path}
+
         return self.execute(args, modified_env)
 
     def parse_outputs(self) -> dict:
