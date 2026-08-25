@@ -22,7 +22,7 @@ LOG_ERROR_PARSER = re.compile(
     # log format is [date] [thread] [level] [module] [workflow] message
     \[(?P<date>[^\]]+)\]\s          # date
     \[(?P<thread>[^\]]+)\]\s        # thread
-    \[(?P<level>[EC])\]\s           # level match error and critical
+    \[(?P<level>[E])\]\s            # level match error
     \[(?P<module>[^\]]+)\]\s        # module 
     (\[(?P<workflow>[^\]]+)\]\s)?   # workflow
     (?P<message>.+?)                # message
@@ -320,13 +320,17 @@ class Operation(object):
         Handle operation failure by extracting errors from the log file if
         possible and raising a RuntimeError.
         """
+        log_files = list(Path(self.log_dir).glob("failed*"))
+        if (main_log_file := Path(self.pipeline_log_file)).exists():
+            log_files.append(main_log_file)
+
         parsed_errors = ""
-        if (log_file := Path(self.pipeline_log_file)).exists():
-            parsed_errors = extract_log_errors(log_file)
-            if parsed_errors:
+        for log_file in log_files:
+            if parsed_errors := extract_log_errors(log_file):
                 parsed_errors = (
-                    " The following exceptions were extracted from the workflow log file"
-                    f"{log_file}:\n\n" + "\n   ".join(parsed_errors)
+                    "\nThe following exceptions were extracted from the workflow log file "
+                    f"{log_file}:\n\n" + "\n".join(parsed_errors).replace("\n", "\n    ")
                 )
+                break
 
         raise RuntimeError(f"Operation {self.name} failed due to an error.{parsed_errors}")
