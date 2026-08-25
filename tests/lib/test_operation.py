@@ -95,9 +95,7 @@ class TestOperation:
         operation.pipeline_log_file = str(
             request.config.resource_dir / "failed_workflow_sample.log"
         )
-        with pytest.raises(
-            RuntimeError, match="antennaconstraint given that should constrain a group of antennas"
-        ):
+        with pytest.raises(RuntimeError, match="DP3: error: Simulated message for test"):
             operation.handle_failure()
 
 
@@ -108,9 +106,7 @@ def test_extract_log_errors(request):
     """
     log_file = request.config.resource_dir / "failed_workflow_sample.log"
     records = extract_log_errors(log_file)
-    assert len(records) == 6
+    assert len(records) == 3
     assert (
-        "std exception detected: Error: antennaconstraint given that should "
-        "constrain a group of antennas with one antenna in it. This does not make "
-        "sense (did you forget using two square brackets? [[ ant1, ant2 ]] )"
-    ) in records[2]
+        "Failed command standard error:\nDP3: error: Simulated message for test"
+    ) in records[1]
