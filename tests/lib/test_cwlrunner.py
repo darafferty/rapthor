@@ -448,7 +448,7 @@ class TestToilRunner:
                     --tmp-outdir-prefix /tmp/ical-9lslyrgf/scratch/toil-cwl-runner. \\
                     /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_parset.cwl \\
                     /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_inputs.json"""
-                    ),
+            ),
         )
     ],
 )

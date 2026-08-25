@@ -107,6 +107,4 @@ def test_extract_log_errors(request):
     log_file = request.config.resource_dir / "failed_workflow_sample.log"
     records = extract_log_errors(log_file)
     assert len(records) == 3
-    assert (
-        "Failed command standard error:\nDP3: error: Simulated message for test"
-    ) in records[1]
+    assert ("Failed command standard error:\nDP3: error: Simulated message for test") in records[1]

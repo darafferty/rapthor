@@ -131,12 +131,14 @@ class BaseCWLRunner:
             logger.debug(str(result))
             if result.returncode != 0:
                 logger.critical(
-                    "CWL command failed during subprocess call with return code %s:\n    "
-                    "%s%s",
+                    "CWL command failed during subprocess call with return code %s:\n    %s%s",
                     result.returncode,
                     format_cli_command(result.args, indent=6),
-                    (f"\n\nThe following stderr was captured:\n\n   {result.stderr.read()}"
-                     if result.stderr else ""),
+                    (
+                        f"\n\nThe following stderr was captured:\n\n   {result.stderr.read()}"
+                        if result.stderr
+                        else ""
+                    ),
                 )
 
             return result.returncode == 0
