@@ -21,6 +21,46 @@ if TYPE_CHECKING:
 logger = logging.getLogger("rapthor:cwlrunner")
 
 
+def _format_cli_command(args: List[str]):
+    itr = iter(args)
+    current = next(itr, None)
+    while current:
+        if current.startswith("--"):
+            if next_arg := next(itr, None):
+                if next_arg.startswith("--"):
+                    yield current
+                    current = next_arg
+                else:
+                    yield f"{current} {next_arg}"
+                    current = next(itr, None)
+            else:
+                yield current
+                current = next_arg
+        else:
+            yield current
+            current = next(itr, None)
+
+
+def format_cli_command(args: List[str], indent: int = 4) -> str:
+    """
+    Format a cli command for log messages.
+
+    Parameters
+    ----------
+    args : List[str]
+        List of command-line arguments to format.
+    indent : int, optional
+        Number of spaces to use for indentation, by default 4.
+
+    Returns
+    -------
+    str
+        Formatted command-line string suitable for logging.
+    """
+    indentation = " " * indent
+    return f" \\\n{indentation}".join(_format_cli_command(args))
+
+
 class BaseCWLRunner:
     """
     Base class.
@@ -92,11 +132,11 @@ class BaseCWLRunner:
             if result.returncode != 0:
                 logger.critical(
                     "CWL command failed during subprocess call with return code %s:\n    "
-                    "%s"
-                    "\n\nThe following stderr was captured:\n\n    %s",
+                    "%s%s",
                     result.returncode,
-                    " \\\n      ".join(result.args),
-                    result.stderr.read() if result.stderr else "",
+                    format_cli_command(result.args, indent=6),
+                    (f"\n\nThe following stderr was captured:\n\n   {result.stderr.read()}"
+                     if result.stderr else ""),
                 )
 
             return result.returncode == 0

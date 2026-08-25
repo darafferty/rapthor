@@ -7,10 +7,11 @@ on the command-line to the different CWL runners.
 """
 
 import os
+import textwrap
 
 import pytest
 
-from rapthor.lib.cwlrunner import create_cwl_runner
+from rapthor.lib.cwlrunner import create_cwl_runner, format_cli_command
 from rapthor.lib.parset import Parset
 from rapthor.operations.image import Image
 
@@ -388,3 +389,73 @@ class TestToilRunner:
             else:
                 assert workdir.startswith(parset["dir_working"])
             assert os.path.isdir(workdir)
+
+
+@pytest.mark.parametrize(
+    "args, expected",
+    [
+        (
+            [
+                "toil-cwl-runner",
+                "--outdir",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1",
+                "--no-container",
+                "--preserve-entire-environment",
+                "--tmpdir-prefix",
+                "/tmp/ical-9lslyrgf/scratch/toil-cwl-runner.",
+                "--bypass-file-store",
+                "--batchSystem",
+                "single_machine",
+                "--maxLocalJobs",
+                "1",
+                "--maxJobs",
+                "1",
+                "--jobStore",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1/jobstore",
+                "--stats",
+                "--servicePollingInterval",
+                "10",
+                "--writeLogs",
+                "/tmp/ical-9lslyrgf/work/logs/predict_di_1",
+                "--writeLogsFromAllJobs",
+                "True",
+                "--maxLogFileSize",
+                "1gb",
+                "--restart",
+                "--tmp-outdir-prefix",
+                "/tmp/ical-9lslyrgf/scratch/toil-cwl-runner.",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_parset.cwl",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_inputs.json",
+            ],
+            textwrap.dedent(
+                """\
+                toil-cwl-runner \\
+                    --outdir /tmp/ical-9lslyrgf/work/pipelines/predict_di_1 \\
+                    --no-container \\
+                    --preserve-entire-environment \\
+                    --tmpdir-prefix /tmp/ical-9lslyrgf/scratch/toil-cwl-runner. \\
+                    --bypass-file-store \\
+                    --batchSystem single_machine \\
+                    --maxLocalJobs 1 \\
+                    --maxJobs 1 \\
+                    --jobStore /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/jobstore \\
+                    --stats \\
+                    --servicePollingInterval 10 \\
+                    --writeLogs /tmp/ical-9lslyrgf/work/logs/predict_di_1 \\
+                    --writeLogsFromAllJobs True \\
+                    --maxLogFileSize 1gb \\
+                    --restart \\
+                    --tmp-outdir-prefix /tmp/ical-9lslyrgf/scratch/toil-cwl-runner. \\
+                    /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_parset.cwl \\
+                    /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_inputs.json"""
+                    ),
+        )
+    ],
+)
+def test_format_cli_command(args, expected):
+    """
+    Test the `format_cli_command` function to ensure it formats command-line
+    arguments correctly.
+    """
+    formatted_command = format_cli_command(args)
+    assert formatted_command == expected
