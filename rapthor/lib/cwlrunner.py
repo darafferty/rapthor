@@ -11,7 +11,8 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import TYPE_CHECKING, List, Union
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 import yaml
 
@@ -21,7 +22,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger("rapthor:cwlrunner")
 
 
-def _format_cli_command(args: List[str]):
+def format_cli_command(args: list[str], indent: int = 4) -> str:
+    """
+    Format a cli command for log messages.
+
+    Parameters
+    ----------
+    args : list[str]
+        List of command-line arguments to format.
+    indent : int, optional
+        Number of spaces to use for indentation, by default 4.
+
+    Returns
+    -------
+    str
+        Formatted command-line string suitable for logging.
+    """
+    indentation = " " * indent
+    return f" \\\n{indentation}".join(_format_cli_command(args))
+
+
+def _format_cli_command(args: list[str]) -> Iterable[str]:
     itr = iter(args)
     current = next(itr, None)
     while current:
@@ -35,30 +56,10 @@ def _format_cli_command(args: List[str]):
                     current = next(itr, None)
             else:
                 yield current
-                current = next_arg
+                break
         else:
             yield current
             current = next(itr, None)
-
-
-def format_cli_command(args: List[str], indent: int = 4) -> str:
-    """
-    Format a cli command for log messages.
-
-    Parameters
-    ----------
-    args : List[str]
-        List of command-line arguments to format.
-    indent : int, optional
-        Number of spaces to use for indentation, by default 4.
-
-    Returns
-    -------
-    str
-        Formatted command-line string suitable for logging.
-    """
-    indentation = " " * indent
-    return f" \\\n{indentation}".join(_format_cli_command(args))
 
 
 class BaseCWLRunner:
@@ -109,7 +110,7 @@ class BaseCWLRunner:
         os.environ.clear()
         os.environ.update(self._environment)
 
-    def execute(self, args: List[str], env: dict):
+    def execute(self, args: list[str], env: dict) -> bool:
         """
         Start the runner in a subprocess.
         Every CWL runner requires two input files:
@@ -214,7 +215,7 @@ class CWLRunner(BaseCWLRunner):
         """
         os.remove(self.operation.mpi_config_file)
 
-    def _get_tmpdir_prefix(self) -> Union[str, None]:
+    def _get_tmpdir_prefix(self) -> Optional[str]:
         """
         Return the prefix to be passed as value to the command-line option
         `--tmpdir-prefix` to the CWL runner or `None`. It is assumed that
@@ -256,7 +257,7 @@ class CWLRunner(BaseCWLRunner):
             )
         return os.path.join(prefix, self.command + ".") if prefix else None
 
-    def _get_tmp_outdir_prefix(self) -> Union[str, None]:
+    def _get_tmp_outdir_prefix(self) -> Optional[str]:
         """
         Return the prefix to be passed as value to the command-line option
         `--tmp-outdir-prefix` to the CWL runner, or `None`. It is assumed
@@ -319,7 +320,7 @@ class ToilRunner(CWLRunner):
         super().__init__(operation)
         self.command = "toil-cwl-runner"
 
-    def _get_tmp_outdir_prefix(self) -> Union[str, None]:
+    def _get_tmp_outdir_prefix(self) -> Optional[str]:
         """
         Return the prefix to be passed as value to the command-line option
         `--tmp-outdir-prefix` to the CWL runner or `None`. When using Slurm,
@@ -334,7 +335,7 @@ class ToilRunner(CWLRunner):
             )
         return prefix
 
-    def _get_workdir(self) -> Union[str, None]:
+    def _get_workdir(self) -> Optional[str]:
         """
         Return the working directory for Toil, if using Slurm, else return
         `None`.  When using Slurm the working directory needs to be on a
@@ -580,7 +581,7 @@ class StreamFlowRunner(BaseCWLRunner):
         super().teardown()
 
 
-def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
+def create_cwl_runner(runner: str, operation: Operation) -> BaseCWLRunner:
     """
     Factory method that creates a CWLRunner instance based on the `runner` argument.
     We need access to some information inside the `operation` that calls us.
