@@ -87,6 +87,7 @@ ch.setFormatter(formatter)
 ch.emit = add_coloring_to_emit_ansi(ch.emit)
 ch.set_name("console")
 ch.addFilter(Whitelist())
+logging.root.handlers.clear() # Clear the default handler 
 logging.root.addHandler(ch)
 
 # Set root level (the handlers will set their own levels)
