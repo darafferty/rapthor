@@ -1,6 +1,5 @@
 import configparser
 import re
-import shlex
 from pathlib import Path
 
 
