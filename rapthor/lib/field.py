@@ -446,6 +446,7 @@ class Field(object):
             Name of field station.
         """
         field_stations = self.stations
+        unresolved = []
         for station in station_names:
             # Find the name of the station in the field that contains the name of the given station
             station = station.strip()
@@ -454,11 +455,14 @@ class Field(object):
                 None,
             ):
                 yield station_name
-            # else:
-            #     self.log.warning(
-            #         "Station %r from antenna constraints list not found in field stations. Ignoring.",
-            #         station,
-            #         )
+            else:
+                unresolved.append(station)
+
+        if unresolved:
+            self.log.warning(
+                "Could not resolve the following station names against the field stations: %s",
+                unresolved,
+            )
 
     def chunk_observations(self, mintime, prefer_high_el_periods=True):
         """
