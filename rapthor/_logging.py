@@ -74,7 +74,6 @@ def set_log_file(log_file):
     fh.setLevel(logging.DEBUG)  # file always logs everything
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
     fh.setFormatter(formatter)
-    fh.emit = add_coloring_to_emit_ansi(fh.emit)
     fh.addFilter(Whitelist())
     logging.root.addHandler(fh)
 
