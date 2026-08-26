@@ -12,8 +12,10 @@ from rapthor.lib.operation import Operation, extract_log_errors
 
 @pytest.fixture
 def mock_create_cwl_runner(mocker, request):
-    # Mock the `create_cwl_runner` function to return a mock runner that
-    # simulates running a subprocess.
+    """
+    Fixture to mock the `create_cwl_runner` function to return a mock runner that
+    simulates running a subprocess.
+    """
     param = getattr(request, "param", {})
     returncode = param.get("returncode", 0)
     parse_outputs_return_value = param.get("parse_outputs_return_value", None)
