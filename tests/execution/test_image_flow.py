@@ -2281,7 +2281,7 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
     assert mpi_command[mpi_command.index("-j") + 1] == "3"
     assert mpi_instance.kwargs["env"] == {
         "OMP_NUM_THREADS": "3",
-        "OPENBLAS_NUM_THREADS": "3",
+        "OPENBLAS_NUM_THREADS": "1",
     }
 
 

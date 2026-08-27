@@ -169,7 +169,12 @@ def _mpi_environment(
         ),
         execution_config,
     )
-    return thread_environment(resource_request)
+    environment = dict(thread_environment(resource_request))
+    # WSClean rejects multi-threaded OpenBLAS because it interferes with
+    # WSClean's own thread pool. Keep the requested OMP/WSClean thread count,
+    # but export a single OpenBLAS thread to every MPI rank.
+    environment["OPENBLAS_NUM_THREADS"] = "1"
+    return environment
 
 
 def _wsclean_threads_for_sector(sector: ImageSectorPayload) -> int:
