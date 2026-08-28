@@ -69,8 +69,6 @@ class Field(object):
         self.parset = parset.copy()
         self.working_dir = self.parset["dir_working"]
         self.ms_filenames = self.parset["mss"]
-        self.working_dir = self.parset["dir_working"]
-        self.ms_filenames = self.parset["mss"]
         self.numMS = len(self.ms_filenames)
         self.data_colname = self.parset["data_colname"]
         self.use_image_based_predict = self.parset["calibration_specific"][
