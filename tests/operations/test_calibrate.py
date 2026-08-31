@@ -8,7 +8,6 @@ import pytest
 import yaml
 
 import rapthor
-from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.lib.operation import env_parset
 from rapthor.operations.calibrate import Calibrate
 from tests.operations.conftest import get_cwl_input_ids
@@ -18,7 +17,7 @@ from tests.operations.conftest import get_cwl_input_ids
 def calibrate_field(operation_parset, mocker, single_source_sky_model):
     """Create a mock field object for testing a Calibrate operation."""
 
-    class Field:
+    class MockField:
         def __init__(self, parset):
             self.parset = parset
             self.calibration_diagnostics = []
@@ -100,7 +99,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.di_medium2_phases_h5parm_filename = None
             self.di_slow_gains_h5parm_filename = None
 
-    return Field(operation_parset)
+    return MockField(operation_parset)
 
 
 def check_makedirs(mock_makedirs, *expected_paths):
@@ -842,6 +841,37 @@ class TestCalibrate:
         calibrate_dd.set_input_parameters()
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
+
+    @pytest.mark.parametrize(
+        "antenna_constraints, expected_constraints",
+        [
+            ([], "[]"),
+            (
+                [
+                    ["CS001HBA0", "CS002HBA0", "CS002HBA1", "CS004HBA1"],
+                    ["RS106HBA", "RS208HBA"],
+                    ["RS305HBA", "RS307HBA"],
+                ],
+                "[[CS001HBA0, CS002HBA0, CS002HBA1, CS004HBA1],"
+                " [RS106HBA, RS208HBA], [RS305HBA, RS307HBA]]",
+            ),
+        ],
+    )
+    def test_set_input_parameters_antenna_constraints(
+        self, calibrate_field, antenna_constraints, expected_constraints
+    ):
+        """
+        DD: Test the effect of diagonal solutions on the solution_combine_mode.
+        """
+        calibrate_field.antenna_constraints = antenna_constraints
+
+        calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate_dd.set_input_parameters()
+
+        assert calibrate_dd.input_parms["solve1_antennaconstraint"] == expected_constraints
+        assert calibrate_dd.input_parms["solve2_antennaconstraint"] == expected_constraints
+        assert calibrate_dd.input_parms["solve3_antennaconstraint"] == "[]"
+        assert calibrate_dd.input_parms["solve4_antennaconstraint"] == "[]"
 
     def test_adjust_phase_sources_falls_back_to_single_solve_h5parm(self):
         template = env_parset.get_template("calibrate_pipeline.cwl")
