@@ -36,7 +36,7 @@ from matplotlib.pyplot import close, figure
 
 from rapthor.lib.calibration import resolve_calibration_strategy
 
-ANTENNA_CONSTRAINTS_PATH = Path(__file__).parent.parent / "settings/antenna_constraints"
+ANTENNA_CONSTRAINTS_PATH = Path(__file__).parent.parent / "settings" / "antenna_constraints"
 ANTENNA_CONSTRAINTS_FILES = {
     "HBA": ANTENNA_CONSTRAINTS_PATH / "lofar_HBA_core_extended.json",
     "LBA": ANTENNA_CONSTRAINTS_PATH / "lofar_LBA_core_extended.json",
@@ -353,8 +353,7 @@ class Field(object):
         if antenna_constraints is True:
             self.log.info("Loading default antenna constraints for %s.", self.antenna)
             if ANTENNA_CONSTRAINTS_FILES.get(self.antenna):
-                path = ANTENNA_CONSTRAINTS_FILES[self.antenna]
-                return self._load_antenna_constraints(path)
+                return self._load_antenna_constraints(ANTENNA_CONSTRAINTS_FILES[self.antenna])
 
             self.log.warning("No antenna constraints file found for antenna %r", self.antenna)
             return []
