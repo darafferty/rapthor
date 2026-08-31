@@ -55,6 +55,7 @@ normalization_skymodels =
 normalization_reference_frequencies =
 dde_method = full
 do_multiscale_clean = True
+antenna_constraints = True
   
 [cluster]
 batch_system = single_machine
