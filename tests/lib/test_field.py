@@ -375,134 +375,417 @@ def test_set_calibration_strategy_preserves_order_of_solves(field, solve_order):
     assert field.calibration_strategy == user_provided_strategy
 
 
-@pytest.mark.parametrize(
-    "input_constraints, expected_result",
-    [
-        # nominal case. all stations are present in the constraints
-        (
-            [
-                [
-                    "CS001HBA0",
-                    "CS002HBA0",
-                    "CS002HBA1",
-                    "CS004HBA1",
-                ],
-                [
-                    "RS106HBA",
-                    "RS208HBA",
-                    "RS305HBA",
-                    "RS307HBA",
-                ],
-            ],
-            [
-                [
-                    "CS001HBA0",
-                    "CS002HBA0",
-                    "CS002HBA1",
-                    "CS004HBA1",
-                ],
-                [
-                    "RS106HBA",
-                    "RS208HBA",
-                    "RS305HBA",
-                    "RS307HBA",
-                ],
-            ],
-        ),
-        # Constraints contain stations that are not present in the field. These
-        # should be filtered out.
-        (
-            [
-                [
-                    "CS001HBA0",
-                    "CS002HBA0",
-                    "CS002HBA1",
-                    "CS004HBA1",
-                    "CS999HBA0",  # Not present in the field
-                ],
-                [
-                    "RS106HBA",
-                    "RS208HBA",
-                    "RS305HBA",
-                    "RS307HBA",
-                    "RS999HBA",  # Not present in the field
-                ],
-            ],
-            [
-                [
-                    "CS001HBA0",
-                    "CS002HBA0",
-                    "CS002HBA1",
-                    "CS004HBA1",
-                ],
-                [
-                    "RS106HBA",
-                    "RS208HBA",
-                    "RS305HBA",
-                    "RS307HBA",
-                ],
-            ],
-        ),
-        # Single list of stations instead of a list of lists. Should be
-        # wrapped in a list when resolved
-        (
-            [
-                "CS001HBA0",
-                "CS002HBA0",
-                "CS002HBA1",
-                "CS004HBA1",
-            ],
-            [
-                [
-                    "CS001HBA0",
-                    "CS002HBA0",
-                    "CS002HBA1",
-                    "CS004HBA1",
-                ]
-            ],
-        ),
-        # Constraints with no stations present in the field. Should raise a
-        # ValueError.
-        (
-            [
-                [
-                    "CS999HBA0",  # Not present in the field
-                ],
-            ],
-            ValueError,
-        ),
-    ],
-)
-def test_resolve_antenna_constraints(field, input_constraints, expected_result):
-    """Test that the antenna constraints are resolved correctly."""
-    with get_context(expected_result):
-        result = list(field._resolve_antenna_constraints(input_constraints))
-        assert result == expected_result
+class TestAntennaConstraints:
+    """Test the resolution of antenna constraints in the Field class."""
 
+    @pytest.fixture
+    def mock_hba_field_with_stations(self):
+        """
+        Create a mock Field object with specified stations matching those in the
+        LOFAR HBA test data set.
+        """
+        field = Field.__new__(Field)  # Create an uninitialized Field instance
+        field.log = logging.getLogger("rapthor:field")
+        field.stations = [
+            "CS001HBA0",
+            "CS002HBA0",
+            "CS002HBA1",
+            "CS004HBA1",
+            "RS106HBA",
+            "RS208HBA",
+            "RS305HBA",
+            "RS307HBA",
+        ]
+        return field
 
-@pytest.mark.parametrize(
-    "antenna, antenna_constraints, expected_result",
-    [
-        pytest.param(
-            "HBA",
-            True,
-            [["CS001HBA0", "CS002HBA0", "CS002HBA1", "CS004HBA1"]],
-            id="LOFAR HBA constraints default",
-        ),
-        pytest.param("HBA", False, [], id="LOFAR HBA constraints False"),
-        pytest.param("HBA", [], [], id="default LOFAR HBA constraints empty"),
-        pytest.param(
-            "LBA",
-            True,
-            ValueError,
-            id="default LOFAR LBA constraints",
-        ),
-    ],
-)
-def test_antenna_constraints(field, antenna, antenna_constraints, expected_result):
-    """Test that the antenna constraints are loaded c."""
-    field.antenna = antenna
-    field.antenna_constraints = antenna_constraints
-    with get_context(expected_result):
-        result = list(field.resolve_antenna_constraints())
-        assert result == expected_result
+    @pytest.mark.parametrize(
+        "antenna, antenna_constraints, expected_result",
+        [
+            # Case: When `field.antenna_constraints` is True, load the HBA
+            # constraints from file and match against the field stations. The
+            # defaults constraints group the core stations together and leave
+            # the remote stations unconstrained.
+            pytest.param(
+                "HBA",
+                True,
+                [["CS001HBA0", "CS002HBA0", "CS002HBA1", "CS004HBA1"]],
+                id="LOFAR HBA constraints default",
+            ),
+            # Case: When `field.antenna_constraints` is False, do not load any
+            # constraints.
+            pytest.param("HBA", False, [], id="LOFAR HBA constraints False"),
+            # Case: When `field.antenna_constraints` is an empty list, do not
+            # load any constraints.
+            pytest.param("HBA", [], [], id="LOFAR HBA constraints empty"),
+            # When we change the `field.antenna` attribute to "LBA", using True
+            # for antenna_constraints loads the default constraints for LBA,
+            # which is not compatible with the HBA data in the test field. This
+            # should raise a ValueError.
+            pytest.param(
+                "LBA",
+                True,
+                pytest.raises(
+                    ValueError,
+                    match="Could not match any field stations to the station "
+                    "names given in antenna constraints",
+                ),
+                id="LOFAR LBA constraints",
+            ),
+        ],
+    )
+    def test_antenna_constraints(
+        self, mock_hba_field_with_stations, antenna, antenna_constraints, expected_result
+    ):
+        """
+        Test that the antenna constraints are loaded correctly from file for
+        LOFAR HBA test dataset when required, and that an error is raised when
+        we attempt to use antenna constraints for LBA on HBA data.
+        """
+
+        # Arrange
+        field = mock_hba_field_with_stations
+        field.antenna = antenna
+        field.antenna_constraints = antenna_constraints
+
+        with get_context(expected_result):
+            # Act
+            result = list(field.resolve_antenna_constraints())
+            # Assert
+            assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "input_constraints, expected_result",
+        [
+            # Case. All field stations are given in the constraints
+            pytest.param(
+                # input_constraints
+                [
+                    [
+                        "CS001HBA0",
+                        "CS002HBA0",
+                        "CS002HBA1",
+                        "CS004HBA1",
+                    ],
+                    [
+                        "RS106HBA",
+                        "RS208HBA",
+                        "RS305HBA",
+                        "RS307HBA",
+                    ],
+                ],
+                # expected_result
+                [
+                    [
+                        "CS001HBA0",
+                        "CS002HBA0",
+                        "CS002HBA1",
+                        "CS004HBA1",
+                    ],
+                    [
+                        "RS106HBA",
+                        "RS208HBA",
+                        "RS305HBA",
+                        "RS307HBA",
+                    ],
+                ],
+                id="All field stations present in constraints",
+            ),
+            # Constraints contain stations that are not present in the field. These
+            # should be filtered out.
+            pytest.param(
+                # input_constraints
+                [
+                    [
+                        "CS001HBA0",
+                        "CS002HBA0",
+                        "CS002HBA1",
+                        "CS004HBA1",
+                        "CS999HBA0",  # Not present in the field
+                    ],
+                    [
+                        "RS106HBA",
+                        "RS208HBA",
+                        "RS305HBA",
+                        "RS307HBA",
+                        "RS999HBA",  # Not present in the field
+                    ],
+                ],
+                # expected_result
+                [
+                    [
+                        "CS001HBA0",
+                        "CS002HBA0",
+                        "CS002HBA1",
+                        "CS004HBA1",
+                    ],
+                    [
+                        "RS106HBA",
+                        "RS208HBA",
+                        "RS305HBA",
+                        "RS307HBA",
+                    ],
+                ],
+                id="Constraints contain stations not present in the field",
+            ),
+            # Single list of stations instead of a list of lists. Should be
+            # wrapped in a list when resolved
+            pytest.param(
+                # input_constraints
+                [
+                    "CS001HBA0",
+                    "CS002HBA0",
+                    "CS002HBA1",
+                    "CS004HBA1",
+                ],
+                # expected_result
+                [
+                    [
+                        "CS001HBA0",
+                        "CS002HBA0",
+                        "CS002HBA1",
+                        "CS004HBA1",
+                    ]
+                ],
+                id="Single list of stations resolves to list of lists",
+            ),
+            # Constraints with no stations present in the field. Should raise a
+            # ValueError.
+            pytest.param(
+                # input_constraints
+                [
+                    [
+                        "CS999HBA0",  # Not present in the field
+                    ],
+                ],
+                # expected_result
+                ValueError,
+                id="Constraints with no stations present in the field raises ValueError",
+            ),
+        ],
+    )
+    def test_resolve_antenna_constraints(
+        self, mock_hba_field_with_stations, input_constraints, expected_result
+    ):
+        """Test that the antenna constraints are resolved correctly."""
+        with get_context(expected_result):
+            result = list(
+                mock_hba_field_with_stations._resolve_antenna_constraints(input_constraints)
+            )
+            assert result == expected_result
+
+    @pytest.fixture
+    def mock_ska_field_with_stations(self):
+        """
+        Create a mock Field object with specified stations matching those
+        expected from SKA AA2 data set.
+        """
+        field = Field.__new__(Field)  # Create an uninitialized Field instance
+        field.log = logging.getLogger("rapthor:field")
+        field.stations = [
+            "s0000 (station315_E8-1)",
+            "s0001 (station316_E8-2)",
+            "s0002 (station317_E8-3)",
+            "s0003 (station318_E8-4)",
+            "s0004 (station321_E9-1)",
+            "s0005 (station322_E9-2)",
+            "s0006 (station323_E9-3)",
+            "s0007 (station324_E9-4)",
+            "s0008 (station345_S8-1)",
+            "s0009 (station346_S8-2)",
+            "s0010 (station347_S8-3)",
+            "s0011 (station348_S8-4)",
+            "s0012 (station349_S8-5)",
+            "s0013 (station350_S8-6)",
+            "s0014 (station352_S9-2)",
+            "s0015 (station353_S9-3)",
+            "s0016 (station354_S9-4)",
+            "s0017 (station355_S9-5)",
+            "s0018 (station375_N8-1)",
+            "s0019 (station376_N8-2)",
+            "s0020 (station377_N8-3)",
+            "s0021 (station378_N8-4)",
+            "s0022 (station381_N9-1)",
+            "s0023 (station382_N9-2)",
+            "s0024 (station383_N9-3)",
+            "s0025 (station384_N9-4)",
+            "s0026 (station387_E10-1)",
+            "s0027 (station388_E10-2)",
+            "s0028 (station389_E10-3)",
+            "s0029 (station390_E10-4)",
+            "s0030 (station405_E13-1)",
+            "s0031 (station406_E13-2)",
+            "s0032 (station407_E13-3)",
+            "s0033 (station408_E13-4)",
+            "s0034 (station429_S10-1)",
+            "s0035 (station430_S10-2)",
+            "s0036 (station431_S10-3)",
+            "s0037 (station432_S10-4)",
+            "s0038 (station433_S10-5)",
+            "s0039 (station434_S10-6)",
+            "s0040 (station447_S13-1)",
+            "s0041 (station448_S13-2)",
+            "s0042 (station449_S13-3)",
+            "s0043 (station450_S13-4)",
+            "s0044 (station460_S15-2)",
+            "s0045 (station461_S15-3)",
+            "s0046 (station463_S15-5)",
+            "s0047 (station464_S15-6)",
+            "s0048 (station465_S16-1)",
+            "s0049 (station466_S16-2)",
+            "s0050 (station467_S16-3)",
+            "s0051 (station468_S16-4)",
+            "s0052 (station471_N10-1)",
+            "s0053 (station472_N10-2)",
+            "s0054 (station473_N10-3)",
+            "s0055 (station474_N10-4)",
+            "s0056 (station489_N13-1)",
+            "s0057 (station490_N13-2)",
+            "s0058 (station491_N13-3)",
+            "s0059 (station492_N13-4)",
+            "s0060 (station501_N15-1)",
+            "s0061 (station502_N15-2)",
+            "s0062 (station503_N15-3)",
+            "s0063 (station504_N15-4)",
+            "s0064 (station507_N16-1)",
+            "s0065 (station508_N16-2)",
+            "s0066 (station509_N16-3)",
+            "s0067 (station510_N16-4)",
+        ]
+        return field
+
+    @pytest.mark.parametrize(
+        "input_constraints, expected_result",
+        [
+            (
+                [
+                    ["E10-1", "E10-2", "E10-3", "E10-4"],
+                    ["E13-1", "E13-2", "E13-3", "E13-4"],
+                    ["E8-1", "E8-2", "E8-3", "E8-4"],
+                    ["E9-1", "E9-2", "E9-3", "E9-4"],
+                    ["N10-1", "N10-2", "N10-3", "N10-4"],
+                    ["N13-1", "N13-2", "N13-3", "N13-4"],
+                    ["N15-1", "N15-2", "N15-3", "N15-4"],
+                    ["N16-1", "N16-2", "N16-3", "N16-4"],
+                    ["N8-1", "N8-2", "N8-3", "N8-4"],
+                    ["N9-1", "N9-2", "N9-3", "N9-4"],
+                    ["S10-1", "S10-2", "S10-3", "S10-4", "S10-5", "S10-6"],
+                    ["S13-1", "S13-2", "S13-3", "S13-4"],
+                    ["S15-1", "S15-2", "S15-3", "S15-4", "S15-5", "S15-6"],
+                    ["S16-1", "S16-2", "S16-3", "S16-4"],
+                    ["S8-1", "S8-2", "S8-3", "S8-4", "S8-5", "S8-6"],
+                    ["S9-1", "S9-2", "S9-3", "S9-4", "S9-5", "S9-6"],
+                ],
+                [
+                    [
+                        "s0026 (station387_E10-1)",
+                        "s0027 (station388_E10-2)",
+                        "s0028 (station389_E10-3)",
+                        "s0029 (station390_E10-4)",
+                    ],
+                    [
+                        "s0030 (station405_E13-1)",
+                        "s0031 (station406_E13-2)",
+                        "s0032 (station407_E13-3)",
+                        "s0033 (station408_E13-4)",
+                    ],
+                    [
+                        "s0000 (station315_E8-1)",
+                        "s0001 (station316_E8-2)",
+                        "s0002 (station317_E8-3)",
+                        "s0003 (station318_E8-4)",
+                    ],
+                    [
+                        "s0004 (station321_E9-1)",
+                        "s0005 (station322_E9-2)",
+                        "s0006 (station323_E9-3)",
+                        "s0007 (station324_E9-4)",
+                    ],
+                    [
+                        "s0052 (station471_N10-1)",
+                        "s0053 (station472_N10-2)",
+                        "s0054 (station473_N10-3)",
+                        "s0055 (station474_N10-4)",
+                    ],
+                    [
+                        "s0056 (station489_N13-1)",
+                        "s0057 (station490_N13-2)",
+                        "s0058 (station491_N13-3)",
+                        "s0059 (station492_N13-4)",
+                    ],
+                    [
+                        "s0060 (station501_N15-1)",
+                        "s0061 (station502_N15-2)",
+                        "s0062 (station503_N15-3)",
+                        "s0063 (station504_N15-4)",
+                    ],
+                    [
+                        "s0064 (station507_N16-1)",
+                        "s0065 (station508_N16-2)",
+                        "s0066 (station509_N16-3)",
+                        "s0067 (station510_N16-4)",
+                    ],
+                    [
+                        "s0018 (station375_N8-1)",
+                        "s0019 (station376_N8-2)",
+                        "s0020 (station377_N8-3)",
+                        "s0021 (station378_N8-4)",
+                    ],
+                    [
+                        "s0022 (station381_N9-1)",
+                        "s0023 (station382_N9-2)",
+                        "s0024 (station383_N9-3)",
+                        "s0025 (station384_N9-4)",
+                    ],
+                    [
+                        "s0034 (station429_S10-1)",
+                        "s0035 (station430_S10-2)",
+                        "s0036 (station431_S10-3)",
+                        "s0037 (station432_S10-4)",
+                        "s0038 (station433_S10-5)",
+                        "s0039 (station434_S10-6)",
+                    ],
+                    [
+                        "s0040 (station447_S13-1)",
+                        "s0041 (station448_S13-2)",
+                        "s0042 (station449_S13-3)",
+                        "s0043 (station450_S13-4)",
+                    ],
+                    [
+                        "s0044 (station460_S15-2)",
+                        "s0045 (station461_S15-3)",
+                        "s0046 (station463_S15-5)",
+                        "s0047 (station464_S15-6)",
+                    ],
+                    [
+                        "s0048 (station465_S16-1)",
+                        "s0049 (station466_S16-2)",
+                        "s0050 (station467_S16-3)",
+                        "s0051 (station468_S16-4)",
+                    ],
+                    [
+                        "s0008 (station345_S8-1)",
+                        "s0009 (station346_S8-2)",
+                        "s0010 (station347_S8-3)",
+                        "s0011 (station348_S8-4)",
+                        "s0012 (station349_S8-5)",
+                        "s0013 (station350_S8-6)",
+                    ],
+                    [
+                        "s0014 (station352_S9-2)",
+                        "s0015 (station353_S9-3)",
+                        "s0016 (station354_S9-4)",
+                        "s0017 (station355_S9-5)",
+                    ],
+                ],
+            )
+        ],
+    )
+    def test_resolve_antenna_constraints_oskar(
+        self, mock_ska_field_with_stations, input_constraints, expected_result
+    ):
+        """Test that the antenna constraints are resolved correctly."""
+        with get_context(expected_result):
+            result = list(
+                mock_ska_field_with_stations._resolve_antenna_constraints(input_constraints)
+            )
+            assert result == expected_result
