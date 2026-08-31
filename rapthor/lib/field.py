@@ -57,6 +57,7 @@ def _ensure_skymodel_write_units(skymodel):
         if column_name in skymodel.table.colnames and skymodel.table[column_name].unit is None:
             skymodel.table[column_name].unit = unit
 
+
 ANTENNA_CONSTRAINTS_PATH = Path(__file__).parent.parent / "settings/antenna_constraints"
 ANTENNA_CONSTRAINTS_FILES = {
     "HBA": ANTENNA_CONSTRAINTS_PATH / "lofar_HBA_core_extended.json",

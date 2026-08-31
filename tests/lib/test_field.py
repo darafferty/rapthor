@@ -7,8 +7,8 @@ import lsmtool
 import numpy as np
 import pytest
 from losoto.h5parm import h5parm
-from matplotlib import pyplot as plt
 from lsmtool.testing import get_context
+from matplotlib import pyplot as plt
 
 from rapthor.execution.pipeline.lifecycle import chunk_observations
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
@@ -1282,6 +1282,8 @@ def test_resolve_antenna_constraints(field, input_constraints, expected_result):
     with get_context(expected_result):
         result = list(field._resolve_antenna_constraints(input_constraints))
         assert result == expected_result
+
+
 class TestAntennaConstraints:
     """Test the resolution of antenna constraints in the Field class."""
 
