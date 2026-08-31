@@ -411,14 +411,27 @@ class Field(object):
         if isinstance(antenna_constraints[0], str):
             antenna_constraints = [antenna_constraints]
 
+        resolved = set()
         for stations_group in antenna_constraints:
             if field_stations := sorted(self._resolve_field_stations(stations_group)):
+                if overspecified := resolved.intersection(field_stations):
+                    raise ValueError(
+                        "The following field stations are already present in a "
+                        f"constraint group and cannot be used again: {overspecified}"
+                    )
                 yield field_stations
+                resolved.update(field_stations)
                 continue
 
             raise ValueError(
                 "Could not match any field stations to the station names given in "
                 f"antenna constraints: {stations_group}"
+            )
+
+        if unresolved := set(self.stations).difference(resolved):
+            self.log.warning(
+                "The following field stations were not included in any antenna "
+                f"constraint group: {unresolved}"
             )
 
     def _resolve_field_stations(self, station_names):
