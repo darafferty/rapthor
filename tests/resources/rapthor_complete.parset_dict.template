@@ -1,5 +1,5 @@
 {'apparent_skymodel': '/my/data/apparent_skymodel.txt',
- 'calibration_specific': {'antenna_constraints': True,
+ 'calibration_specific': {'antenna_constraints': False,
                           'bda_frequencybase': 0.0,
                           'bda_timebase': 0.0,
                           'correct_time_frequency_smearing': True,
