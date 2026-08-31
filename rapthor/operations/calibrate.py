@@ -144,7 +144,7 @@ class Calibrate(Operation):
                 ) / np.min(dd_factor)
 
             # Antenna constraints
-            fast_antennaconstraint = str(self.field.antenna_constraints)
+            fast_antennaconstraint = str(self.field.antenna_constraints).replace("'", "")
             medium_antennaconstraint = fast_antennaconstraint  # ???
 
             solve_plan = self._build_solve_plan()
