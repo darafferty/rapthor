@@ -61,6 +61,7 @@ solverlbfgs_dof = 100.0
 solverlbfgs_iter = 6
 solverlbfgs_minibatches = 3
 correct_time_frequency_smearing = True
+antenna_constraints = False
 
 [imaging]
 cellsize_arcsec = 2.25
