@@ -724,7 +724,7 @@ class Observation(object):
         """
         beta = (delta_freq / freq) * (delta_theta / resolution)
         gamma = 2 * (np.log(2) ** 0.5)
-        return (np.pi**0.5) / (gamma * beta) * erf(beta * gamma / 2.0)
+        return (np.pi**0.5) * erf(beta * gamma / 2.0) / (beta * gamma)
 
     def get_target_bandwidth(self, freq, delta_theta, resolution, reduction_factor):
         """
