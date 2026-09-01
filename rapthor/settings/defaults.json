@@ -41,7 +41,7 @@
         "tolerance": 0.005,
         "parallelbaselines": false,
         "sagecalpredict": false,
-        "antenna_constraints": True,
+        "antenna_constraints": true,
         "fast_freqstep_hz": 1000000.0,
         "fast_smoothnessconstraint": 3000000.0,
         "fast_smoothnessreffrequency": null,
