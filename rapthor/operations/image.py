@@ -140,7 +140,9 @@ class Image(Operation):
             max_cores = self.field.parset["cluster_specific"]["max_cores"]
         # If one or more observations have differing stations, concatenation cannot be done
         field_stations = set(self.field.stations)
-        self.concat_in_time = all(field_stations == set(obs.stations) for obs in self.field.observations)
+        self.concat_in_time = all(
+            field_stations == set(obs.stations) for obs in self.field.observations
+        )
 
         self.allow_internet_access = self.field.parset["cluster_specific"]["allow_internet_access"]
         self.parset_parms = {
