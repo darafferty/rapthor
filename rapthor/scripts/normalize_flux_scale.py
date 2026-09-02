@@ -807,7 +807,7 @@ def _identify_survey_from_frequency(survey_frequency):
         Name of the survey if identified; None otherwise.
     """
     for survey_name in SURVEY_METADATA.keys():
-        if survey_frequency == SURVEY_METADATA[survey_name]["frequency"]:
+        if np.isclose(survey_frequency, SURVEY_METADATA[survey_name]["frequency"]):
             return survey_name
     return None
 
