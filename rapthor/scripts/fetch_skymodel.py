@@ -2,6 +2,7 @@
 """
 Script to download a sky model using LSMTool
 """
+
 from argparse import ArgumentParser, RawTextHelpFormatter
 
 import casacore.tables as ct

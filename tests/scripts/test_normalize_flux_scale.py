@@ -1051,7 +1051,8 @@ def test_get_survey_metadata_with_reference_skymodels_and_missing_frequencies(
 
 
 @pytest.mark.parametrize(
-    "survey_name_reference_frequency", [["vlssr", 74000000.0], ["wenss", 327000000.0], [None, 100.0]]
+    "survey_name_reference_frequency",
+    [["vlssr", 74000000.0], ["wenss", 327000000.0], [None, 100.0]],
 )
 def test_identify_survey_from_frequency(survey_name_reference_frequency):
     """
