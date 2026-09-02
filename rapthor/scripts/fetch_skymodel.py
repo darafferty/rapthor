@@ -6,9 +6,9 @@ Script to download a sky model using LSMTool
 from argparse import ArgumentParser, RawTextHelpFormatter
 
 import casacore.tables as ct
+import numpy as np
 from lsmtool.download_skymodel import download_skymodel
 from lsmtool.operations_lib import normalize_ra_dec
-import numpy as np
 
 
 def download_model(msin, survey, radius, skymodel):
