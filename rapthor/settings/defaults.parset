@@ -193,7 +193,7 @@ local_rms_window = 50
 local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
-bda_frequencybase = 0.0
+bda_frequencybase = 20000.0
 
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent
@@ -379,6 +379,11 @@ batch_system = single_machine
 max_nodes = 0
 cpus_per_task = 0
 mem_per_node_gb = 0
+
+# Stop processing when a DP3 calibration memory estimate is greater than the
+# applicable per-node memory limit (default = False). If mem_per_node_gb is
+# zero, memory available on the machine running Rapthor is used as the limit.
+fail_on_calibration_oom_risk = False
 
 # Maximum number of cores and threads per task to use on each node (default = 0
 # = all)

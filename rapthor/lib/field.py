@@ -33,6 +33,8 @@ from lsmtool.facet import read_ds9_region_file, read_from_skymodel
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import close, figure
 
+from rapthor.lib.calibration import resolve_calibration_strategy
+
 
 class Field(object):
     """
@@ -2145,21 +2147,13 @@ class Field(object):
            - `do_fulljones_solve` set to True triggers DI calibration after DD
            - `do_slowgain_solve` set to True triggers a slow gain solve after the main solve
         """
-        self._calibration_strategy_defaulted = not bool(self.calibration_strategy)
-        if not self.calibration_strategy:
-            # Use legacy strategy based on the `do_fulljones_solve` and `do_slowgain_solve` parameters
-            self.calibration_strategy = {
-                # DD is always done first in the legacy strategy to support the use case that requires
-                # removing DD effects before doing a DI solve
-                "dd": [
-                    "fast_phase",  # Always do a fast DD solve
-                    "medium_phase",  # Always do a medium DD solve
-                    *(
-                        ["slow_gains"] if self.do_slowgain_solve else []
-                    ),  # Only do a slow DD solve if do_slowgain_solve is True in the strategy file
-                ],
-                "di": [*(["full_jones"] if self.do_fulljones_solve else [])],
-            }
+        self.calibration_strategy, self._calibration_strategy_defaulted = (
+            resolve_calibration_strategy(
+                calibration_strategy=self.calibration_strategy,
+                do_slowgain_solve=self.do_slowgain_solve,
+                do_fulljones_solve=self.do_fulljones_solve,
+            )
+        )
 
     def get_matplotlib_patch(self, wcs=None):
         """

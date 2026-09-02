@@ -216,25 +216,36 @@ inputs:
 {% else %}
 # start not generate_screens
 
-  - id: solint_fast_freqstep
-    label: Fast solution interval in frequency
-    type: int[]
-  
   - id: solint_solve1_freqstep
     label: Solve1 freqstep
+    doc: |
+      The solution interval in number of frequency channels for the fast phase solve (length =
+      n_obs * n_time_chunks).
     type: int[]
+
   - id: solint_solve2_freqstep
     label: Solve2 freqstep
+    doc: |
+      The solution interval in number of frequency channels for the medium1 solve (length =
+      n_obs * n_time_chunks).
     type: int[]
+
   - id: solint_solve3_freqstep
     label: Solve3 freqstep
+    doc: |
+      The solution interval in number of frequency channels for the slow gain solve (length =
+      n_obs * n_time_chunks).
     type: int[]
+
   - id: solint_solve4_freqstep
     label: Solve4 freqstep
+    doc: |
+      The solution interval in number of frequency channels for the medium2 solve (length =
+      n_obs * n_time_chunks).
     type: int[]
   
   - id: solve1_solutions_per_direction
-    label: Fast number of solutions per direction
+    label: Solve1 number of solutions per direction
     doc: |
       The number of solutions per direction for the fast phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
@@ -242,10 +253,10 @@ inputs:
       - type: array
         items:
           - type: array
-            items: 
+            items:
             - int
           - "null"
-      
+
   - id: calibrator_patch_names
     label: Names of calibrator patches
     doc: |
@@ -294,50 +305,62 @@ inputs:
             - float
          
   - id: solve1_smoothnessconstraint
-    label: Fast smoothnessconstraint
+    label: Solve1 smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the fast phase solve (length = 1).
     type: float?
 
   - id: solve1_smoothnessreffrequency
-    label: Fast smoothnessreffrequency
+    label: Solve1 smoothnessreffrequency
     doc: |
       The smoothnessreffrequency Hz for the fast phase solve (length = n_obs *
       n_time_chunks).
     type: float[]
 
   - id: solve1_smoothnessrefdistance
-    label: Fast smoothnessrefdistance
+    label: Solve1 smoothnessrefdistance
     doc: |
       The smoothnessrefdistance in m for the fast phase solve (length = 1).
     type: float?
 
   - id: solve1_antennaconstraint
-    label: Fast antenna constraint
+    label: Solve1 antenna constraint
     doc: |
       The antenna constraint for the fast phase solve (length = 1).
     type: string?
 
   - id: solint_solve1_timestep
-    label: First solution interval in time
+    label: Solve1 solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the fast phase solve (length =
+      n_obs * n_time_chunks).
     type: int[]
 
   - id: solint_solve2_timestep
-    label: Second solution interval in frequency
+    label: Solve2 solution interval in frequency
+    doc: |
+      The solution interval in number of timeslots for the medium1 solve (length =
+      n_obs * n_time_chunks).
     type: int[]
 
   - id: solint_solve3_timestep
-    label: Third solution interval in frequency
+    label: Solve3 solution interval in frequency
+    doc: |
+      The solution interval in number of timeslots for the slow gain solve (length =
+      n_obs * n_time_chunks).
     type: int[]
 
   - id: solint_solve4_timestep
-    label: Forth solution interval in frequency
+    label: Solve4 solution interval in frequency
+    doc: |
+      The solution interval in number of timeslots for the medium2 solve (length =
+      n_obs * n_time_chunks).
     type: int[]
 
   - id: solve2_solutions_per_direction
-    label: Medium number of solutions per direction
+    label: Solve2 number of solutions per direction
     doc: |
-      The number of solutions per direction for the medium phase solve (length =
+      The number of solutions per direction for the medium1 phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
       - type: array
@@ -348,9 +371,9 @@ inputs:
             - int
         
   - id: solve3_solutions_per_direction
-    label: Medium number of solutions per direction
+    label: Solve3 number of solutions per direction
     doc: |
-      The number of solutions per direction for the medium phase solve (length =
+      The number of solutions per direction for the slow gain solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
       - type: array
@@ -361,9 +384,9 @@ inputs:
             - int
   
   - id: solve4_solutions_per_direction
-    label: Medium number of solutions per direction
+    label: Solve4 number of solutions per direction
     doc: |
-      The number of solutions per direction for the medium phase solve (length =
+      The number of solutions per direction for the medium2 phase solve (length =
       n_obs * n_calibrators * n_time_chunks).
     type:
       - type: array
@@ -409,53 +432,53 @@ inputs:
             - float
 
   - id: solve2_smoothnessconstraint
-    label: Fast smoothnessconstraint
+    label: Solve2 smoothnessconstraint
     doc: |
-      The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
+      The smoothnessconstraint kernel size in Hz for the medium1 phase solve (length = 1).
     type: float
 
   - id: solve4_smoothnessconstraint
-    label: Fast smoothnessconstraint
+    label: Solve4 smoothnessconstraint
     doc: |
-      The smoothnessconstraint kernel size in Hz for the medium phase solve (length = 1).
+      The smoothnessconstraint kernel size in Hz for the medium2 phase solve (length = 1).
     type: float
 
   - id: solve2_smoothnessreffrequency
-    label: Fast smoothnessreffrequency
+    label: Solve2 smoothnessreffrequency
     doc: |
-      The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
+      The smoothnessreffrequency Hz for the medium1 phase solve (length = n_obs *
       n_time_chunks).
     type: float[]
 
   - id: solve4_smoothnessreffrequency
-    label: Fast smoothnessreffrequency
+    label: Solve4 smoothnessreffrequency
     doc: |
-      The smoothnessreffrequency Hz for the medium phase solve (length = n_obs *
+      The smoothnessreffrequency Hz for the medium2 phase solve (length = n_obs *
       n_time_chunks).
     type: float[]
 
   - id: solve2_smoothnessrefdistance
-    label: Fast smoothnessrefdistance
+    label: Solve2 smoothnessrefdistance
     doc: |
-      The smoothnessrefdistance in m for the medium phase solve (length = 1).
+      The smoothnessrefdistance in m for the medium1 phase solve (length = 1).
     type: float?
 
   - id: solve4_smoothnessrefdistance
-    label: Fast smoothnessrefdistance
+    label: Solve4 smoothnessrefdistance
     doc: |
-      The smoothnessrefdistance in m for the medium phase solve (length = 1).
+      The smoothnessrefdistance in m for the medium2 phase solve (length = 1).
     type: float?
 
   - id: solve2_antennaconstraint
-    label: Fast antenna constraint
+    label: Solve2 antenna constraint
     doc: |
-      The antenna constraint for the medium phase solve (length = 1).
+      The antenna constraint for the medium1 phase solve (length = 1).
     type: string?
 
   - id: solve4_antennaconstraint
-    label: Fast antenna constraint
+    label: Solve4 antenna constraint
     doc: |
-      The antenna constraint for the medium phase solve (length = 1).
+      The antenna constraint for the medium2 phase solve (length = 1).
     type: string?
 
   - id: dp3_steps
@@ -584,23 +607,27 @@ inputs:
     type: boolean
 
   - id: solve1_datause
+    label: Solve1 solve datause
     doc: |
       DDECal datause option for the fast-phase calibration (length = 1).
     type: string?
 
   - id: solve2_datause
+    label: Solve2 solve datause
     doc: |
-      DDECal datause option for the medium-phase calibration (length = 1).
+      DDECal datause option for the medium1-phase calibration (length = 1).
     type: string?
 
   - id: solve3_datause
+    label: Solve3 solve datause
     doc: |
-      DDECal datause option for the medium-phase calibration (length = 1).
+      DDECal datause option for the slow-gain calibration (length = 1).
     type: string?
 
   - id: solve4_datause
+    label: Solve4 solve datause
     doc: |
-      DDECal datause option for the medium-phase calibration (length = 1).
+      DDECal datause option for the medium2-phase calibration (length = 1).
     type: string?
 
   - id: stepsize
@@ -653,18 +680,6 @@ inputs:
       Flag that determines whether the effects of time smearing are
       corrected for during the prediction part of the solve (length = 1).
     type: boolean
-
-  - id: max_threads
-    label: Max number of threads
-    doc: |
-      The maximum number of threads to use for a job (length = 1).
-    type: int
-
-# start do_slowgain_solve
-  - id: solve3_datause
-    doc: |
-      DDECal datause option for the slow-gain calibration (length = 1).
-    type: string?
 
   - id: solint_slow_timestep
     label: Slow solution interval in time
@@ -725,19 +740,6 @@ inputs:
       The filename of the input h5parm solution table to use for the
       slow-gain initial solutions (length = 1).
     type: File?
-
-  - id: solve3_smoothness_dd_factors
-    label: Smoothness factors
-    doc: |
-      The factor by which to multiply the smoothnesscontraint for the
-      slow-gain solve, per direction (length = n_obs * n_calibrators * n_time_chunks).
-    type:
-      - type: array
-        items:
-          - "null"
-          - type: array
-            items: 
-            - float
 
   - id: solve4_initialsolutions_h5parm
     label: Input solution table

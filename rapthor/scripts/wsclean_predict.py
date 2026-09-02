@@ -6,6 +6,7 @@ Script to predict using wsclean
 import argparse
 import json
 import logging
+import math
 import os
 import shutil
 import stat
@@ -15,8 +16,10 @@ import uuid
 from argparse import ArgumentParser, RawTextHelpFormatter
 
 import casacore.tables as ct
+import lsmtool
 import numpy as np
 from lsmtool.facet import read_ds9_region_file
+from scipy import constants
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -31,7 +34,7 @@ def make_writable(msfile):
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
-    # copy msfile to newms
+    # copy msfile to newms (TBD: use DP3 to average data if needed)
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
     # change root dir +rwx
     current_mode = os.stat(newms).st_mode
@@ -78,6 +81,57 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
+def optimal_rendering_parameters(msname, skymodel, ra, dec):
+    """
+    Return optimal image parameters (n_pixels, cell_size (rad))
+    for sky model rendering
+    For more details,
+    see section: Sky Model Resampling on the wsclean manual
+    """
+
+    # window size used in -sinc-window-size
+    window_size = 127 / 2
+    # beta
+    beta = 0.1
+
+    # determine max value of (l,m) in the sky model (radians)
+    sky = lsmtool.load(skymodel)
+    distances = sky.getDistance(ra, dec)
+    max_dist = np.argmax(distances)
+    # Sin projection to get l,m distance
+    max_lm = math.sin(math.radians(distances[max_dist]))
+    d0 = max_lm
+
+    # determine max values of u,v,w in the data (m)
+    uvw = ct.table(msname).getcol("UVW")
+    max_u = np.argmax(uvw[:, 0])
+    max_v = np.argmax(uvw[:, 1])
+    max_w = np.argmax(uvw[:, 2])
+    max_uv = max(uvw[max_u, 0], uvw[max_v, 1])
+    max_w = uvw[max_w, 2]
+
+    # determine the max frequency Hz (done also in predict, could be combined)
+    freq = ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+    max_f = np.argmax(freq[0, :])
+    max_freq = freq[0, max_f]
+
+    # convert uvw to wavelengths
+    max_uv *= max_freq / constants.c
+    max_w *= max_freq / constants.c
+
+    # base cell size
+    s0 = 1 / (2 * max_uv)
+    # lobe size of conv. kernel
+    f0 = math.sqrt(1 + (beta / math.pi) ** 2) / window_size
+
+    d = d0 + window_size * s0
+    s = s0 / (1 + 2 * f0 + s0 * d * max_w)
+
+    n_pix = int(d / s)
+
+    return n_pix, s
+
+
 def predict(
     msfile,
     ds9_region_file,
@@ -89,6 +143,7 @@ def predict(
     time_freq_smearing,
     storage_manager,
     predict_bandwidth,
+    n_threads,
 ):
     """
     Predict model image to msfile
@@ -107,6 +162,7 @@ def predict(
     time_freq_smearing: if true, enable smearing in predict
     storage_manager: storage manager to use 'default'
     predict_bandwidth: bandwidth of prediction, channels will be split into groups
+    n_threads: max threads to use
 
     """
     # get channel frequencies
@@ -116,7 +172,7 @@ def predict(
     if n_chan > 1:
         bandwidth = freq_list[-1] - freq_list[0] + (freq_list[1] - freq_list[0])
     else:
-        bandwidth = frequency_bandwidth[1]
+        bandwidth = float(frequency_bandwidth[1])
     # split channels into chunks of predict_bandwidth
     if bandwidth > predict_bandwidth:
         n_chunks = int(bandwidth / predict_bandwidth)
@@ -134,11 +190,8 @@ def predict(
 
     # model images can have arbitrary names,
     tmpdir = os.path.dirname(sky_model)
-    model_name = os.path.join(tmpdir, "predict")
-    model = model_name + "-model.fits"
-    # make a symlink in same dir with workable name
-    os.symlink(model_name + "-term-0.fits", model)
-
+    model_images = list()
+    model_counter = 0
     for freqs, chans in zip(freq_chunks, chan_chunks):
         if len(freqs) > 1:
             chunk_bandwidth = freqs[-1] - freqs[0] + (freq_list[1] - freq_list[0])
@@ -148,6 +201,8 @@ def predict(
         err_code = 0
         # only one spectral term is created
         # output will be $(model_name)-term-0.fits
+        model_name = os.path.join(tmpdir, f"predict-{model_counter:04d}")
+        model_images.append(model_name)
         cmd = [
             "wsclean",
             "-draw-model",
@@ -173,37 +228,65 @@ def predict(
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
             err_code = err.returncode
+        model_counter += 1
 
-        err_code = 0
-        for facet in facet_names:
-            cmd = [
-                "wsclean",
-                "-predict",
-                "-facet-regions",
-                str(ds9_region_file),
-                "-model-column",
-                str(facet),
-                "-select-facets",
-                str(facet),
-                "-name",
-                str(model_name),
-                "-channel-range",
-                str(chans[0]),
-                str(chans[-1]),
-                "-model-storage-manager",
-                str(storage_manager),
-            ]
-            if time_freq_smearing is not None:
-                cmd.append("-apply-time-frequency-smearing")
-            # disable reordering of data
-            cmd.append("-no-reorder")
-            cmd.append(msfile)
+    n_models = len(model_images)
+    if n_models > 1:
+        # make a symlink in same dir with workable name
+        for model in model_images:
+            # link predict-xxxx-term-0.fits as predict-xxxx-model.fits
             try:
-                subprocess.run(cmd, check=True).returncode
-            except subprocess.CalledProcessError as err:
-                print(err, file=sys.stderr)
-                err_code = err.returncode
-                break
+                os.symlink(model + "-term-0.fits", model + "-model.fits")
+            except FileExistsError:
+                raise
+    else:
+        model = model_images[0]
+        # single model image, drop -xxxx-
+        try:
+            os.symlink(
+                model + "-term-0.fits", os.path.join(os.path.dirname(model), "predict-model.fits")
+            )
+        except FileExistsError:
+            raise
+
+    err_code = 0
+    first_facet = 1
+    model_name = os.path.join(tmpdir, "predict")
+    for facet in facet_names:
+        cmd = [
+            "wsclean",
+            "-predict",
+            "-facet-regions",
+            str(ds9_region_file),
+            "-model-column",
+            str(facet),
+            "-select-facets",
+            str(facet),
+            "-name",
+            str(model_name),
+            "-channels-out",
+            str(n_models),
+            "-model-storage-manager",
+            str(storage_manager),
+            "-j",
+            str(n_threads),
+        ]
+        if time_freq_smearing is not None:
+            cmd.append("-apply-time-frequency-smearing")
+        cmd.append("-parallel-reordering")
+        cmd.append(str(n_threads))
+        if first_facet:
+            first_facet = 0
+        else:
+            cmd.append("-reuse-reordered")
+        cmd.append("-save-reordered")
+        cmd.append(msfile)
+        try:
+            subprocess.run(cmd, check=True).returncode
+        except subprocess.CalledProcessError as err:
+            print(err, file=sys.stderr)
+            err_code = err.returncode
+            break
 
     return err_code
 
@@ -308,6 +391,24 @@ def main():
     with open(output_info, "w") as f:
         json.dump(out_dict, f)
 
+    # determine optimal parameters for model image rendering
+    n_pix, cell_size = optimal_rendering_parameters(
+        msname, args.skymodel, args.ra_dec[0], args.ra_dec[1]
+    )
+    # override provided imsize and cellsize
+    max_npix = max(args.imsize[0], args.imsize[1])
+    cellsize_deg = math.degrees(cell_size)
+    given_extent = max_npix * args.cellsize
+    n_pix = max(int(given_extent / cellsize_deg), max_npix)
+    # if n_pix is greater than x3 times original image size, limit
+    # the size (because of computational limitations)
+    if n_pix > 3 * max_npix:
+        n_pix = 3 * max_npix
+        cellsize_deg = given_extent / n_pix
+    imsize = args.imsize
+    imsize[0] = n_pix
+    imsize[1] = n_pix
+
     # draw model and predict
     return predict(
         msname,
@@ -315,11 +416,12 @@ def main():
         args.skymodel,
         args.ra_dec,
         args.frequency_bandwidth,
-        args.imsize,
-        args.cellsize,
+        imsize,
+        cellsize_deg,
         args.time_freq_smearing,
         args.storage_manager,
         args.predict_bandwidth,
+        args.threads,
     )
 
 

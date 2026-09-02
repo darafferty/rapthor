@@ -99,6 +99,17 @@ class TestParset:
         parset_dict = parset_read(parset)
         assert parset_dict["dir_working"] == str(tmp_path)
         assert parset_dict["input_ms"] == str(tmp_path / "test.ms")
+        assert parset_dict["cluster_specific"]["fail_on_calibration_oom_risk"] is False
+
+    @pytest.mark.parametrize(
+        "parset",
+        [("cluster", "fail_on_calibration_oom_risk", True)],
+        indirect=True,
+    )
+    def test_fail_on_calibration_oom_risk_is_boolean(self, parset):
+        parset_dict = parset_read(parset)
+
+        assert parset_dict["cluster_specific"]["fail_on_calibration_oom_risk"] is True
 
     @pytest.mark.parametrize(
         "parset, expected_message",

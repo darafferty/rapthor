@@ -8,14 +8,17 @@ import tarfile
 import tempfile
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
+from types import SimpleNamespace
 
 import lsmtool
+import numpy as np
 import pytest
 import requests
 from _pytest.fixtures import FixtureFunctionDefinition
 from lsmtool.facet import read_ds9_region_file
 
 from rapthor.lib.field import Field
+from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 from rapthor.lib.parset import parset_read
 from rapthor.lib.sector import Sector
@@ -387,6 +390,7 @@ def generated_parset_path(request, tmp_path, test_ms):
         input_skymodel_path,
         apparent_skymodel_path,
         normalization_skymodel_paths=None,
+        cpu_limit=6,
     )
 
     return output_parset_path
@@ -462,3 +466,25 @@ def rendered_regions(pytestconfig):
 @pytest.fixture()
 def facets(facet_region_ds9):
     return read_ds9_region_file(facet_region_ds9)
+
+
+@pytest.fixture
+def identity_wcs_image():
+    """
+    Return an in-memory image whose world and pixel coordinates are identical.
+    The image has 10x10 pixels and thus corners at (0, 0) and (9, 9).
+    """
+    image = FITSImage.__new__(FITSImage)
+    image.img_data = np.arange(100, dtype=float).reshape(10, 10)
+    image.get_wcs = lambda: SimpleNamespace(world_to_pixel_values=lambda vertices: vertices)
+    return image
+
+
+@pytest.fixture
+def facet_factory():
+    """Return a factory for lightweight facets expressed directly in pixel coordinates."""
+
+    def make_facet(name, vertices):
+        return SimpleNamespace(name=name, vertices=np.asarray(vertices, dtype=float))
+
+    return make_facet

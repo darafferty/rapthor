@@ -11,7 +11,8 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import TYPE_CHECKING, List, Union
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Optional
 
 import yaml
 
@@ -19,6 +20,46 @@ if TYPE_CHECKING:
     from rapthor.lib.operation import Operation
 
 logger = logging.getLogger("rapthor:cwlrunner")
+
+
+def format_cli_command(args: list[str], indent: int = 4) -> str:
+    """
+    Format a cli command for log messages.
+
+    Parameters
+    ----------
+    args : list[str]
+        List of command-line arguments to format.
+    indent : int, optional
+        Number of spaces to use for indentation, by default 4.
+
+    Returns
+    -------
+    str
+        Formatted command-line string suitable for logging.
+    """
+    indentation = " " * indent
+    return f" \\\n{indentation}".join(_format_cli_command(args))
+
+
+def _format_cli_command(args: list[str]) -> Iterable[str]:
+    itr = iter(args)
+    current = next(itr, None)
+    while current:
+        if current.startswith("--"):
+            if next_arg := next(itr, None):
+                if next_arg.startswith("--"):
+                    yield current
+                    current = next_arg
+                else:
+                    yield f"{current} {next_arg}"
+                    current = next(itr, None)
+            else:
+                yield current
+                break
+        else:
+            yield current
+            current = next(itr, None)
 
 
 class BaseCWLRunner:
@@ -69,7 +110,7 @@ class BaseCWLRunner:
         os.environ.clear()
         os.environ.update(self._environment)
 
-    def execute(self, args: List[str], env: dict) -> bool:
+    def execute(self, args: list[str], env: dict) -> bool:
         """
         Start the runner in a subprocess.
         Every CWL runner requires two input files:
@@ -87,15 +128,21 @@ class BaseCWLRunner:
             open(self.operation.pipeline_outputs_file, "w") as stdout,
             open(self.operation.pipeline_log_file, "w") as stderr,
         ):
-            try:
-                result = subprocess.run(
-                    args=args, env=env, stdout=stdout, stderr=stderr, check=True
+            result = subprocess.run(args=args, env=env, stdout=stdout, stderr=stderr, check=False)
+            logger.debug(str(result))
+            if result.returncode != 0:
+                logger.critical(
+                    "CWL command failed during subprocess call with return code %s:\n    %s%s",
+                    result.returncode,
+                    format_cli_command(result.args, indent=6),
+                    (
+                        f"\n\nThe following stderr was captured:\n\n   {result.stderr.read()}"
+                        if result.stderr
+                        else ""
+                    ),
                 )
-                logger.debug(str(result))
-                return True
-            except subprocess.CalledProcessError as err:
-                logger.critical(str(err))
-                return False
+
+            return result.returncode == 0
 
     def run(self) -> bool:
         """
@@ -122,6 +169,7 @@ class BaseCWLRunner:
         current_env = os.environ.copy()
         python_path = os.pathsep.join([current_env.get("PYTHONPATH", ""), script_dir])
         modified_env = current_env | {"PYTHONPATH": python_path}
+
         return self.execute(args, modified_env)
 
     def parse_outputs(self) -> dict:
@@ -167,7 +215,7 @@ class CWLRunner(BaseCWLRunner):
         """
         os.remove(self.operation.mpi_config_file)
 
-    def _get_tmpdir_prefix(self) -> Union[str, None]:
+    def _get_tmpdir_prefix(self) -> Optional[str]:
         """
         Return the prefix to be passed as value to the command-line option
         `--tmpdir-prefix` to the CWL runner or `None`. It is assumed that
@@ -209,7 +257,7 @@ class CWLRunner(BaseCWLRunner):
             )
         return os.path.join(prefix, self.command + ".") if prefix else None
 
-    def _get_tmp_outdir_prefix(self) -> Union[str, None]:
+    def _get_tmp_outdir_prefix(self) -> Optional[str]:
         """
         Return the prefix to be passed as value to the command-line option
         `--tmp-outdir-prefix` to the CWL runner, or `None`. It is assumed
@@ -272,7 +320,7 @@ class ToilRunner(CWLRunner):
         super().__init__(operation)
         self.command = "toil-cwl-runner"
 
-    def _get_tmp_outdir_prefix(self) -> Union[str, None]:
+    def _get_tmp_outdir_prefix(self) -> Optional[str]:
         """
         Return the prefix to be passed as value to the command-line option
         `--tmp-outdir-prefix` to the CWL runner or `None`. When using Slurm,
@@ -287,7 +335,7 @@ class ToilRunner(CWLRunner):
             )
         return prefix
 
-    def _get_workdir(self) -> Union[str, None]:
+    def _get_workdir(self) -> Optional[str]:
         """
         Return the working directory for Toil, if using Slurm, else return
         `None`.  When using Slurm the working directory needs to be on a
@@ -533,7 +581,7 @@ class StreamFlowRunner(BaseCWLRunner):
         super().teardown()
 
 
-def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
+def create_cwl_runner(runner: str, operation: Operation) -> BaseCWLRunner:
     """
     Factory method that creates a CWLRunner instance based on the `runner` argument.
     We need access to some information inside the `operation` that calls us.

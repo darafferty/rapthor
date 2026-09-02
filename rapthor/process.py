@@ -8,6 +8,7 @@ import os
 import numpy as np
 
 from rapthor import _logging
+from rapthor.lib.calibration_memory import check_calibration_memory
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy, validate_strategy
@@ -18,6 +19,17 @@ from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import Predict
 
 log = logging.getLogger("rapthor")
+
+
+def check_preflight_calibration_memory(field, strategy_steps):
+    """Estimate calibration memory for each strategy cycle using maximum directions."""
+    for cycle_number, step in enumerate(strategy_steps, start=1):
+        check_calibration_memory(
+            field,
+            cycle_number,
+            step.get("max_directions", getattr(field, "max_directions", 1)),
+            step,
+        )
 
 
 def run(parset_file, logging_level="info"):
@@ -61,6 +73,7 @@ def run(parset_file, logging_level="info"):
         return
     # Cross-check strategy with parset for compatibility.
     validate_strategy(strategy_steps, parset)
+    check_preflight_calibration_memory(field, strategy_steps)
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:
@@ -182,6 +195,8 @@ def run_steps(field, steps, final=False):
         if field.do_calibrate:
             # Set whether screens should be generated
             field.generate_screens = (field.dde_mode == "hybrid") and final
+            field.set_obs_parameters()
+            check_calibration_memory(field, cycle_number, field.num_patches)
             for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
                 if not enabled:
                     continue
