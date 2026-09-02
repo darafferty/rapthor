@@ -60,8 +60,18 @@ inputs:
   - id: msin
     label: Filename of input MS
     doc: |
-      The filename of input MS file for which imaging will be done.
-    type: Directory
+      The filename of input MS file for which imaging will be done. If this input
+      is given, msin_list should not be given
+    type: Directory?
+    inputBinding:
+      position: 3
+
+  - id: msin_list
+    label: List of filenames of input MSs
+    doc: |
+      The filenames of input MS files for which imaging will be done. If this input
+      is given, msin should not be given
+    type: Directory[]?
     inputBinding:
       position: 3
 

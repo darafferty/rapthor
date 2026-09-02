@@ -38,11 +38,11 @@ inputs:
   - id: msin
     type: Directory?
     inputBinding:
-      position: 5
+      position: 3
   - id: msin_list
     type: Directory[]?
     inputBinding:
-      position: 5
+      position: 3
   - id: name
     type: string
     inputBinding:

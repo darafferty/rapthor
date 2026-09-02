@@ -47,8 +47,6 @@ inputs:
       files and used for imaging (length = 1).
     type: string
 
-
-
   - id: residual_filename
     label: Filename of residual MS
     doc: |
