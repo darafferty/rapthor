@@ -7,8 +7,8 @@ import json
 import logging
 import os
 from collections import namedtuple
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, List
 
 import astropy.units as u
 import lsmtool
@@ -36,6 +36,13 @@ from matplotlib.pyplot import close, figure
 
 from rapthor.lib.calibration import resolve_calibration_strategy
 
+# ---------------------------------------------------------------------------- #
+# Module constants
+
+# Type aliases
+PathLike = str | os.PathLike
+
+# Antenna constraints files
 ANTENNA_CONSTRAINTS_PATH = Path(__file__).parent.parent / "settings" / "antenna_constraints"
 ANTENNA_CONSTRAINTS_FILES = {
     "HBA": ANTENNA_CONSTRAINTS_PATH / "lofar_HBA_core_extended.json",
@@ -43,7 +50,20 @@ ANTENNA_CONSTRAINTS_FILES = {
 }
 
 
-def load_json(filename):
+def load_json(filename: PathLike) -> object:
+    """
+    Read a JSON file and return the contents as a Python object.
+
+    Parameters
+    ----------
+    filename : str | os.PathLike
+        Path to the file to load.
+
+    Returns
+    -------
+    object
+        The deserialized JSON content of the file as a python object.
+    """
     path = lsmtool.io.check_file_exists(filename)
     with path.open("r") as fp:
         return json.load(fp)
@@ -344,27 +364,37 @@ class Field(object):
         mid_index = np.argmin(np.abs(np.array(times) - mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
-    def resolve_antenna_constraints(self):
+    def resolve_antenna_constraints(self) -> list[list[str]]:
         """
         Resolves the antenna constraints for the calibration based on the field's
         configuration and the parset settings.
+
+        Returns
+        -------
+        antenna_constraints : list of list of str
+            Filtered antenna groups containing only stations present in the
+            field. If no antenna constraints are specified, an empty list is
+            returned.
         """
         antenna_constraints = self.antenna_constraints
         if antenna_constraints is True:
             self.log.info("Loading default antenna constraints for %s.", self.antenna)
             if ANTENNA_CONSTRAINTS_FILES.get(self.antenna):
-                return self._load_antenna_constraints(ANTENNA_CONSTRAINTS_FILES[self.antenna])
-
-            self.log.warning("No antenna constraints file found for antenna %r", self.antenna)
-            return []
+                antenna_constraints = ANTENNA_CONSTRAINTS_FILES[self.antenna]
+            else:
+                self.log.warning(
+                    "No antenna constraints file found for antenna %r. No constraintes were loaded",
+                    self.antenna,
+                )
+                return []
 
         if antenna_constraints:
-            self.log.info("Resolving custom antenna constraints for %s.", self.antenna)
-            return list(self._resolve_antenna_constraints(antenna_constraints))
+            # antenna constraints given as filename
+            return self._load_antenna_constraints(antenna_constraints)
 
         return []
 
-    def _load_antenna_constraints(self, filename):
+    def _load_antenna_constraints(self, filename: PathLike) -> list[list[str]]:
         """
         Loads antenna constraints from a JSON file and filters them based on
         the field's stations.
@@ -380,16 +410,22 @@ class Field(object):
             Filtered antenna groups containing only stations present in the
             field.
         """
+        self.log.info("Loading antenna constraints from file %s", filename)
         antenna_constraints = load_json(filename)
         return list(self._resolve_antenna_constraints(antenna_constraints))
 
-    def _resolve_antenna_constraints(self, antenna_constraints):
+    def _resolve_antenna_constraints(
+        self, antenna_constraints: list[str] | list[list[str]]
+    ) -> Iterable[list[str]]:
         """
         Resolve the names of the stations in the field for the input list of
         antenna groups that solutions are to be constrained for in calibration.
 
         The input is a list of lists of station names, where each sublist
-        represents a group of stations that will be fit together.
+        represents a group of stations that will be fit together. For example,
+        ``[['CS001HBA0', 'CS002HBA0'], ['RS106HBA', 'RS208HBA']]`` would produce two
+        groups of stations, one with the two core stations and one with the two remote
+        stations.
 
         Parameters
         ----------
@@ -1374,7 +1410,7 @@ class Field(object):
             sector.predict_skymodel = None
             sector.field.source_skymodel = None
 
-    def get_source_distances(self, source_dict: Dict[str, List[float]]):
+    def get_source_distances(self, source_dict: dict[str, list[float]]):
         """
         Returns source distances in degrees from the phase center
 

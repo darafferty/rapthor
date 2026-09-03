@@ -204,10 +204,14 @@ The available options are described below under their respective sections.
             recommended.
 
     use_wsclean_predict
-        Use image-based prediction using WSClean (default = ``False``)? Usage similar to ``use_image_based_predict`` above (but mutually exclusive).
+        Use image-based prediction using WSClean (default = ``False``)? Usage similar to
+        ``use_image_based_predict`` above (but mutually exclusive).
 
     wsclean_predict_bw
-        Bandwidth (Hz) to create separate images for prediction. The full bandwidth of the data will be divided into chunks of channels whose frequency width given by this value. If the division if not an integer, an approximate (not uniform) division will be made.
+        Bandwidth (Hz) to create separate images for prediction. The full bandwidth of
+        the data will be divided into chunks of channels whose frequency width given by
+        this value. If the division if not an integer, an approximate (not uniform)
+        division will be made.
 
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
@@ -301,14 +305,16 @@ The available options are described below under their respective sections.
         Tolerance used to check convergence during calibration (default = 5e-3).
 
     antenna_constraints
-        Antenna constraints. List of lists specifying groups of antennas that are to
-        be constrained to have the same solution. The antenna constraints will be
-        applied to the fast and medium phase solves. For LOFAR data, the default
-        behaviour is to constrain the core stations and the nearest remote stations
-        together as a group. The antenna groups are automatically loaded based on the 
-        detected antenna being LBA or HBA. In order to enable this, a boolean value 
-        can be supplied. A value of ``False`` and ``[]`` are equivalent, and
-        will fit all stations independently.
+        Antenna constraints to be applied during fast and medium phase calibration solves.
+        This parameter can be given as a boolean True/False value, or as the path to a
+        filename containing the antenna constraints in JSON format. If boolean ``True``,
+        rapthor will attempt to load the appropriate antenna constraints automatically
+        based on the antenna type for LOFAR HBA/LBA. If the antenna type is not
+        recognised, no constraints will be loaded and a warning is emitted. The default
+        constraints file include the LOFAR core with the nearest remote stations as a
+        single group. Providing a value of ``False`` will fit all stations independently.
+        If a filename is provided, it should contain a list of lists of station names,
+        where each inner list defines a group of stations that should be solved together.
 
     fast_freqstep_hz
         Frequency step used during the fast calibration, in Hz (default = 1e6).
