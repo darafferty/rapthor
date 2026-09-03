@@ -47,14 +47,9 @@
     "CS401HBA1",
     "CS501HBA0",
     "CS501HBA1",
-    "RS106HBA0",
-    "RS106HBA1",
-    "RS205HBA0",
-    "RS205HBA1",
-    "RS305HBA0",
-    "RS305HBA1",
-    "RS306HBA0",
-    "RS306HBA1",
-    "RS503HBA0",
-    "RS503HBA1"
+    "RS106HBA",
+    "RS205HBA",
+    "RS305HBA",
+    "RS306HBA",
+    "RS503HBA"
 ]
