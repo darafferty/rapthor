@@ -204,6 +204,7 @@ pass_env = [
     "OMP_NUM_THREADS",
     "OPENBLAS_NUM_THREADS",
     "VECLIB_MAXIMUM_THREADS",
+    "EVERYBEAM_DATADIR",
 ]
 commands = [
     [
