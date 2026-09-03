@@ -47,6 +47,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-program-options-dev \
         libboost-python-dev \
         libcfitsio-dev \
+        libdeflate-dev \
         libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
@@ -77,7 +78,7 @@ RUN python3 -m pip install numpy
 # Note: The file on the ftp site is updated daily. When warnings regarding
 # leap seconds appear, ignore them or regenerate the docker image.
 RUN mkdir -p /usr/local/share/casacore/data && \
-    wget -qO - https://www.astron.nl/iers/WSRT_Measures.ztar | \
+    wget -qO - https://iers.astron.nl/WSRT_Measures.ztar | \
         tar -C /usr/local/share/casacore/data -xzf -
 
 # Install Casacore
@@ -243,6 +244,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-python1.90.0 \
         libc6 \
         libcfitsio-bin \
+        libdeflate0 \
         libfftw3-double3 \
         libfftw3-single3 \
         libgcc-s1 \
