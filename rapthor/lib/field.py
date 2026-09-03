@@ -7,7 +7,7 @@ import json
 import logging
 import os
 from collections import namedtuple
-from collections.abc import Collection, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 
 import astropy.units as u
