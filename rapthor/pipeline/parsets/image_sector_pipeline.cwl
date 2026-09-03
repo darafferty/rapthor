@@ -47,6 +47,13 @@ inputs:
       files and used for imaging (length = 1).
     type: string
 
+  - id: residual_filename
+    label: Filename of residual MS
+    doc: |
+      The filename of the MS file resulting from making the residual visibilities
+      (length = 1).
+    type: string
+
   - id: starttime
     label: Start times of each obs
     doc: |
@@ -78,6 +85,13 @@ inputs:
       (length = 1).
     type: float
 
+  - id: image_frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done
+      (length = 1).
+    type: float
+
   - id: image_maxinterval
     label: BDA maxinterval
     doc: |
@@ -85,6 +99,12 @@ inputs:
       done (length = n_obs).
     type: int[]
 
+  - id: image_minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done.
+    type: int[]
+      
   - id: previous_mask_filename
     label: Filename of previous mask
     doc: |
@@ -183,6 +203,13 @@ inputs:
       solutions (length = 1).
     type: File?
 
+  - id: prepare_data_h5parm
+    label: Filename of pre-apply h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions to pre-apply
+      before imaging (length = 1).
+    type: File?
+
   - id: fulljones_h5parm
     label: Filename of h5parm
     doc: |
@@ -197,6 +224,12 @@ inputs:
       (length = 1).
     type: File?
 
+  - id: parallel_gridding_tasks
+    label: Max number of gridding tasks
+    doc: |
+      The maximum number of tasks to use during parallel gridding (length = 1).
+    type: int
+    
 {% if use_facets %}
 # start use_facets
   - id: skymodel
@@ -255,11 +288,6 @@ inputs:
       Use only diagonal (XX and YY) visibilities (length = 1).
     type: boolean
 
-  - id: parallel_gridding_threads
-    label: Max number of gridding threads
-    doc: |
-      The maximum number of threads to use during parallel gridding (length = 1).
-    type: int
 
   - id: shared_facet_rw
     label: Shared facet reads and writes
@@ -484,6 +512,13 @@ inputs:
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
 
+  - id: update_model_required
+    label: Update model data
+    doc: |
+      Update the model data column of the imaging MS with the clean-
+      component model (length = 1).
+    type: boolean
+
   - id: save_filtered_model_image
     label: Save filtered model image
     doc: |
@@ -608,6 +643,12 @@ outputs:
     outputSource:
       - prepare_imaging_data/msimg
     type: Directory[]
+  - id: residual_visibilities
+    outputSource:
+      - make_residual_data/msresid
+    type:
+      - "null"
+      - Directory
   - id: source_filtering_mask
     outputSource:
       - filter/source_filtering_mask
@@ -617,6 +658,9 @@ outputs:
     outputSource:
       - compress/image_I_nonpb_name
       - compress/image_I_pb_name
+{% if use_facets %}
+      - correct_astrometry/corrected_image
+{% endif %}
     type: File[]
   - id: sector_extra_images
     outputSource:
@@ -625,8 +669,11 @@ outputs:
 {% else %}
   - id: sector_I_images
     outputSource:
-    - select_nonpb_image/selected
-    - select_pb_image/selected
+      - select_nonpb_image/selected
+      - select_pb_image/selected
+{% if use_facets %}
+      - correct_astrometry/corrected_image
+{% endif %}
     type: File[]
   - id: sector_extra_images
     outputSource:
@@ -700,8 +747,12 @@ steps:
         source: image_timestep
       - id: maxinterval
         source: image_maxinterval
+      - id: minchannels
+        source: image_minchannels
       - id: timebase
         source: image_timebase
+      - id: frequencybase
+        source: image_frequencybase
       - id: beamdir
         source: phasecenter
       - id: numthreads
@@ -711,7 +762,7 @@ steps:
         source: central_patch_name
 {% endif %}
       - id: h5parm
-        source: h5parm
+        source: prepare_data_h5parm
       - id: fulljones_h5parm
         source: fulljones_h5parm
       - id: normalize_h5parm
@@ -720,7 +771,7 @@ steps:
         source: prepare_data_steps
       - id: applycal_steps
         source: prepare_data_applycal_steps
-    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval]
+    scatter: [msin, msout, starttime, ntimes, freqstep, timestep, maxinterval, minchannels]
     scatterMethod: dotproduct
     out:
       - id: msimg
@@ -863,11 +914,9 @@ steps:
         source: shared_facet_rw
       - id: shared_facet_writes
         source: shared_facet_rw
-{% if not use_mpi %}
-      - id: num_gridding_threads
-        source: parallel_gridding_threads
 {% endif %}
-{% endif %}
+      - id: num_gridding_tasks
+        source: parallel_gridding_tasks
       - id: wsclean_imsize
         source: wsclean_imsize
       - id: wsclean_niter
@@ -930,6 +979,9 @@ steps:
 {% endif %}
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
+      - id: no_update_model_required
+        source: update_model_required
+        valueFrom: $(!self)
     out:
       - id: image_I_nonpb_name
       - id: image_I_pb_name
@@ -967,6 +1019,25 @@ steps:
 {% endif %}
 # end compress_images
 
+  - id: make_residual_data
+    label: Make residual visibility data
+    doc: |
+      This step uses DP3 to generate the residual visibility data by
+      subtracting the MODEL_DATA column, made by WSClean in the imaging step
+      above, from the DATA column.
+    run: {{ rapthor_pipeline_dir }}/steps/make_residual_data.cwl
+    in:
+      - id: msin
+        source: concat_in_time/msconcat
+      - id: msout
+        source: residual_filename
+      - id: numthreads
+        source: max_threads
+      - id: update_model_required
+        source: update_model_required
+    out:
+      - id: msresid
+    when: $(inputs.update_model_required)
 
 # start peel_bright_sources
   - id: restore_pb
@@ -990,6 +1061,7 @@ steps:
     out:
       - id: restored_image
     when: $(inputs.peel_bright_sources)
+
   - id: restore_nonpb
     label: Restore sources to non-PB image
     doc: |
@@ -1105,8 +1177,6 @@ steps:
         source: source_finder
       - id: ncores
         source: max_threads
-      - id: save_filtered_model_image
-        source: save_filtered_model_image
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
@@ -1169,11 +1239,31 @@ steps:
         source: photometry_skymodel
       - id: astrometry_skymodel
         source: astrometry_skymodel
-
     out:
       - id: diagnostics
       - id: offsets
       - id: plots
+
+{% if use_facets %}
+  - id: correct_astrometry
+    label: Correct astrometry offsets
+    doc: |
+      This step corrects an image for astrometry offsets
+    run: {{ rapthor_pipeline_dir }}/steps/correct_astrometry.cwl
+    in:
+      - id: input_image
+{% if compress_images %}
+        source: compress/image_I_pb_name
+{% else %}
+        source: select_pb_image/selected
+{% endif %}
+      - id: region_file
+        source: make_region_file/region_file
+      - id: corrections_file
+        source: find_diagnostics/offsets
+    out:
+      - id: corrected_image
+{% endif %}
 
 {% if normalize_flux_scale %}
 # start normalize_flux_scale

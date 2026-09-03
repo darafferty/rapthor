@@ -15,7 +15,6 @@ requirements:
     processes: $(inputs.nnodes)
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - -apply-facet-beam
@@ -182,6 +181,13 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: num_gridding_tasks
+    label: Number of gridding tasks
+    doc: |
+      The number of tasks to use during gridding.
+    type: int
+    inputBinding:
+      prefix: -parallel-gridding
   - id: dd_psf_grid
     type: int[]
     inputBinding:
@@ -217,6 +223,11 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -apply-time-frequency-smearing
+  - id: no_update_model_required
+    type: boolean
+    default: true
+    inputBinding:
+      prefix: -no-update-model-required
   - id: shared_facet_reads
     type: boolean
     default: false

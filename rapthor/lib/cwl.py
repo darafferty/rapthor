@@ -26,8 +26,10 @@ class CWLPath(object):
     """
 
     def __init__(self, path, path_type):
-        if type(path) not in [str, list]:
-            raise ValueError("path must be a string or a list of strings")
+        if not isinstance(path, (str, list)):
+            raise ValueError(
+                f"path must be a string or a list of strings: obtained {type(path)} for {path_type}"
+            )
         self.path = path
         if path_type.lower() == "file":
             self.path_type = "File"

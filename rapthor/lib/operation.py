@@ -5,6 +5,8 @@ Definition of the master Operation class
 import json
 import logging
 import os
+import re
+from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -14,6 +16,38 @@ from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, "..", "pipeline", "parsets")))
+
+LOG_ERROR_PARSER = re.compile(
+    r"""(?xs)   # verbose, dot matches newline
+    # log format is [date] [thread] [level] [module] [workflow] message
+    \[(?P<date>[^\]]+)\]\s          # date
+    \[(?P<thread>[^\]]+)\]\s        # thread
+    \[(?P<level>[E])\]\s            # level match error
+    \[(?P<module>[^\]]+)\]\s        # module 
+    (\[(?P<workflow>[^\]]+)\]\s)?   # workflow
+    (?P<message>.+?)                # message
+    (?:\n\s*(?=\[)|$)               # end of log record
+    """
+)
+
+
+def extract_log_errors(log_file):
+    """
+    Extracts error messages from a cwl log file.
+
+    Parameters
+    ----------
+    log_file : Path
+        Path to the log file to be parsed.
+
+    Returns
+    -------
+    str
+        Extracted error messages from the log file.
+    """
+    with log_file.open("r") as log:
+        parsed_errors = [match[0] for match in re.finditer(LOG_ERROR_PARSER, log.read())]
+    return parsed_errors
 
 
 class Operation(object):
@@ -36,16 +70,16 @@ class Operation(object):
         Name of the operation
     """
 
-    def __init__(self, field, index=None, name: str = ""):
+    def __init__(self, field, index=None, name: str = "", rootname: str = ""):
         self.parset = field.parset.copy()
         self.field = field
-        self.rootname = name.lower()
+        operation_name = name.lower()
+        self.rootname = rootname.lower() if rootname else operation_name
         self.index = index
         if self.index is not None:
-            self.name = f"{self.rootname}_{self.index}"
+            self.name = f"{operation_name}_{self.index}"
         else:
-            self.name = self.rootname
-        self.rootname
+            self.name = operation_name
         self.parset["op_name"] = name
         self.log = logging.getLogger(f"rapthor:{self.name}")
         self.force_serial_jobs = False  # force jobs to run serially
@@ -262,17 +296,16 @@ class Operation(object):
         self.log.info("<-- Operation %s started", self.name)
 
         # Run current operation only if it hasn't run already.
-        success = self.is_done()
-        if not success:
+        if success := self.is_done():
+            self.log.info("Operation %s already done, skipping.", self.name)
+            # Reloads outputs
+            self.load_outputs()
+        else:
             with Timer(self.log):
                 with create_cwl_runner(self.cwl_runner, self) as runner:
                     success = runner.run()
                     if success:
                         self.outputs = runner.parse_outputs()
-        else:
-            self.log.info("Operation %s already done, skipping.", self.name)
-            # Reloads outputs
-            self.load_outputs()
 
         # Finalize
         if success:
@@ -280,4 +313,24 @@ class Operation(object):
             self.finalize()
             self.store_outputs()
         else:
-            raise RuntimeError(f"Operation {self.name} failed due to an error")
+            self.handle_failure()
+
+    def handle_failure(self):
+        """
+        Handle operation failure by extracting errors from the log file if
+        possible and raising a RuntimeError.
+        """
+        log_files = list(Path(self.log_dir).glob("failed*"))
+        if (main_log_file := Path(self.pipeline_log_file)).exists():
+            log_files.append(main_log_file)
+
+        parsed_errors = ""
+        for log_file in log_files:
+            if parsed_errors := extract_log_errors(log_file):
+                parsed_errors = (
+                    "\nThe following exceptions were extracted from the workflow log file "
+                    f"{log_file}:\n\n" + "\n".join(parsed_errors).replace("\n", "\n    ")
+                )
+                break
+
+        raise RuntimeError(f"Operation {self.name} failed due to an error.{parsed_errors}")

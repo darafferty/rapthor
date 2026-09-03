@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from rapthor.lib.field import Field
+from rapthor.lib.strategy import set_image_strategy
 
 
 @pytest.fixture
@@ -118,3 +119,159 @@ def test_plot_overview_initial_near_pole(field):
     field.dec = 89.5
     field.plot_overview(plot_filename, show_initial_coverage=True)
     assert plot_path.exists()
+
+
+@pytest.mark.parametrize(
+    "do_slowgain_solve, do_fulljones_solve",
+    [(True, True), (True, False), (False, True), (False, False)],
+)
+def test_set_calibration_strategy_legacy_default(field, do_slowgain_solve, do_fulljones_solve):
+    """Test that the default calibration strategy is set correctly.
+
+    This should capture the current behaviour of the pipeline using the
+    legacy settings 'do_fulljones_solve' and 'do_slowgain_solve'in the strategy file.
+    """
+    step_dict = {
+        "do_calibrate": True,
+        "do_slowgain_solve": do_slowgain_solve,
+        "do_fulljones_solve": do_fulljones_solve,
+    }
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    expected_strategy = {
+        "dd": [
+            "fast_phase",
+            "medium_phase",
+            *(["slow_gains"] if do_slowgain_solve else []),
+        ],
+        "di": [*(["full_jones"] if do_fulljones_solve else [])],
+    }
+    assert field.calibration_strategy == expected_strategy
+
+
+def test_update_image_strategy_without_calibration(field, monkeypatch):
+    """Image-only strategy steps should update without calibration-only parameters."""
+    monkeypatch.setattr(field, "update_skymodels", lambda *args, **kwargs: None)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+    field.parset["regroup_input_skymodel"] = False
+    field.outlier_sectors = []
+    field.bright_source_sectors = []
+
+    step_dict = set_image_strategy(field)[0]
+    field.update(step_dict, index=1, final=True)
+
+    assert field.do_calibrate is False
+    assert field.do_image is True
+    assert field.do_fulljones_solve is False
+
+
+def test_update_later_image_only_cycle_reuses_previous_solution_layout(field, monkeypatch):
+    """Later image-only cycles must keep the layout used by previous scalar solutions."""
+
+    def fail_update_skymodels(*args, **kwargs):
+        raise AssertionError("update_skymodels should not be called")
+
+    def fail_remove_skymodels():
+        raise AssertionError("remove_skymodels should not be called")
+
+    monkeypatch.setattr(field, "update_skymodels", fail_update_skymodels)
+    monkeypatch.setattr(field, "remove_skymodels", fail_remove_skymodels)
+    field.h5parm_filename = "previous-solutions.h5"
+    field.dd_h5parm_filename = "previous-solutions.h5"
+    field.outlier_sectors = []
+    field.bright_source_sectors = []
+
+    step_dict = set_image_strategy(field)[0]
+    step_dict["regroup_model"] = False
+    field.update(step_dict, index=2, final=True)
+
+    assert field.do_calibrate is False
+    assert field.do_image is True
+
+
+@pytest.mark.parametrize(
+    "do_slowgain_solve, do_fulljones_solve",
+    [(True, True), (True, False), (False, True), (False, False)],
+)
+def test_set_calibration_strategy_user_provided(field, do_slowgain_solve, do_fulljones_solve):
+    """Test that the calibration strategy is set correctly when provided.
+
+    This captures the behaviour of the pipeline using the merged DD/DI classes.
+    """
+    user_provided_strategy = {
+        "di": ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+        "dd": ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+    }
+    step_dict = {
+        "do_calibrate": True,
+        "calibration_strategy": user_provided_strategy,
+        # The following legacy settings should be ignored when a user-provided strategy is given
+        "do_slowgain_solve": do_slowgain_solve,
+        "do_fulljones_solve": do_fulljones_solve,
+    }
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    assert field.calibration_strategy == user_provided_strategy
+
+
+@pytest.mark.parametrize(
+    "strategy_items",
+    [
+        [
+            ("di", ["fast_phase", "medium_phase"]),
+            ("dd", ["fast_phase", "medium_phase"]),
+        ],
+        [
+            ("dd", ["fast_phase", "medium_phase"]),
+            ("di", ["fast_phase", "medium_phase"]),
+        ],
+    ],
+)
+def test_strategy_preserves_top_level_order(field, strategy_items):
+    """Test that the order of the top-level keys in the calibration strategy is preserved when set."""
+    user_provided_strategy = dict(strategy_items)
+    field.__dict__.update(
+        {
+            "do_calibrate": True,
+            "calibration_strategy": user_provided_strategy,
+        }
+    )
+    field.set_calibration_strategy()
+
+    assert list(field.calibration_strategy.items()) == strategy_items
+
+
+@pytest.mark.parametrize("didd_order", [("di", "dd"), ("dd", "di")])
+def test_set_calibration_strategy_preserves_order_of_di_vs_dd(field, didd_order):
+    """Test that the calibration strategy preserves the order of DI vs DD keys."""
+    user_provided_strategy = {
+        didd_order[0]: ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+        didd_order[1]: ["fast_phase", "medium_phase", "slow_gain", "full_jones"],
+    }
+    step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    assert list(field.calibration_strategy.keys()) == list(user_provided_strategy.keys())
+    assert field.calibration_strategy == user_provided_strategy
+
+
+@pytest.mark.parametrize(
+    "solve_order",
+    [
+        ("fast_phase", "medium_phase", "slow_gain", "full_jones"),
+        ("full_jones", "slow_gain", "medium_phase", "fast_phase"),
+    ],
+)
+def test_set_calibration_strategy_preserves_order_of_solves(field, solve_order):
+    """Test that the calibration strategy preserves the order of DI vs DD keys."""
+    user_provided_strategy = {
+        "di": list(solve_order),
+        "dd": list(solve_order),
+    }
+    step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
+    field.__dict__.update(step_dict)
+    field.set_calibration_strategy()
+    assert list(field.calibration_strategy.keys()) == list(user_provided_strategy.keys())
+    for key in user_provided_strategy.keys():
+        assert list(field.calibration_strategy[key]) == list(user_provided_strategy[key])
+    assert field.calibration_strategy == user_provided_strategy

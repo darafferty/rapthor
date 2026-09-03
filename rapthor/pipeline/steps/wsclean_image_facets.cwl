@@ -7,10 +7,12 @@ doc: |
   wsclean_image_screens.cwl for a detailed description of the inputs and outputs.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - $(inputs.msin)
 
 arguments:
-  - -no-update-model-required
   - -local-rms
   - -join-channels
   - -apply-facet-beam
@@ -181,10 +183,10 @@ inputs:
     type: int[]
     inputBinding:
       prefix: -dd-psf-grid
-  - id: num_gridding_threads
-    label: Number of gridding threads
+  - id: num_gridding_tasks
+    label: Number of gridding tasks
     doc: |
-      The number of threads to use during gridding.
+      The number of tasks to use during gridding.
     type: int
     inputBinding:
       prefix: -parallel-gridding
@@ -224,6 +226,12 @@ inputs:
     default: false
     inputBinding:
       prefix: -shared-facet-writes
+  - id: no_update_model_required
+    type: boolean
+    default: true
+    inputBinding:
+      prefix: -no-update-model-required
+
 outputs:
   - id: image_I_nonpb_name
     type: File

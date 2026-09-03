@@ -16,6 +16,28 @@ from rapthor.lib.operation import Operation
 log = logging.getLogger("rapthor:image")
 
 
+def get_max_divisor_less_than_or_equal(number: int, limit: int) -> int:
+    """
+    Get the biggest divisor of number which is <= limit
+    """
+    for divisor in range(limit, 0, -1):
+        if number % divisor == 0:
+            return divisor
+    else:
+        return 1
+
+
+def adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, max_work_units):
+    """
+    Adjust parallel gridding tasks to match available work units and core constraints.
+
+    Caps the task count to prevent over-partitioning the thread pool, ensuring
+    allocated threads are not left unassigned.
+    """
+    parallel_gridding_tasks = min(parallel_gridding_tasks, max_work_units)
+    return get_max_divisor_less_than_or_equal(max_cores, parallel_gridding_tasks)
+
+
 def merge_list_flatten(input_list: List[List]) -> List:
     """
     Merge a list of lists into a single flattened list
@@ -91,7 +113,11 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            self.use_facets = self.dde_method == "full" and not self.apply_screens
+            self.use_facets = (
+                self.dde_method == "full"
+                and not self.apply_screens
+                and self._has_dd_scalar_h5parm()
+            )
         if self.image_pol is None:
             self.image_pol = self.field.image_pol  # set by process.run_steps()
         if self.save_source_list is None:
@@ -132,6 +158,232 @@ class Image(Operation):
             "allow_internet_access": self.allow_internet_access,
         }
 
+    def _has_dd_scalar_h5parm(self):
+        dd_h5parm, _ = self._scalar_h5parms()
+        return dd_h5parm is not None
+
+    def _is_first_image_only_cycle(self):
+        return not getattr(self.field, "do_calibrate", True) and (
+            self.index is None or self.index <= 1
+        )
+
+    def _scalar_h5parms(self):
+        if self._is_first_image_only_cycle():
+            return self.parset["input_h5parm"], None
+
+        dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)
+        di_h5parm = getattr(self.field, "di_h5parm_filename", None)
+
+        if dd_h5parm is None and di_h5parm is None:
+            if not getattr(self.field, "do_calibrate", True):
+                # Legacy state, or image-only use of a single supplied scalar h5parm.
+                dd_h5parm = self.field.h5parm_filename
+            else:
+                # Older tests and legacy state expose a single scalar solution filename.
+                dd_h5parm = self.field.h5parm_filename
+                di_h5parm = self.field.h5parm_filename
+        return dd_h5parm, di_h5parm
+
+    def _shared_facet_rw_enabled(self):
+        return bool(self.use_facets and self.parset["imaging_specific"]["shared_facet_rw"])
+
+    def _scalar_apply_amplitudes(self, mode):
+        if self._is_first_image_only_cycle():
+            return mode == "dd" and self.field.input_apply_amplitudes
+        dd_h5parm, di_h5parm = self._scalar_h5parms()
+        if mode == "dd":
+            return bool(
+                getattr(self.field, "dd_apply_amplitudes", False)
+                or (dd_h5parm == self.field.h5parm_filename and self.field.apply_amplitudes)
+            )
+        if mode == "di":
+            return bool(
+                getattr(self.field, "di_apply_amplitudes", False)
+                or (di_h5parm == self.field.h5parm_filename and self.field.apply_amplitudes)
+            )
+        return False
+
+    def _default_scalar_steps(self, mode):
+        if mode == "di" and self._scalar_apply_amplitudes(mode):
+            return ["slowgain"]
+        steps = ["fastphase"]
+        if self._scalar_apply_amplitudes(mode):
+            steps.append("slowgain")
+        return steps
+
+    def _strategy_scalar_steps(self, mode, solves, all_solves=None):
+        if all_solves is None:
+            all_solves = solves
+        if mode == "dd":
+            apply_amplitudes = (
+                self.apply_amplitudes
+                if self.apply_amplitudes is not None
+                else self._scalar_apply_amplitudes(mode)
+            )
+        else:
+            apply_amplitudes = self._scalar_apply_amplitudes(mode)
+            if not apply_amplitudes and self.apply_amplitudes is not None:
+                apply_amplitudes = self.apply_amplitudes
+        di_has_phase_solves = mode == "di" and any(
+            solve in {"fast_phase", "medium_phase"} for solve in all_solves
+        )
+        steps = []
+        for solve in solves:
+            if solve == "fast_phase":
+                step = "fastphase"
+            elif solve == "medium_phase":
+                step = "fastphase" if mode == "di" else "mediumphase"
+            elif solve == "slow_gains":
+                if not apply_amplitudes or di_has_phase_solves:
+                    continue
+                step = "slowgain"
+            else:
+                continue
+            if step not in steps:
+                steps.append(step)
+        return steps
+
+    def _fulljones_h5parm(self):
+        apply_fulljones = (
+            self.apply_fulljones
+            if self.apply_fulljones is not None
+            else (
+                self.field.input_apply_fulljones
+                if self._is_first_image_only_cycle()
+                else self.field.apply_fulljones
+            )
+        )
+        if not apply_fulljones:
+            return None
+        if self._is_first_image_only_cycle():
+            return self.parset["input_fulljones_h5parm"]
+        return self.field.fulljones_h5parm_filename
+
+    def _select_prepare_scalar_h5parm(self, h5parm, steps, new_steps):
+        if h5parm is None or not new_steps:
+            return
+        if self._selected_applycal_h5parm is None:
+            self._selected_applycal_h5parm = h5parm
+        if self._selected_applycal_h5parm != h5parm:
+            return
+        for step in new_steps:
+            if step not in steps:
+                steps.append(step)
+
+    def _solution_direction_name_for_sector(self, h5parm, sector):
+        directions = getattr(self.field, "scalar_h5parm_directions", {}).get(str(h5parm), [])
+        if not directions:
+            return sector.central_patch
+
+        directions_with_positions = [
+            direction
+            for direction in directions
+            if direction.get("ra") is not None and direction.get("dec") is not None
+        ]
+        if not directions_with_positions:
+            return directions[0]["name"]
+
+        return min(
+            directions_with_positions,
+            key=lambda direction: (
+                misc.angular_separation(
+                    (sector.ra, sector.dec), (direction["ra"], direction["dec"])
+                ).degree
+            ),
+        )["name"]
+
+    def _build_applycal_steps(self):
+        """
+        Build the DP3 applycal steps for the prepare-imaging-data stage.
+
+        The steps are determined from the solve-type flags set on the
+        field by the calibration strategy. For image-only runs, they are
+        determined from the H5parm files scanned during field setup.
+        """
+        fulljones_h5parm = None
+        input_normalize_h5parm = None
+        self._selected_applycal_h5parm = None
+        self._selected_imaging_h5parm = None
+        self._selected_fulljones_h5parm = None
+
+        if self.apply_none:
+            return None, None, None
+
+        strategy = getattr(self.field, "calibration_strategy", None) or {}
+        dd_h5parm, di_h5parm = self._scalar_h5parms()
+        fulljones_filename = self._fulljones_h5parm()
+        if (
+            getattr(self.field, "do_calibrate", True)
+            and self.field.fulljones_h5parm_filename is not None
+        ):
+            fulljones_filename = self.field.fulljones_h5parm_filename
+        use_dd_during_imaging = self.use_facets or self.apply_screens
+
+        steps = []
+        if not getattr(self.field, "do_calibrate", True):
+            if dd_h5parm is not None and use_dd_during_imaging:
+                self._selected_imaging_h5parm = dd_h5parm
+            elif dd_h5parm is not None:
+                self._select_prepare_scalar_h5parm(
+                    dd_h5parm,
+                    steps,
+                    self._default_scalar_steps("dd"),
+                )
+
+            if di_h5parm is not None and self._selected_applycal_h5parm is None:
+                self._select_prepare_scalar_h5parm(
+                    di_h5parm,
+                    steps,
+                    self._default_scalar_steps("di"),
+                )
+
+            if fulljones_filename is not None:
+                self._selected_fulljones_h5parm = fulljones_filename
+                steps.append("fulljones")
+        else:
+            dd_strategy_has_scalar = any(solve != "full_jones" for solve in strategy.get("dd", []))
+            preapply_dd_scalar = (
+                dd_h5parm is not None and not use_dd_during_imaging and dd_strategy_has_scalar
+            )
+            for mode, solves in strategy.items():
+                for solve in solves:
+                    if solve == "full_jones":
+                        if fulljones_filename is not None:
+                            self._selected_fulljones_h5parm = fulljones_filename
+                            steps.append("fulljones")
+                        continue
+                    if mode == "dd":
+                        if dd_h5parm is None:
+                            continue
+                        if use_dd_during_imaging:
+                            self._selected_imaging_h5parm = dd_h5parm
+                            continue
+                        self._select_prepare_scalar_h5parm(
+                            dd_h5parm,
+                            steps,
+                            self._strategy_scalar_steps("dd", [solve], solves),
+                        )
+                    elif mode == "di":
+                        if di_h5parm is None or preapply_dd_scalar:
+                            continue
+                        self._select_prepare_scalar_h5parm(
+                            di_h5parm,
+                            steps,
+                            self._strategy_scalar_steps("di", [solve], solves),
+                        )
+                        continue
+
+        if "fulljones" in steps:
+            fulljones_h5parm = CWLFile(self._selected_fulljones_h5parm).to_json()
+        if self.apply_normalizations:
+            steps.append("normalization")
+            input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
+        if len(steps) == 0:
+            return None, None, None
+
+        formatted = f"[{','.join(steps)}]" if steps else None
+        return formatted, fulljones_h5parm, input_normalize_h5parm
+
     def set_input_parameters(self):
         """
         Define the CWL workflow inputs
@@ -164,15 +416,18 @@ class Image(Operation):
         obs_filename = []
         prepare_filename = []
         concat_filename = []
+        residual_filename = []
         previous_mask_filename = []
         mask_filename = []
         filtered_model_image_name = []
         starttime = []
         ntimes = []
-        image_freqstep = []
         image_timestep = []
         image_bda_maxinterval = []
         image_bda_timebase = []
+        image_freqstep = []
+        image_bda_minchannels = []
+        image_bda_frequencybase = []
         phasecenter = []
         image_root = []
         central_patch_name = []
@@ -210,6 +465,7 @@ class Image(Operation):
             # Set output MS filenames for step that prepares the data for WSClean
             prepare_filename.append(sector.get_obs_parameters("ms_prep_filename"))
             concat_filename.append(image_root[-1] + "_concat.ms")
+            residual_filename.append(image_root[-1] + "_resid.ms")
 
             # Set other parameters
             if self.field.parset["imaging_specific"]["use_clean_mask"] and sector.I_mask_file:
@@ -221,6 +477,8 @@ class Image(Operation):
             mask_filename.append(image_root[-1] + "_mask.fits")
             filtered_model_image_name.append(image_root[-1] + "-MFS-filtered-model.fits.fz")
             image_freqstep.append(sector.get_obs_parameters("image_freqstep"))
+            image_bda_minchannels.append(sector.get_obs_parameters("image_bda_minchannels"))
+            image_bda_frequencybase.append(self.field.image_bda_frequencybase)
             image_timestep.append(sector.get_obs_parameters("image_timestep"))
             image_bda_maxinterval.append(sector.get_obs_parameters("image_bda_maxinterval"))
             image_bda_timebase.append(self.field.image_bda_timebase)
@@ -260,48 +518,44 @@ class Image(Operation):
         # Set the DP3 steps and applycal steps depending on whether solutions
         # should be preapplied before imaging and on whether baseline-dependent
         # averaging is activated (and supported) or not
-        fulljones_h5parm = None
-        input_normalize_h5parm = None
-        prepare_data_applycal_steps = None
-        if self.apply_none or (
-            not self.preapply_dde_solutions
-            and not self.apply_fulljones
-            and not self.apply_normalizations
-        ):
-            # No solutions should be preapplied, so define steps
-            # without an applycal step
+        prepare_data_applycal_steps, fulljones_h5parm, input_normalize_h5parm = (
+            self._build_applycal_steps()
+        )
+        if self._selected_applycal_h5parm is not None:
+            central_patch_name = [
+                self._solution_direction_name_for_sector(self._selected_applycal_h5parm, sector)
+                for sector in self.imaging_sectors
+            ]
+        if prepare_data_applycal_steps is None:
+            # No solutions need to be preapplied, so omit the applycal step
             prepare_data_steps = ["applybeam", "shift"]
         else:
-            # Solutions should be applied, so add an applycal step
-            # and set various parameters as needed
             prepare_data_steps = ["applybeam", "shift", "applycal"]
-            prepare_data_applycal_steps = []
-            if self.preapply_dde_solutions:
-                # Fast phases and slow amplitudes (if generated) should be
-                # preapplied, as they are not applied during imaging
-                prepare_data_applycal_steps.append("fastphase")
-                if self.apply_amplitudes:
-                    prepare_data_applycal_steps.append("slowgain")
-            if self.apply_fulljones:
-                prepare_data_applycal_steps.append("fulljones")
-                fulljones_h5parm = CWLFile(self.field.fulljones_h5parm_filename).to_json()
-            if self.apply_normalizations:
-                prepare_data_applycal_steps.append("normalization")
-                input_normalize_h5parm = CWLFile(self.field.normalize_h5parm).to_json()
-            if prepare_data_applycal_steps:
-                prepare_data_applycal_steps = f"[{','.join(prepare_data_applycal_steps)}]"
         all_regular = all(obs.channels_are_regular for obs in self.field.observations)
         # Default is to average visibilities for imaging up to the smearing limit
         if self.field.average_visibilities:
             # Average visibilities
             prepare_data_steps.append("avg")
-        if self.field.image_bda_timebase > 0 and all_regular and not self.apply_screens:
+        bda_requested = self.field.image_bda_timebase > 0 or self.field.image_bda_frequencybase > 0
+        if bda_requested and all_regular and not self.apply_screens:
             # Currently, BDA cannot be used with irregular data or screens (IDG)
             prepare_data_steps.append("bdaavg")
         prepare_data_steps = f"[{','.join(prepare_data_steps)}]"
 
-        # Set the h5parm to use to apply the DDE solutions as needed
-        h5parm = None if self.apply_none else CWLFile(self.field.h5parm_filename).to_json()
+        # Set the h5parms to use for pre-applying DI/legacy solutions and applying
+        # DD solutions during imaging.
+        prepare_data_h5parm = (
+            CWLFile(self._selected_applycal_h5parm).to_json()
+            if getattr(self, "_selected_applycal_h5parm", None) is not None
+            else None
+        )
+        h5parm = (
+            CWLFile(self._selected_imaging_h5parm).to_json()
+            if getattr(self, "_selected_imaging_h5parm", None) is not None
+            else None
+        )
+        if h5parm is None:
+            h5parm = prepare_data_h5parm
         # Set the data interval to use when screens are applied so that final solution
         # interval is removed
         #
@@ -320,16 +574,19 @@ class Image(Operation):
             "data_colname": self.field.data_colname,
             "prepare_filename": prepare_filename,
             "concat_filename": concat_filename,
+            "residual_filename": residual_filename,
             "previous_mask_filename": [
                 None if name is None else CWLFile(name).to_json() for name in previous_mask_filename
             ],
             "mask_filename": mask_filename,
             "starttime": starttime,
             "ntimes": ntimes,
-            "image_freqstep": image_freqstep,
             "image_timestep": image_timestep,
             "image_maxinterval": image_bda_maxinterval,
             "image_timebase": image_bda_timebase,
+            "image_freqstep": image_freqstep,
+            "image_minchannels": image_bda_minchannels,
+            "image_frequencybase": image_bda_frequencybase,
             "phasecenter": phasecenter,
             "image_name": image_root,
             "pol": self.image_pol,
@@ -338,6 +595,7 @@ class Image(Operation):
             "join_polarizations": join_polarizations,
             "prepare_data_steps": prepare_data_steps,
             "prepare_data_applycal_steps": prepare_data_applycal_steps,
+            "prepare_data_h5parm": prepare_data_h5parm,
             "h5parm": h5parm,
             "fulljones_h5parm": fulljones_h5parm,
             "input_normalize_h5parm": input_normalize_h5parm,
@@ -381,9 +639,14 @@ class Image(Operation):
             "do_multiscale": [sector.multiscale for sector in self.imaging_sectors],
             "dd_psf_grid": [sector.dd_psf_grid for sector in self.imaging_sectors],
             "apply_time_frequency_smearing": self.field.correct_smearing_in_imaging,
+            "update_model_required": self.field.make_residual_visibilities,
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
+            "parallel_gridding_tasks": [
+                self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
+                * len(self.imaging_sectors)
+            ],
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
@@ -417,10 +680,45 @@ class Image(Operation):
             self.input_parms.update(
                 {"mpi_cpus_per_task": [self.parset["cluster_specific"]["cpus_per_task"]] * nsectors}
             )
-        if self.use_facets:
-            self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"]["shared_facet_rw"]
-        else:
-            self.input_parms["shared_facet_rw"] = False
+
+        self.input_parms["shared_facet_rw"] = False
+
+        num_facets = getattr(self.field, "num_patches", 0) if self.use_facets else 1
+
+        for sector_id, (parallel_gridding_tasks, channels_out_per_node) in enumerate(
+            zip(self.input_parms["parallel_gridding_tasks"], self.input_parms["channels_out"])
+        ):
+            if self.use_mpi:
+                channels_out_per_node = channels_out_per_node // self.input_parms["mpi_nnodes"][0]
+
+            # Case 1: Facets are available.
+            # Distribute over channels_out, parallelise over facets.
+            # Match parallel tasks to n_facets so available threads aren't left
+            if num_facets > 1:
+                self.input_parms["shared_facet_rw"] = self.parset["imaging_specific"][
+                    "shared_facet_rw"
+                ]
+
+                self.input_parms["parallel_gridding_tasks"][sector_id] = (
+                    adjust_parallel_gridding_tasks(
+                        self.field.parset["cluster_specific"]["max_cores"],
+                        parallel_gridding_tasks,
+                        num_facets,
+                    )
+                )
+            # Case 2: Only one facet or none is available.
+            # Both distribute and parallelise over channels_out.
+            # Match parallel tasks to channels per node so available threads
+            elif channels_out_per_node < parallel_gridding_tasks:
+                # Further reduce in case of n_channels_out less then parallel_gridding_tasks
+                self.input_parms["parallel_gridding_tasks"][sector_id] = (
+                    adjust_parallel_gridding_tasks(
+                        self.field.parset["cluster_specific"]["max_cores"],
+                        parallel_gridding_tasks,
+                        channels_out_per_node,
+                    )
+                )
+
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update(
@@ -451,13 +749,7 @@ class Image(Operation):
                 self.input_parms.update({"soltabs": "amplitude000,phase000"})
             else:
                 self.input_parms.update({"soltabs": "phase000"})
-            self.input_parms.update(
-                {
-                    "parallel_gridding_threads": self.field.parset["cluster_specific"][
-                        "parallel_gridding_threads"
-                    ]
-                }
-            )
+
             if is_only_pol_I(self.image_pol):
                 # For Stokes-I-only imaging, we can take advantage of the scalar or
                 # diagonal visibilities options in WSClean (saving I/O)
@@ -615,7 +907,7 @@ class Image(Operation):
                     move=True,
                 )
 
-            # The imaging visibilities
+            # The imaging and residual visibilities
             if self.field.save_visibilities:
                 self.copy_outputs_to(
                     os.path.join(
@@ -628,14 +920,29 @@ class Image(Operation):
                     include={"visibilities"},
                     move=True,
                 )
+            if self.field.make_residual_visibilities:
+                self.copy_outputs_to(
+                    os.path.join(
+                        self.parset["dir_working"],
+                        "visibilities",
+                        f"image_{self.index}",
+                        sector.name,
+                    ),
+                    index=index,
+                    include={"residual_visibilities"},
+                    move=True,
+                )
 
-            # The astrometry and photometry plots and diagnostics file
+            # The astrometry and photometry plots, image diagnostics file, and astrometry offsets
+            # file
             diagnostics_dest_dir = os.path.join(
                 self.parset["dir_working"], "plots", f"image_{self.index}"
             )
             diagnotics = {"sector_diagnostics"}
             if self.outputs["sector_diagnostic_plots"][index]:
                 diagnotics.update({"sector_diagnostic_plots"})
+            if self.outputs["sector_offsets"][index]:
+                diagnotics.update({"sector_offsets"})
             self.copy_outputs_to(
                 diagnostics_dest_dir,
                 index=index,
@@ -668,6 +975,7 @@ class Image(Operation):
     def find_in_file_list(file_list):
         ext_mapping = {
             "image_file_true_sky": "image-pb.fits",
+            "image_file_true_sky_astcorr": "image-pb-ast.fits",
             "image_file_apparent_sky": "image.fits",
             "model_file_true_sky": "model-pb.fits",
             "filtered_model_file_apparent_sky": "filtered-model.fits",
@@ -748,6 +1056,7 @@ class ImageInitial(Image):
         self.do_multiscale_clean = True
         self.field.disable_clean = False
         self.field.skip_final_major_iteration = True
+        self.field.make_residual_visibilities = False
         super().set_input_parameters()
 
     def finalize(self):
@@ -877,6 +1186,7 @@ class ImageNormalize(Image):
         self.do_multiscale_clean = False
         self.field.disable_clean = False
         self.field.skip_final_major_iteration = False
+        self.field.make_residual_visibilities = False
         super().set_input_parameters()
         self.input_parms.update(
             {

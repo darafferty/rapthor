@@ -32,13 +32,16 @@ slow_freqstep_hz = 1e6
 fast_smoothnessconstraint = 6.0e6
 slow_smoothnessconstraint = 4.0e6
 propagatesolutions = True
+use_wsclean_predict = False
+wsclean_predict_bw = 2e6
 maxiter = 50
 stepsize = 0.2
 tolerance = 0.001
 
 [imaging]
-grid_width_ra_deg = 1.0
-grid_width_dec_deg = 1.0
+use_mpi = False
+grid_width_ra_deg = 0.25
+grid_width_dec_deg = 0.25
 grid_center_ra = 1h37m41.299s
 grid_center_dec = +33d09m35.132s
 grid_nsectors_ra = 1
@@ -50,17 +53,19 @@ astrometry_skymodel =
 shared_facet_rw = False
 normalization_skymodels =
 normalization_reference_frequencies =
-
+dde_method = full
+do_multiscale_clean = True
   
 [cluster]
 batch_system = single_machine
 max_nodes = 1
 cpus_per_task = 0
 mem_per_node_gb = 0
+fail_on_calibration_oom_risk = False
 max_cores = 0
 max_threads = 0
-deconvolution_threads = 0
-parallel_gridding_threads = 0
+deconvolution_threads = 3
+parallel_gridding_tasks = 3
 local_scratch_dir = 
 global_scratch_dir = 
 use_container = False

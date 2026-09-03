@@ -26,7 +26,7 @@ from lsmtool.facet import SquareFacet, read_ds9_region_file
 from lsmtool.operations_lib import make_wcs
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.fitsimage import FITSImage
+from rapthor.lib.fitsimage import EmptyFacetSelectionError, FITSImage
 from rapthor.lib.observation import Observation
 
 if matplotlib.get_backend() != "Agg":
@@ -493,7 +493,12 @@ def check_astrometry(
     allow_internet_access=True,
 ):
     """
-    Calculate and plot various astrometry diagnostics
+    Calculate and plot various astrometry diagnostics.
+
+    Note: the diagnostics are always calculated as LOFAR value - comparison value; e.g., a
+    positive Dec offset indicates that the LOFAR sources are on average North of the comparison
+    source positions. When the check is successful, a JSON file with the per-facet diagnostics is
+    saved (with the name "{output_root}.astrometry_offsets.json")
 
     Parameters
     ----------
@@ -511,9 +516,8 @@ def check_astrometry(
     output_root : str
         Root of the filename for the output files
     comparison_skymodel : str, optional
-        Filename of the sky model to use for the photometry (flux scale)
-        comparison (in makesourcedb format). If not given, a Pan-STARRS model
-        is downloaded
+        Filename of the sky model to use for the astromety comparison (in
+        makesourcedb format). If not given, a Pan-STARRS model is downloaded
     allow_internet_access : bool, optional
         Whether to allow internet access for downloading sky models when they
         are not available locally. If False, the diagnostics relying on
@@ -569,9 +573,7 @@ def check_astrometry(
         image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr["CDELT1"])
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
         width = min(max_search_cone_radius * 2, image_width)
-        facets = [
-            SquareFacet("field", obs.ra, obs.dec, width, wcs_pixel_scale=misc.WCS_PIXEL_SCALE)
-        ]
+        facets = [SquareFacet("field", obs.ra, obs.dec, width)]
 
     # Convert the filtered catalog into a minimal sky model for use with LSMTool
     s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
@@ -693,24 +695,27 @@ def compute_facet_rms_noise(facet_region_file, rms_img_flat_noise, rms_img_true_
     Returns
     -------
     dict
-        Dictionary of facet-level RMS diagnostics.
+        Dictionary of facet-level RMS diagnostics for facets that overlap both
+        RMS images.
     """
-    try:
-        facets = read_ds9_region_file(facet_region_file)
-        facets_summary = {}
-        for facet in facets:
+    facets = read_ds9_region_file(facet_region_file)
+    facets_summary = {}
+    for facet in facets:
+        try:
             selected_flat_noise = rms_img_flat_noise.select_facet(facet)
             selected_beam_corrected = rms_img_true_sky.select_facet(facet)
-            facet_summary = {
-                "flat_noise": _compute_image_stats(selected_flat_noise),
-                "beam_corrected": _compute_image_stats(selected_beam_corrected),
-            }
-            facets_summary[facet.name] = facet_summary
-        return facets_summary
-    except Exception as e:
-        logger.warning("Could not determine per facets metrics")
-        logger.exception(e)
-        raise e
+        except EmptyFacetSelectionError:
+            logger.warning(
+                "Skipping RMS metrics for facet %r: no image pixels selected",
+                facet.name,
+            )
+            continue
+        facet_summary = {
+            "flat_noise": _compute_image_stats(selected_flat_noise),
+            "beam_corrected": _compute_image_stats(selected_beam_corrected),
+        }
+        facets_summary[facet.name] = facet_summary
+    return facets_summary
 
 
 def main(

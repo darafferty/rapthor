@@ -7,10 +7,11 @@ on the command-line to the different CWL runners.
 """
 
 import os
+import textwrap
 
 import pytest
 
-from rapthor.lib.cwlrunner import create_cwl_runner
+from rapthor.lib.cwlrunner import create_cwl_runner, format_cli_command
 from rapthor.lib.parset import Parset
 from rapthor.operations.image import Image
 
@@ -40,7 +41,7 @@ class Sector:
         self.threshpix = None
         self.vertices_file = "vertices.npy"
         self.wsclean_deconvolution_channels = None
-        self.wsclean_nchannels = None
+        self.wsclean_nchannels = 8
         self.wsclean_niter = None
         self.wsclean_nmiter = None
         self.wsclean_spectral_poly_order = None
@@ -74,6 +75,7 @@ class Sector:
             "ms_filename": "filename.ms",
             "ms_prep_filename": None,
             "image_freqstep": None,
+            "image_bda_minchannels": None,
             "image_timestep": None,
             "image_bda_maxinterval": None,
         }
@@ -131,6 +133,7 @@ class Field:
         self.auto_mask_nmiter = 1
         self.skip_final_major_iteration = True
         self.image_bda_timebase = 0
+        self.image_bda_frequencybase = 0
         self.slow_timestep_sec = 1
         self.apply_time_frequency_smearing = True
         self.correct_smearing_in_imaging = True
@@ -138,6 +141,8 @@ class Field:
         self.disable_clean = False
         self.image_cube_stokes_list = ["I"]
         self.save_visibilities = False
+        self.save_residual_visibilities = False
+        self.make_residual_visibilities = False
         self.average_visibilities = True
         self.photometry_skymodel = None
         self.astrometry_skymodel = None
@@ -146,6 +151,9 @@ class Field:
 
     def get_calibration_radius(self):
         return 5.0
+
+    def read_facet_layout_from_file(self):
+        return []
 
 
 @pytest.fixture(params=("single_machine", "slurm", "slurm_static"))
@@ -381,3 +389,73 @@ class TestToilRunner:
             else:
                 assert workdir.startswith(parset["dir_working"])
             assert os.path.isdir(workdir)
+
+
+@pytest.mark.parametrize(
+    "args, expected",
+    [
+        (
+            [
+                "toil-cwl-runner",
+                "--outdir",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1",
+                "--no-container",
+                "--preserve-entire-environment",
+                "--tmpdir-prefix",
+                "/tmp/ical-9lslyrgf/scratch/toil-cwl-runner.",
+                "--bypass-file-store",
+                "--batchSystem",
+                "single_machine",
+                "--maxLocalJobs",
+                "1",
+                "--maxJobs",
+                "1",
+                "--jobStore",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1/jobstore",
+                "--stats",
+                "--servicePollingInterval",
+                "10",
+                "--writeLogs",
+                "/tmp/ical-9lslyrgf/work/logs/predict_di_1",
+                "--writeLogsFromAllJobs",
+                "True",
+                "--maxLogFileSize",
+                "1gb",
+                "--restart",
+                "--tmp-outdir-prefix",
+                "/tmp/ical-9lslyrgf/scratch/toil-cwl-runner.",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_parset.cwl",
+                "/tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_inputs.json",
+            ],
+            textwrap.dedent(
+                """\
+                toil-cwl-runner \\
+                    --outdir /tmp/ical-9lslyrgf/work/pipelines/predict_di_1 \\
+                    --no-container \\
+                    --preserve-entire-environment \\
+                    --tmpdir-prefix /tmp/ical-9lslyrgf/scratch/toil-cwl-runner. \\
+                    --bypass-file-store \\
+                    --batchSystem single_machine \\
+                    --maxLocalJobs 1 \\
+                    --maxJobs 1 \\
+                    --jobStore /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/jobstore \\
+                    --stats \\
+                    --servicePollingInterval 10 \\
+                    --writeLogs /tmp/ical-9lslyrgf/work/logs/predict_di_1 \\
+                    --writeLogsFromAllJobs True \\
+                    --maxLogFileSize 1gb \\
+                    --restart \\
+                    --tmp-outdir-prefix /tmp/ical-9lslyrgf/scratch/toil-cwl-runner. \\
+                    /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_parset.cwl \\
+                    /tmp/ical-9lslyrgf/work/pipelines/predict_di_1/pipeline_inputs.json"""
+            ),
+        )
+    ],
+)
+def test_format_cli_command(args, expected):
+    """
+    Test the `format_cli_command` function to ensure it formats command-line
+    arguments correctly.
+    """
+    formatted_command = format_cli_command(args)
+    assert formatted_command == expected

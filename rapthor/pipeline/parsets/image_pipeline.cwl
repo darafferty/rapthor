@@ -49,6 +49,13 @@ inputs:
       files and used for imaging (length = n_sectors).
     type: string[]
 
+  - id: residual_filename
+    label: Filenames of residual MSs
+    doc: |
+      The filenames of the MS files with the residual visibilities
+      (length = n_sectors).
+    type: string[]
+
   - id: starttime
     label: Start time of each obs
     doc: |
@@ -98,11 +105,28 @@ inputs:
       (length = n_sectors).
     type: float[]
 
+  - id: image_frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done
+      (length = n_sectors).
+    type: float[]
+
   - id: image_maxinterval
     label: BDA maxinterval
     doc: |
       The maximum interval duration (in time slots) over which BDA time averaging is
       done (length = n_obs * n_sectors).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
+
+  - id: image_minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done (length = n_obs * n_sectors).
     type:
       type: array
       items:
@@ -207,11 +231,18 @@ inputs:
       The steps to perform in the applycal part of the prepare data DP3 step (length = 1).
     type: string?
 
+  - id: prepare_data_h5parm
+    label: Filename of pre-apply h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions to pre-apply
+      before imaging (length = 1).
+    type: File?
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions (length =
-      1).
+      The filename of the h5parm file with the direction-dependent calibration
+      solutions to apply during imaging (length = 1).
     type: File?
 
   - id: fulljones_h5parm
@@ -227,6 +258,14 @@ inputs:
       The filename of the input h5parm file with the flux-scale normalizations
       (length = n_sectors).
     type: File?
+  
+  - id: parallel_gridding_tasks
+    label: Max number of gridding tasks
+    doc: |
+      The maximum number of tasks to use during parallel gridding (length = 1).
+    type: 
+    - int[]
+
 
 {% if use_facets %}
 # start use_facets
@@ -288,12 +327,6 @@ inputs:
     doc: |
       Use only diagonal (XX and YY) visibilities (length = 1).
     type: boolean
-
-  - id: parallel_gridding_threads
-    label: Max number of gridding threads
-    doc: |
-      The maximum number of threads to use during parallel gridding (length = 1).
-    type: int
 
   - id: shared_facet_rw
     label: Shared facet reads and writes
@@ -532,6 +565,13 @@ inputs:
       Apply corrections for time and frequency smearing (length = 1).
     type: boolean
 
+  - id: update_model_required
+    label: Update model data
+    doc: |
+      Update the model data column of the imaging MS with the clean-
+      component model (length = 1).
+    type: boolean
+
 {% if make_image_cube %}
   - id: image_I_cube_name
     label: Filename of I image cube
@@ -614,6 +654,7 @@ inputs:
     label: Peel bright sources
     doc: |
       Peel bright sources
+
 outputs:
   - id: filtered_skymodel_true_sky
     outputSource:
@@ -651,6 +692,14 @@ outputs:
       items:
         type: array
         items: Directory
+  - id: residual_visibilities
+    outputSource:
+      - image_sector/residual_visibilities
+    type:
+      type: array
+      items:
+        - Directory
+        - "null"
   - id: sector_I_images
     outputSource:
       - image_sector/sector_I_images
@@ -747,12 +796,18 @@ steps:
         source: prepare_filename
       - id: concat_filename
         source: concat_filename
+      - id: residual_filename
+        source: residual_filename
       - id: starttime
         source: starttime
       - id: ntimes
         source: ntimes
       - id: image_freqstep
         source: image_freqstep
+      - id: image_minchannels
+        source: image_minchannels
+      - id: image_frequencybase
+        source: image_frequencybase
       - id: image_timestep
         source: image_timestep
       - id: image_maxinterval
@@ -793,6 +848,8 @@ steps:
         source: prepare_data_steps
       - id: prepare_data_applycal_steps
         source: prepare_data_applycal_steps
+      - id: prepare_data_h5parm
+        source: prepare_data_h5parm
       - id: h5parm
         source: h5parm
       - id: fulljones_h5parm
@@ -893,10 +950,10 @@ steps:
         source: interval
       - id: apply_time_frequency_smearing
         source: apply_time_frequency_smearing
-{% if use_facets %}
-      - id: parallel_gridding_threads
-        source: parallel_gridding_threads
-{% endif %}
+      - id: update_model_required
+        source: update_model_required
+      - id: parallel_gridding_tasks
+        source: parallel_gridding_tasks
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
 {% if make_image_cube %}
@@ -927,11 +984,12 @@ steps:
         source: astrometry_skymodel
       - id: peel_bright_sources
         source: peel_bright_sources
-    scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
-              image_freqstep, image_timestep, image_maxinterval, image_timebase,
+    scatter: [obs_filename, prepare_filename, concat_filename, residual_filename, starttime, ntimes,
+              image_freqstep, image_minchannels, image_frequencybase, image_timestep, image_maxinterval,
+              image_timebase,
               previous_mask_filename, mask_filename, phasecenter, ra, dec,
               image_name, cellsize_deg, wsclean_imsize, vertices_file, region_file,
-              filtered_model_image_name,
+              filtered_model_image_name, parallel_gridding_tasks,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
@@ -967,6 +1025,7 @@ steps:
       - id: sector_I_images
       - id: sector_extra_images
       - id: visibilities
+      - id: residual_visibilities
       - id: source_filtering_mask
 {% if save_source_list %}
       - id: sector_skymodels

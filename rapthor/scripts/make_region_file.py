@@ -3,10 +3,10 @@
 Script to make a ds9 region file for use with WSClean and faceting
 """
 
-from argparse import ArgumentParser, RawTextHelpFormatter
 import ast
-from lsmtool.facet import make_ds9_region_file, read_skymodel
-from rapthor.lib import miscellaneous as misc
+from argparse import ArgumentParser, RawTextHelpFormatter
+
+from lsmtool.facet import make_ds9_region_file, read_from_skymodel
 
 
 def main(
@@ -42,9 +42,7 @@ def main(
         If true output region name on the 'polygon' line
     """
     # Read the facets from the input sky model
-    facets = read_skymodel(
-        skymodel, ra_mid, dec_mid, width_ra, width_dec, wcs_pixel_scale=misc.WCS_PIXEL_SCALE
-    )
+    facets = read_from_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec)
 
     # Make the ds9 region file
     make_ds9_region_file(

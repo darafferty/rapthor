@@ -206,6 +206,9 @@ The available options are described below under their respective sections.
     use_wsclean_predict
         Use image-based prediction using WSClean (default = ``False``)? Usage similar to ``use_image_based_predict`` above (but mutually exclusive).
 
+    wsclean_predict_bw
+        Bandwidth (Hz) to create separate images for prediction. The full bandwidth of the data will be divided into chunks of channels whose frequency width given by this value. If the division if not an integer, an approximate (not uniform) division will be made.
+
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
         default = ``qr``).
@@ -461,16 +464,14 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 0). A value of 0 will disable the averaging. Activating this option
-        may improve the speed of imaging.
+        Maximum baseline used in baseline-dependent averaging (BDA) in time direction
+        during imaging, in m (default = 20000). A value of 0 will disable the averaging.
+        Activating this option may improve the speed of imaging.
 
-        .. note::
-
-            Currently, correction for time and frequency smearing cannot be done
-            when BDA is used during imaging. If the averaging of the input data
-            is such that time or frequency smearing is significant within the field
-            of view of interest, then the use of BDA is not recommended.
+    bda_frequencybase
+        Maximum baseline used in baseline-dependent averaging (BDA) in frequency
+        direction during imaging, in m (default = 20000). A value of 0 will disable the
+        averaging. Activating this option should improve the speed of imaging.
 
     dde_method
         Method to use to correct for direction-dependent effects during imaging:
@@ -500,6 +501,20 @@ The available options are described below under their respective sections.
         if available, applied. Note, however, that the direction-dependent solutions will
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
+
+    save_residual_visibilities
+        Save the residual visibilities used for the final imaging step (default = ``False``). If
+        ``True``, MS files with the residual visibilities, calculated as data - corrupted model,
+        will be saved in the final cycle. Direction-independent effects, if any, are applied to
+        the data (direction-dependent effects are not, but they are used to corrupt the model
+        data).
+
+        .. note::
+
+            The use of this option is not recommended when multiple nights of observations are
+            processed, as the residual dataset is concatenated in time over all observations, with
+            the periods between observations filled with dummy data. This behavior can result in
+            very large residual datasets.
 
     save_image_cube
         Save frequency cube(s) for the given Stokes parameters (default = ``False``).
@@ -609,6 +624,9 @@ The available options are described below under their respective sections.
         
         .. warning:: 
             This option is currently experimental and should be used with caution.
+        
+        .. notes::
+            If the number of facets is only one the option will be disabled 
 
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,
@@ -731,6 +749,67 @@ The available options are described below under their respective sections.
         When :term:`batch_system` = ``slurm``, the amount of memory per node in GB to
         request (default = 0 = all).
 
+        Rapthor also uses this value for DP3 calibration memory checks. A
+        pre-flight check uses the strategy's maximum number of directions, and a second
+        check before each calibration cycle uses the resolved facet count and DP3 solve
+        intervals. If ``mem_per_node_gb`` is zero, the checks compare against memory
+        available on the machine running Rapthor. Slurm users should set
+        ``mem_per_node_gb`` because memory available on the machine running Rapthor may
+        not represent memory available on a compute node.
+
+        The estimate uses decimal GB and the current DP3 peak-memory model of 80 bytes
+        per visibility sample. The estimate accounts for the original data buffer, visibility copies,
+        weights, and weighted data but excludes the legacy solve buffer. It uses the
+        unaveraged channel count because calibration BDA is baseline-dependent. The
+        result is conservative. By default, Rapthor logs likely out-of-memory
+        configurations but does not change settings or stop processing. Set
+        :term:`fail_on_calibration_oom_risk` to stop before processing a configuration
+        whose estimate is greater than the applicable limit.
+
+        Rapthor calculates the estimated peak memory as follows::
+
+            baselines = nstations * (nstations + 1) // 2
+            time_steps = ceil(solution_interval_seconds / sampling_interval_seconds)
+            samples = baselines * channels * time_steps * (directions + 1)
+
+            visibility_copies_gb = samples * 4 * 8 / 1e9
+            weights_gb = samples * 4 * 4 / 1e9
+            weighted_data_gb = samples * 4 * 8 / 1e9
+            peak_memory_gb = visibility_copies_gb + weights_gb + weighted_data_gb
+
+        The baseline count includes autocorrelations. ``channels`` is the observation's
+        unaveraged channel count, and ``time_steps`` is rounded up so that a partial
+        solution interval is counted as a full time step. The four in each component is
+        the number of correlations. Complex visibility and weighted-data values use
+        eight bytes per correlation, while weights use four bytes per correlation.
+        Together these components use 80 bytes per sample.
+
+        An interactive notebook exploring how estimated peak memory varies with  
+        number of baselines, channels, solution interval and directions is available 
+        `here <https://gitlab.com/ska-telescope/sdp/science-pipeline-workflows/ska-sdp-ical/-/blob/main/notebooks/dp3_calibrate_memory.py>`_.
+        (instructions for running it `here <https://developer.skao.int/projects/ska-sdp-ical/en/latest/dp3_memory_explorer.html>`_).
+
+
+        A DI solve always uses one direction. A DD pre-flight estimate uses the strategy
+        step's ``max_directions`` value, while the resolved estimate uses the actual
+        number of calibration facets. The additional direction in ``directions + 1``
+        accounts for DP3 retaining the original data buffer alongside the
+        direction-dependent data.
+
+    fail_on_calibration_oom_risk
+        Stop Rapthor when a DP3 calibration memory estimate is greater than the
+        applicable memory limit (default = ``False``). This policy is applied both to
+        the pre-flight ``max_directions`` upper bound and to the resolved estimate made
+        immediately before each calibration cycle. An estimate exactly equal to the
+        limit is allowed.
+
+        When enabled, a high-risk estimate raises an error before the affected pipeline
+        operation starts, and the ``rapthor`` command exits with a non-zero status. The
+        error reports the check stage, cycle, solve, observation, estimate, limit, and
+        overage. If memory capacity cannot be determined or the estimate itself cannot
+        be calculated, Rapthor logs an advisory warning and continues because a high
+        OOM risk has not been established.
+
     max_cores
         Maximum number of cores per task to use on each node (default = 0 = all).
 
@@ -741,9 +820,11 @@ The available options are described below under their respective sections.
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
         ``max_threads``, but not more than 14).
 
-    parallel_gridding_threads
-        Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5 of
-        ``max_threads``, but not more than 6).
+    parallel_gridding_tasks
+        Number of tasks WSClean can use for parallel gridding. If this is set to 0 (default) 
+        the number of tasks will be set to ``max_threads // 8`` (most hardware has a multiple
+        of 8 cores per 'chiplet' so this is usually a good choice for optimal performance).
+        NB: setting this too low may lead to major thread contention overheads.
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default = not

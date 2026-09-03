@@ -4,17 +4,22 @@ Script to predict using wsclean
 """
 
 import argparse
-from argparse import ArgumentParser, RawTextHelpFormatter
-import os
-import stat
-import shutil
-import uuid
 import json
+import logging
+import math
+import os
+import shutil
+import stat
 import subprocess
 import sys
-import logging
+import uuid
+from argparse import ArgumentParser, RawTextHelpFormatter
+
 import casacore.tables as ct
+import lsmtool
+import numpy as np
 from lsmtool.facet import read_ds9_region_file
+from scipy import constants
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -22,16 +27,14 @@ logger = logging.getLogger(__name__)
 
 def make_writable(msfile):
     """
-    Check if msfile is writable, if not, create a writable copy
+    Always create a writable copy
     and return it as output
     """
 
-    if os.access(msfile, os.W_OK):
-        return msfile
     # get base dir to create files
     tmpdir = "$(runtime.tmpdir)"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
-    # copy msfile to newms
+    # copy msfile to newms (TBD: use DP3 to average data if needed)
     shutil.copytree(msfile, newms, dirs_exist_ok=True)
     # change root dir +rwx
     current_mode = os.stat(newms).st_mode
@@ -78,27 +81,106 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
-def predict(msfiles, ds9_region_file, model_images, storage_manager):
+def optimal_rendering_parameters(msname, skymodel, ra, dec):
+    """
+    Return optimal image parameters (n_pixels, cell_size (rad))
+    for sky model rendering
+    For more details,
+    see section: Sky Model Resampling on the wsclean manual
+    """
+
+    # window size used in -sinc-window-size
+    window_size = 127 / 2
+    # beta
+    beta = 0.1
+
+    # determine max value of (l,m) in the sky model (radians)
+    sky = lsmtool.load(skymodel)
+    distances = sky.getDistance(ra, dec)
+    max_dist = np.argmax(distances)
+    # Sin projection to get l,m distance
+    max_lm = math.sin(math.radians(distances[max_dist]))
+    d0 = max_lm
+
+    # determine max values of u,v,w in the data (m)
+    uvw = ct.table(msname).getcol("UVW")
+    max_u = np.argmax(uvw[:, 0])
+    max_v = np.argmax(uvw[:, 1])
+    max_w = np.argmax(uvw[:, 2])
+    max_uv = max(uvw[max_u, 0], uvw[max_v, 1])
+    max_w = uvw[max_w, 2]
+
+    # determine the max frequency Hz (done also in predict, could be combined)
+    freq = ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+    max_f = np.argmax(freq[0, :])
+    max_freq = freq[0, max_f]
+
+    # convert uvw to wavelengths
+    max_uv *= max_freq / constants.c
+    max_w *= max_freq / constants.c
+
+    # base cell size
+    s0 = 1 / (2 * max_uv)
+    # lobe size of conv. kernel
+    f0 = math.sqrt(1 + (beta / math.pi) ** 2) / window_size
+
+    d = d0 + window_size * s0
+    s = s0 / (1 + 2 * f0 + s0 * d * max_w)
+
+    n_pix = int(d / s)
+
+    return n_pix, s
+
+
+def predict(
+    msfile,
+    ds9_region_file,
+    sky_model,
+    ra_dec,
+    frequency_bandwidth,
+    imsize,
+    cellsize_deg,
+    time_freq_smearing,
+    storage_manager,
+    predict_bandwidth,
+    n_threads,
+):
     """
     Predict model image to msfile
 
     Parameters
     ----------
-    msfiles : List: MS names, output will be written to separate columns
+    msfile : MS name, output will be written to separate columns of this MS
     ds9_region_file: DS9 region file, specifying facet regions and names
     Note: names in region file should be with {}, like {Patch_1}, After
     parsing the {} will be dropped
-    model_images: List: FITS images to use as model
+    sky_model: input sky model
+
+    ra_dec, frequency_bandwidth, imsize, cellsize_deg:
+    parameters used for drawing the model image
+
+    time_freq_smearing: if true, enable smearing in predict
+    storage_manager: storage manager to use 'default'
+    predict_bandwidth: bandwidth of prediction, channels will be split into groups
+    n_threads: max threads to use
+
     """
-    # work with only first model image (for now)
-    # model images can have arbitrary names,
-    # make a symlink in same dir with workable name
-    model_image = model_images[0]
-    tmpdir = os.path.dirname(model_image)
-    model_image = tmpdir + "/predict-model.fits"
-    os.symlink(model_images[0], model_image)
-    # remove '-model.fits' from image name
-    model = model_image.replace("-model.fits", "")
+    # get channel frequencies
+    freq_list = ct.table(msfile + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+    freq_list = freq_list[0]
+    n_chan = freq_list.size
+    if n_chan > 1:
+        bandwidth = freq_list[-1] - freq_list[0] + (freq_list[1] - freq_list[0])
+    else:
+        bandwidth = float(frequency_bandwidth[1])
+    # split channels into chunks of predict_bandwidth
+    if bandwidth > predict_bandwidth:
+        n_chunks = int(bandwidth / predict_bandwidth)
+    else:
+        n_chunks = 1
+    chan_list = np.arange(n_chan)
+    freq_chunks = np.array_split(freq_list, n_chunks)
+    chan_chunks = np.array_split(chan_list, n_chunks)
 
     # extract region names
     facets = read_ds9_region_file(ds9_region_file)
@@ -106,8 +188,70 @@ def predict(msfiles, ds9_region_file, model_images, storage_manager):
     for facet in facets:
         facet_names.append(facet.name)
 
+    # model images can have arbitrary names,
+    tmpdir = os.path.dirname(sky_model)
+    model_images = list()
+    model_counter = 0
+    for freqs, chans in zip(freq_chunks, chan_chunks):
+        if len(freqs) > 1:
+            chunk_bandwidth = freqs[-1] - freqs[0] + (freq_list[1] - freq_list[0])
+        else:
+            chunk_bandwidth = bandwidth
+        chunk_freq = np.mean(freqs)
+        err_code = 0
+        # only one spectral term is created
+        # output will be $(model_name)-term-0.fits
+        model_name = os.path.join(tmpdir, f"predict-{model_counter:04d}")
+        model_images.append(model_name)
+        cmd = [
+            "wsclean",
+            "-draw-model",
+            str(sky_model),
+            "-draw-spectral-terms",
+            str(1),
+            "-name",
+            str(model_name),
+            "-draw-centre",
+            str(ra_dec[0]),
+            str(ra_dec[1]),
+            "-draw-frequencies",
+            str(chunk_freq),
+            str(chunk_bandwidth),
+            "-size",
+            str(imsize[0]),
+            str(imsize[1]),
+            "-scale",
+            str(cellsize_deg),
+        ]
+        try:
+            subprocess.run(cmd, check=True).returncode
+        except subprocess.CalledProcessError as err:
+            print(err, file=sys.stderr)
+            err_code = err.returncode
+        model_counter += 1
+
+    n_models = len(model_images)
+    if n_models > 1:
+        # make a symlink in same dir with workable name
+        for model in model_images:
+            # link predict-xxxx-term-0.fits as predict-xxxx-model.fits
+            try:
+                os.symlink(model + "-term-0.fits", model + "-model.fits")
+            except FileExistsError:
+                raise
+    else:
+        model = model_images[0]
+        # single model image, drop -xxxx-
+        try:
+            os.symlink(
+                model + "-term-0.fits", os.path.join(os.path.dirname(model), "predict-model.fits")
+            )
+        except FileExistsError:
+            raise
+
     err_code = 0
-    # Run the command
+    first_facet = 1
+    model_name = os.path.join(tmpdir, "predict")
     for facet in facet_names:
         cmd = [
             "wsclean",
@@ -119,11 +263,24 @@ def predict(msfiles, ds9_region_file, model_images, storage_manager):
             "-select-facets",
             str(facet),
             "-name",
-            str(model),
+            str(model_name),
+            "-channels-out",
+            str(n_models),
             "-model-storage-manager",
             str(storage_manager),
-            *[str(msfilename) for msfilename in msfiles],
+            "-j",
+            str(n_threads),
         ]
+        if time_freq_smearing is not None:
+            cmd.append("-apply-time-frequency-smearing")
+        cmd.append("-parallel-reordering")
+        cmd.append(str(n_threads))
+        if first_facet:
+            first_facet = 0
+        else:
+            cmd.append("-reuse-reordered")
+        cmd.append("-save-reordered")
+        cmd.append(msfile)
         try:
             subprocess.run(cmd, check=True).returncode
         except subprocess.CalledProcessError as err:
@@ -138,9 +295,11 @@ def main():
     """
     Script can be used in two ways:
     1) To add columns and predict model
-      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --model images/field-MFS-model.fits
-    2) To remove extra columns created from step 1
-      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms --cleanup
+      wsclean_predict.py --region sector_1_facets_ds9.reg --msin small.ms
+      only one MS will be processed (as this is run in scatter mode).
+      The new MS name will be written to 'output_info' JSON file
+    2) To get column names as one string
+      wsclean_predict.py --region sector_1_facets_ds9.reg
 
     Returns
     -------
@@ -149,8 +308,7 @@ def main():
     Raises
     ------
     ValueError
-        If no valid Measurement Set, DS9 region file or model
-        image exists
+        If no valid Measurement Set or DS9 region file are given
     """
     descriptiontext = "Predict model data using WSClean.\n"
     parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
@@ -158,28 +316,41 @@ def main():
         "--msin", help="Input/Output measurement set", nargs="+", type=str, default=[]
     )
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
-    parser.add_argument("--model", help="Model FITS image", nargs="+", type=str, default=[])
-    parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
+    parser.add_argument("--skymodel", help="Sky model", type=str, default="")
     parser.add_argument(
-        "--cleanup", action=argparse.BooleanOptionalAction, help="Remove exra columns"
+        "--ra_dec",
+        help="RA and Dec coordinates of model image center",
+        type=str,
+        nargs=2,
+        default=[],
     )
+    parser.add_argument(
+        "--frequency_bandwidth",
+        help="Center frequency and full bandwdith",
+        type=str,
+        nargs=2,
+        default=[],
+    )
+    parser.add_argument(
+        "--predict_bandwidth", help="Model image bandwidth (Hz)", type=float, default=2e6
+    )
+    parser.add_argument("--cellsize", help="Model image cell size (deg)", type=float, default=1)
+    parser.add_argument(
+        "--imsize", help="Model image size n_x x n_y (pixels)", type=int, nargs=2, default=[]
+    )
+    parser.add_argument("--threads", help="Max threads to use", type=int, default=1)
+    parser.add_argument(
+        "--time_freq_smearing",
+        help="Enable time frequency smearing",
+        action=argparse.BooleanOptionalAction,
+    )
+    parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
     output_info = "msout_names.json"
-    # Check pre-conditions
-    if not (len(args.msin) > 0 and os.path.exists(args.msin[0])):
-        raise ValueError(f"Input measurement set {args.msin!r} does not exist")
+
     if not os.path.exists(args.region):
         raise ValueError(f"DS9 region file {args.region!r} does not exist")
-    if not args.cleanup:
-        if not (len(args.model) > 0 and os.path.exists(args.model[0])):
-            raise ValueError(f"Model image {args.model!r} does not exist")
-
-    # if msin is read only, create a copy of msin to work with,
-    # return this as output
-    msnames = list()
-    for msname in args.msin:
-        msnames.append(make_writable(msname))
 
     facets = read_ds9_region_file(args.region)
     facet_names = "["
@@ -192,15 +363,66 @@ def main():
             facet_names += "," + facet.name
     facet_names += "]"
 
-    out_dict = {"msout": msnames, "patches": facet_names}
+    if len(args.msin) == 0:
+        # No MS names given, only output the facet names
+        out_dict = {"patches": facet_names}
+        with open(output_info, "w") as f:
+            json.dump(out_dict, f)
 
+        return 0
+    else:
+        if len(args.msin) > 1:
+            raise ValueError(f"Multiple {args.msin!r}, can work with only one")
+        if not os.path.exists(args.msin[0]):
+            raise ValueError(f"Input measurement set {args.msin!r} does not exist")
+        if not os.path.exists(args.skymodel):
+            raise ValueError(f"Sky model file {args.skymodel!r} does not exist")
+        if len(args.ra_dec) != 2:
+            raise ValueError(f"Invalid RA Dec {args.ra_dec!r}")
+        if len(args.frequency_bandwidth) != 2:
+            raise ValueError(f"Invalid frequency and bandwidth {args.frequency_bandwidth!r}")
+        if len(args.imsize) != 2:
+            raise ValueError(f"Invalid image size {args.imsize!r}")
+
+    # Always create a copy of msin to work with,
+    # return this as output
+    msname = make_writable(args.msin[0])
+    out_dict = {"msout": msname, "patches": facet_names}
     with open(output_info, "w") as f:
         json.dump(out_dict, f)
 
-    if args.cleanup:
-        return remove_columns_from_ms(msnames, args.region)
-    else:
-        return predict(msnames, args.region, args.model, args.storage_manager)
+    # determine optimal parameters for model image rendering
+    n_pix, cell_size = optimal_rendering_parameters(
+        msname, args.skymodel, args.ra_dec[0], args.ra_dec[1]
+    )
+    # override provided imsize and cellsize
+    max_npix = max(args.imsize[0], args.imsize[1])
+    cellsize_deg = math.degrees(cell_size)
+    given_extent = max_npix * args.cellsize
+    n_pix = max(int(given_extent / cellsize_deg), max_npix)
+    # if n_pix is greater than x3 times original image size, limit
+    # the size (because of computational limitations)
+    if n_pix > 3 * max_npix:
+        n_pix = 3 * max_npix
+        cellsize_deg = given_extent / n_pix
+    imsize = args.imsize
+    imsize[0] = n_pix
+    imsize[1] = n_pix
+
+    # draw model and predict
+    return predict(
+        msname,
+        args.region,
+        args.skymodel,
+        args.ra_dec,
+        args.frequency_bandwidth,
+        imsize,
+        cellsize_deg,
+        args.time_freq_smearing,
+        args.storage_manager,
+        args.predict_bandwidth,
+        args.threads,
+    )
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import os
 import numpy as np
 
 from rapthor import _logging
+from rapthor.lib.calibration_memory import check_calibration_memory
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy, validate_strategy
@@ -18,6 +19,17 @@ from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import Predict
 
 log = logging.getLogger("rapthor")
+
+
+def check_preflight_calibration_memory(field, strategy_steps):
+    """Estimate calibration memory for each strategy cycle using maximum directions."""
+    for cycle_number, step in enumerate(strategy_steps, start=1):
+        check_calibration_memory(
+            field,
+            cycle_number,
+            step.get("max_directions", getattr(field, "max_directions", 1)),
+            step,
+        )
 
 
 def run(parset_file, logging_level="info"):
@@ -61,6 +73,7 @@ def run(parset_file, logging_level="info"):
         return
     # Cross-check strategy with parset for compatibility.
     validate_strategy(strategy_steps, parset)
+    check_preflight_calibration_memory(field, strategy_steps)
 
     # Generate an initial sky model from the input data if needed
     if parset["generate_initial_skymodel"]:
@@ -182,17 +195,14 @@ def run_steps(field, steps, final=False):
         if field.do_calibrate:
             # Set whether screens should be generated
             field.generate_screens = (field.dde_mode == "hybrid") and final
-
-            # Calibrate (direction-dependent)
-            op = Calibrate("dd", field, cycle_number)
-            op.run()
-
-            # Calibrate (direction-independent)
-            if field.do_fulljones_solve:
-                op = Predict("di", field, cycle_number)
-                op.run()
-                op = Calibrate("di", field, cycle_number)
-                op.run()
+            field.set_obs_parameters()
+            check_calibration_memory(field, cycle_number, field.num_patches)
+            for mode, enabled in _do_calibrate_mode(field.calibration_strategy).items():
+                if not enabled:
+                    continue
+                if mode == "di":
+                    Predict("di", field, cycle_number).run()
+                Calibrate(mode, field, cycle_number).run()
 
         # Predict and subtract the sector models
         # Note: DD predict is not yet supported when screens are used
@@ -226,6 +236,9 @@ def run_steps(field, steps, final=False):
 
             # Set whether screens should be applied
             field.apply_screens = (field.dde_mode == "hybrid") and final
+
+            # Set whether residual visibilites should be made
+            field.make_residual_visibilities = field.save_residual_visibilities and final
 
             # Set whether the final major iteration is skipped (note: it is
             # never skipped for the final iteration)
@@ -528,3 +541,21 @@ def make_report(field, outfile=None):
         outfile = os.path.join(field.parset["dir_working"], "logs", "diagnostics.txt")
     with open(outfile, "w") as f:
         f.writelines(output_lines)
+
+
+def _do_calibrate_mode(calibration_strategy):
+    """
+    Helper function determine whether or not to do DI and/or DD calibration
+
+    Parameters
+    ----------
+    calibration_strategy : dict
+        The calibration strategy for this run
+    """
+    supported_calibration_modes = ["di", "dd"]
+    if not any(mode in calibration_strategy for mode in supported_calibration_modes):
+        raise ValueError(
+            f"Calibration strategy {calibration_strategy} does not contain any of the "
+            f"calibration modes {supported_calibration_modes}"
+        )
+    return {mode: bool(calibration_strategy.get(mode, [])) for mode in calibration_strategy.keys()}

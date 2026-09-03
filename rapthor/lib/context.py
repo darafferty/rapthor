@@ -1,10 +1,11 @@
 """
 Definition of context manager classes
 """
-from timeit import default_timer as timer
+
 import datetime
 import logging
 import sys
+from timeit import default_timer as timer
 
 
 class Timer(object):
@@ -18,7 +19,8 @@ class Timer(object):
     type : str, optional
         Type of operation
     """
-    def __init__(self, log=None, type='operation'):
+
+    def __init__(self, log=None, type="operation"):
         if log is None:
             self.log = logging
         else:
@@ -30,8 +32,7 @@ class Timer(object):
 
     def __exit__(self, *args):
         elapsed = timer() - self.start
-        self.log.debug('Time for %s: %s', self.type,
-                       datetime.timedelta(seconds=elapsed))
+        self.log.debug("Time for %s: %s", self.type, datetime.timedelta(seconds=elapsed))
 
 
 class RedirectStdStreams(object):
@@ -45,6 +46,7 @@ class RedirectStdStreams(object):
     stderr : file or stream object
         stderr stream
     """
+
     def __init__(self, stdout=None, stderr=None):
         self._stdout = stdout or sys.stdout
         self._stderr = stderr or sys.stderr

@@ -110,6 +110,9 @@ use_image_based_predict = False
 # Use image-based prediction using WSClean, can be faster for a large sky model. Extra model data columns will be created.
 use_wsclean_predict = False
 
+# If using WSClean predict, the bandwidth (Hz) to create separate model images for prediction
+wsclean_predict_bw = 2e6
+
 # Maximum factor by which the direction-dependent solution intervals can be
 # increased, so that fainter calibrators get longer intervals (default = 1).
 # The maximum factor by which the smoothnessconstraints are increased, such
@@ -178,7 +181,7 @@ correct_time_frequency_smearing = False
 # (default = none), local rms parameters (defaults = 0.8, 50, and "rms"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
-# (BDA) timebase value in m (default = 0)
+# (BDA) timebase value in m (default = 20000)
 cellsize_arcsec = 1.5
 robust = -0.65
 min_uv_lambda = 80.0
@@ -190,6 +193,7 @@ local_rms_window = 50
 local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
+bda_frequencybase = 20000.0
 
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent
@@ -208,12 +212,14 @@ filter_skymodel = True
 source_finder = bdsf
 save_filtered_model_image = False
 
-# Save visibilities used for imaging (default = False). If True, the imaging MS
-# files will be saved, with the the direction-independent full-Jones solutions,
-# if available, applied. Note, however, that the direction-dependent solutions
-# will not be applied unless dde_method = "single", in which case the solutions
-# closest to the image centers are used.
+# Save visibilities used for imaging (default = False). If True, the imaging MS files will be saved
+# for the final imaging step, with the the direction-independent full-Jones solutions, if
+# available, applied. Note, however, that the direction-dependent solutions will not be applied
+# unless dde_method = "single", in which case the solutions closest to the image centers are used.
+# The residual visibilities, in the sense data - corrupted model, can also be saved for the final
+# imaging step.
 save_visibilities = False
+save_residual_visibilities = False
 
 # Perform averaging of visibilities for imaging, up to that allowed by smearing
 # constraints (default = True).
@@ -270,7 +276,6 @@ make_quv_images = False
 pol_combine_method = link
 disable_iquv_clean = False
 
-
 # Enable the use of a clean mask between imaging runs
 use_clean_mask = False
 
@@ -281,8 +286,9 @@ use_clean_mask = False
 # must not be set unless it is on a shared filesystem
 use_mpi = False
 
-# Enable shared reads and writes for imaging when working with facets. If multiple nodes are used
-# this option can significantly speed up the processing time of wsclean
+# Enable shared reads and writes for imaging when working with facets. If
+# multiple nodes are used this option can significantly speed up the processing
+# time of wsclean.
 # NOTE: it is currently experimental and it should be used with caution.
 shared_facet_rw = False
 
@@ -374,6 +380,11 @@ max_nodes = 0
 cpus_per_task = 0
 mem_per_node_gb = 0
 
+# Stop processing when a DP3 calibration memory estimate is greater than the
+# applicable per-node memory limit (default = False). If mem_per_node_gb is
+# zero, memory available on the machine running Rapthor is used as the limit.
+fail_on_calibration_oom_risk = False
+
 # Maximum number of cores and threads per task to use on each node (default = 0
 # = all)
 max_cores = 0
@@ -384,9 +395,9 @@ max_threads = 0
 # the expense of higher memory usage
 deconvolution_threads = 0
 
-# Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5
+# Number of tasks to use by WSClean for parallel gridding (default = 0 = ``max_threads`` // 8
 # of max_threads, but not more than 6)
-parallel_gridding_threads = 0
+parallel_gridding_tasks = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes (but does not have to be on a

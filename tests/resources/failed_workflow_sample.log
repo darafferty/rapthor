@@ -1,0 +1,48 @@
+[2026-08-25T16:11:55+0200] [MainThread] [I] [toil.worker] ---TOIL WORKER OUTPUT LOG---
+[2026-08-25T16:11:55+0200] [MainThread] [I] [toil] Running Toil version 9.2.0-03ecbc5c4965941b0d87c26cc2d09415dbeb670c on host calypso.
+[2026-08-25T16:11:55+0200] [MainThread] [I] [toil.worker] Working on job 'CWLJob' pipeline_parset.cwl.0.predict_model_data.cwl kind-CWLJob/instance-5ct7rofl v1
+[2026-08-25T16:11:56+0200] [MainThread] [I] [toil.worker] Loaded body Job('CWLJob' pipeline_parset.cwl.0.predict_model_data.cwl kind-CWLJob/instance-5ct7rofl v1) from description 'CWLJob' pipeline_parset.cwl.0.predict_model_data.cwl kind-CWLJob/instance-5ct7rofl v1
+[2026-08-25T16:11:56+0200] [MainThread] [I] [cwltool] [job pipeline_parset.cwl.0.predict_model_data.cwl] /tmp/ical-0t13vkw9/scratch/toil-cwl-runner.eqr14a9x$ DP3 \
+    msout.overwrite=True \
+    steps=[predict] \
+    predict.operation=replace \
+    predict.usebeammodel=True \
+    predict.beam_interval=120 \
+    predict.beammode=array_factor \
+    msout.storagemanager=Dysco \
+    msout.storagemanager.databitrate=0 \
+    msout.antennacompression=False \
+    predict.correctfreqsmearing=False \
+    predict.correcttimesmearing=False \
+    msin.datacolumn=DATA \
+    predict.directions=[[Patch_0]] \
+    msin=/tmp/ical-0t13vkw9/scratch/toil-cwl-runner.s9yv287v/stg2bf6a19e-db9d-4aaf-bc18-d2a4875c6885/test.ms \
+    msout=test.ms.predict_1_modeldata \
+    msin.ntimes=0 \
+    numthreads=6 \
+    predict.onebeamperpatch=False \
+    predict.type=predict \
+    predict.sourcedb=/tmp/ical-0t13vkw9/scratch/toil-cwl-runner.s9yv287v/stg97c31161-5531-4c97-931c-d07496092b00/predict_1_predict_skymodel.txt \
+    msin.starttime=29Mar2013/13:59:52.907
+[2026-08-25T16:11:56+0200] [MainThread] [W] [cwltool] [job pipeline_parset.cwl.0.predict_model_data.cwl] exited with status: 127
+[2026-08-25T16:11:56+0200] [MainThread] [E] [cwltool] [job pipeline_parset.cwl.0.predict_model_data.cwl] Job error:
+("Error collecting output for parameter 'msmod': rapthor/pipeline/steps/predict_model_data.cwl:190:7: Did not find output file with glob pattern: ['test.ms.predict_1_modeldata'].", {})
+[2026-08-25T16:11:56+0200] [MainThread] [W] [cwltool] [job pipeline_parset.cwl.0.predict_model_data.cwl] completed permanentFail
+[2026-08-25T16:11:56+0200] [MainThread] [E] [toil.cwl.cwltoil] Failed command standard error:
+DP3: error: Simulated message for test
+
+[2026-08-25T16:11:56+0200] [MainThread] [C] [toil.worker] Worker crashed with traceback:
+Traceback (most recent call last):
+  File "/home/hannes/.pyenv/versions/3.12-dev/lib/python3.12/site-packages/toil/worker.py", line 601, in workerScript
+    job._runner(
+  File "/home/hannes/.pyenv/versions/3.12-dev/lib/python3.12/site-packages/toil/job.py", line 3247, in _runner
+    returnValues = self._run(jobGraph=None, fileStore=fileStore)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hannes/.pyenv/versions/3.12-dev/lib/python3.12/site-packages/toil/job.py", line 3126, in _run
+    return self.run(fileStore)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/hannes/.pyenv/versions/3.12-dev/lib/python3.12/site-packages/toil/cwl/cwltoil.py", line 2858, in run
+    raise cwl_utils.errors.WorkflowException(status)
+cwl_utils.errors.WorkflowException: permanentFail
+
+[2026-08-25T16:11:56+0200] [MainThread] [E] [toil.worker] Exiting the worker because of a failed job on host calypso
