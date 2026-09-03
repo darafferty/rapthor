@@ -1,3 +1,4 @@
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -16,8 +17,6 @@ from rapthor.lib.observation import Observation
 from rapthor.lib.strategy import check_and_adjust_parameters, set_user_strategy
 from rapthor.operations.predict import Predict
 from tests.conftest import write_scalar_h5parm
-
-logging.getLogger("matplotlib.font_manager").disabled = True
 
 EXPECTED_ANTENNA_CONSTRAINTS = {
     "HBA": [
@@ -114,6 +113,11 @@ EXPECTED_ANTENNA_CONSTRAINTS = {
 }
 
 
+def save_json(filename, data):
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=4)
+
+
 @pytest.fixture
 def field(parset_for_field_test):
 
@@ -123,7 +127,7 @@ def field(parset_for_field_test):
     field.set_obs_parameters()
     field.define_imaging_sectors()
     field.define_outlier_sectors(1)
-    yield field
+    return field
 
 
 @pytest.fixture
@@ -1221,8 +1225,13 @@ class TestAntennaConstraints:
         ]
         return field
 
+    @pytest.fixture
+    def example_constraints_file(self, pytestconfig):
+        """Create a temporary JSON file with example antenna constraints."""
+        return pytestconfig.resource_dir / "example_antenna_constraints.json"
+
     @pytest.mark.parametrize(
-        "antenna, antenna_constraints, expected_result",
+        "antenna, resolve_fixture_values, expected_result",
         [
             # Case: When `field.antenna_constraints` is True, load the HBA
             # constraints from file and match against the field stations. The
@@ -1237,9 +1246,16 @@ class TestAntennaConstraints:
             # Case: When `field.antenna_constraints` is False, do not load any
             # constraints.
             pytest.param("HBA", False, [], id="LOFAR HBA constraints False"),
-            # Case: When `field.antenna_constraints` is an empty list, do not
-            # load any constraints.
-            pytest.param("HBA", [], [], id="LOFAR HBA constraints empty"),
+            # Case: Passing a constraints file
+            pytest.param(
+                "HBA",
+                example_constraints_file,
+                [
+                    ["CS001HBA0", "CS002HBA0", "CS002HBA1", "CS004HBA1"],
+                    ["RS106HBA", "RS208HBA", "RS305HBA", "RS307HBA"],
+                ],
+                id="LOFAR HBA constraints empty",
+            ),
             # When we change the `field.antenna` attribute to "LBA", using True
             # for antenna_constraints loads the default constraints for LBA,
             # which is not compatible with the HBA data in the test field. This
@@ -1255,9 +1271,14 @@ class TestAntennaConstraints:
                 id="LOFAR LBA constraints",
             ),
         ],
+        indirect=["resolve_fixture_values"],
     )
     def test_antenna_constraints(
-        self, mock_hba_field_with_stations, antenna, antenna_constraints, expected_result
+        self,
+        mock_hba_field_with_stations,
+        antenna,
+        resolve_fixture_values,
+        expected_result,
     ):
         """
         Test that the antenna constraints are loaded correctly from file for
@@ -1268,7 +1289,7 @@ class TestAntennaConstraints:
         # Arrange
         field = mock_hba_field_with_stations
         field.antenna = antenna
-        field.antenna_constraints = antenna_constraints
+        field.antenna_constraints = resolve_fixture_values
 
         with get_context(expected_result):
             # Act
@@ -1283,18 +1304,8 @@ class TestAntennaConstraints:
             pytest.param(
                 # input_constraints
                 [
-                    [
-                        "CS001HBA0",
-                        "CS002HBA0",
-                        "CS002HBA1",
-                        "CS004HBA1",
-                    ],
-                    [
-                        "RS106HBA",
-                        "RS208HBA",
-                        "RS305HBA",
-                        "RS307HBA",
-                    ],
+                    ["CS001HBA0", "CS002HBA0", "CS002HBA1", "CS004HBA1"],
+                    ["RS106HBA", "RS208HBA", "RS305HBA", "RS307HBA"],
                 ],
                 # expected_result
                 [
