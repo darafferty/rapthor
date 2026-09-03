@@ -7,7 +7,7 @@ import json
 import logging
 import os
 from collections import namedtuple
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from pathlib import Path
 
 import astropy.units as u
@@ -377,6 +377,11 @@ class Field(object):
             returned.
         """
         antenna_constraints = self.antenna_constraints
+
+        if isinstance(antenna_constraints, list):
+            # antenna constraints were previously resolved
+            return antenna_constraints
+
         if antenna_constraints is True:
             self.log.info("Loading default antenna constraints for %s.", self.antenna)
             if ANTENNA_CONSTRAINTS_FILES.get(self.antenna):
@@ -388,11 +393,19 @@ class Field(object):
                 )
                 return []
 
-        if antenna_constraints:
+        if antenna_constraints is False:
+            self.log.info("No antenna constraints will be used for calibration.")
+            return []
+
+        if isinstance(antenna_constraints, PathLike):
             # antenna constraints given as filename
             return self._load_antenna_constraints(antenna_constraints)
 
-        return []
+        raise ValueError(
+            "Antenna constraints should be given as either a boolean value True"
+            " to use the default constraints for the antenna type, or False to "
+            f"solve all stations independently. Received {antenna_constraints!r} instead."
+        )
 
     def _load_antenna_constraints(self, filename: PathLike) -> list[list[str]]:
         """
@@ -423,9 +436,9 @@ class Field(object):
 
         The input is a list of lists of station names, where each sublist
         represents a group of stations that will be fit together. For example,
-        ``[['CS001HBA0', 'CS002HBA0'], ['RS106HBA', 'RS208HBA']]`` would produce two
-        groups of stations, one with the two core stations and one with the two remote
-        stations.
+        ``[['CS001HBA0', 'CS002HBA0'], ['RS106HBA', 'RS208HBA']]`` would produce
+        two groups of stations, one with the two core stations and one with the
+        two remote stations.
 
         Parameters
         ----------
@@ -440,7 +453,8 @@ class Field(object):
         Raises
         ------
         ValueError
-            If no stations in an input group could be resolved against the field's stations.
+            If no stations in an input group could be resolved against the
+            field's stations.
         """
         # Make sure we have a list of lists
         if isinstance(antenna_constraints[0], str):
