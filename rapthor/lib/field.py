@@ -8,7 +8,7 @@ import logging
 import os
 import re
 from collections import namedtuple
-from collections.abc import Collection, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 
 import astropy.units as u
