@@ -10,7 +10,7 @@ ARG DP3_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
-ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
+ARG SAGECAL_COMMIT=master
 ARG WSCLEAN_COMMIT=master
 
 # Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
@@ -76,12 +76,10 @@ RUN python3 -m pip install \
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
-# leap seconds appear, ignore them or regenerate the docker image. If the
-# ASTRON endpoint is unavailable, use backup from git.astron.nl.
-RUN mkdir -p /usr/local/share/casacore/data \
-    && wget -nv --timeout 5 --tries=3 https://iers.astron.nl/WSRT_Measures.ztar \
-    && tar -C /usr/local/share/casacore/data -xzf WSRT_Measures.ztar \
-    && rm WSRT_Measures.ztar
+# leap seconds appear, ignore them or regenerate the docker image.
+RUN mkdir -p /usr/local/share/casacore/data && \
+    wget -qO - https://iers.astron.nl/WSRT_Measures.ztar | \
+        tar -C /usr/local/share/casacore/data -xzf -
 
 # Install Casacore
 RUN git clone --no-checkout https://github.com/casacore/casacore.git
@@ -211,11 +209,11 @@ COPY --from=builder /usr/local /usr/local
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
-ARG DP3_COMMIT=master
+ARG DP3_COMMIT=18e793a4
 ARG EVERYBEAM_COMMIT=master
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
-ARG SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
+ARG SAGECAL_COMMIT=master
 ARG WSCLEAN_COMMIT=master
 
 # Add version information to the metadata of the image
