@@ -107,8 +107,11 @@ class Calibrate(Operation):
         # calibration)
         starttime = field.get_obs_parameters("starttime")
         ntimes = field.get_obs_parameters("ntimes")
-        calibration_skymodel_file = field.calibration_skymodel_file
 
+        # Build solve plan for DP3
+        solve_plan = self._build_solve_plan()
+        self.solve_plan = solve_plan
+        
         if self.mode == "dd":
             # --- output h5parm configuration ---
             # Define various output filenames for the solution tables. We save some
@@ -121,7 +124,7 @@ class Calibrate(Operation):
 
             # --- Sky model configuration ---
             # Define the input sky model
-            num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
+            num_spectral_terms = misc.get_max_spectral_terms(field.calibration_skymodel_file)
             (
                 model_image_frequency_bandwidth,
                 model_image_ra_dec,
@@ -147,8 +150,7 @@ class Calibrate(Operation):
             fast_antennaconstraint = str(self.field.antenna_constraints).replace("'", "")
             medium_antennaconstraint = fast_antennaconstraint  # ???
 
-            solve_plan = self._build_solve_plan()
-            self.solve_plan = solve_plan
+
             applycal_inputs = self._build_applycal(field)
 
             # --- DP3 pipeline steps ---
@@ -212,7 +214,7 @@ class Calibrate(Operation):
                 "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
                 "collected_solve3_h5parm": self.slow_h5parm,
                 # Sky model configuration
-                "calibration_skymodel_file": CWLFile(calibration_skymodel_file).to_json(),
+                "calibration_skymodel_file": CWLFile(field.calibration_skymodel_file).to_json(),
                 "model_image_root": "calibration_model",
                 "model_image_ra_dec": model_image_ra_dec,
                 "model_image_imsize": model_image_imsize,
@@ -334,9 +336,6 @@ class Calibrate(Operation):
             }
             self._apply_solve_plan_inputs(solve_plan, dp3_steps=dp3_steps)
         elif self.mode == "di":
-            solve_plan = self._build_solve_plan()
-            self.solve_plan = solve_plan
-
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
             self.collected_h5parm_fulljones = "fulljones_solutions.h5"
@@ -550,13 +549,13 @@ class Calibrate(Operation):
 
         slot_map = {solve.slot: solve for solve in solve_plan}
         for slot in range(1, 5):
-            solve = slot_map.get(slot)
             output_key = f"output_solve{slot}_h5parm"
             collected_key = f"collected_solve{slot}_h5parm"
             mode_key = f"solve{slot}_mode"
             timestep_key = f"solint_solve{slot}_timestep"
             freqstep_key = f"solint_solve{slot}_freqstep"
-
+            
+            solve = slot_map.get(slot)
             if solve is None:
                 self.input_parms[output_key] = [
                     f"unused_solve{slot}_{index}.h5parm" for index in range(field.ntimechunks)
@@ -625,6 +624,7 @@ class Calibrate(Operation):
         self.input_parms[f"solve{slot}_smoothnessconstraint"] = getattr(
             self.field, f"{field_prefix}_smoothnessconstraint"
         ) / np.min(dd_factors)
+
         self.input_parms[f"solve{slot}_antennaconstraint"] = (
             self.input_parms.get("solve1_antennaconstraint", "[]")
             if field_prefix in {"fast", "medium"}

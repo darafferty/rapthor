@@ -243,7 +243,7 @@ def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
     indirect=True,
 )
 def test_rapthor_run_dd_with_antenna_constraints(
-    generated_parset_path, single_loop_strategy_path, caplog
+    generated_parset_path, single_loop_strategy_path, caplog, pytestconfig
 ):
     """Test a single selfcal loop with DP3, using antenna constraints."""
 
@@ -251,19 +251,13 @@ def test_rapthor_run_dd_with_antenna_constraints(
         generated_parset_path,
         {
             "allow_internet_access": "False",
-            "antenna_constraints": "[[CS001HBA0, CS002HBA0, CS002HBA1, CS004HBA1]]",
+            "antenna_constraints": str(pytestconfig.resource_dir / "test_antenna_constraints.json"),
             "strategy": str(single_loop_strategy_path),
         },
     )
-
-    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
-    assert (
-        dp3_arguments["solve1_antennaconstraint"]
-        == "[[CS001HBA0, CS002HBA0, CS002HBA1, CS004HBA1]]"
-    )
-    assert (
-        dp3_arguments["solve2_antennaconstraint"]
-        == "[[CS001HBA0, CS002HBA0, CS002HBA1, CS004HBA1]]"
-    )
-    assert dp3_arguments["solve3_antennaconstraint"] == "[]"
-    assert dp3_arguments["solve4_antennaconstraint"] == "[]"
+    dp3_arguments = _test_calibrate(updated_parset_path, caplog)    
+    expected_constraints = "[[CS001HBA0, CS002HBA0, CS002HBA1, CS004HBA1]]"
+    assert dp3_arguments["solve1.antennaconstraint"] == expected_constraints
+    assert dp3_arguments["solve2.antennaconstraint"] == expected_constraints
+    assert dp3_arguments["solve3.antennaconstraint"] == "[]"
+    assert dp3_arguments["solve4.antennaconstraint"] == "[]"
