@@ -146,6 +146,10 @@ sagecalpredict = False
 # single group. Providing a value of ``False`` will fit all stations independently.
 # If a filename is provided, it should contain a list of lists of station names,
 # where each inner list defines a group of stations that should be solved together.
+# Note: The groups of stations should define the constraints across all
+# observations; if a particular observation lacks a given station, that station is
+# ignored by DP3 during calibration of that observation.
+
 antenna_constraints = True
 
 # Fast solve parameters. Note that the solution intervals are set in the strategy
