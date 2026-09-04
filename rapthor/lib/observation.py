@@ -149,8 +149,9 @@ class Observation(object):
             self.stations = ant.col("NAME")[:]
             self.diam = float(ant.col("DISH_DIAMETER")[0])
 
-        # Set antenna to HBA to at least let Rapthor proceed if not recognized.
-        self.antenna = self._get_antenna() or "HBA"
+        # Get antenna type and check if it is recognized. If not, set to HBA and
+        # disable antenna constraints
+        self.antenna = self._get_antenna()
 
         # Find mean elevation and time range for periods where the elevation
         # falls below the lowest 20% of all values. We sample every 10000 entries to
@@ -418,11 +419,11 @@ class Observation(object):
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset["calibration_specific"]["fast_smoothnessreffrequency"]
         if fast_smoothnessreffrequency is None:
-            if self.antenna == "HBA":
-                fast_smoothnessreffrequency = 144e6
-            elif self.antenna == "LBA":
+            if self.antenna == "LBA":
                 # Select a frequency at the midpoint of the frequency coverage of this observation
                 fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
+            else:
+                fast_smoothnessreffrequency = 144e6
         self.parameters["fast_smoothnessreffrequency"] = [
             fast_smoothnessreffrequency
         ] * self.ntimechunks
