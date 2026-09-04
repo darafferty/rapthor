@@ -78,7 +78,10 @@ class Calibrate(FlowOperation):
         # calibration)
         starttime = field.get_obs_parameters("starttime")
         ntimes = field.get_obs_parameters("ntimes")
-        calibration_skymodel_file = field.calibration_skymodel_file
+
+        # Build solve plan for DP3
+        solve_plan = self._build_solve_plan()
+        self.solve_plan = solve_plan
 
         if self.mode == "dd":
             self.use_image_based_predict = field.generate_screens or field.use_image_based_predict
@@ -96,7 +99,7 @@ class Calibrate(FlowOperation):
 
             # --- Sky model configuration ---
             # Define the input sky model
-            num_spectral_terms = misc.get_max_spectral_terms(calibration_skymodel_file)
+            num_spectral_terms = misc.get_max_spectral_terms(field.calibration_skymodel_file)
             (
                 model_image_frequency_bandwidth,
                 model_image_ra_dec,
@@ -269,7 +272,6 @@ class Calibrate(FlowOperation):
             solve_plan = self._build_solve_plan()
             self.solve_plan = solve_plan
             has_slow_gain_solve = self._solve_plan_has_slow_gain(solve_plan)
-
             # Define various output filenames for the solution tables. We save some
             # as attributes since they are needed in finalize()
             self.fulljones_solutions_h5parm = "fulljones_solutions.h5"
@@ -482,7 +484,6 @@ class Calibrate(FlowOperation):
         seen_slow_gain = False
         slot_map = {solve.slot: solve for solve in solve_plan}
         for slot in range(1, 5):
-            solve = slot_map.get(slot)
             output_key = f"output_solve{slot}_h5parm"
             collected_key = f"collected_solve{slot}_h5parm"
             mode_key = f"solve{slot}_mode"
@@ -493,6 +494,7 @@ class Calibrate(FlowOperation):
             timestep_key = f"solint_solve{slot}_timestep"
             freqstep_key = f"solint_solve{slot}_freqstep"
 
+            solve = slot_map.get(slot)
             if solve is None:
                 self.input_parms[output_key] = [
                     f"unused_solve{slot}_{index}.h5parm" for index in range(field.ntimechunks)
