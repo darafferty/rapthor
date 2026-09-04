@@ -2,7 +2,7 @@
   "name": "Rapthor Dev Container",
   "build": {
     "context": "..",
-    "dockerfile": "../ci/ubuntu_24_04-base",
+    "dockerfile": "../ci/ubuntu_26_04-base",
     "target": "dev",
     "options": [
       "--platform=linux/amd64"
