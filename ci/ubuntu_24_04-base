@@ -37,6 +37,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
+        curl \
         flex \
         g++ \
         gfortran \
@@ -61,6 +62,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         python3 \
         wcslib-dev \
         wget
+
+# Install pyenv
+RUN curl -fsSL https://pyenv.run | bash
 
 # Do not use `pip` from the Debian repository, but fetch it from PyPA.
 # This way, we are sure that the latest versions of `pip`, `setuptools`, and
