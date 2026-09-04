@@ -1,7 +1,6 @@
 import subprocess
 
 import pytest
-
 from .utils import (
     find_command_records,
     first_command_arguments,
@@ -10,7 +9,7 @@ from .utils import (
 )
 
 
-def _test_calibrate(parset_path):
+def _test_calibrate(parset_path, _caplog=None):
     """
     Run the Rapthor calibration workflow with the given parset file and check
     that the job completed and that the expected messages appear in the output.
@@ -51,7 +50,9 @@ def _test_calibrate(parset_path):
     ],
     indirect=True,
 )
-def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_loop_strategy_path):
+def test_rapthor_run_dd_fast_phase_medium_phase(
+    generated_parset_path, single_loop_strategy_path, caplog
+):
     """Test a single selfcal loop with DP3.
     DD calibration fast gains and medium gains are performed.
 
@@ -68,7 +69,7 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
         },
     )
 
-    dp3_arguments = _test_calibrate(updated_parset_path)
+    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -104,7 +105,7 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     indirect=True,
 )
 def test_rapthor_run_dd_fast_medium_slow_gains(
-    generated_parset_path, single_loop_strategy_path_fast_medium_slow
+    generated_parset_path, single_loop_strategy_path_fast_medium_slow, caplog
 ):
     """Test a single selfcal loop with DP3.
     DD calibration fast gains, medium gains, and slow gains are performed
@@ -118,7 +119,7 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
         },
     )
 
-    dp3_arguments = _test_calibrate(updated_parset_path)
+    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -150,7 +151,7 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
     indirect=True,
 )
 def test_rapthor_run_dd_slow_gains(
-    generated_parset_path, single_loop_strategy_path_calibrate_dd_slow
+    generated_parset_path, single_loop_strategy_path_calibrate_dd_slow, caplog
 ):
     """Test a single selfcal loop with DP3.
     DD calibration slow gains are performed
@@ -164,7 +165,7 @@ def test_rapthor_run_dd_slow_gains(
         },
     )
 
-    dp3_arguments = _test_calibrate(updated_parset_path)
+    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -186,7 +187,7 @@ def test_rapthor_run_dd_slow_gains(
     indirect=True,
 )
 def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
-    generated_parset_path, single_loop_strategy_path
+    generated_parset_path, single_loop_strategy_path, caplog
 ):
     """Test a single selfcal loop with DP3.
     ddecal fast_gains and medium gains are performed
@@ -201,7 +202,7 @@ def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
         },
     )
 
-    dp3_arguments = _test_calibrate(updated_parset_path)
+    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -226,7 +227,9 @@ def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
     ],
     indirect=True,
 )
-def test_rapthor_run_dd_with_antenna_constraints(generated_parset_path, single_loop_strategy_path):
+def test_rapthor_run_dd_with_antenna_constraints(
+    generated_parset_path, single_loop_strategy_path, caplog
+):
     """Test a single selfcal loop with DP3, using antenna constraints."""
 
     updated_parset_path = update_parset_path(
@@ -238,7 +241,7 @@ def test_rapthor_run_dd_with_antenna_constraints(generated_parset_path, single_l
         },
     )
 
-    dp3_arguments = _test_calibrate(updated_parset_path)
+    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
     assert (
         dp3_arguments["solve1_antennaconstraint"]
         == "[[CS001HBA0,CS002HBA0,CS002HBA1,CS004HBA1]]"
