@@ -41,6 +41,9 @@ from rapthor.lib.calibration import resolve_calibration_strategy
 
 # Type aliases
 PathLike = str | os.PathLike
+AntennaConstraintOutputType = list[list[str]]  # List of lists of station names
+AntennaConstraintInputType = list[str] | AntennaConstraintOutputType
+
 
 # Antenna constraints files
 ANTENNA_CONSTRAINTS_PATH = Path(__file__).parent.parent / "settings" / "antenna_constraints"
@@ -367,7 +370,7 @@ class Field(object):
         mid_index = np.argmin(np.abs(np.array(times) - mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
-    def resolve_antenna_constraints(self) -> list[list[str]]:
+    def resolve_antenna_constraints(self) -> AntennaConstraintOutputType:
         """
         Resolves the antenna constraints for the calibration based on the field's
         configuration and the parset settings.
@@ -410,7 +413,7 @@ class Field(object):
             f"solve all stations independently. Received {antenna_constraints!r} instead."
         )
 
-    def _load_antenna_constraints(self, filename: PathLike) -> list[list[str]]:
+    def _load_antenna_constraints(self, filename: PathLike) -> AntennaConstraintOutputType:
         """
         Loads antenna constraints from a JSON file and filters them based on
         the field's stations.
@@ -431,7 +434,7 @@ class Field(object):
         return list(self._resolve_antenna_constraints(antenna_constraints))
 
     def _resolve_antenna_constraints(
-        self, antenna_constraints: list[str] | list[list[str]]
+        self, antenna_constraints: AntennaConstraintInputType
     ) -> Iterable[list[str]]:
         """
         Resolve the names of the stations in the field for the input list of
