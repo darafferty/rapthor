@@ -18,7 +18,7 @@ stages:
   - lint
   - build
   - install
-  - run_tests
+  - run_unit_tests
   - run_integration_tests
   - docs
   - deploy
@@ -95,7 +95,7 @@ stages:
     - pip install tox
 
 .run_tests:
-  stage: run_tests
+  stage: run_unit_tests
   image: $FULL_IMAGE
   before_script:
     # TODO: We probably don't need to call release.before_script here.
@@ -240,12 +240,15 @@ install_rapthor:
         .
     - docker push $FULL_IMAGE
 
-### Stage: run_tests
+### Stage: run_unit_tests
 
-run_tests:
+run_unit_tests:
   extends: .run_tests
   script:
-    - tox -e py
+    - tox -e py3${PY_VERSION}
+  parallel:
+    matrix:
+      - PY_VERSION: [9, 10, 11, 12, 13]
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 ### Stage: run_integration_tests
