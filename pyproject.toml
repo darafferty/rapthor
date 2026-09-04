@@ -102,6 +102,7 @@ script-files = [
     "rapthor/scripts/combine_h5parms.py",
     "rapthor/scripts/concat_ms.py",
     "rapthor/scripts/correct_astrometry.py",
+    "rapthor/scripts/fetch_skymodel.py",
     "rapthor/scripts/filter_skymodel.py",
     "rapthor/scripts/make_catalog_from_image_cube.py",
     "rapthor/scripts/make_image_cube.py",

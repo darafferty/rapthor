@@ -21,6 +21,7 @@ from rapthor.scripts.normalize_flux_scale import (
     _get_source_data,
     _get_survey_coords,
     _get_survey_metadata,
+    _identify_survey_from_frequency,
     _sort_metadata_by_frequency,
     _validate_source_catalog,
     create_normalization_h5parm,
@@ -1047,6 +1048,21 @@ def test_get_survey_metadata_with_reference_skymodels_and_missing_frequencies(
             reference_skymodels=[str(true_sky_path), str(true_sky_path)],
             reference_frequencies=reference_frequencies,
         )
+
+
+@pytest.mark.parametrize(
+    "survey_name_reference_frequency",
+    [["vlssr", 74000000.0], ["wenss", 327000000.0], [None, 100.0]],
+)
+def test_identify_survey_from_frequency(survey_name_reference_frequency):
+    """
+    Test that the survey is correctly identified by its frequency.
+    If the frequency does not match to that of a known survey, None is returned.
+    """
+    survey, reference_frequency = survey_name_reference_frequency
+    derived_survey = _identify_survey_from_frequency(reference_frequency)
+
+    assert derived_survey == survey
 
 
 def test_get_data_from_skymodel(true_sky_model):
