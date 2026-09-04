@@ -111,7 +111,7 @@ class Calibrate(Operation):
         # Build solve plan for DP3
         solve_plan = self._build_solve_plan()
         self.solve_plan = solve_plan
-        
+
         if self.mode == "dd":
             # --- output h5parm configuration ---
             # Define various output filenames for the solution tables. We save some
@@ -149,7 +149,6 @@ class Calibrate(Operation):
             # Antenna constraints
             fast_antennaconstraint = str(self.field.antenna_constraints).replace("'", "")
             medium_antennaconstraint = fast_antennaconstraint  # ???
-
 
             applycal_inputs = self._build_applycal(field)
 
@@ -554,7 +553,7 @@ class Calibrate(Operation):
             mode_key = f"solve{slot}_mode"
             timestep_key = f"solint_solve{slot}_timestep"
             freqstep_key = f"solint_solve{slot}_freqstep"
-            
+
             solve = slot_map.get(slot)
             if solve is None:
                 self.input_parms[output_key] = [
