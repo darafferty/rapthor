@@ -76,15 +76,14 @@ def parse_cmd_args_from_logs(log_path, cmd):
         raise ValueError(f"No {cmd} command found in {log_path}")
 
     # Join continuation lines, drop backslashes, split into tokens
-    tokens = match.group(1).replace("\\\n", " ")
-    if "=" in tokens:
-        return {
-            k.strip("'\""): v.strip("'\"")
-            for k, _, v in (t.partition("=") for t in tokens.split() if "=" in t)
-        }
-    else:
+    param_string = match[1]
+    if "=" not in param_string:
         # Avoid parsing and return the full string
-        return tokens
+        return param_string.replace("\\\n", " ").strip("'\" ")
+    
+    # Remove empty tokens and strip whitespace
+    tokens = param_string.split("\\\n")
+    return dict(token.strip("'\" ").split("=", 1) for token in filter(None, tokens))
 
 
 def parse_dp3_args_from_log(log_path):
