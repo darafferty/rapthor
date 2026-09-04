@@ -209,7 +209,7 @@ COPY --from=builder /usr/local /usr/local
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
-ARG DP3_COMMIT=18e793a4
+ARG DP3_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
