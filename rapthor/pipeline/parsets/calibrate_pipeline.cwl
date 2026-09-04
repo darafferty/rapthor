@@ -1315,7 +1315,7 @@ steps:
       - id: solve2_smoothnessrefdistance
         source: solve2_smoothnessrefdistance
       - id: solve2_antennaconstraint
-        valueFrom: '[]'
+        source: solve2_antennaconstraint
       - id: solve2_keepmodel
         source: do_slowgain_solve
         valueFrom: $(self?"true":null)
