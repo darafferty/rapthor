@@ -20,6 +20,30 @@ inputs:
     In principle, Rapthor can handle multiple input Measurement Sets with data
     from different epochs containing the same frequency bands (e.g., from
     multiple nights of observations). This CWL step does _not_ support this.
+- id: astrometry_check_model
+  type: File
+  doc: |
+    Sky model used for astrometry checks.
+- id: photometry_check_model
+  type: File
+  doc: |
+    Sky model used for photometry checks.
+- id: photometry_normalization_model_1
+  type: File
+  doc: |
+    Sky model 1 used for photometry normalization/correction.
+- id: photometry_normalization_frequency_1
+  type: string
+  doc: |
+    Reference frequency in Hz for photometry normalization sky model 1.
+- id: photometry_normalization_model_2
+  type: File
+  doc: |
+    Sky model 2 used for photometry normalization/correction.
+- id: photometry_normalization_frequency_2
+  type: string
+  doc: |
+    Reference frequency in Hz for photometry normalization sky model 2.
 - id: settings
   doc: Pipeline settings, used to generate a parset file
   type:
@@ -85,6 +109,10 @@ requirements:
             var settings = inputs.settings;
             settings.global.dir_working = runtime.outdir;
             settings.global.input_ms = inputs.msin.path;
+            settings.imaging.photometry_skymodel = inputs.photometry_check_model.path;
+            settings.imaging.astrometry_skymodel = inputs.astrometry_check_model.path;
+            settings.imaging.normalization_skymodels = [inputs.photometry_normalization_model_1.path, inputs.photometry_normalization_model_2.path];
+            settings.imaging.normalization_reference_frequencies = [inputs.photometry_normalization_frequency_1, inputs.photometry_normalization_frequency_2];
             var result = "";
             ["global", "calibration", "imaging", "cluster"].forEach(element => {
                 result += objectToParsetString(settings[element], element) + "\n\n"
