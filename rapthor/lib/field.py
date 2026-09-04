@@ -389,8 +389,8 @@ class Field(object):
             return antenna_constraints
 
         if antenna_constraints is True:
-            self.log.info("Loading default antenna constraints for %s.", self.antenna)
             if ANTENNA_CONSTRAINTS_FILES.get(self.antenna):
+                self.log.info("Loading default antenna constraints for %s.", self.antenna)
                 antenna_constraints = ANTENNA_CONSTRAINTS_FILES[self.antenna]
             else:
                 self.log.warning(
