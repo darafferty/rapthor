@@ -255,7 +255,7 @@ def test_rapthor_run_dd_with_antenna_constraints(
             "strategy": str(single_loop_strategy_path),
         },
     )
-    dp3_arguments = _test_calibrate(updated_parset_path, caplog)    
+    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
     expected_constraints = "[[CS001HBA0, CS002HBA0, CS002HBA1, CS004HBA1]]"
     assert dp3_arguments["solve1.antennaconstraint"] == expected_constraints
     assert dp3_arguments["solve2.antennaconstraint"] == expected_constraints

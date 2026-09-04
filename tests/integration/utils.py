@@ -80,7 +80,7 @@ def parse_cmd_args_from_logs(log_path, cmd):
     if "=" not in param_string:
         # Avoid parsing and return the full string
         return param_string.replace("\\\n", " ").strip("'\" ")
-    
+
     # Remove empty tokens and strip whitespace
     tokens = param_string.split("\\\n")
     return dict(token.strip("'\" ").split("=", 1) for token in filter(None, tokens))
