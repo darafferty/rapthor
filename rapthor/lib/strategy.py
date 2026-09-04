@@ -112,7 +112,7 @@ def set_selfcal_strategy(field):
         else:
             strategy_steps[i]["do_slowgain_solve"] = True
             strategy_steps[i]["peel_outliers"] = False
-        if i == 2 and field.antenna == "HBA" and do_phase_only_solves:
+        if i == 2 and field.antenna != "LBA" and do_phase_only_solves:
             strategy_steps[i]["solve_min_uv_lambda"] = 2000
         else:
             strategy_steps[i]["solve_min_uv_lambda"] = 750
