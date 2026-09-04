@@ -151,7 +151,7 @@ def set_selfcal_strategy(field):
         strategy_steps[i]["calibration_strategy"] = dd_calibration_strategy(
             include_slow_gains=include_slow_gains
         )
-        if i == 2 and field.antenna == "HBA" and do_phase_only_solves:
+        if i == 2 and field.antenna != "LBA" and do_phase_only_solves:
             strategy_steps[i]["solve_min_uv_lambda"] = 2000
         else:
             strategy_steps[i]["solve_min_uv_lambda"] = 750
