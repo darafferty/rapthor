@@ -315,6 +315,9 @@ The available options are described below under their respective sections.
         single group. Providing a value of ``False`` will fit all stations independently.
         If a filename is provided, it should contain a list of lists of station names,
         where each inner list defines a group of stations that should be solved together.
+        Note: The groups of stations should define the constraints across all
+        observations; if a particular observation lacks a given station, that station is
+        ignored by DP3 during calibration of that observation.
 
     fast_freqstep_hz
         Frequency step used during the fast calibration, in Hz (default = 1e6).
