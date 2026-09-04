@@ -793,6 +793,7 @@ steps:
         valueFrom: 'time'
     out:
       - id: msconcat
+      - id: msconcat_list
 {% endif %}
 
   - id: premask
@@ -891,9 +892,9 @@ steps:
     in:
 {% if concat_in_time %}
       - id: msin
-        source: concat_in_time/msconcat
+        source: concat_in_time/msconcat_list
 {% else %}
-      - id: msin_list
+      - id: msin
         source: prepare_imaging_data/msimg
 {% endif %}
       - id: name

@@ -43,11 +43,7 @@ arguments:
 
 inputs:
   - id: msin
-    type: Directory?
-    inputBinding:
-      position: 5
-  - id: msin_list
-    type: Directory[]?
+    type: Directory[]
     inputBinding:
       position: 5
   - id: name
