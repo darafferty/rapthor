@@ -14,6 +14,32 @@ from .utils import (
 )
 
 
+def _check_rapthor_succeeds(parset_path, caplog, expected_messages=None):
+    """
+    Run the Rapthor pipeline with the given parset file and check that the
+    job completed and that the expected messages appear in the output.
+    """
+    expected_messages = expected_messages or ["Rapthor has finished :)"]
+    with assert_logged(caplog, "rapthor", logging.INFO, *expected_messages):
+        run_rapthor(str(parset_path))
+
+
+def _check_calibrate_logs(working_dir, cycle=1):
+    """
+    Extract DP3 arguments from the calibration workflow logs associated
+    with a given parset and cycle number.
+
+    Returns:
+        dict: Parsed DP3 arguments from the calibration log.
+    """
+
+    calibrate_logs_dir = Path(working_dir) / "logs" / f"calibrate_{cycle}"
+    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
+    assert calibrate_log, "Expected calibration logs to be present"
+
+    return parse_dp3_args_from_log(calibrate_log[0])
+
+
 def _test_calibrate(parset_path, caplog):
     """
     Run the Rapthor calibration workflow with the given parset file and check
@@ -25,21 +51,18 @@ def _test_calibrate(parset_path, caplog):
     working_dir = get_working_dir_from_parset(parset_path)
     print("---Rapthor working dir: ", working_dir)
 
-    expected_messages = [
-        "Operation calibrate_1 completed",
-        "Operation predict_1 completed",
-        "Operation image_1 completed",
-        "Operation mosaic_1 completed",
-        "Rapthor has finished :)",
-    ]
-    with assert_logged(caplog, "rapthor", logging.INFO, *expected_messages):
-        run_rapthor(str(parset_path))
-
-    calibrate_logs_dir = Path(working_dir) / "logs" / "calibrate_1"
-    calibrate_log = find_step_logs(calibrate_logs_dir, "ddecal_solve.cwl")
-    assert calibrate_log, "Expected calibration logs to be present"
-
-    return parse_dp3_args_from_log(calibrate_log[0])
+    _check_rapthor_succeeds(
+        parset_path,
+        caplog,
+        expected_messages=[
+            "Operation calibrate_1 completed",
+            "Operation predict_1 completed",
+            "Operation image_1 completed",
+            "Operation mosaic_1 completed",
+            "Rapthor has finished :)",
+        ],
+    )
+    return _check_calibrate_logs(working_dir, cycle=1)
 
 
 @pytest.mark.integration
