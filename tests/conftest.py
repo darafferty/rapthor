@@ -156,7 +156,7 @@ def test_ms(pytestconfig, tmp_path_factory):
     source = ensure_test_ms(pytestconfig.resource_dir)
     target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()
     shutil.copytree(source, target)
-    yield target
+    return target
 
 
 @pytest.fixture
@@ -392,7 +392,6 @@ def generated_parset_path(request, tmp_path, test_ms):
         normalization_skymodel_paths=None,
         cpu_limit=6,
     )
-
     return output_parset_path
 
 
