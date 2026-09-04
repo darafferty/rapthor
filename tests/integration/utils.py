@@ -2,6 +2,45 @@ import configparser
 import re
 from pathlib import Path
 
+REGEX_LOGGED_CLI_PARAMETER = re.compile(
+    r"""
+    \s*                     # leading whitespace
+    (?P<outer_quote>['"])?  # key-value pair may start with quote
+    (?: # key group
+        (?P<key>[\w.]+)     # key name
+        =                   # key name is followed by equal sign
+    )?                      # key name is optional eg. positional parameters
+    (?: # value group
+        (?: # quoted value group
+            (?P<value_quote>['"])  # value starts with quote
+            (?P<value_quoted>
+                (?: # only match if the next character is not the closing quote
+                    (?!(?P=value_quote)).
+                )+ # one or more characters that are not the closing quote
+            )
+            (?P=value_quote)  # match the exact same quote character again
+        )
+        |
+        (?P<value> # unquoted value group
+            (?:(?!\\\n).)*? # match zero or more characters up to the line continuation
+        )
+    )
+    (?(outer_quote)         # if we matched an outer quote earlier
+        (?P=outer_quote)    # match the exact same closing quote character again
+    |                       # if no quote, match nothing here
+    )
+    (?:
+        (?:
+            \s              # key-value pairs are separated by a space
+            (\\\n)?         # and possibly a line continuation
+        )
+        |$                  # or the end of the line
+    )
+    """,
+    # flags: allow comments and whitespace in pattern, dot matches newline
+    re.VERBOSE | re.DOTALL,
+)
+
 
 def get_working_dir_from_parset(parset_path):
     """Return dir_working from a parset file."""
@@ -69,22 +108,22 @@ def parse_cmd_args_from_logs(log_path, cmd):
     Raises ``ValueError`` if no DP3 command is found in the log.
     """
     text = Path(log_path).read_text()
-
     # Extract everything after "$ DP3 " up to the first non-continuation line
     match = re.search(rf"{cmd}\s+((?:.*\\\n)*.*)", text)
     if not match:
         raise ValueError(f"No {cmd} command found in {log_path}")
 
-    # Join continuation lines, drop backslashes, split into tokens
-    tokens = match.group(1).replace("\\\n", " ")
-    if "=" in tokens:
+    # Extract key-value pairs using the regular expression
+    param_string = match[1].removeprefix("\\\n")
+    if "=" in param_string:
         return {
-            k.strip("'\""): v.strip("'\"")
-            for k, _, v in (t.partition("=") for t in tokens.split() if "=" in t)
+            key: val
+            for match in REGEX_LOGGED_CLI_PARAMETER.finditer(param_string)
+            if (key := match["key"]) and (val := match["value"] or match["value_quoted"] or "")
         }
-    else:
-        # Avoid parsing and return the full string
-        return tokens
+
+    # Avoid parsing and return the full string
+    return param_string
 
 
 def parse_dp3_args_from_log(log_path):
