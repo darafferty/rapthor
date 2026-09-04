@@ -392,7 +392,8 @@ class Field(object):
                 antenna_constraints = ANTENNA_CONSTRAINTS_FILES[self.antenna]
             else:
                 self.log.warning(
-                    "No antenna constraints file found for antenna %r. No constraintes were loaded",
+                    "No antenna constraints file found for antenna %r. "
+                    "No constraintes were loaded.",
                     self.antenna,
                 )
                 return []
