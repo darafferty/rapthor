@@ -37,6 +37,7 @@ wsclean_predict_bw = 2e6
 maxiter = 50
 stepsize = 0.2
 tolerance = 0.001
+antenna_constraints = True
 
 [imaging]
 use_mpi = False
@@ -55,7 +56,6 @@ normalization_skymodels =
 normalization_reference_frequencies =
 dde_method = full
 do_multiscale_clean = True
-antenna_constraints = True
   
 [cluster]
 batch_system = single_machine
