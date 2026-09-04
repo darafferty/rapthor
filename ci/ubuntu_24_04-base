@@ -62,6 +62,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         wcslib-dev \
         wget
 
+# Install pyenv
+RUN curl -fsSL https://pyenv.run | bash
+
 # Do not use `pip` from the Debian repository, but fetch it from PyPA.
 # This way, we are sure that the latest versions of `pip`, `setuptools`, and
 # `wheel` are installed in /usr/local, the only directory we're going to copy
