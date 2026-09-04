@@ -516,6 +516,9 @@ The available options are described below under their respective sections.
             the periods between observations filled with dummy data. This behavior can result in
             very large residual datasets.
 
+            Additionally, if all stations are not present in all obserations, concatenation in time
+            cannot be done, and therefore the saving of residual visibilities is disabled.
+
     save_image_cube
         Save frequency cube(s) for the given Stokes parameters (default = ``False``).
         If ``True``, a cube is constructed from the channel images made during the

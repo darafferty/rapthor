@@ -60,8 +60,8 @@ inputs:
   - id: msin
     label: Filename of input MS
     doc: |
-      The filename of input MS file for which imaging will be done.
-    type: Directory
+      The filenames of input MS files for which imaging will be done.
+    type: Directory[]
     inputBinding:
       position: 3
 

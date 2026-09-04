@@ -94,6 +94,7 @@ class Observation:
         self.numsamples = 1
         self.channels_are_regular = True
         self.timepersample = 1
+        self.stations = ["CS001HBA0"]
 
 
 class Field:
@@ -122,6 +123,7 @@ class Field:
         self.peel_bright_sources = False
         self.ra = 0
         self.correct_smearing_in_calibration = True
+        self.stations = ["CS001HBA0"]
 
         imaging_parameters = self.parset["imaging_specific"]
         self.compress_images = True

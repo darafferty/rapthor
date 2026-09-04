@@ -68,3 +68,4 @@ steps:
     scatterMethod: dotproduct
     out:
       - id: msconcat
+      - id: msconcat_list
