@@ -78,7 +78,7 @@ RUN python3 -m pip install \
 # Note: The file on the ftp site is updated daily. When warnings regarding
 # leap seconds appear, ignore them or regenerate the docker image.
 RUN mkdir -p /usr/local/share/casacore/data && \
-    wget -qO - https://iers.astron.nl/WSRT_Measures.ztar | \
+    wget -qO - --timeout 5 --tries=3 https://iers.astron.nl/WSRT_Measures.ztar | \
         tar -C /usr/local/share/casacore/data -xzf -
 
 # Install Casacore
