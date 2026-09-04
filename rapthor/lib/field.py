@@ -43,7 +43,7 @@ from rapthor.lib.calibration import resolve_calibration_strategy
 # Type aliases
 PathLike = Union[str, os.PathLike]
 AntennaConstraintOutputType = List[List[str]]  # List of lists of station names
-AntennaConstraintInputType = List[str] | AntennaConstraintOutputType
+AntennaConstraintInputType = Union[List[str], AntennaConstraintOutputType]
 
 
 # Antenna constraints files
