@@ -726,7 +726,6 @@ def generated_parset_path(request, tmp_path, test_ms):
         apparent_skymodel_path,
         normalization_skymodel_paths=None,
     )
-
     return output_parset_path
 
 
