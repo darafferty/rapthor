@@ -244,6 +244,7 @@ install_rapthor:
 
 run_unit_tests:
   extends: .run_tests
+  image: python:3.${PY_VERSION}
   script:
     - tox -e py3${PY_VERSION}
   parallel:
