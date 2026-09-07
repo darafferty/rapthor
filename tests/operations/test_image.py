@@ -284,7 +284,7 @@ class TestImage:
         region_file.touch()
 
         inputs = {
-            "msin": {"class": "Directory", "location": str(msdir)},
+            "msin": [{"class": "Directory", "location": str(msdir)}],
             "name": "test-image",
             "mask": {"class": "File", "location": str(mask)},
             "wsclean_imsize": [1024, 1024],

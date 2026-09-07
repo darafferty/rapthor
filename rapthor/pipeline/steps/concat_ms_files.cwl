@@ -57,6 +57,14 @@ outputs:
     type: Directory
     outputBinding:
       glob: $(inputs.msout)
+  - id: msconcat_list
+    label: Concatenated Measurement Set list
+    doc: |
+      The filename of the output concatenated MS file as a list. The value is taken
+      from the input parameter "msout".
+    type: Directory[]
+    outputBinding:
+      glob: [$(inputs.msout)]
 
 hints:
   - class: DockerRequirement

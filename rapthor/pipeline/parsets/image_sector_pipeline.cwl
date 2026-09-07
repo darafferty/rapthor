@@ -776,6 +776,7 @@ steps:
     out:
       - id: msimg
 
+{% if concat_in_time %}
   - id: concat_in_time
     label: Concatenate MS file in time
     doc: |
@@ -792,6 +793,8 @@ steps:
         valueFrom: 'time'
     out:
       - id: msconcat
+      - id: msconcat_list
+{% endif %}
 
   - id: premask
     label: Make an image mask
@@ -887,8 +890,13 @@ steps:
 # end apply_screens / not apply_screens
 
     in:
+{% if concat_in_time %}
       - id: msin
-        source: concat_in_time/msconcat
+        source: concat_in_time/msconcat_list
+{% else %}
+      - id: msin
+        source: prepare_imaging_data/msimg
+{% endif %}
       - id: name
         source: image_name
       - id: mask
@@ -1028,7 +1036,12 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_residual_data.cwl
     in:
       - id: msin
+{% if concat_in_time %}
         source: concat_in_time/msconcat
+{% else %}
+        source: prepare_imaging_data/msimg
+        valueFrom: $(self[0])
+{% endif %}
       - id: msout
         source: residual_filename
       - id: numthreads
@@ -1360,7 +1373,12 @@ steps:
       - id: source_catalog
         source: make_catalog_from_image_cube/source_catalog
       - id: ms_file
+{% if concat_in_time %}
         source: concat_in_time/msconcat
+{% else %}
+        source: prepare_imaging_data/msimg
+        valueFrom: $(self[0])
+{% endif %}
       - id: normalize_h5parm
         source: output_normalize_h5parm
       - id: reference_skymodels
