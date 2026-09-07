@@ -3,7 +3,7 @@
   "build": {
     "context": "..",
     "dockerfile": "../ci/ubuntu_26_04-base",
-    "target": "dev",
+    "target": "runner",
     "options": [
       "--platform=linux/amd64"
     ]
