@@ -40,7 +40,7 @@ Most changes affect one or more of these layers:
 
 ## Development Environment
 
-- Python support is declared as `>=3.9`.
+- Python support is declared as `>=3.10`.
 - Build and dependency metadata lives in `pyproject.toml`.
 - Test and lint dependencies are available through the `test` and `dev`
   dependency groups.

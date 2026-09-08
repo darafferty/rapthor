@@ -16,7 +16,7 @@
   },
   "virtualenv": {
     "python": {
-      "version": "3.9"
+      "version": "3.10"
     },
     "rapthor": {
       "version": "RAP-68_Toplevel-CWL-Workflow",
