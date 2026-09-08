@@ -5,7 +5,7 @@ Python and CWL code
 
 Rapthor is mainly written in Python and CWL. The Rapthor code tree is organized as follows::
 
-   rapthor-master
+   rapthor
    ├── bin
    │   └── rapthor
    ├── docs
@@ -15,19 +15,22 @@ Rapthor is mainly written in Python and CWL. The Rapthor code tree is organized 
    │   ├── operations
    │   ├── pipeline
    │   └── scripts
-   └── test
+   └── tests
 
 In the folder structure above:
 
-- ``rapthor-master/bin`` contains the ``rapthor`` executable used to run Rapthor (see :ref:`running`).
-- ``rapthor-master/docs`` contains this Sphinx documentation.
-- ``rapthor-master/examples`` contains an example parset and strategy file.
-- ``rapthor-master/rapthor`` contains the main Rapthor Python package and CWL files.
-- ``rapthor-master/rapthor/lib`` contains the main Rapthor classes and modules (see :ref:`classes_modules`).
-- ``rapthor-master/rapthor/operations`` contains the operation subclasses (see :ref:`operation_subclasses`).
-- ``rapthor-master/rapthor/pipelines`` contains the CWL workflow templates (see :ref:`cwl`).
-- ``rapthor-master/rapthor/scripts`` contains the processing scripts (see :ref:`scripts`).
-- ``rapthor-master/test`` contains files used for testing.
+- ``bin`` contains the ``rapthor`` executable used to run Rapthor (see :ref:`running`).
+- ``docs`` contains this Sphinx documentation.
+- ``examples`` contains example parsets and strategy files.
+- ``rapthor`` contains the main Rapthor Python package and CWL files.
+- ``rapthor/lib`` contains the main Rapthor classes and modules (see :ref:`classes_modules`).
+- ``rapthor/operations`` contains the operation subclasses (see :ref:`operation_subclasses`).
+- ``rapthor/pipeline`` contains the CWL workflow templates (see :ref:`cwl`).
+- ``rapthor/scripts`` contains the processing scripts (see :ref:`scripts`).
+- ``tests`` contains files used for testing.
+
+The package also installs the ``concat_linc_files`` command for preparing LINC
+measurement sets and the ``plotrapthor`` command for plotting solution tables.
 
 
 .. _classes_modules:
