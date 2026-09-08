@@ -244,12 +244,12 @@ install_rapthor:
 
 run_unit_tests:
   extends: .run_tests
-  image: python:3.${PY_VERSION}
   script:
+    - pyenv local 3.${PY_VERSION}
     - tox -e py3${PY_VERSION}
   parallel:
     matrix:
-      - PY_VERSION: [9, 10, 11, 12, 13]
+      - PY_VERSION: [10, 11, 12, 13]
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 ### Stage: run_integration_tests
