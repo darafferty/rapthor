@@ -24,16 +24,14 @@ number of options are available and are described below:
 
 .. code-block:: console
 
-    Usage: rapthor parset
+    Usage: rapthor <parset>
 
     Options:
-      --version             show program's version number and exit
-      -h, --help            show this help message and exit
-      -q                    enable quiet mode
-      -r RESET, --reset=RESET
-                            reset one or more operations so that
-                            they will be rerun
-      -v                    enable verbose mode
+    --version             show program's version number and exit
+    -h, --help            show this help message and exit
+    -q                    enable quiet mode
+    -r                    reset one or more operations so that they will be rerun
+    -v                    enable verbose mode
 
 Rapthor begins a run by checking the input measurement sets. Next, Rapthor
 will determine the DDE calibrators from the input sky model and begin self

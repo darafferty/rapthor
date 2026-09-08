@@ -28,7 +28,7 @@
         "use_included_skymodels": false,
         "use_image_based_predict": false,
         "use_wsclean_predict": false,
-        "wsclean_predict_bw": 2e6,
+        "wsclean_predict_bw": 2000000.0,
         "dd_interval_factor": 1,
         "dd_smoothness_factor": 3,
         "llssolver": "qr",
@@ -119,7 +119,8 @@
         "skip_corner_sectors": false,
         "photometry_skymodel": null,
         "astrometry_skymodel": null,
-        "normalization_skymodels": null
+        "normalization_skymodels": null,
+        "normalization_reference_frequencies": null
     },
     "cluster": {
         "batch_system": "single_machine",

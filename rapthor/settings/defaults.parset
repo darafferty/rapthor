@@ -92,7 +92,7 @@ facet_layout = None
 # completed successfully), IDGCal is used during calibration to generate smooth 2-D
 # screens that are then applied by WSClean in the final imaging step.
 #
-# Note: the hybrid mode is not yet available; it will be enabled in a future update.
+# Hybrid mode is supported for the final processing cycle.
 dde_mode = faceting
 
 

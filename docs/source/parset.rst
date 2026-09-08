@@ -191,6 +191,10 @@ The available options are described below under their respective sections.
 
 .. glossary::
 
+    use_included_skymodels
+        Include a packaged sky model in calibration when it is within twice the primary
+        beam FWHM of the field center (default = ``False``).
+
     use_image_based_predict
         Use image-based prediction (default = ``False``)? Image-based prediction can be
         faster than the normal prediction, especially for large sky models.
@@ -321,7 +325,7 @@ The available options are described below under their respective sections.
 
     medium_smoothnessconstraint
         Smoothness constraint bandwidth used during the medium-fast calibration, in
-        Hz (default = 3e6).
+        Hz (default = 6e6).
 
     medium_smoothnessreffrequency
         Smoothness constraint reference frequency used during the medium-fast calibration, in
@@ -495,6 +499,13 @@ The available options are described below under their respective sections.
             filtering can be very large (resulting in runtimes becoming very long unless
             image-based predict is used).
 
+    source_finder
+        Source finder used when filtering the sky model (default = ``bdsf``).
+
+    save_filtered_model_image
+        Save an image of the filtered sky model during each imaging cycle
+        (default = ``False``).
+
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging
         MS files will be saved, with the the direction-independent full-Jones solutions,
@@ -535,10 +546,6 @@ The available options are described below under their respective sections.
         Save the supplementary images during each imaging cycle (default = ``False``). For now,
         this is just the PyBDSF-generated masks used for filtering of the sky model (if
         :term:`filter_skymodel` = ``True``).
-
-    save_filtered_model_images
-        Save images of the filtered sky model made during each imaging cycle
-        (default = ``False``).
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
@@ -718,6 +725,15 @@ The available options are described below under their respective sections.
         image diagnostics. If this is not set, a sky model will be downloaded from 
         Pan-STARRS. Default = ``None`` (sky model will be downloaded by default).
 
+    normalization_skymodels
+        List of at least two sky model paths used for flux normalization when enabled
+        by the strategy. The default is ``None``, which allows Rapthor to download
+        suitable sky models when internet access is available.
+
+    normalization_reference_frequencies
+        Reference frequencies, in Hz, corresponding to ``normalization_skymodels``
+        (default = ``None``).
+
 .. _parset_cluster_options:
 
 ``[cluster]``
@@ -728,7 +744,8 @@ The available options are described below under their respective sections.
     batch_system
         Cluster batch system (only used when either StreamFlow or Toil is the CWL runner;
         default = ``single_machine``). Use ``single_machine`` when running on a single
-        machine and ``slurm`` to use multiple nodes of a Slurm-based cluster.
+        machine, ``slurm`` to use multiple nodes with dynamic allocation, or
+        ``slurm_static`` to use multiple nodes reserved before the run.
 
         .. note::
 
@@ -739,8 +756,9 @@ The available options are described below under their respective sections.
             page for details.
 
     max_nodes
-        When :term:`batch_system` = ``slurm``, the maximum number of nodes of the cluster
-        to use at once (default = 12).
+        When :term:`batch_system` is ``slurm`` or ``slurm_static``, the maximum number of
+        nodes of the cluster to use at once. The configuration default is 0, which is
+        resolved to 1 for ``single_machine`` and 12 for Slurm batch systems.
 
     cpus_per_task
         When :term:`batch_system` = ``slurm``, the number of processors per task to
@@ -853,7 +871,7 @@ The available options are described below under their respective sections.
 
     local_scratch_dir
         Full path to a local disk on the nodes for IO-intensive processing (default =
-        ``/tmp``). When :term:`batch_system` = ``slurm``, the path must exist on all the
+        ``None``). When :term:`batch_system` is ``slurm`` or ``slurm_static``, the path must exist on all the
         compute nodes, but not necessarily on the head node.
         This parameter is useful if you have a fast local disk (e.g., an SSD)
         that is not the one used for :term:`dir_working`. If this parameter is not set,
