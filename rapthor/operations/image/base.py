@@ -170,9 +170,12 @@ class Image(Operation):
         if imaging_h5parm is None:
             return self.field.calibration_skymodel_file
 
-        cycle_number = self.field.solution_cycle_number(
-            imaging_h5parm,
-            "dd_h5parm_cycle_number",
+        cycle_number = (
+            self.field.solution_cycle_number(
+                imaging_h5parm,
+                "dd_h5parm_cycle_number",
+            )
+            or 1
         )
         if not self._can_use_carried_forward_solution(cycle_number):
             return self.field.calibration_skymodel_file
