@@ -2207,6 +2207,29 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
     assert "-apply-facet-beam" not in screen_command
 
 
+@pytest.mark.parametrize("max_threads", [1, 6])
+def test_run_image_flow_sets_ducc0_num_threads_for_non_mpi_wsclean(
+    tmp_path, fake_image_shell_operation_cls, max_threads
+):
+    input_parms = _image_input_parms()
+    input_parms["max_threads"] = max_threads
+    run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(input_parms, tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    wsclean_instance = next(
+        instance
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    wsclean_command = shlex.split(wsclean_instance.kwargs["commands"][0])
+    assert wsclean_command[wsclean_command.index("-j") + 1] == str(max_threads)
+    assert wsclean_instance.kwargs["env"] == {"DUCC0_NUM_THREADS": str(max_threads)}
+
+
 def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_operation_cls):
     outputs = run_flow_for_test(
         image_flow,

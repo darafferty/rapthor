@@ -181,9 +181,9 @@ def _wsclean_threads_for_sector(sector: ImageSectorPayload) -> int:
 def _wsclean_environment_for_sector(
     sector: ImageSectorPayload,
     execution_config: ExecutionConfig,
-) -> Optional[Mapping[str, str]]:
+) -> Mapping[str, str]:
     if not sector["use_mpi"]:
-        return None
+        return {"DUCC0_NUM_THREADS": str(_wsclean_threads_for_sector(sector))}
     return _mpi_environment(
         _wsclean_threads_for_sector(sector),
         int(sector["mpi_nnodes"]),
