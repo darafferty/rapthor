@@ -35,7 +35,7 @@ def is_empty_path_value(value: str) -> bool:
 
 def is_name_of_internal_strategy(value: str) -> bool:
     """Return True when a parset path value represents an internally defined strategy."""
-    return value.strip().lower() in INTERNALLY_DEFINED_STRATEGIES
+    return value.strip() in INTERNALLY_DEFINED_STRATEGIES
 
 
 def resolve_path_token(value: str, base_dir: Path) -> str:
@@ -43,8 +43,8 @@ def resolve_path_token(value: str, base_dir: Path) -> str:
     token = value.strip()
     if is_empty_path_value(token):
         return value
-    if is_name_of_internal_strategy(token):
-        return token
+    if is_name_of_internal_strategy(token.lower()):
+        return token.lower()
     if "://" in token:
         return token
     path = Path(token).expanduser()
