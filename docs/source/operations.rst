@@ -98,6 +98,10 @@ Diagnostics for each image are written to the main log (``dir_working/logs/rapth
 
     * Estimates of the LOFAR-to-Pan-STARRS RA and Dec offsets (calculated as the mean of the LOFAR values minus the Pan-STARRS values, after sigma clipping). These offsets give an indication of the accuracy of the astrometry.
 
+        .. note::
+
+            If an astrometry comparison fails because of an I/O or value error while creating or using the comparison sky model, Rapthor logs a warning and skips that facet's astrometry check. Processing continues, and the mean offsets use only facets with successful comparisons. If no facets yield offsets, the astrometry diagnostics and offset files are omitted.
+
 Primary products:
     * In ``images/image_X``, where ``X`` is the cycle number:
         * ``field-MFS-image.fits`` - the Stokes I image, uncorrected for the primary beam attenuation (i.e., the apparent-sky, "flat-noise" image)

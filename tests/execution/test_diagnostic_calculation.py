@@ -125,6 +125,73 @@ def grouped_comparison_skymodel(mock_comparison_skymodel_table):
 # Test: check_astrometry
 
 
+@pytest.mark.disable_socket
+@pytest.mark.parametrize(
+    "error", [ValueError("No unit set on column"), OSError("Catalog unavailable")]
+)
+@pytest.mark.parametrize("successful_facets", [0, 2])
+def test_check_astrometry_skips_failed_facets(
+    error, successful_facets, mock_full_astrometry_table, tmp_path, mocker, caplog
+):
+    """Catalog failures must not abort diagnostics or contaminate successful offsets."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    input_catalog = tmp_path / "catalog.fits"
+    mock_full_astrometry_table.write(input_catalog, format="fits")
+    region_file = tmp_path / "facets.reg"
+    region_file.touch()
+    output_root = tmp_path / "astrometry_check"
+    keys = (
+        "meanRAOffsetDeg",
+        "stdRAOffsetDeg",
+        "meanClippedRAOffsetDeg",
+        "stdClippedRAOffsetDeg",
+        "meanDecOffsetDeg",
+        "stdDecOffsetDeg",
+        "meanClippedDecOffsetDeg",
+        "stdClippedDecOffsetDeg",
+    )
+    failed = mocker.Mock()
+    failed.name = "failed_facet"
+    failed.astrometry_diagnostics = {}
+    failed.find_astrometry_offsets.side_effect = error
+    facets = [failed]
+    for index in range(successful_facets):
+        facet = mocker.Mock()
+        facet.name = f"successful_facet_{index}"
+        facet.astrometry_diagnostics = dict.fromkeys(keys, (index + 1) / 3600)
+        facets.append(facet)
+    mocker.patch(f"{module}.read_ds9_region_file", return_value=facets)
+    plot = mocker.patch(f"{module}.plot_astrometry_offsets")
+
+    with caplog.at_level(logging.WARNING):
+        result = check_astrometry(
+            SimpleNamespace(ra=0.0, dec=0.0),
+            input_catalog,
+            SimpleNamespace(freq=150e6),
+            region_file,
+            min_number=5,
+            output_root=output_root,
+        )
+
+    for facet in facets:
+        facet.find_astrometry_offsets.assert_called_once_with(None, min_number=5)
+    assert "Skipping astrometry check for facet failed_facet" in caplog.text
+    assert str(error) in caplog.text
+    offsets_file = output_root.with_suffix(".astrometry_offsets.json")
+    if successful_facets:
+        assert result == pytest.approx(dict.fromkeys(keys, 1.5 / 3600))
+        offsets = json.loads(offsets_file.read_text())
+        assert offsets["facet_name"] == [facet.name for facet in facets[1:]]
+        for key in keys:
+            assert offsets[key] == [1 / 3600, 2 / 3600]
+        plot.assert_called_once_with(facets, 0.0, 0.0, f"{output_root}.astrometry_offsets.pdf")
+    else:
+        assert result == {}
+        assert not offsets_file.exists()
+        assert not output_root.with_suffix(".astrometry_offsets.pdf").exists()
+        plot.assert_not_called()
+
+
 def test_check_astrometry_zero_sources(
     observation,
     input_catalog_fits,
