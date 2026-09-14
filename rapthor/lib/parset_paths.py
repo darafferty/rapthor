@@ -25,17 +25,26 @@ PARSET_PATH_OPTIONS = {
     },
 }
 
+INTERNALLY_DEFINED_STRATEGIES = ["image", "selfcal"]
+
 
 def is_empty_path_value(value: str) -> bool:
     """Return True when a parset path value represents an intentionally empty path."""
     return value.strip() in {"", "None", "none", "null", "Null"}
 
 
+def is_name_of_internal_strategy(value: str) -> bool:
+    """Return True when a parset path value represents an internally defined strategy."""
+    return value.strip() in INTERNALLY_DEFINED_STRATEGIES
+
+
 def resolve_path_token(value: str, base_dir: Path) -> str:
-    """Resolve one path token without altering empty values, URLs, or absolute paths."""
+    """Resolve one path token without altering empty values, internal strategy names, URLs, or absolute paths."""
     token = value.strip()
     if is_empty_path_value(token):
         return value
+    if is_name_of_internal_strategy(token.lower()):
+        return token.lower()
     if "://" in token:
         return token
     path = Path(token).expanduser()
