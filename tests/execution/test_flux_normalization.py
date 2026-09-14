@@ -4,10 +4,12 @@ import os
 from pathlib import Path
 
 import astropy.units as u
+import lsmtool
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
+from losoto.h5parm import h5parm
 
 import rapthor.execution.image.flux_normalization as flux_normalization
 from rapthor.execution.image.flux_normalization import (
@@ -40,12 +42,20 @@ def mock_survey_catalog(mocker, true_sky_model):
 
 
 @pytest.fixture
-def mock_survey_catalog_with_no_sources(mocker):
+def mock_survey_catalog_with_no_sources(mocker, empty_sky_model):
     """Mock lsmtool.load to return an empty survey sky model."""
     return mocker.patch(
         "rapthor.execution.image.flux_normalization.lsmtool.load",
-        return_value=[],
+        return_value=empty_sky_model,
     )
+
+
+@pytest.fixture
+def empty_sky_model(tmp_path):
+    """Load a real header-only sky model, including its column schema."""
+    path = tmp_path / "empty_sky.txt"
+    path.write_text("FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency\n")
+    return lsmtool.load(str(path))
 
 
 @pytest.fixture
@@ -358,6 +368,149 @@ def test_main(
     assert normalize_ra_dec_spy.call_count > 0, (
         "Expected normalize_ra_dec to be called at least once."
     )
+
+
+@pytest.mark.disable_socket
+def test_main_handles_source_with_no_valid_channel_fluxes(
+    source_catalog,
+    source_coords,
+    survey_data,
+    tmp_path,
+    mocker,
+):
+    """
+    Test that a source with no finite per-channel fluxes does not crash normalization.
+    """
+    n_chan = len(
+        [colname for colname in source_catalog.columns.names if colname.startswith("Freq_ch")]
+    )
+    source_catalog_data = source_catalog.copy()
+    for ch_ind in range(1, n_chan + 1):
+        source_catalog_data[f"Total_flux_ch{ch_ind}"][0] = np.nan
+
+    output_frequencies = np.array([100e6, 200e6])
+    create_normalization_h5parm_mock = mocker.patch(
+        "rapthor.execution.image.flux_normalization.create_normalization_h5parm"
+    )
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization.read_source_catalog",
+        return_value=(source_catalog_data, n_chan),
+    )
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization.get_field_phase_center",
+        return_value=(np.deg2rad(24.422081), np.deg2rad(33.159759)),
+    )
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization.filter_sources",
+        return_value=(source_coords, source_catalog_data),
+    )
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization._download_survey_data",
+        side_effect=[survey_data, None],
+    )
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization._cross_match_sources",
+        return_value=np.ones(len(source_catalog_data)),
+    )
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization.get_output_frequencies",
+        return_value=output_frequencies,
+    )
+    mocker.patch(
+        "rapthor.execution.image.flux_normalization.find_normalizations",
+        return_value=np.ones(len(output_frequencies)),
+    )
+
+    normalize_flux_scale(
+        "source_catalog.fits",
+        "input.ms",
+        str(tmp_path / "test_output.h5parm"),
+        min_sources=5,
+    )
+
+    create_normalization_h5parm_mock.assert_called_once()
+
+
+@pytest.mark.disable_socket
+def test_normalize_flux_scale_handles_source_with_no_valid_channel_fluxes(
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    true_sky_path,
+    apparent_sky_path,
+    mocker,
+):
+    """Run normalization when one source has no finite per-channel fluxes."""
+    with fits.open(source_catalog_fits, mode="update") as hdul:
+        source_catalog_data = hdul[1].data
+        n_chan = len(
+            [
+                colname
+                for colname in source_catalog_data.columns.names
+                if colname.startswith("Freq_ch")
+            ]
+        )
+        source_index = 4
+        for ch_ind in range(1, n_chan + 1):
+            source_catalog_data[f"Total_flux_ch{ch_ind}"][source_index] = float("nan")
+
+    output_h5parm = tmp_path / "normalize_flux_scale.h5parm"
+
+    find_normalizations_spy = mocker.spy(flux_normalization, "find_normalizations")
+    normalize_flux_scale(
+        source_catalog_fits,
+        test_ms,
+        output_h5parm.as_posix(),
+        min_sources=5,
+        reference_skymodels=[apparent_sky_path.as_posix(), true_sky_path.as_posix()],
+        reference_skymodels_frequencies=[142000000.0, 142100000.0],
+    )
+
+    assert any(len(call.args[0]) == 0 for call in find_normalizations_spy.call_args_list)
+    with h5parm(str(output_h5parm), readonly=True) as output_h5:
+        corrections = (
+            output_h5.getSolset("sol000").getSoltab("amplitude000").getValues(retAxesVals=False)
+        )
+    assert np.all(np.isfinite(corrections))
+
+
+@pytest.mark.disable_socket
+@pytest.mark.parametrize("use_input_skymodel", [False, True])
+def test_main_empty_skymodels(
+    test_ms,
+    source_catalog_fits,
+    tmp_path,
+    use_input_skymodel,
+    caplog,
+    mocker,
+    mock_survey_catalog_with_no_sources,
+):
+    """Empty supplied or downloaded models must yield unity h5parm corrections."""
+    get_source_data = mocker.spy(flux_normalization, "_get_source_data")
+    find_normalization = mocker.spy(flux_normalization, "find_normalizations")
+    get_frequencies = mocker.spy(flux_normalization, "get_output_frequencies")
+    output_h5parm = tmp_path / "empty_normalization.h5parm"
+
+    with caplog.at_level("INFO"):
+        normalize_flux_scale(
+            source_catalog_fits,
+            test_ms,
+            str(output_h5parm),
+            reference_skymodels=["empty_120.sky", "empty_160.sky"] if use_input_skymodel else None,
+            reference_skymodels_frequencies=[120e6, 160e6] if use_input_skymodel else None,
+        )
+
+    assert "No valid cross-matches in flux normalization skymodels" in caplog.text
+    assert "Flux density scale normalization will be skipped" in caplog.text
+    assert mock_survey_catalog_with_no_sources.call_count == 2
+    get_source_data.assert_not_called()
+    find_normalization.assert_not_called()
+    get_frequencies.assert_called_once_with(test_ms)
+    with h5parm(str(output_h5parm), readonly=True) as output_h5:
+        corrections = (
+            output_h5.getSolset("sol000").getSoltab("amplitude000").getValues(retAxesVals=False)
+        )
+    assert corrections == pytest.approx(1.0)
 
 
 def test_main_raises_error_if_zero_channels_in_source_catalog(

@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 import casacore.tables as pt
+import lsmtool
 import numpy as np
 import pytest
 
@@ -51,15 +52,33 @@ def make_strategy_step(**overrides):
 
 
 def _write_normalization_skymodel(output_path):
-    """Write an apparent sky model with one extra bright source for normalization tests."""
-    source_model_path = Path("tests/resources/integration_apparent_sky.txt")
+    """Write the model with isolated bright sources used by normalization tests."""
+    source_model_path = Path(__file__).parents[1] / "resources/normalization_apparent_sky.txt"
     output_path.write_text(source_model_path.read_text(encoding="utf-8"), encoding="utf-8")
-    with output_path.open("a", encoding="utf-8") as handle:
-        handle.write(" , , Patch_patch_norm_1, 1:37:41.299, 33.09.35.132\n")
-        handle.write(
-            "snorm0, POINT, Patch_patch_norm_1, 1:37:41.299, 33.09.35.132, "
-            "20.0, [-0.8], false, 148240661.621094, 0, 0, 0\n"
+
+
+@pytest.fixture
+def normalization_reference_inputs(tmp_path):
+    """Generate two true-sky catalogs with consistent fluxes and reference frequencies."""
+    model_path = Path(__file__).parents[1] / "resources/normalization_true_sky.txt"
+    model = lsmtool.load(str(model_path))
+    spectral_indices = np.asarray(model.getColValues("SpectralIndex"))[:, 0]
+    reference_paths = []
+    for frequency in (120e6, 160e6):
+        reference = model.copy()
+        reference.setColValues(
+            "I",
+            model.getColValues("I")
+            * (frequency / model.getColValues("ReferenceFrequency")) ** spectral_indices,
         )
+        reference.setColValues("ReferenceFrequency", np.full(len(model), frequency))
+        path = tmp_path / f"normalization_reference_{frequency / 1e6:.0f}mhz.txt"
+        reference.write(str(path))
+        reference_paths.append(str(path))
+    return {
+        "normalization_skymodels": f"[{', '.join(reference_paths)}]",
+        "normalization_reference_frequencies": "[120000000.0, 160000000.0]",
+    }
 
 
 def _set_synthetic_uvw_geometry(ms_path):
