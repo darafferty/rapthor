@@ -25,7 +25,7 @@ PARSET_PATH_OPTIONS = {
     },
 }
 
-INTERNALY_DEFINED_STRATEGIES = ["image", "selfcal"]
+INTERNALLY_DEFINED_STRATEGIES = ["image", "selfcal"]
 
 
 def is_empty_path_value(value: str) -> bool:
@@ -34,8 +34,8 @@ def is_empty_path_value(value: str) -> bool:
 
 
 def is_name_of_internal_strategy(value: str) -> bool:
-    """Return True when a parset path value represents an internaly defined strategy."""
-    return value.strip().lower() in INTERNALY_DEFINED_STRATEGIES
+    """Return True when a parset path value represents an internally defined strategy."""
+    return value.strip().lower() in INTERNALLY_DEFINED_STRATEGIES
 
 
 def resolve_path_token(value: str, base_dir: Path) -> str:
