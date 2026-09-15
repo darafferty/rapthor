@@ -37,7 +37,6 @@ arguments:
   - solve1.type=ddecal
   - solve1.usebeammodel=True
   - solve1.beam_interval=120
-  - solve1.beammode=array_factor
   - solve1.initialsolutions.missingantennabehavior=unit
   - solve1.applycal.normalization.correction=amplitude000
   - solve1.applycal.normalization.solset=sol000
@@ -376,6 +375,16 @@ inputs:
     type: string
     inputBinding:
       prefix: solve1.solveralgorithm=
+      separate: False
+
+  - id: solve1_beammode
+    label: Apply beam to model prediction
+    doc: |
+      In wsclean_predict, beam is already applied, default 'array_factor' else 'none'
+    type: string
+    default: "array_factor"
+    inputBinding:
+      prefix: solve1.beammode=
       separate: False
 
   - id: solve1_solverlbfgs_dof
