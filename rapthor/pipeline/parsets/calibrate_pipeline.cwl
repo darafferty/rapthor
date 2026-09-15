@@ -3,7 +3,7 @@ class: Workflow
 label: Rapthor DD calibration workflow
 doc: |
   This workflow performs direction-dependent calibration. In general, calibration is done
-  in two parts: (1) a fast phase-only calibration (with core stations constrianed to
+  in two parts: (1) a fast phase-only calibration (with core stations constrained to
   have the same solutions) to correct for ionospheric effects and (2) a further
   unconstrained slow gain calibration to correct for station-to-station differences. Part
   (2) is skipped if the calibration is phase-only. This calibration scheme currently works
