@@ -12,7 +12,7 @@ doc: |
 requirements:
   - class: InlineJavascriptRequirement
 
-% convert beammode from arguments to inputs
+% convert solve1.beammode from arguments to inputs, either array_factor or none
 arguments:
   - msout=
   - applybeam.type=applybeam
