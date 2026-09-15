@@ -12,6 +12,7 @@ doc: |
 requirements:
   - class: InlineJavascriptRequirement
 
+% convert beammode from arguments to inputs
 arguments:
   - msout=
   - applybeam.type=applybeam

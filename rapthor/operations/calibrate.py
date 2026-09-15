@@ -689,9 +689,10 @@ class Calibrate(Operation):
             dp3_steps = preprocessing_steps + common_steps
         elif self.field.use_wsclean_predict:
             # No predict, should be a separate step (not DP3)
-            preprocessing_steps = []
+            preprocessing_steps = [] # TBD add averaging steps
             # Averaging does not work because model data columns
             # also need to be averaged, so remove this step
+            # modify 'ddecal_solve/applybeam' where array beam should not be applied
             dp3_steps = preprocessing_steps + common_steps
         else:
             dp3_steps = common_steps
