@@ -1228,6 +1228,8 @@ steps:
 {% if use_wsclean_predict %}
       - id: solve1_beammode
         valueFrom: 'none'
+      - id: applybeam_beammode
+        valueFrom: 'none'
 {% endif %}
       - id: solve1_solverlbfgs_dof
         source: solverlbfgs_dof

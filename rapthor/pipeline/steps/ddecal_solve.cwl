@@ -15,7 +15,6 @@ requirements:
 arguments:
   - msout=
   - applybeam.type=applybeam
-  - applybeam.beammode=array_factor
   - applybeam.usemodeldata=True
   - applybeam.invert=False
   - applycal.type=applycal
@@ -384,6 +383,16 @@ inputs:
     default: "array_factor"
     inputBinding:
       prefix: solve1.beammode=
+      separate: False
+
+  - id: applybeam_beammode
+    label: Apply beam to model prediction
+    doc: |
+      In wsclean_predict, beam is already applied, set to 'none', default is 'array_factor'
+    type: string
+    default: "array_factor"
+    inputBinding:
+      prefix: applybeam.beammode=
       separate: False
 
   - id: solve1_solverlbfgs_dof
