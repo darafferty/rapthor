@@ -1225,6 +1225,10 @@ steps:
         valueFrom: '[phase000]'
       - id: solve1_solveralgorithm
         source: solveralgorithm
+{% if use_wsclean_predict %}
+      - id: solve1_beammode
+        valueFrom: 'none'
+{% endif %}
       - id: solve1_solverlbfgs_dof
         source: solverlbfgs_dof
       - id: solve1_solverlbfgs_iter
