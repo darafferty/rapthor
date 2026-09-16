@@ -379,7 +379,7 @@ inputs:
   - id: solve1_beammode
     label: Apply beam to model prediction
     doc: |
-      In wsclean_predict, beam is already applied, default 'array_factor' else 'none'
+      In wsclean_predict, beam is already applied, set to 'none', default is 'array_factor'
     type: string
     default: "array_factor"
     inputBinding:
