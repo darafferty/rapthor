@@ -256,6 +256,7 @@ def predict(
         cmd = [
             "wsclean",
             "-predict",
+            "-apply-primary-beam",
             "-facet-regions",
             str(ds9_region_file),
             "-model-column",
