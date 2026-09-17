@@ -654,8 +654,8 @@ class Image(Operation):
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
             "parallel_gridding_tasks": [
                 self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
-                * len(self.imaging_sectors)
-            ],
+            ]
+            * len(self.imaging_sectors),
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
