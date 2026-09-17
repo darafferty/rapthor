@@ -213,6 +213,24 @@ class TestImage:
                 adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, channels_out)
             ]
 
+    def test_parallel_gridding_tasks_are_set_for_each_imaging_sector(self, field):
+        field.parset["imaging_specific"].update(
+            {
+                "sector_center_ra_list": ["17h05m22s", "17h25m22s"],
+                "sector_center_dec_list": ["+57d14m39s", "+57d34m39s"],
+                "sector_width_ra_deg_list": [0.333, 0.250],
+                "sector_width_dec_deg_list": [0.333, 0.250],
+            }
+        )
+        field.parset["cluster_specific"]["parallel_gridding_tasks"] = 3
+        field.define_imaging_sectors()
+        _prepare_field_for_image(field)
+
+        image = _initialize_operation(Image(field, index=1), do_predict=False)
+
+        assert len(field.imaging_sectors) == 2
+        assert image.input_parms["parallel_gridding_tasks"] == [3, 3]
+
     @pytest.mark.parametrize("use_mpi", [True, False])
     @pytest.mark.parametrize("shared_facet_rw", [True, False])
     def test_shared_facet_rw_in_rendered_workflow(
