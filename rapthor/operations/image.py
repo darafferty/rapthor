@@ -655,7 +655,15 @@ class Image(Operation):
             "parallel_gridding_tasks": [
                 self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
             ]
-            * len(self.imaging_sectors),
+def test_image_generates_parallel_gridding_tasks_for_each_sector(field, sector):
+    _prepare_field_for_image(field)
+    field.parset["cluster_specific"]["parallel_gridding_tasks"] = 3
+
+    image = Image(field, index=1)
+    image.imaging_sectors = [sector, sector]
+    image.setup()
+
+    assert image.input_parms["parallel_gridding_tasks"] == [3, 3]
             "save_filtered_model_image": self.field.parset["imaging_specific"][
                 "save_filtered_model_image"
             ],
