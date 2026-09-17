@@ -143,6 +143,7 @@ def predict(
     time_freq_smearing,
     storage_manager,
     predict_bandwidth,
+    beam_interval,
     n_threads,
 ):
     """
@@ -162,6 +163,7 @@ def predict(
     time_freq_smearing: if true, enable smearing in predict
     storage_manager: storage manager to use 'default'
     predict_bandwidth: bandwidth of prediction, channels will be split into groups
+    beam_interval: facet beam update inverval (s)
     n_threads: max threads to use
 
     """
@@ -234,9 +236,10 @@ def predict(
     if n_models > 1:
         # make a symlink in same dir with workable name
         for model in model_images:
-            # link predict-xxxx-term-0.fits as predict-xxxx-model.fits
+            # link predict-xxxx-term-0.fits as predict-xxxx-model-fpb.fits
+            # -fpb required because -apply-facet-beam
             try:
-                os.symlink(model + "-term-0.fits", model + "-model.fits")
+                os.symlink(model + "-term-0.fits", model + "-model-fpb.fits")
             except FileExistsError:
                 raise
     else:
@@ -244,7 +247,8 @@ def predict(
         # single model image, drop -xxxx-
         try:
             os.symlink(
-                model + "-term-0.fits", os.path.join(os.path.dirname(model), "predict-model.fits")
+                model + "-term-0.fits",
+                os.path.join(os.path.dirname(model), "predict-model-fpb.fits"),
             )
         except FileExistsError:
             raise
@@ -256,6 +260,9 @@ def predict(
         cmd = [
             "wsclean",
             "-predict",
+            "-apply-facet-beam",
+            "-facet-beam-update",
+            str(beam_interval),
             "-facet-regions",
             str(ds9_region_file),
             "-model-column",
@@ -345,6 +352,9 @@ def main():
         action=argparse.BooleanOptionalAction,
     )
     parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
+    parser.add_argument(
+        "--beam_interval", help="Facet beam update interval (s)", type=float, default=120
+    )
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
     output_info = "msout_names.json"
@@ -421,6 +431,7 @@ def main():
         args.time_freq_smearing,
         args.storage_manager,
         args.predict_bandwidth,
+        args.beam_interval,
         args.threads,
     )
 

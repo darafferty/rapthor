@@ -112,6 +112,8 @@ use_wsclean_predict = False
 
 # If using WSClean predict, the bandwidth (Hz) to create separate model images for prediction
 wsclean_predict_bw = 2e6
+# If using WSClean predict, apply facet beam which is updated with this interval
+wsclean_predict_beam_interval = 120
 
 # Maximum factor by which the direction-dependent solution intervals can be
 # increased, so that fainter calibrators get longer intervals (default = 1).

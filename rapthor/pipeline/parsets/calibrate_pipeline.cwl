@@ -173,6 +173,12 @@ inputs:
     doc: |
       For wideband data, use many model images for prediction, each having the above bandwidth.
     type: float
+
+  - id: wsclean_predict_beam_interval
+    label: Time interval (s) to predict facet beam
+    doc: |
+      For applying the beam, the beam is (re)calculated with this interval.
+    type: float
 {% endif %}
 
 
@@ -990,6 +996,8 @@ steps:
         source: model_image_frequency_bandwidth
       - id: predict_bandwidth
         source: wsclean_predict_bw
+      - id: beam_interval
+        source: wsclean_predict_beam_interval
       - id: cellsize_deg
         source: model_image_cellsize
       - id: imsize
@@ -1225,6 +1233,12 @@ steps:
         valueFrom: '[phase000]'
       - id: solve1_solveralgorithm
         source: solveralgorithm
+{% if use_wsclean_predict %}
+      - id: solve1_beammode
+        valueFrom: 'none'
+      - id: applybeam_beammode
+        valueFrom: 'none'
+{% endif %}
       - id: solve1_solverlbfgs_dof
         source: solverlbfgs_dof
       - id: solve1_solverlbfgs_iter

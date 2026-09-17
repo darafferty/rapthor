@@ -15,7 +15,6 @@ requirements:
 arguments:
   - msout=
   - applybeam.type=applybeam
-  - applybeam.beammode=array_factor
   - applybeam.usemodeldata=True
   - applybeam.invert=False
   - applycal.type=applycal
@@ -36,7 +35,6 @@ arguments:
   - solve1.type=ddecal
   - solve1.usebeammodel=True
   - solve1.beam_interval=120
-  - solve1.beammode=array_factor
   - solve1.initialsolutions.missingantennabehavior=unit
   - solve1.applycal.normalization.correction=amplitude000
   - solve1.applycal.normalization.solset=sol000
@@ -375,6 +373,26 @@ inputs:
     type: string
     inputBinding:
       prefix: solve1.solveralgorithm=
+      separate: False
+
+  - id: solve1_beammode
+    label: Apply beam to model prediction
+    doc: |
+      In wsclean_predict, beam is already applied, set to 'none', default is 'array_factor'
+    type: string
+    default: "array_factor"
+    inputBinding:
+      prefix: solve1.beammode=
+      separate: False
+
+  - id: applybeam_beammode
+    label: Apply beam to model prediction
+    doc: |
+      In wsclean_predict, beam is already applied, set to 'none', default is 'array_factor'
+    type: string
+    default: "array_factor"
+    inputBinding:
+      prefix: applybeam.beammode=
       separate: False
 
   - id: solve1_solverlbfgs_dof

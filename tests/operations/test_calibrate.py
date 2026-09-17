@@ -80,6 +80,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.use_image_based_predict = False
             self.use_wsclean_predict = False
             self.wsclean_predict_bw = 2e6
+            self.wsclean_predict_beam_interval = 120
             self.do_slowgain_solve = False
             self.apply_normalizations = False
             self.generate_screens = False
