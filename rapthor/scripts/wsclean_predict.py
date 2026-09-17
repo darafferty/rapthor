@@ -143,6 +143,7 @@ def predict(
     time_freq_smearing,
     storage_manager,
     predict_bandwidth,
+    beam_interval,
     n_threads,
 ):
     """
@@ -162,6 +163,7 @@ def predict(
     time_freq_smearing: if true, enable smearing in predict
     storage_manager: storage manager to use 'default'
     predict_bandwidth: bandwidth of prediction, channels will be split into groups
+    beam_interval: facet beam update inverval (s)
     n_threads: max threads to use
 
     """
@@ -260,7 +262,7 @@ def predict(
             "-predict",
             "-apply-facet-beam",
             "-facet-beam-update",
-            "120",
+            str(beam_interval),
             "-facet-regions",
             str(ds9_region_file),
             "-model-column",
@@ -350,6 +352,9 @@ def main():
         action=argparse.BooleanOptionalAction,
     )
     parser.add_argument("--storage_manager", help="Storage manager", type=str, default="default")
+    parser.add_argument(
+        "--beam_interval", help="Facet beam update interval (s)", type=float, default=120
+    )
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
     output_info = "msout_names.json"
@@ -426,6 +431,7 @@ def main():
         args.time_freq_smearing,
         args.storage_manager,
         args.predict_bandwidth,
+        args.beam_interval,
         args.threads,
     )
 
