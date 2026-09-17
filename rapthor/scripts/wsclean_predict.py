@@ -234,9 +234,10 @@ def predict(
     if n_models > 1:
         # make a symlink in same dir with workable name
         for model in model_images:
-            # link predict-xxxx-term-0.fits as predict-xxxx-model.fits
+            # link predict-xxxx-term-0.fits as predict-xxxx-model-fpb.fits
+            # -fpb required because -apply-facet-beam
             try:
-                os.symlink(model + "-term-0.fits", model + "-model.fits")
+                os.symlink(model + "-term-0.fits", model + "-model-fpb.fits")
             except FileExistsError:
                 raise
     else:
@@ -244,7 +245,8 @@ def predict(
         # single model image, drop -xxxx-
         try:
             os.symlink(
-                model + "-term-0.fits", os.path.join(os.path.dirname(model), "predict-model.fits")
+                model + "-term-0.fits",
+                os.path.join(os.path.dirname(model), "predict-model-fpb.fits"),
             )
         except FileExistsError:
             raise
@@ -257,6 +259,8 @@ def predict(
             "wsclean",
             "-predict",
             "-apply-facet-beam",
+            "-facet-beam-update",
+            "120",
             "-facet-regions",
             str(ds9_region_file),
             "-model-column",
