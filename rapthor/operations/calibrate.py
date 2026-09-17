@@ -239,6 +239,8 @@ class Calibrate(Operation):
                 "predict_facet_region_file": "predict_field_facets_ds9.reg",
                 # Bandwidth for separate model image creation
                 "wsclean_predict_bw": field.wsclean_predict_bw,
+                # Time interval to calculate facet beam
+                "wsclean_predict_beam_interval": field.wsclean_predict_beam_interval,
                 # Smoothness / regularisation constraints
                 **smoothness_dd_factors,
                 **smoothness_constraints,

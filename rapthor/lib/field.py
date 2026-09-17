@@ -65,6 +65,7 @@ class Field(object):
         ]
         self.use_wsclean_predict = self.parset["calibration_specific"]["use_wsclean_predict"]
         self.wsclean_predict_bw = self.parset["calibration_specific"]["wsclean_predict_bw"]
+        self.wsclean_predict_beam_interval = self.parset["calibration_specific"]["wsclean_predict_beam_interval"]
         self.calibrate_bda_timebase = self.parset["calibration_specific"]["bda_timebase"]
         self.calibrate_bda_frequencybase = self.parset["calibration_specific"]["bda_frequencybase"]
         self.dd_interval_factor = self.parset["calibration_specific"]["dd_interval_factor"]

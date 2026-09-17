@@ -63,6 +63,14 @@ inputs:
     inputBinding:
       prefix: --predict_bandwidth
 
+  - id: beam_interval
+    label: Interval to calculate facet beam
+    doc: |
+      The time interval in s to (re)calculate facet beam.
+    type: float
+    inputBinding:
+      prefix: --beam_interval
+
   - id: cellsize_deg
     label: Pixel size
     doc: |

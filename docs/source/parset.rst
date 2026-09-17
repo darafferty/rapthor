@@ -208,10 +208,13 @@ The available options are described below under their respective sections.
             recommended.
 
     use_wsclean_predict
-        Use image-based prediction using WSClean (default = ``False``)? Usage similar to ``use_image_based_predict`` above (but mutually exclusive).
+        Use image-based prediction using WSClean (default = ``False``)? Usage similar to ``use_image_based_predict`` above (but mutually exclusive). Note that the beam application to model data will also be done by this step (DP3 applybeam disabled).
 
     wsclean_predict_bw
         Bandwidth (Hz) to create separate images for prediction. The full bandwidth of the data will be divided into chunks of channels whose frequency width given by this value. If the division if not an integer, an approximate (not uniform) division will be made.
+
+    wsclean_predict_beam_interval
+        Time interval (s) to predict facet beam for applying beam in prediction using WSClean.
 
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;

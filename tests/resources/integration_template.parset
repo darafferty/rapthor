@@ -34,6 +34,7 @@ slow_smoothnessconstraint = 4.0e6
 propagatesolutions = True
 use_wsclean_predict = False
 wsclean_predict_bw = 2e6
+wsclean_predict_beam_interval = 120
 maxiter = 50
 stepsize = 0.2
 tolerance = 0.001
