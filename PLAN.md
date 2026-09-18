@@ -161,12 +161,22 @@ rest are listed here in priority order.
 
 ### Priority 2 — CI and build
 
-- [ ] **Upgrade the images to Ubuntu 26.04** (`a39e517b`, `b27ba6e6`,
-  `7eb0b03f`). Still on `ci/ubuntu_24_04-*`. Worth doing before the test-split
-  work because it touches the same CI files, and because 26.04 ships
-  Boost.NumPy built against NumPy 2 — which lets us delete the ~25-line
-  build-Boost-from-source workaround in `ci/ubuntu_24_04-base`. Note this branch
-  pins `SAGECAL_COMMIT=33d21c45…` where `master` tracks `master`.
+- [ ] **Port the pre-26.04 container fixes, but stay on Ubuntu 24.04**
+  (`7eb0b03f`, `b27ba6e6`). `master` upgraded to 26.04 in `a39e517b` and then
+  reverted to 24.04 by default in `d1fd7249` (RAP-1469, 2026-09-18) because of
+  unresolved memory issues running Rapthor under 26.04, so do **not** port
+  `a39e517b` as a default change; this branch is already on `ci/ubuntu_24_04-*`
+  and therefore already matches `master`'s current default. Still unported from
+  that window: `Docker/Dockerfile` pins `numpy<2` where `master` unpinned it,
+  and `Docker/fetch_commit_hashes.sh` pins DP3 to `18e793a4` where `master`
+  tracks `HEAD`. Note this branch also pins `SAGECAL_COMMIT=33d21c45…` where
+  `master` tracks `master`.
+
+  The ~25-line build-Boost-from-source workaround in `ci/ubuntu_24_04-base`
+  cannot be deleted yet: it depended on 26.04 shipping Boost.NumPy built
+  against NumPy 2. `master` retains `ci/ubuntu_26_04-*` as non-default build
+  files for further investigation; decide whether to mirror them here or wait
+  until the memory issue is understood.
 - [ ] **Restore duration-based integration test splitting** (`3e352b73`,
   `c3fac822`). `tests/integration/.test_durations` is absent, tox lacks
   `--durations-path` and `--splitting-algorithm least_duration`, and
@@ -313,6 +323,9 @@ These cover work that is already on the branch but untested here.
 ## Current Caveats
 
 - Screens/IDGCal remain target-environment dependent.
+- Ubuntu 26.04 is not a supported container runtime. `master` reverted to
+  Ubuntu 24.04 by default after unresolved memory issues under 26.04
+  (RAP-1469), so keep this branch on 24.04 until that is understood.
 - MPI WSClean and Slurm/external-Dask are production readiness checks. They are
   not local science-gate blockers, but they must pass in a representative
   cluster allocation before recommending this branch for multi-node production
