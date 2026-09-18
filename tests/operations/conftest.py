@@ -48,11 +48,13 @@ def expected_image_output():
         "sector_I_images": [
             [
                 "sector_1-MFS-I-image-pb.fits",
-                "sector_1-MFS-I-image-pb-ast.fitssector_1-MFS-I-image.fits",
+                "sector_1-MFS-I-image-pb-ast.fits",
+                "sector_1-MFS-I-image.fits",
             ],
             [
                 "sector_2-MFS-I-image-pb.fits",
-                "sector_2-MFS-I-image-pb-ast.fitssector_2-MFS-I-image.fits",
+                "sector_2-MFS-I-image-pb-ast.fits",
+                "sector_2-MFS-I-image.fits",
             ],
         ],
         "sector_extra_images": [
