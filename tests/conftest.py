@@ -406,7 +406,17 @@ def parset_for_field_test(pytestconfig, tmp_path_factory, test_ms):
         pytestconfig.resource_dir / "test_true_sky.txt",
         pytestconfig.resource_dir / "test_apparent_sky.txt",
     )
-    return parset_read(target)
+    parset = parset_read(target)
+    parset["imaging_specific"].update(
+        {
+            "grid_nsectors_ra": 1,
+            "sector_center_ra_list": [],
+            "sector_center_dec_list": [],
+            "sector_width_ra_deg_list": [],
+            "sector_width_dec_deg_list": [],
+        }
+    )
+    return parset
 
 
 @pytest.fixture
