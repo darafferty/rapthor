@@ -398,6 +398,15 @@ main plan stays focused on the branch-switch decision.
   per-facet comparisons concurrently.
 - **Multi-sector mosaic:** keep smoke/stored-reference coverage available, but
   treat this as lower priority than common single-sector paths.
+- **Remove the legacy solve-flag translation:** `do_slowgain_solve` and
+  `do_fulljones_solve` are currently translated into an explicit
+  `calibration_strategy` with a deprecation warning
+  (`rapthor/lib/strategy.py`), which keeps legacy strategy files runnable and
+  identical on both branches during the migration. After the switch, turn the
+  translation into an error and convert the equivalence inputs under
+  `tests/resources/equivalence/inputs/base/`, which still use the flags. That
+  also retires `legacy_flag_calibration_strategy`, whose trailing
+  `medium_phase` reproduces a subtle CWL-side expansion rule.
 - **Persistent Prefect service:** set up a shared Prefect server backed by
   Postgres so production users can monitor multiple parallel Rapthor jobs from
   one Prefect UI without relying on local SQLite state.
