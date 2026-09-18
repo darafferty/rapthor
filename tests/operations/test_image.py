@@ -124,21 +124,21 @@ def image_last_cycle(field, monkeypatch, expected_image_output_last_cycle):
 
 
 @pytest.fixture
-def image_initial(field, monkeypatch, expected_image_output):
+def image_initial(field, monkeypatch, expected_single_sector_image_output):
     """
     Create an instance of the ImageInitial operation.
     """
-    _mock_cwl_execute(monkeypatch, expected_image_output)
+    _mock_cwl_execute(monkeypatch, expected_single_sector_image_output)
     _prepare_field_for_initial_image(field)
     return _initialize_operation(ImageInitial(field))
 
 
 @pytest.fixture
-def image_normalize(field, monkeypatch, expected_image_output):
+def image_normalize(field, monkeypatch, expected_single_sector_image_output):
     """
     Create an instance of the ImageNormalize operation.
     """
-    _mock_cwl_execute(monkeypatch, expected_image_output)
+    _mock_cwl_execute(monkeypatch, expected_single_sector_image_output)
     _prepare_field_for_normalize_image(field)
     return _initialize_operation(ImageNormalize(field, index=1), do_predict=False)
 
@@ -1133,9 +1133,12 @@ class TestImageInitial:
         # image_initial.set_input_parameters()
         pass
 
-    def test_run(self, image_initial):
+    def test_run(self, image_initial, expected_single_sector_image_output):
         image_initial.run()
         assert image_initial.is_done()
+        assert len(image_initial.imaging_sectors) == 1
+        for output_key in expected_single_sector_image_output:
+            assert len(image_initial.outputs[output_key]) == 1, output_key
 
     @pytest.mark.parametrize("dde_method", ["single", "full"])
     def test_initial_image_with_dde_method_single_does_not_raise(self, field, dde_method):
@@ -1212,9 +1215,12 @@ class TestImageNormalize:
         image_normalize.run()
         image_normalize.finalize()
 
-    def test_run(self, image_normalize):
+    def test_run(self, image_normalize, expected_single_sector_image_output):
         image_normalize.run()
         assert image_normalize.is_done()
+        assert len(image_normalize.imaging_sectors) == 1
+        for output_key in expected_single_sector_image_output:
+            assert len(image_normalize.outputs[output_key]) == 1, output_key
 
     def test_save_model_image(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
@@ -1329,7 +1335,7 @@ class TestImageNormalize:
 
     @pytest.mark.parametrize("allow_internet_access", [True, False])
     def test_allow_internet_access(
-        self, field, allow_internet_access, monkeypatch, expected_image_output
+        self, field, allow_internet_access, monkeypatch, expected_single_sector_image_output
     ):
         """Test to check that the allow_internet_access flag is set for ImageNormalize"""
         field.parset["cluster_specific"]["allow_internet_access"] = allow_internet_access
@@ -1340,7 +1346,7 @@ class TestImageNormalize:
         assert image_norm.parset_parms["allow_internet_access"] is allow_internet_access
         assert image_norm.allow_internet_access is allow_internet_access
 
-        _mock_cwl_execute(monkeypatch, expected_image_output)
+        _mock_cwl_execute(monkeypatch, expected_single_sector_image_output)
         image_norm.run()
         assert image_norm.is_done()
 
