@@ -36,6 +36,7 @@ Setting Up and Running Rapthor
    parset
    strategy
    running
+   migrating_from_cwl
    products
    tips
    help
@@ -60,7 +61,6 @@ Development
    development/architecture
    development/architecture_views
    development/adr_replace_cwl_toil_with_prefect_dask
-   development/manual_testing_prefect_dask
    development/science_equivalence_contract
    development/performance_equivalence_contract
    development/scientific_glossary

@@ -231,7 +231,7 @@ The following documentation should stay aligned with this ADR:
 
 * ``docs/source/development/architecture.rst``
 * ``docs/source/development/architecture_views.rst``
-* ``docs/source/development/manual_testing_prefect_dask.rst``
+* ``docs/source/migrating_from_cwl.rst``
 * ``docs/source/development/science_equivalence_contract.rst``
 * ``docs/source/development/performance_equivalence_contract.rst``
 * ``EQUIVALENCE_REPORT.md``
