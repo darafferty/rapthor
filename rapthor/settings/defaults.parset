@@ -429,17 +429,19 @@ parallel_gridding_tasks = 0
 # This parameter is deprecated. Use local_scratch_dir instead.
 dir_local = None
 
-# Full path to a local disk on the nodes for IO-intensive processing (default =
-# /tmp). When batch_system = slurm or slurm_static, the path must exist on all
-# the compute nodes, but not necessarily on the head node. This parameter is
-# useful if you have a fast local disk (e.g., an SSD).
+# Full path to a local disk on the nodes for IO-intensive processing. When
+# batch_system = slurm or slurm_static, the path must exist on all the compute
+# nodes, but not necessarily on the head node. The intent is to use a fast
+# local disk (e.g., an SSD) that is not the one used for dir_working.
+# NOTE: this parameter currently has no effect. IO-intensive temporary products
+# (such as WSClean's -temp-dir) are always written under dir_working.
 local_scratch_dir = None
 
 # Full path to a directory on a shared disk that is readable and writable by all
-# the compute nodes and the head node. This directory will be used to store the
-# intermediate outputs that need to be shared between the different steps in the
-# workflow. If this parameter is not set, Rapthor will create a temporary
-# directory in dir_working.
+# the compute nodes and the head node, intended for the intermediate outputs
+# that need to be shared between the different steps in the workflow.
+# NOTE: this parameter currently has no effect. Shared intermediate products are
+# always written under dir_working.
 global_scratch_dir = None
 
 # Legacy container settings retained for compatibility with older parsets.

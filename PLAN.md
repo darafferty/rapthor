@@ -121,6 +121,137 @@ a broader single-sector, imaging, or product-contract regression.
   the current CI benchmark scenario set, and at least one real-user manual
   parset.
 
+## Master Catch-Up Tasks
+
+Audit snapshot: 2026-09-18. Branch point is `2e21be62` (GEC-428, 2026-05-11);
+the branch is 605 ahead and 54 behind `master`. The last hand-sync rounds were
+2026-08-14 and 2026-09-14 (`be9c552f`).
+
+Nothing here is cherry-pickable: `git cherry` matches zero commits by patch-id
+because this branch removed `rapthor/pipeline/` (CWL) and `rapthor/scripts/`
+entirely. Every item below is a re-implementation against
+`rapthor/execution/<owner>/`. Of the 54 commits `master` has and this branch
+does not, 21 are already ported, 6 are superseded by the migration, and the
+rest are listed here in priority order.
+
+### Priority 1 — quick, low-risk, do first
+
+- [ ] **Port the double-logging fix** (`fda65c8a`, GEC-610).
+  `rapthor/_logging.py` still applies `fh.emit = add_coloring_to_emit_ansi(fh.emit)`
+  and never calls `logging.root.handlers.clear()`. The file is otherwise close
+  to `master`, so this is close to a straight port. Add a test asserting a
+  single handler and no duplicated records; `master` has none.
+- [ ] **Fix the `normalization_reference_frequencies` default.**
+  The option is in `rapthor/settings/defaults.parset:374` and is read in
+  `rapthor/lib/parset.py`, `rapthor/lib/field.py` and `rapthor/execution/`, but
+  it is missing from `rapthor/settings/defaults.json`. `master` has it in both.
+  Also work out why `tests/lib/test_parset_option_coverage.py` does not catch
+  this, since the same test must catch task 5 below.
+- [ ] **Adopt the SPDX license expression** (`583dc808`).
+  `pyproject.toml` still uses `license = {file = "LICENSE"}` plus the deprecated
+  classifier, and `setuptools>=64` instead of `>=77`.
+- [ ] **Reconcile toolchain drift in `pyproject.toml`.**
+  `requires-python = ">=3.9"` vs `master`'s `">=3.10"`; tox envlist `py39-313`
+  vs `py310-314`; missing `pandas` test dependency and `EVERYBEAM_DATADIR`
+  passenv; missing ruff `exclude = ["debug/**"]` although `debug/scan_ms` exists
+  here. Also decide whether to keep the `lsmtool` pin at `3b27105b`, which is
+  stale relative to GEC-115 and the astrometry work, or move back to `@master`.
+  Internal inconsistency to settle at the same time: `Docker/Dockerfile` pins
+  `numpy<2` while `ci/ubuntu_24_04-base` pins `numpy>=2,<3`.
+
+### Priority 2 — CI and build
+
+- [ ] **Upgrade the images to Ubuntu 26.04** (`a39e517b`, `b27ba6e6`,
+  `7eb0b03f`). Still on `ci/ubuntu_24_04-*`. Worth doing before the test-split
+  work because it touches the same CI files, and because 26.04 ships
+  Boost.NumPy built against NumPy 2 — which lets us delete the ~25-line
+  build-Boost-from-source workaround in `ci/ubuntu_24_04-base`. Note this branch
+  pins `SAGECAL_COMMIT=33d21c45…` where `master` tracks `master`.
+- [ ] **Restore duration-based integration test splitting** (`3e352b73`,
+  `c3fac822`). `tests/integration/.test_durations` is absent, tox lacks
+  `--durations-path` and `--splitting-algorithm least_duration`, and
+  `.gitlab-ci.yml` runs `parallel: 4` against `master`'s `parallel: 8`.
+
+### Priority 3 — feature gaps
+
+- [ ] **Port array-beam application in prediction** (`23ed80e9`, Rap1461).
+  Nothing ported. Needs the `wsclean_predict_beam_interval` option in both
+  defaults files, `-apply-facet-beam` and `-facet-beam-update` on the WSClean
+  predict command, the `-fpb` model naming (`predict-…-model-fpb.fits`), and the
+  `ddecal_solve` array-beam change. This branch currently hardcodes
+  `beam_interval=120` for DP3 only, in `rapthor/execution/predict/commands.py:61`
+  and `rapthor/execution/calibrate/commands.py:39`. Target:
+  `rapthor/execution/calibrate/prediction.py`.
+- [ ] **Port predict reuse-ordering** (`d587eec5`, Rap1418).
+  Nothing ported: no `-parallel-reordering`, `-reuse-reordered` or
+  `-save-reordered`, no full-band model-image combining, no
+  `optimal_rendering_parameters()`. Same target file as the task above.
+
+  Do these two together: both touch `prediction.py` and both invalidate
+  `tests/execution/fixtures/command_reference.json`, which encodes the current
+  command lines in roughly seven places and must be regenerated once.
+- [ ] **Re-implement failure error extraction** (`aabe35f2`, GEC-603).
+  `rapthor/lib/operation.py:249` still raises a bare
+  `RuntimeError(f"Operation {self.name} failed due to an error")` with no
+  extracted cause. `master`'s `extract_log_errors` / `handle_failure` /
+  `format_cli_command` parse CWL logs, so this needs real design work against
+  Prefect task logs rather than a port. A Prefect-flavoured equivalent of
+  `tests/resources/failed_workflow_sample.log` is needed as a fixture.
+
+### Priority 4 — test coverage holes for already-ported features
+
+These cover work that is already on the branch but untested here.
+
+- [ ] **Add `tests/lib/test_calibration.py`.**
+  `rapthor/lib/calibration.py` was ported in `4fd75842` but nothing under
+  `tests/` imports it. Its sibling `test_calibration_memory.py` exists.
+- [ ] **Port the per-facet RMS diagnostics test** (GEC-441):
+  `tests/integration/test_sector_diagnostics.py`, plus the
+  `test_image_from_reg.fits` and `test_image_regions_rendered.fits` resources.
+- [ ] **Port the parallel-gridding integration test** (GEC-487):
+  `tests/integration/test_wsclean_parallel_gridding.py`.
+- [ ] **Rewrite the GEC-444 calibration-strategy tests.**
+  `master`'s `tests/integration/test_image_only_applycal.py` and
+  `test_legacy_calibration_strategy.py` have no equivalent here, although the
+  logic is present in `rapthor/operations/image/base.py:137-164`. `master`'s
+  `image_only` naming does not transfer, so these need rewriting against this
+  branch's refactor rather than copying. Fixtures needed:
+  `integration_field_solutions.h5`, `manual_testing.parset`,
+  `manual_testing_strategy.py`.
+
+### Decision needed before the next `master` merge
+
+- [ ] **Decide on `rapthor/testing.py`** (GEC-486: `5f59fe87`, `0c422261`,
+  `4cc0b732`, `14377a61`, `6c58212b`).
+  `master` moved shared test helpers into an importable `rapthor/testing.py`;
+  this branch never adopted it and grew `tests/conftest.py` to 738 lines against
+  `master`'s 490. `assert_logged`, `make_source_catalog` and
+  `generate_parset_from_template` are undefined anywhere in `tests/` here; only
+  `generate_parset` exists, at `tests/conftest.py:420`. Every later `master`
+  test commit builds on the module, so settling this before the next merge is
+  cheaper than settling it during one.
+
+### Superseded by the migration — do not port
+
+- `e8873f19` (GEC-571, flat-noise symlink) and `b457f49c` (duplicate CWL
+  fields) are CWL-only. `rapthor/execution/image/skymodel_filter.py:66` passes
+  explicit output paths, so the PyBDSF `export_image` problem cannot occur.
+- `18cf2d72` (image input generation) fixes a bug that is structurally absent:
+  `rapthor/operations/image/base.py:583` already builds `parallel_gridding_tasks`
+  as a genuine per-sector list.
+- `c853f707` (GEC-513) and `37f6fc06` (Ubuntu 24.04) are superseded by the
+  26.04 upgrade above.
+- `0ebc0690` (GEC-444) originated on this branch and landed on `master` later;
+  this branch is further along, having replaced `do_slowgain_solve` and
+  `do_fulljones_solve` with `calibration_strategy` dicts and added
+  `supported_combinations` validation. Port only the tests. Expect conflicts in
+  `rapthor/lib/strategy.py` and the strategy docs.
+- The GEC-349 formatting commits (`f826c262`, `13e3bd8e`, `6c74e20d`,
+  `f379cf15`) are satisfied in outcome, since this branch formats all
+  discovered files rather than `master`'s explicit `format_targets` list. The
+  tox `[tool.tox.env.format]` sections have diverged textually and will conflict
+  on merge.
+
 ## Completed
 
 - **Execution architecture.** Owner-package execution for image, calibrate,
@@ -211,6 +342,47 @@ main plan stays focused on the branch-switch decision.
 - **WSClean prediction parallelism:** investigate splitting the internal
   frequency/facet loop inside WSClean prediction tasks only with a targeted
   benchmark and explicit resource limits.
+- **Single-machine task concurrency:** `local_dask_workers` falls back to
+  `max_nodes`, which `rapthor/lib/parset.py:431` sets to 1 for
+  `batch_system = single_machine`, so a default single-machine run gets one
+  single-threaded Dask worker and executes the per-sector futures in the image
+  and calibrate flows one at a time. Derive the default from available cores
+  and memory, bounded by `cpus_per_task` and `mem_per_node_gb`, so the
+  parallelism the flows already express is actually used.
+- **Per-task resource gating:** `ResourceRequest` in
+  `rapthor/execution/resources.py` is validated but never converted into Dask
+  scheduling constraints; there are no worker-resource annotations anywhere in
+  the flows. Without them, raising the worker count lets several WSClean or DP3
+  tasks each claim `cpus_per_task` threads at once and oversubscribe the node.
+  Annotate heavy tasks with CPU/memory resources so the scheduler serialises
+  them while light Python tasks keep running. This is a prerequisite for
+  raising single-machine concurrency.
+- **Uniform thread capping for external commands:** `thread_environment()` is
+  applied only in `rapthor/execution/image/wsclean.py:172`. DP3 solves,
+  predicts, applycals, and the `python -m` adapters inherit ambient
+  `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`, so each concurrent task can spawn
+  one thread per core. Apply the thread environment centrally in
+  `rapthor/execution/shell.py`, where `shell_command.environment` is merged
+  into the process environment, generalising the `wsclean-mp` fix from GEC-535.
+- **Honour `local_scratch_dir` for I/O-heavy temporaries:** the option is
+  parsed and passed into the pipeline capabilities dict but never consumed, and
+  `rapthor/execution/image/wsclean.py:64` always places WSClean's `-temp-dir`
+  under `dir_working`. On multi-node runs that puts reordering and gridding
+  temporaries on the shared filesystem. Route WSClean temp dirs and other
+  I/O-heavy intermediates to node-local scratch when the option is set.
+- **Cache reference catalogues per run:** `_download_survey_data` in
+  `rapthor/execution/image/flux_normalization.py:622` repeats the 5-degree VO
+  query for every normalization call, once per sector per cycle, and
+  `_get_data_from_skymodel` round-trips each result through a temporary FITS
+  file. The phase centre is fixed for a run, so a run-scoped cache removes the
+  repeated network round-trips and makes runs resilient to VO outages.
+- **Parallelise the per-facet astrometry check:** `check_astrometry` in
+  `rapthor/execution/image/diagnostic_calculation.py:777` loops over facets
+  serially, copies the full PyBDSF sky model for each one, and, when no
+  comparison sky model is supplied, fetches a Pan-STARRS cone per facet. With
+  many facets that is tens of sequential network queries per imaging cycle.
+  Fetch once per field where the 0.5-degree cone limit allows, or run the
+  per-facet comparisons concurrently.
 - **Multi-sector mosaic:** keep smoke/stored-reference coverage available, but
   treat this as lower priority than common single-sector paths.
 - **Persistent Prefect service:** set up a shared Prefect server backed by

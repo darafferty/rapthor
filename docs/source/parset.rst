@@ -862,29 +862,30 @@ The available options are described below under their respective sections.
             This parameter is deprecated. Use :term:`local_scratch_dir` instead.
 
     local_scratch_dir
-        Full path to a local disk on the nodes for IO-intensive processing (default =
-        ``/tmp``). When :term:`batch_system` = ``slurm``, the path must exist on all the
-        compute nodes, but not necessarily on the head node.
-        This parameter is useful if you have a fast local disk (e.g., an SSD)
-        that is not the one used for :term:`dir_working`. If this parameter is not set,
-        IO-intensive processing (e.g., WSClean) will use a default path in
-        :term:`dir_working` instead.
+        Full path to a local disk on the nodes for IO-intensive processing
+        (default = ``None``). When :term:`batch_system` = ``slurm``, the path
+        must exist on all the compute nodes, but not necessarily on the head
+        node. The intent is to let IO-intensive processing use a fast local
+        disk (e.g., an SSD) that is not the one used for :term:`dir_working`.
 
-        This parameter is used by the Prefect/Dask execution path for
-        IO-intensive intermediate products. If you run multiple Rapthor
-        instances concurrently, use separate working and scratch directories for
-        each run.
+        .. attention::
+
+            This parameter currently has no effect. The Prefect/Dask execution
+            path accepts and records it, but IO-intensive temporary products
+            (such as WSClean's ``-temp-dir``) are always written under
+            :term:`dir_working`.
 
     global_scratch_dir
-        Full path to a directory on a shared disk that is readable and writable by all
-        the compute nodes and the head node. This directory will be used to store the
-        intermediate outputs that need to be shared between the different steps in the
-        workflow. If this parameter is not set and :term:`batch_system` = ``slurm``,
-        then Rapthor will create a temporary directory in :term:`dir_working`.
+        Full path to a directory on a shared disk that is readable and writable
+        by all the compute nodes and the head node (default = ``None``),
+        intended for intermediate outputs that need to be shared between the
+        different steps in the workflow.
 
-        This parameter is used by the Prefect/Dask execution path for shared
-        intermediate products. If you run multiple Rapthor instances
-        concurrently, use separate working and scratch directories for each run.
+        .. attention::
+
+            This parameter currently has no effect. The Prefect/Dask execution
+            path accepts and records it, but shared intermediate products are
+            always written under :term:`dir_working`.
 
     use_container
         Legacy container setting retained for compatibility with older parsets.
