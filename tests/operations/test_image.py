@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from rapthor.lib.cwl import CWLFile
 from rapthor.lib.strategy import set_selfcal_strategy
 from rapthor.operations.image import (
     Image,
@@ -186,7 +187,6 @@ class TestImage:
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
         field.use_mpi = use_mpi
-        field.use_mpi = use_mpi
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = parallel_gridding_tasks
         field.parset["cluster_specific"]["max_cores"] = max_cores
@@ -198,38 +198,26 @@ class TestImage:
             do_predict=False,
             use_facets=use_facets,
         )
+        assert len(field.imaging_sectors) == 2
+        assert len(image.input_parms["parallel_gridding_tasks"]) == len(field.imaging_sectors)
         if use_facets and num_facets > 1:
             assert image.input_parms["shared_facet_rw"] == shared_facet_rw
             assert image.input_parms["parallel_gridding_tasks"] == [
                 adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, num_facets)
+                for sector in field.imaging_sectors
             ]
         else:
             assert not image.input_parms["shared_facet_rw"]
-            channels_out = image.input_parms["channels_out"][0]
-            print(use_mpi)
-            if use_mpi:
-                channels_out = channels_out // image.input_parms["mpi_nnodes"][0]
             assert image.input_parms["parallel_gridding_tasks"] == [
-                adjust_parallel_gridding_tasks(max_cores, parallel_gridding_tasks, channels_out)
+                adjust_parallel_gridding_tasks(
+                    max_cores,
+                    parallel_gridding_tasks,
+                    channels_out // image.input_parms["mpi_nnodes"][index]
+                    if use_mpi
+                    else channels_out,
+                )
+                for index, channels_out in enumerate(image.input_parms["channels_out"])
             ]
-
-    def test_parallel_gridding_tasks_are_set_for_each_imaging_sector(self, field):
-        field.parset["imaging_specific"].update(
-            {
-                "sector_center_ra_list": ["17h05m22s", "17h25m22s"],
-                "sector_center_dec_list": ["+57d14m39s", "+57d34m39s"],
-                "sector_width_ra_deg_list": [0.333, 0.250],
-                "sector_width_dec_deg_list": [0.333, 0.250],
-            }
-        )
-        field.parset["cluster_specific"]["parallel_gridding_tasks"] = 3
-        field.define_imaging_sectors()
-        _prepare_field_for_image(field)
-
-        image = _initialize_operation(Image(field, index=1), do_predict=False)
-
-        assert len(field.imaging_sectors) == 2
-        assert image.input_parms["parallel_gridding_tasks"] == [3, 3]
 
     @pytest.mark.parametrize("use_mpi", [True, False])
     @pytest.mark.parametrize("shared_facet_rw", [True, False])
@@ -836,7 +824,6 @@ class TestImage:
         previous_h5parm = tmp_path / "previous-field-solutions.h5"
         previous_h5parm.touch()
         _prepare_field_for_image(field, h5parm_filename=previous_h5parm)
-        sector = field.imaging_sectors[0]
         field.parset["input_h5parm"] = str(h5parm_file)
         field.do_calibrate = False
         field.do_image = True
@@ -848,8 +835,8 @@ class TestImage:
         field.dde_method = "single"
         field.scalar_h5parm_directions = {
             str(h5parm_file): [
-                {"name": "far_direction", "ra": sector.ra + 5.0, "dec": sector.dec},
-                {"name": "nearest_solution", "ra": sector.ra, "dec": sector.dec},
+                {"name": f"solution_{index}", "ra": sector.ra, "dec": sector.dec}
+                for index, sector in reversed(list(enumerate(field.imaging_sectors)))
             ]
         }
 
@@ -859,7 +846,9 @@ class TestImage:
         image.set_parset_parameters()
         image.set_input_parameters()
 
-        assert image.input_parms["central_patch_name"] == ["nearest_solution"]
+        assert image.input_parms["central_patch_name"] == [
+            f"solution_{index}" for index in range(len(field.imaging_sectors))
+        ]
 
     def test_build_applycal_steps_first_cycle_image_only_ignores_stale_h5parm(
         self, field, h5parm_file
@@ -1117,13 +1106,12 @@ class TestImage:
         image1 = _initialize_operation(Image(field=field, index=1), do_predict=False)
         image1.run()
 
-        # Get the mask file from the first operation
-        sector = field.imaging_sectors[0]
-        first_mask_file = sector.I_mask_file
+        first_mask_files = [sector.I_mask_file for sector in field.imaging_sectors]
         if use_clean_mask:
-            assert first_mask_file is not None
+            assert all(mask is not None for mask in first_mask_files)
+            assert len(set(first_mask_files)) == len(field.imaging_sectors)
         else:
-            assert first_mask_file is None
+            assert first_mask_files == [None] * len(field.imaging_sectors)
 
         # Second image operation - simulate reusing the mask from first operation
         # Create a new Image operation with index=2 but don't call field.update()
@@ -1131,18 +1119,9 @@ class TestImage:
         image2.set_parset_parameters()
         image2.set_input_parameters()
 
-        # Check that previous_mask_filename is set to the mask from the first operation
-        assert image2.input_parms["previous_mask_filename"] is not None
-
-        # previous_mask_filename should be a list with one element for one sector
-        previous_masks = image2.input_parms["previous_mask_filename"]
-        assert isinstance(previous_masks, list)
-        assert len(previous_masks) == 1
-        # The first mask should be set to the CWL file format of the first operation's mask
-        if use_clean_mask:
-            assert previous_masks[0] is not None
-        else:
-            assert previous_masks[0] is None
+        assert image2.input_parms["previous_mask_filename"] == [
+            CWLFile(mask).to_json() if mask is not None else None for mask in first_mask_files
+        ]
 
 
 class TestImageInitial:
