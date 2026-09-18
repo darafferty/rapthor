@@ -82,6 +82,12 @@ def expected_image_output():
 
 
 @pytest.fixture
+def expected_single_sector_image_output(expected_image_output):
+    """Expected image outputs for initial and normalization full-field imaging."""
+    return {key: values[:1] for key, values in expected_image_output.items()}
+
+
+@pytest.fixture
 def expected_image_output_last_cycle():
     """
     Fixture which provides the expected output structure for CWL execution
