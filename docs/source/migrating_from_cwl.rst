@@ -38,10 +38,14 @@ in the strategy file. Use explicit strategies such as:
     }
 
 Allowed solve names are ``fast_phase``, ``medium_phase``, ``slow_gains`` and 
-``full_jones``. Legacy options such as ``do_fulljones_solve`` or
-``do_slowgain_solve`` are no longer supported.
+``full_jones``.
 
-This is the only breaking change.
+The legacy ``do_slowgain_solve`` and ``do_fulljones_solve`` options are
+deprecated but still work: Rapthor translates them into the equivalent
+``calibration_strategy`` and logs a warning naming the replacement, so an
+unmodified strategy file runs the same solves here as it does under CWL.
+Setting a legacy option and ``calibration_strategy`` in the same cycle is an
+error, since the requested solves would be ambiguous.
 
 
 Run identity and diagnostics

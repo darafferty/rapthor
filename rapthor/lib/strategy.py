@@ -19,6 +19,23 @@ def default_calibration_strategy():
     return {mode: list(solves) for mode, solves in DEFAULT_CALIBRATION_STRATEGY.items()}
 
 
+def legacy_flag_calibration_strategy(*, do_slowgain_solve, do_fulljones_solve):
+    """
+    Return the explicit calibration strategy meant by the removed legacy flags.
+
+    The legacy ``do_slowgain_solve`` and ``do_fulljones_solve`` flags build the
+    solve chain implicitly. This reproduces that mapping, including the second
+    medium-phase solve that the CWL branch appends automatically after a
+    slow-gain solve, so that a legacy strategy runs the same solves here as it
+    does there.
+    """
+    dd_solves = ["fast_phase", "medium_phase"]
+    if do_slowgain_solve:
+        dd_solves.extend(["slow_gains", "medium_phase"])
+    di_solves = ["full_jones"] if do_fulljones_solve else []
+    return {"dd": dd_solves, "di": di_solves}
+
+
 def dd_calibration_strategy(*, include_slow_gains: bool) -> dict[str, list[str]]:
     """Return the standard DD strategy for a self-calibration cycle."""
     solves = ["fast_phase", "medium_phase"]
@@ -313,10 +330,12 @@ def check_and_adjust_parameters(field, strategy_steps):
         If a required parameter is not defined and no suitable default
         is available for it
     """
+    # Define the legacy calibration flags that are translated into an explicit
+    # "calibration_strategy" below, rather than being silently ignored.
+    legacy_calibration_flags = ("do_slowgain_solve", "do_fulljones_solve")
+
     # Define the deprecated parameters and their replacements (if any)
     deprecated_parameters = {
-        "do_slowgain_solve": None,
-        "do_fulljones_solve": None,
         "slow_timestep_joint_sec": None,
         "slow_timestep_separate_sec": "slow_timestep_sec",
     }
@@ -349,6 +368,40 @@ def check_and_adjust_parameters(field, strategy_steps):
         ],
         "do_check": ["convergence_ratio", "divergence_ratio", "failure_ratio"],
     }
+
+    # Check for the legacy calibration flags. These are translated into the
+    # equivalent explicit "calibration_strategy" rather than being dropped,
+    # which keeps legacy strategy files runnable and behaving identically on
+    # this branch and on the CWL branch. Dropping them silently would run a
+    # different calibration than the strategy asks for.
+    for i in range(len(strategy_steps)):
+        used_flags = [flag for flag in legacy_calibration_flags if flag in strategy_steps[i]]
+        if not used_flags:
+            continue
+        flag_list = " and ".join(repr(flag) for flag in used_flags)
+        if strategy_steps[i].get("calibration_strategy"):
+            raise ValueError(
+                f"The strategy for cycle {i + 1} defines both {flag_list} and "
+                '"calibration_strategy", so the requested solves are ambiguous. '
+                f'Please remove {flag_list} and keep only "calibration_strategy".'
+            )
+        translated = legacy_flag_calibration_strategy(
+            do_slowgain_solve=strategy_steps[i].get("do_slowgain_solve", False),
+            do_fulljones_solve=strategy_steps[i].get("do_fulljones_solve", False),
+        )
+        log.warning(
+            "%s %s defined in the strategy for cycle %i but %s deprecated. "
+            "The solves have been translated to calibration_strategy = %r. "
+            'Please set "calibration_strategy" explicitly instead.',
+            "Parameter" if len(used_flags) == 1 else "Parameters",
+            flag_list + (" is" if len(used_flags) == 1 else " are"),
+            i + 1,
+            "is" if len(used_flags) == 1 else "are",
+            translated,
+        )
+        strategy_steps[i]["calibration_strategy"] = translated
+        for flag in used_flags:
+            strategy_steps[i].pop(flag)
 
     # Check for deprectaed parameters, updating the steps to use the new
     # names when defined

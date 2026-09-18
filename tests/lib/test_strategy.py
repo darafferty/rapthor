@@ -2,6 +2,7 @@
 Test cases for the `rapthor.lib.strategy` module.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -155,6 +156,103 @@ def test_check_and_adjust_parameters_corrects_deprecated(field, custom_strategy,
             f"Parameter 'slow_timestep_separate_sec' is defined in the strategy for cycle {i + 1} but is deprecated. Please use 'slow_timestep_sec' instead."
             in caplog.text
         )
+
+
+@pytest.mark.parametrize(
+    "do_slowgain_solve, do_fulljones_solve, expected_strategy",
+    [
+        (False, False, {"dd": ["fast_phase", "medium_phase"], "di": []}),
+        (False, True, {"dd": ["fast_phase", "medium_phase"], "di": ["full_jones"]}),
+        (
+            True,
+            False,
+            {"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []},
+        ),
+        (
+            True,
+            True,
+            {
+                "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+                "di": ["full_jones"],
+            },
+        ),
+    ],
+)
+def test_check_and_adjust_parameters_translates_legacy_solve_flags(
+    field, custom_strategy, caplog, do_slowgain_solve, do_fulljones_solve, expected_strategy
+):
+    """The legacy solve flags are translated into an explicit calibration strategy.
+
+    The translation must reproduce the solve chain that the CWL branch builds
+    from these flags, including the second medium-phase solve that follows a
+    slow-gain solve, so that an unmodified legacy strategy runs the same solves
+    on both branches.
+    """
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+
+    # The legacy flags replace the explicit strategy defined by the fixture
+    for step in strategy_steps:
+        del step["calibration_strategy"]
+        step["do_slowgain_solve"] = do_slowgain_solve
+        step["do_fulljones_solve"] = do_fulljones_solve
+
+    with caplog.at_level("WARNING"):
+        strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
+
+    for i, step in enumerate(strategy_steps_updated):
+        assert step["calibration_strategy"] == expected_strategy
+
+        # The flags themselves must not survive into the adjusted strategy
+        assert "do_slowgain_solve" not in step
+        assert "do_fulljones_solve" not in step
+
+        # The substitution is reported rather than made silently
+        assert (
+            f"'do_slowgain_solve' and 'do_fulljones_solve' are defined in the "
+            f"strategy for cycle {i + 1} but are deprecated" in caplog.text
+        )
+        assert 'Please set "calibration_strategy" explicitly instead.' in caplog.text
+
+        # A translated strategy must always be one Rapthor supports
+        _validate_calibrate_strategy(step["calibration_strategy"])
+
+
+@pytest.mark.parametrize("legacy_flag", ["do_slowgain_solve", "do_fulljones_solve"])
+def test_check_and_adjust_parameters_raises_for_legacy_flag_with_calibration_strategy(
+    field, custom_strategy, legacy_flag
+):
+    """A legacy flag alongside an explicit strategy is ambiguous and is rejected."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+
+    # The fixture already defines calibration_strategy, so adding a flag conflicts
+    strategy_steps[0][legacy_flag] = True
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"The strategy for cycle 1 defines both '{legacy_flag}' and "
+            '"calibration_strategy", so the requested solves are ambiguous.'
+        ),
+    ):
+        check_and_adjust_parameters(field, strategy_steps)
+
+
+def test_check_and_adjust_parameters_leaves_explicit_calibration_strategy_alone(
+    field, custom_strategy, caplog
+):
+    """A strategy that already sets the solves explicitly is not modified or warned about."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    original = [dict(step["calibration_strategy"]) for step in strategy_steps]
+
+    with caplog.at_level("WARNING"):
+        strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
+
+    for step, expected in zip(strategy_steps_updated, original):
+        assert step["calibration_strategy"] == expected
+    assert "deprecated" not in caplog.text
 
 
 @pytest.mark.parametrize(
