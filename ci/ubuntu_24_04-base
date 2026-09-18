@@ -203,7 +203,7 @@ RUN pip install -r requirements.txt
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS runtime
+FROM ubuntu:24.04 AS runner
 
 COPY --from=builder /usr/local /usr/local
 
