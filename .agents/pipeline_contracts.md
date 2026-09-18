@@ -42,16 +42,17 @@ names visible.
   or normalization. Names such as `dd_h5parm_cycle_number` and
   `fulljones_h5parm_cycle_number` are not decoration; they are safety rails.
 - Calibration solve initial solutions are optimizer seeds, not pre-applied
-  visibility corrections. Current-cycle same-mode/same-solve h5parms may seed
-  matching solves. Previous-cycle same-mode/same-solve h5parms may seed
-  matching solves only when the product role and cycle are valid; DD products
-  additionally require direction compatibility through a fixed `facet_layout`,
-  a matching h5parm direction set, or an explicit remap/filter step. DI
-  products seed only DI solves, DD products seed only DD solves, and
-  future-cycle products must be rejected. Keep the stricter current-cycle guard
-  for `applycal_h5parm`, `fulljones_h5parm`, image `prepare_data_h5parm`, and
-  imaging-time `h5parm` unless an operation explicitly documents
-  carry-forward semantics.
+  visibility corrections. Current-cycle and previous-cycle same-mode/same-solve
+  h5parms may seed matching solves. DI products seed only DI solves, DD
+  products seed only DD solves, and future-cycle products must be rejected. Do
+  not gate DD seeding on direction compatibility: DP3 seeds each direction from
+  the nearest direction in the h5parm (`GetNearestSource`), so the direction
+  names and the number of directions need not match the current calibration
+  patches. This relies on the h5parm `source` table holding sky-model patch
+  positions, which `adjust_h5parm_sources` maintains. Keep the stricter
+  current-cycle guard for `applycal_h5parm`, `fulljones_h5parm`, image
+  `prepare_data_h5parm`, and imaging-time `h5parm` unless an operation
+  explicitly documents carry-forward semantics.
 - A change to solution discovery, filtering, combination, or naming needs
   restart and finalizer tests.
 

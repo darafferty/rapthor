@@ -236,21 +236,20 @@ but they are not the science contract.
 **3. Intentional improvements to calibration-state handling**
 
 The refactored pipeline is stricter about when calibration products may be
-reused. Previous-cycle products may seed compatible later solves as optimizer
+reused. Previous-cycle products may seed matching later solves as optimizer
 seeds, but they are not silently applied during imaging after a new calibration
-step unless they belong to the active cycle's calibration state. For DD
-solutions, previous-cycle products must also have compatible directions before
-they can seed a later solve.
+step unless they belong to the active cycle's calibration state.
 
-This is scientifically safer than blindly carrying solutions across changed
-facets, regrouped directions, or mode boundaries.
+This is scientifically safer than blindly carrying solutions across mode
+boundaries. It does not restrict DD seeding by direction: as on master,
+previous-cycle DD products seed later DD solves whatever the calibration
+patches have become, because DP3 seeds each direction from the nearest
+direction in the h5parm.
 
 ## Important Current-Vs-Master Differences
 
 These differences are accepted and should not be treated as regressions:
 
-- The current branch blocks unsafe previous-cycle DD seed reuse when directions
-  are not proven compatible.
 - The current branch does not silently carry an old DI full-Jones solution into
   a later DD-only imaging step after a new DD calibration step.
 - The current branch preserves slow-gain amplitude solutions in the final

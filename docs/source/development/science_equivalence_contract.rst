@@ -138,8 +138,6 @@ Some current-vs-master differences are acceptable when they make the current
 branch more explicit or scientifically safer. Label them clearly rather than
 hiding them in broad tolerances. Current examples include:
 
-* rejecting previous-cycle DD solution seeds when DD directions are not proven
-  compatible
 * keeping previous-cycle products as optimizer seeds rather than silently
   applying them during later imaging after a new calibration step
 * preserving slow-gain amplitude solutions where legacy master logs a
