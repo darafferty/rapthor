@@ -42,7 +42,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         git \
         libboost-date-time-dev \
         libboost-filesystem-dev \
-        libboost-numpy-dev \
         libboost-program-options-dev \
         libboost-python-dev \
         libcfitsio-dev \
@@ -79,7 +78,7 @@ RUN python3 -m pip install \
 # Note: The file on the ftp site is updated daily. When warnings regarding
 # leap seconds appear, ignore them or regenerate the docker image.
 RUN mkdir -p /usr/local/share/casacore/data && \
-    wget -qO - --timeout 5 --tries=3 https://iers.astron.nl/WSRT_Measures.ztar | \
+    wget -qO - https://iers.astron.nl/WSRT_Measures.ztar | \
         tar -C /usr/local/share/casacore/data -xzf -
 
 # Install Casacore
@@ -195,9 +194,10 @@ do \
 done \
 > /usr/local/share/rapthor/sw-versions.txt
 
-# Install current version of Rapthor from source.
-COPY . rapthor
-RUN pip install ./rapthor
+# Install all python packages that Rapthor depends on
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
@@ -266,13 +266,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         zlib1g
 RUN rm -rf /var/lib/apt/lists/*
 
-# Basic sanity check: try to run the compiled tools, binaries that Rapthor
-# needs, and Rapthor itself, to make sure the software runs without problems
+# Try to run the compiled tools and binaries that Rapthor needs, to make
+# sure the software runs without problems (e.g. no missing libraries).
 RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version && \
-    fpack -H && \
-    rapthor --version
-
-# Set environment variables needed at run-time
-ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam
+    fpack -H
