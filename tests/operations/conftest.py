@@ -49,6 +49,10 @@ def expected_image_output():
             [
                 "sector_1-MFS-I-image-pb.fits",
                 "sector_1-MFS-I-image-pb-ast.fitssector_1-MFS-I-image.fits",
+            ],
+            [
+                "sector_2-MFS-I-image-pb.fits",
+                "sector_2-MFS-I-image-pb-ast.fitssector_2-MFS-I-image.fits",
             ]
         ],
         "sector_extra_images": [
@@ -56,14 +60,22 @@ def expected_image_output():
                 "sector_1-MFS-I-residual.fits",
                 "sector_1-MFS-I-model-pb.fits",
                 "sector_1-MFS-I-dirty.fits",
+            ],
+            [
+                "sector_2-MFS-I-residual.fits",
+                "sector_2-MFS-I-model-pb.fits",
+                "sector_2-MFS-I-dirty.fits",
             ]
         ],
-        "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector_1.source_catalog.fits"],
-        "sector_diagnostics": ["sector_1_diagnostics.json"],
-        "sector_offsets": ["sector_1_offsets.txt"],
-        "source_filtering_mask": ["sector_1_mask.fits"],
+        "filtered_skymodel_true_sky": ["sector_1.true_sky.txt", "sector_2.true_sky.txt"],
+        "filtered_skymodel_apparent_sky": [
+            "sector_1.apparent_sky.txt",
+            "sector_2.apparent_sky.txt",
+        ],
+        "pybdsf_catalog": ["sector_1.source_catalog.fits", "sector_2.source_catalog.fits"],
+        "sector_diagnostics": ["sector_1_diagnostics.json", "sector_2_diagnostics.json"],
+        "sector_offsets": ["sector_1_offsets.txt", "sector_2_offsets.txt"],
+        "source_filtering_mask": ["sector_1_mask.fits", "sector_2_mask.fits"],
     }
 
 
@@ -79,14 +91,22 @@ def expected_image_output_last_cycle():
                 "sector_1-MFS-I-image-pb.fits",
                 "sector_1-MFS-I-image-pb-ast.fits",
                 "sector_1-MFS-I-image.fits",
+            ],
+            [
+                "sector_2-MFS-I-image-pb.fits",
+                "sector_2-MFS-I-image-pb-ast.fits",
+                "sector_2-MFS-I-image.fits",
             ]
         ],
-        "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
-        "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
-        "pybdsf_catalog": ["sector_1.source_catalog.fits"],
-        "sector_diagnostics": ["sector_1_diagnostics.json"],
-        "sector_offsets": ["sector_1_offsets.txt"],
-        "source_filtering_mask": ["sector_1_mask.fits"],
+        "filtered_skymodel_true_sky": ["sector_1.true_sky.txt", "sector_2.true_sky.txt"],
+        "filtered_skymodel_apparent_sky": [
+            "sector_1.apparent_sky.txt",
+            "sector_2.apparent_sky.txt",
+        ],
+        "pybdsf_catalog": ["sector_1.source_catalog.fits", "sector_2.source_catalog.fits"],
+        "sector_diagnostics": ["sector_1_diagnostics.json", "sector_2_diagnostics.json"],
+        "sector_offsets": ["sector_1_offsets.txt", "sector_2_offsets.txt"],
+        "source_filtering_mask": ["sector_1_mask.fits", "sector_2_mask.fits"],
         "sector_extra_images": [
             [
                 "sector_1-MFS-Q-image.fits",
@@ -107,6 +127,26 @@ def expected_image_output_last_cycle():
                 "sector_1-MFS-Q-dirty.fits",
                 "sector_1-MFS-U-dirty.fits",
                 "sector_1-MFS-V-dirty.fits",
+            ],
+            [
+                "sector_2-MFS-Q-image.fits",
+                "sector_2-MFS-U-image.fits",
+                "sector_2-MFS-V-image.fits",
+                "sector_2-MFS-Q-image-pb.fits",
+                "sector_2-MFS-U-image-pb.fits",
+                "sector_2-MFS-V-image-pb.fits",
+                "sector_2-MFS-I-residual.fits",
+                "sector_2-MFS-Q-residual.fits",
+                "sector_2-MFS-U-residual.fits",
+                "sector_2-MFS-V-residual.fits",
+                "sector_2-MFS-I-model-pb.fits",
+                "sector_2-MFS-Q-model-pb.fits",
+                "sector_2-MFS-U-model-pb.fits",
+                "sector_2-MFS-V-model-pb.fits",
+                "sector_2-MFS-I-dirty.fits",
+                "sector_2-MFS-Q-dirty.fits",
+                "sector_2-MFS-U-dirty.fits",
+                "sector_2-MFS-V-dirty.fits",
             ]
         ],
     }
