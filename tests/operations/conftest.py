@@ -53,7 +53,7 @@ def expected_image_output():
             [
                 "sector_2-MFS-I-image-pb.fits",
                 "sector_2-MFS-I-image-pb-ast.fitssector_2-MFS-I-image.fits",
-            ]
+            ],
         ],
         "sector_extra_images": [
             [
@@ -65,7 +65,7 @@ def expected_image_output():
                 "sector_2-MFS-I-residual.fits",
                 "sector_2-MFS-I-model-pb.fits",
                 "sector_2-MFS-I-dirty.fits",
-            ]
+            ],
         ],
         "filtered_skymodel_true_sky": ["sector_1.true_sky.txt", "sector_2.true_sky.txt"],
         "filtered_skymodel_apparent_sky": [
@@ -96,7 +96,7 @@ def expected_image_output_last_cycle():
                 "sector_2-MFS-I-image-pb.fits",
                 "sector_2-MFS-I-image-pb-ast.fits",
                 "sector_2-MFS-I-image.fits",
-            ]
+            ],
         ],
         "filtered_skymodel_true_sky": ["sector_1.true_sky.txt", "sector_2.true_sky.txt"],
         "filtered_skymodel_apparent_sky": [
@@ -147,7 +147,7 @@ def expected_image_output_last_cycle():
                 "sector_2-MFS-Q-dirty.fits",
                 "sector_2-MFS-U-dirty.fits",
                 "sector_2-MFS-V-dirty.fits",
-            ]
+            ],
         ],
     }
 
