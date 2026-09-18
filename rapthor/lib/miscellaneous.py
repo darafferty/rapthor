@@ -409,9 +409,10 @@ def calc_theoretical_noise(obs_list, w_factor=1.5, use_lotss_estimate=False):
 
     Note: by default, the calculations follow those of SKA Memo 113 (see
     https://arxiv.org/abs/1308.4267) and assume no tapering. International
-    stations are not included. A alternvate estimate can be made for LOFAR data
+    stations are not included. An alternate estimate can be made for LOFAR data
     following Shimwell et. al (2022, A&A, 659, A1), where the noise in LOFAR
-    images was found to behave as follows (for an 8 hour, 48 MHz observation):
+    images was found to behave as follows (for an 8 hour, 48 MHz observation)::
+
         noise = A×cos(90-elevation)^−2.0, where A is 62 μJy beam−1
 
     Parameters

@@ -108,20 +108,21 @@ class Sector(object):
         imaging_parameters : dict, optional
             Dict of imaging parameters to use instead of those defined by the field's
             parset. If supplied, the following keys are expected to be present:
-                'cellsize_arcsec': cell (pixel) size in arcsec
-                'robust': Briggs robust value
-                'taper_arcsec': taper in arcsec
-                'local_rms_strength': local RMS strength factor
-                'local_rms_window': local RMS window size
-                'local_rms_method': local RMS method
-                'min_uv_lambda': minimum uv distance cut in lambda
-                'max_uv_lambda': maximum uv distance cut in lambda
-                'mgain': cleaning gain
-                'idg_mode': IDG processing mode
-                'mem_gb': maximum memory in GB
-                'reweight': reweighting flag
-                'dd_psf_grid': DD PSF grid
-                'max_peak_smearing': maximum allowed peak smearing
+
+            - 'cellsize_arcsec': cell (pixel) size in arcsec
+            - 'robust': Briggs robust value
+            - 'taper_arcsec': taper in arcsec
+            - 'local_rms_strength': local RMS strength factor
+            - 'local_rms_window': local RMS window size
+            - 'local_rms_method': local RMS method
+            - 'min_uv_lambda': minimum uv distance cut in lambda
+            - 'max_uv_lambda': maximum uv distance cut in lambda
+            - 'mgain': cleaning gain
+            - 'idg_mode': IDG processing mode
+            - 'mem_gb': maximum memory in GB
+            - 'reweight': reweighting flag
+            - 'dd_psf_grid': DD PSF grid
+            - 'max_peak_smearing': maximum allowed peak smearing
         preapply_dd_solutions : bool, optional
             If True, use setup appropriate for case in which all DD
             solutions are preapplied before imaging is done

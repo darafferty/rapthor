@@ -23,14 +23,9 @@ The Calibrate class
 .. autoclass:: rapthor.operations.calibrate.base.Calibrate
    :members:
 
-The PredictDD class
-^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.predict.PredictDD
-   :members:
-
-The PredictDI class
-^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.predict.PredictDI
+The Predict class
+^^^^^^^^^^^^^^^^^
+.. autoclass:: rapthor.operations.predict.Predict
    :members:
 
 The Image class

@@ -414,21 +414,21 @@ The available options are described below under their respective sections.
             visibilities used in each imaging cycle can be saved without averaging 
             (unless other averaging such as bda is requested).
 
-    bda_timebase
+    bda_timebase (calibration)
         Maximum baseline used in baseline-dependent time averaging (BDA) during the
         calibration, in m (default = 20000). A value of 0 will disable the averaging.
         Depending on the solution time step used during the calibration,
         activating this option may improve the speed of the solve and lower the memory
         usage during solving.
 
-    bda_frequencybase
+    bda_frequencybase (calibration)
         Maximum baseline used in baseline-dependent frequency averaging (BDA) during the
         calibration, in m (default = 20000). A value of 0 will disable the averaging.
         Depending on the solution time step used during the calibration,
         activating this option may improve the speed of the solve and lower the memory
         usage during solving.
 
-    correct_time_frequency_smearing
+    correct_time_frequency_smearing (calibration)
         Correct for time and frequency smearing during the prediction part of
         calibration (default = ``False``). Generally, if enabled and imaging is
         to be done, the identical parameter in the ``[imaging]`` section should
@@ -476,12 +476,12 @@ The available options are described below under their respective sections.
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
 
-    bda_timebase
+    bda_timebase (imaging)
         Maximum baseline used in baseline-dependent time averaging (BDA) during
         imaging, in m (default = 20000). A value of 0 will disable time BDA.
         Activating this option may improve the speed of imaging.
 
-    bda_frequencybase
+    bda_frequencybase (imaging)
         Maximum baseline used in baseline-dependent frequency averaging (BDA) during
         imaging, in m (default = 20000). A value of 0 will disable frequency BDA.
         Activating this option may improve the speed of imaging.
@@ -548,7 +548,7 @@ The available options are described below under their respective sections.
         this is just the PyBDSF-generated masks used for filtering of the sky model (if
         :term:`filter_skymodel` = ``True``).
 
-    save_filtered_model_images
+    save_filtered_model_image
         Save images of the filtered sky model made during each imaging cycle
         (default = ``False``).
 
@@ -696,7 +696,7 @@ The available options are described below under their respective sections.
         smearing away from the image centers. Note this option is not considered if 
         :term:`average_visibilities` = ``False``.
 
-    correct_time_frequency_smearing
+    correct_time_frequency_smearing (imaging)
         Correct for time and frequency smearing during imaging (default =
         ``False``). Generally, if enabled and calibration is to be done, the
         identical parameter in the ``[calibration]`` section should also be
@@ -747,14 +747,6 @@ The available options are described below under their respective sections.
         Cluster batch system (default = ``single_machine``). Use
         ``single_machine`` when running on a single machine and ``slurm`` to use
         multiple nodes of a Slurm-based cluster.
-
-        .. note::
-
-            The Prefect/Dask Slurm path uses the launch scripts in
-            ``scripts/prod`` and ``scripts/dev`` to start a Dask scheduler and
-            workers inside one Slurm allocation. Slurm/external-Dask validation
-            is deferred until after the migration cutover; see :ref:`running`
-            for the current launch pattern.
 
     max_nodes
         When :term:`batch_system` = ``slurm``, the maximum number of nodes of the cluster
@@ -832,7 +824,7 @@ The available options are described below under their respective sections.
 
     filter_skymodel_ncores
         Number of cores to pass to the PyBDSF/LSMTool sky-model filtering step
-        during imaging (default = 15). Set to 0 to use :term:`max_threads`.
+        during imaging (default = 0). Set to 0 to use :term:`max_threads`.
         This can be reduced independently when filtering benefits from fewer
         cores than WSClean or DP3 on the same node.
 
