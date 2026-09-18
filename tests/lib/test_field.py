@@ -398,12 +398,15 @@ class TestAntennaConstraints:
         return field
 
     @pytest.fixture
-    def example_constraints_file(self, pytestconfig):
-        """Create a temporary JSON file with example antenna constraints."""
-        return pytestconfig.resource_dir / "example_antenna_constraints.json"
+    def input_constraints(self, pytestconfig, request):
+        # Resolve the input constraints filename if needed
+        input_constraints = request.param
+        if isinstance(input_constraints, str):
+            return pytestconfig.resource_dir / input_constraints
+        return input_constraints
 
     @pytest.mark.parametrize(
-        "antenna, resolve_fixture_values, expected_result",
+        "antenna, input_constraints, expected_result",
         [
             # Case: When `field.antenna_constraints` is True, load the HBA
             # constraints from file and match against the field stations. The
@@ -421,12 +424,12 @@ class TestAntennaConstraints:
             # Case: Passing a constraints file
             pytest.param(
                 "HBA",
-                example_constraints_file,
+                "example_antenna_constraints.json",
                 [
                     ["CS001HBA0", "CS002HBA0", "CS002HBA1", "CS004HBA1"],
                     ["RS106HBA", "RS208HBA", "RS305HBA", "RS307HBA"],
                 ],
-                id="LOFAR HBA constraints empty",
+                id="LOFAR HBA constraints from file",
             ),
             # When we change the `field.antenna` attribute to "LBA", using True
             # for antenna_constraints loads the default constraints for LBA,
@@ -443,13 +446,13 @@ class TestAntennaConstraints:
                 id="LOFAR LBA constraints",
             ),
         ],
-        indirect=["resolve_fixture_values"],
+        indirect=["input_constraints"],
     )
     def test_antenna_constraints(
         self,
         mock_hba_field_with_stations,
         antenna,
-        resolve_fixture_values,
+        input_constraints,
         expected_result,
     ):
         """
@@ -457,15 +460,13 @@ class TestAntennaConstraints:
         LOFAR HBA test dataset when required, and that an error is raised when
         we attempt to use antenna constraints for LBA on HBA data.
         """
-
         # Arrange
-        field = mock_hba_field_with_stations
-        field.antenna = antenna
-        field.antenna_constraints = resolve_fixture_values
+        mock_hba_field_with_stations.antenna = antenna
+        mock_hba_field_with_stations.antenna_constraints = input_constraints
 
         with get_context(expected_result):
             # Act
-            result = list(field.resolve_antenna_constraints())
+            result = list(mock_hba_field_with_stations.resolve_antenna_constraints())
             # Assert
             assert result == expected_result
 
