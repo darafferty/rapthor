@@ -119,10 +119,6 @@ markers = [
 [tool.setuptools]
 # package-data is specified below in section [tool.setuptools.package-data]
 include-package-data = false
-script-files = [
-    "scripts/dev/run-rapthor-slurm-dev.sbatch",
-    "scripts/prod/run-rapthor-slurm.sbatch",
-]
 
 [tool.setuptools.packages.find]
 include = ["rapthor*"]
