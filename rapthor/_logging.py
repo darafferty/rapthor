@@ -37,8 +37,14 @@ def set_level(level):
     """
     Change verbosity of console output
     """
-    level = getattr(logging, level.upper(), logging.NOTSET)
-
+    if level == "warning":
+        level = logging.WARNING
+    elif level == "info":
+        level = logging.INFO
+    elif level == "debug":
+        level = logging.DEBUG
+    else:
+        level = logging.NOTSET
     logging.root.setLevel(logging.DEBUG)
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     for logger in loggers:
@@ -54,7 +60,10 @@ class Whitelist(logging.Filter):
     """
 
     def filter(self, record):
-        return "rapthor" in record.name and "executable_" not in record.name
+        if "rapthor" in record.name and "executable_" not in record.name:
+            return True
+        else:
+            return False
 
 
 def set_log_file(log_file):
@@ -65,6 +74,7 @@ def set_log_file(log_file):
     fh.setLevel(logging.DEBUG)  # file always logs everything
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
     fh.setFormatter(formatter)
+    fh.emit = add_coloring_to_emit_ansi(fh.emit)
     fh.addFilter(Whitelist())
     logging.root.addHandler(fh)
 
@@ -77,7 +87,6 @@ ch.setFormatter(formatter)
 ch.emit = add_coloring_to_emit_ansi(ch.emit)
 ch.set_name("console")
 ch.addFilter(Whitelist())
-logging.root.handlers.clear()  # Clear the default handler
 logging.root.addHandler(ch)
 
 # Set root level (the handlers will set their own levels)
