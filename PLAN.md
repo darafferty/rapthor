@@ -1,14 +1,14 @@
 # Rapthor Switch-Readiness Plan
 
-Status snapshot: 2026-08-20.
+Status snapshot: 2026-09-18. Manual testing is in progress and is the main
+remaining switch blocker.
 
 ## Goal
 
 Make the current Prefect/Dask branch the branch developers and users want to
-run: scientifically trustworthy, faster or no worse than `master` on the
-tested paths, easier to observe, easier to debug, and pleasant to develop.
-
-The user-facing workflow should remain:
+run: scientifically trustworthy, faster or no worse than `master` on the tested
+paths, easier to observe, easier to debug, and pleasant to develop. The
+user-facing workflow stays:
 
 ```bash
 rapthor input.parset
@@ -17,61 +17,6 @@ rapthor input.parset
 This branch should replace `master` only when the decision is evidence-driven:
 science equivalence, performance equivalence, manual testing, documentation,
 and known limitations must all be visible to reviewers.
-
-## Current Decision Status
-
-**Science:** accepted for the covered LOFAR HBA self-calibration contract.
-
-- The latest stakeholder-facing summary is `EQUIVALENCE_REPORT.md`.
-- Detailed science evidence lives under
-  `docs/source/development/science_equivalence_runs/`.
-- Repeatability-aware branch comparisons now generate
-  `science-equivalence-report.*`, `performance-equivalence-report.*`, and
-  `repeatability-summary.*` from the same branch executions.
-- The July master-sync and dependency changes now have targeted integration,
-  current-only frequency-BDA, saved-reference, and controlled
-  branch-vs-master evidence. The post-sync gate retains one classified
-  EveryBeam baseline shift and one intentional WSClean channel-coverage fix;
-  neither is an unexplained current-branch regression.
-- The August master sync is verified at current commit `59be6d94` against
-  exact master commit `b307e769`. Controlled BDA-frequency-limit and
-  normalization comparisons pass strictly; old-reference normalization and
-  peeling image residuals remain documented external-tool baseline warnings.
-- The August 7-14 `master` changes are ported into the Prefect/Dask
-  architecture: the production imaging frequency-BDA default, the official
-  IERS/WSRT measures URL, robust RMS diagnostics for facets outside an image,
-  and advisory/strict DP3 calibration memory checks. Legacy solve toggles and
-  retired CWL mechanics were deliberately not reintroduced.
-- The default frequency-BDA path and the generated-initial-sky-model grouping
-  path are now verified against exact ``master`` commit ``043c15d4``. Three
-  repetitions per branch pass for the unaveraged grouping control, the
-  production imaging-BDA grouping case, and the targeted BDA frequency-limit
-  scenario. Compact reports are retained under
-  ``runs/equivalence-gate-20260820-august-sync/`` and the rerunnable inputs are
-  versioned under ``tests/resources/equivalence/``.
-
-**Performance:** accepted for the current optimisation phase.
-
-- Phase-only core gate passes: current median runtime was `303.160 s` versus
-  `429.557 s` for `master` (`-29.425%`).
-- DD phase plus DI full-Jones gate passes: current median runtime was
-  `94.004 s` versus `151.183 s` for `master` (`-37.821%`).
-- Detailed performance evidence lives under
-  `docs/source/development/performance_equivalence_runs/`.
-
-**Master-sync verification and manual testing:** not complete. These are the
-main remaining switch blockers.
-
-The next phase is to make it easy for developers who were not involved in the
-refactor to run the branch, adapt their own parsets, inspect the new
-Prefect/Dask dashboards, and report whether the branch is ready to replace
-`master` for everyday use.
-
-**Multi-sector mosaic:** low priority for the switch decision.
-
-The path should retain targeted smoke/equivalence coverage, but it is rarely
-used on `master` and should not block switching unless it exposes a broader
-single-sector, imaging, or product-contract regression.
 
 ## Switch Criteria
 
@@ -82,13 +27,14 @@ The branch is ready to recommend over `master` when all of these are true:
    results, links to compact archived reports, explains accepted differences,
    and lists caveats plainly.
 2. **Representative manual tests pass.**
-   Developers outside the refactor run the current branch with real parsets
-   and record outcomes, adaptations needed, runtime experience, output sanity,
-   and dashboard/log usability.
+   Developers outside the refactor run the current branch with real parsets and
+   record outcomes, adaptations needed, runtime experience, output sanity, and
+   dashboard/log usability.
 3. **Parset migration is documented.**
-   Users can adapt a `master` parset quickly, including calibration strategy
-   changes, runtime options, existing h5parm/image-only workflows, local versus
-   external Dask, and Prefect dashboard setup.
+   `docs/source/migrating_from_cwl.rst` lets users adapt a `master` parset
+   quickly: calibration strategy changes, runtime options, existing
+   h5parm/image-only workflows, local versus external Dask, and Prefect
+   dashboard setup.
 4. **Runtime UX is low-friction.**
    `rapthor input.parset` works with no existing Prefect server or Dask
    cluster, and users can opt into persistent dashboards or external Dask with
@@ -108,413 +54,130 @@ The branch is ready to recommend over `master` when all of these are true:
 7. **Deployment packaging is available.**
    Developers can test without Spack using the dev container or an existing
    Python/tool environment plus editable install. Production-like deployments
-   have a Spack recipe in `../ska-sdp-spack/packages/` that can install/load
-   this Prefect/Dask branch with the required Python and external-tool
-   dependencies, without replacing the existing `py-rapthor` recipe until the
-   switch decision is made.
+   use the `py-rapthor-prefect-dask` recipe in `../ska-sdp-spack/packages/`,
+   leaving the legacy `py-rapthor` recipe in place until the switch decision is
+   made.
 
-## Outstanding Work Before Switching
+## Decision Status
 
-Do these in order unless a regression blocks progress. Interactive testing on
-developer machines is a first-class path: many testers will run `rapthor`
-directly without Slurm, using local/no-server Prefect and local Dask. Slurm,
-external Dask, and MPI WSClean are a separate production-readiness track.
+**Science: in progress** — automated gates pass, but final acceptance is part
+of manual testing. For the covered LOFAR HBA self-calibration contract, the
+August sync is verified at current commit `59be6d94` against exact `master`
+commit `b307e769`; the default frequency-BDA and generated-initial-sky-model
+paths are verified against `043c15d4` with three repetitions per branch. Two
+classified differences remain, neither an unexplained current-branch
+regression: an EveryBeam baseline shift in old-reference normalization, and an
+intentional WSClean channel-coverage fix where `master` leaves two of eight
+channels unpredicted by using inclusive endpoints with WSClean's end-exclusive
+`-channel-range`. Science is accepted once testers running their own parsets on
+real data confirm that the products hold up.
 
-## Immediate Task List
+**Performance: accepted** for the current optimisation phase.
 
-- [x] **Port the August 7-14 master changes.**
-  Port `3fd9e69f`, `bc2c65a7`, `da442dfc`, and the applicable behavior from
-  `043c15d4`. Keep calibration solve selection strategy-only. The
-  `e8873f19` flat-noise symlink is CWL-specific; the migrated helper already
-  supplies explicit RMS output paths and now has a regression test proving it.
-  The strategy settings from the integration-speed commit `c3fac822` were
-  already present, so do not destabilize the branch's established CI split.
-- [x] **Add generated-initial-sky-model equivalence coverage.**
-  Add paired ``initial-skymodel-regroup`` and
-  ``initial-skymodel-bda-regroup`` option-matrix scenarios. Both generate the
-  initial image and sky model, apply the 1 Jy/one-direction grouping contract,
-  and continue into calibration; only the BDA scenario averages the imaging
-  input. Include ``initial_image`` diagnostics in branch reports and compare
-  source identities, patch membership, positions, fluxes, spectral terms, and
-  shape parameters rather than accepting equal source/patch counts alone.
-- [x] **Run and archive the generated-initial-sky-model pair.**
-  Compare the two new scenarios against the exact production `master` ref
-  used by the manual ICAL comparison. If the control passes and the BDA case
-  differs, localize the first divergence across the prepared MS, initial
-  WSClean products, PyBDSF catalog, and grouped sky model. Do not classify the
-  gap as closed until both scenarios pass or the difference has a documented,
-  scientifically reviewed explanation. Both three-repetition gates pass:
-  9/9 cross-branch pairs are repeatability-bounded in the no-imaging-BDA
-  control; the production-BDA case has two strict passes and 7/9
-  repeatability-bounded pairs. Source identity, patch membership, grouped
-  direction, source count, flux, spectral, h5parm, FITS, catalog, and initial
-  image-diagnostic evidence remains visible in the reports.
-- [x] **Verify the August 14 master sync.**
-  In the prepared dev container, run the focused cluster, calibration-memory,
-  parset/config, pipeline-flow, FITS/facet-diagnostics, skymodel-filter, image,
-  and calibration suites. Run the strict OOM preflight integration case added
-  by this sync and confirm that no calibration command starts. Then run the
-  default imaging path with frequency BDA and archive the targeted science
-  comparison against exact `master` commit `043c15d4`. A full gate is only
-  required if that targeted comparison exposes unexplained product differences.
-  The focused suites pass (354 ownership-boundary tests, 29 field/facet tests,
-  and 71 equivalence-harness tests). The strict OOM integration case passes and
-  confirms that calibration never starts. The frequency-BDA gate passes all
-  9/9 cross-branch pairs; current median runtime is 125.944 s versus 298.744 s
-  for master in this environment.
+- Phase-only core gate: `303.160 s` current versus `429.557 s` `master`
+  (`-29.425%`).
+- DD phase plus DI full-Jones gate: `94.004 s` versus `151.183 s` (`-37.821%`).
+- Frequency-BDA gate: 9/9 cross-branch pairs pass; `125.944 s` versus
+  `298.744 s` in that environment.
 
-- [x] **Port the August 6 master build fix.**
-  Port `488f5c00` consistently to all current-branch container builds. This
-  historical fallback was subsequently superseded by `bc2c65a7`; all maintained
-  builds now use the official `https://iers.astron.nl/WSRT_Measures.ztar`
-  endpoint without the temporary CI-artifact fallback.
-- [x] **Verify the August master sync.**
-  The three commits added to `master` after the July sync have been ported:
-  calibration-aware imaging/BDA frequency limits, clearer built-in strategy
-  documentation, and removal of DP3's unsupported `writefullresflag` option.
-  Focused unit and command-contract tests pass, as does the real-DP3
-  frequency-only imaging-BDA integration scenario. The fresh saved-reference
-  and exact branch-vs-master evidence is archived under
-  `docs/source/development/science_equivalence_runs/2026-08-04-august-master-sync/`.
-  Same-stack BDA-frequency-limit and normalization scenarios pass strictly;
-  the retained old-reference normalization and peeling image residuals are
-  classified without changing tolerances.
-- [x] **Verify the recent master-sync changes.**
-  Add the focused unit and integration coverage in step 0, strengthen the two
-  affected branch-vs-master option scenarios, and archive a fresh science-gate
-  result before beginning the external manual-test wave.
-- [x] **Make interactive testing frictionless.**
-  Check `docs/source/development/manual_testing_prefect_dask.rst` from the
-  perspective of a developer on a non-Slurm system. It must include the shortest
-  path for `rapthor input.parset`, unique working directories, optional local
-  Prefect dashboard, local Dask settings, run tags, install/environment options
-  for non-Spack testers, and what to inspect.
-- [ ] **Create a manual-test reporting template.**
-  Add a compact copy/paste template for testers to record branch/commit,
-  parset/strategy, runtime mode, required parset edits, output sanity, dashboard
-  observations, and switch recommendation.
-- [ ] **Prepare the Spack/module path.**
-  Add the new `py-rapthor-prefect-dask` recipe in
-  `../ska-sdp-spack/packages/`, add/verify `py-prefect-dask`, and run the
-  module-load smoke checks listed below. This is required for production-like
-  staging, but it should not block interactive testers who already have a
-  working dev container or site environment.
-- [ ] **Run the first interactive tester wave.**
-  Ask at least two developers outside the refactor to run their own
-  single-machine or login-node interactive parsets without Slurm. Capture
-  whether they can get from `master` parset to successful current-branch run
-  without help.
-- [ ] **Run the production-style no-server concurrency check.**
-  Launch two independent Rapthor jobs at the same time with no `PREFECT_API_URL`
-  and unique working directories. Confirm they use isolated Prefect state and
-  do not collide on local SQLite state or output paths.
-- [ ] **Stage the multi-node path.**
-  Adapt the prototype Slurm/Dask script, run one representative allocation with
-  external Dask and `imaging.use_mpi = True`, and confirm WSClean MPI uses the
-  allocated nodes without oversubscription.
+**Manual testing: in progress.** This is the main remaining switch blocker.
+Interactive testing on developer machines is a first-class path: many testers
+run `rapthor` directly without Slurm, using local/no-server Prefect and local
+Dask. Slurm, external Dask, and MPI WSClean are a separate
+production-readiness track.
+
+**Multi-sector mosaic: low priority for the switch decision.** Keep targeted
+smoke/equivalence coverage, but it should not block switching unless it exposes
+a broader single-sector, imaging, or product-contract regression.
+
+## Remaining Work
+
 - [ ] **Demonstrate multi-node dashboards locally.**
   Run Rapthor through Slurm on multiple nodes and view both dashboards in a
   local browser: Prefect for flow/task state and Dask for worker/task
   occupancy. The Slurm launcher should print or write copy/paste SSH tunnel
-  commands for the Prefect dashboard and Dask dashboard.
+  commands for both.
+- [ ] **Benchmark the WSClean multi-band and frequency-BDA scenarios** if
+  performance claims will be made for them. The existing core performance gates
+  remain applicable to the unchanged default paths and need only be refreshed
+  at the final switch gate.
 - [ ] **Update the decision evidence.**
-  Summarize manual-test outcomes, install method used by each tester,
+  Summarize manual-test outcomes, the install method used by each tester,
   Spack/module smoke checks, and Slurm staging status in
   `EQUIVALENCE_REPORT.md` or a linked switch-readiness report.
-- [ ] **Run final gates.**
-  Refresh non-integration tests, representative integration tests, science
-  equivalence, performance equivalence, and the current CI benchmark scenario
-  set after the final switch-readiness edits.
+- [ ] **Run final gates** after the final switch-readiness edits:
 
-### 0. Verify The Recent Master Sync
+  ```bash
+  python3 -m ruff check --fix --select I <touched-python-files>
+  python3 -m ruff format <touched-python-files>
+  python3 -m pytest -m "not integration" tests
+  RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
+    python3 -m pytest -m integration -vv -ra --durations=0 \
+    tests/integration tests/operations/integration
+  ```
 
-The latest archived science gate is from 2026-07-11. The recent master sync and
-LSMTool dependency update therefore need targeted evidence before the existing
-science decision is applied to the staged branch.
+  Then rerun or refresh the saved-reference science gate if scientific products
+  changed, branch repeatability/equivalence for the main decision scenarios,
+  the current CI benchmark scenario set, and at least one real-user manual
+  parset.
 
-- [x] Add direct tests for WSClean prediction frequency chunking: one channel,
-  exact division, an uneven final chunk, and complete non-overlapping channel
-  coverage.
-- [x] Add a `Field` test with otherwise compatible observations that have
-  different station diameters. Assert successful construction, the mean
-  diameter, and the resulting FWHM. Add an end-to-end mixed-diameter scenario
-  only if this input shape is expected in near-term production use.
-- [x] Add a focused integration test that enables WSClean prediction with a
-  bandwidth smaller than the generated MS bandwidth. Assert multiple
-  prediction bands, their channel ranges, the `-no-reorder` argument, successful
-  calibration, and the expected output products.
-- [x] Add a focused integration test for frequency-only imaging BDA with
-  `imaging.bda_timebase = 0` and `imaging.bda_frequencybase > 0`. Assert the
-  production DP3 command, the calibration-derived `bdaavg.minchannels` floor,
-  and the prepared MS frequency layout.
-- [x] Update the branch option matrix so `prediction-path-wsclean` uses a
-  non-default bandwidth that creates multiple bands, and add a separate
-  frequency-only imaging-BDA scenario. The latter is explicitly skipped until
-  the WSClean limitation below is resolved. Keep command semantics in
-  integration assertions because the equivalence comparator intentionally
-  compares operations and scientific products rather than exact tool commands.
-- [x] Resolve frequency-only imaging BDA after DP3 preparation. Preserve
-  master's intended BDA and primary-beam semantics: pass WSClean's required
-  `-reorder`, retain the calibration-derived `image_bda_minchannels` safeguard,
-  and require EveryBeam 0.8.3 or later. Earlier EveryBeam releases construct a
-  single-band telescope model and reject DP3's multi-SPW frequency-BDA layout.
-  Master also omits `-reorder`; both are documented reference-branch bugs, so
-  this path needs current-branch product validation rather than pretending a
-  failing master run is an equivalence reference. Rebuild the dev container
-  before running that validation.
-- [x] Rebuild the dev container and run the frequency-only imaging-BDA focused
-  integration scenario through WSClean and primary-beam product generation.
-  Keep its branch-vs-master option-matrix row skipped because master fails this
-  path; archive current-branch command and product evidence instead. The
-  EveryBeam 0.8.3 run passed on 2026-07-16 with a two-SPW imaging MS
-  (`NUM_CHAN = [4, 8]`), WSClean `-reorder` plus facet-beam application, and a
-  fully finite primary-beam FITS product. Evidence is archived under
-  `docs/source/development/science_equivalence_runs/2026-07-16-frequency-only-imaging-bda-current/`.
-- [x] Rerun and archive the full saved-reference science gate after the LSMTool
-  and EveryBeam updates, then rerun the affected WSClean-prediction
-  branch-vs-master scenario. Six saved scenarios pass strictly. The old
-  normalization cube shows a stable, edge-concentrated EveryBeam baseline
-  shift, while a same-stack `master`/current normalization comparison passes.
-  The WSClean prediction comparison diverges because `master` leaves two of
-  eight channels unpredicted by using inclusive endpoints with WSClean's
-  end-exclusive `-channel-range`; current covers all channels exactly once.
-  The raw reports and classifications are archived under the dated science
-  equivalence directories, and the stakeholder report/history are updated.
-- [ ] After science equivalence passes, benchmark the WSClean multi-band and
-  frequency-BDA scenarios if performance claims will be made for them. The
-  existing core performance gates remain applicable to the unchanged default
-  paths and need only be refreshed at the final switch gate.
-- [x] **Persist external-command output without relying on a Prefect server.**
-  Capture combined stdout/stderr for every external command under
-  `dir_working/logs/<operation>/<task-run-name>.log`, retain command and exit
-  metadata in each readable log, and link the file from `commands.jsonl`.
-  `prefect_stream_output` controls forwarding to Prefect only; durable logs are
-  controlled by `prefect_log_commands` and remain available for no-dashboard
-  and failed runs.
-- [ ] Decide whether SKA-Low is part of the branch-switch scope. If it is,
-  restore/modernize the SKA-Low defaults and add a representative smoke and
-  equivalence path. If it is not, record SKA-Low as an explicit limitation;
-  the current science evidence covers LOFAR HBA.
+## Completed
 
-### 1. Manual Testing And Parset Migration Guide
-
-Exercise and harden the manual-testing guide for developers testing this branch
-with their own data. The first draft lives at
-`docs/source/development/manual_testing_prefect_dask.rst`; keep it concise and
-make sure it includes:
-
-- quick-start commands for the dev container, a persistent Prefect dashboard,
-  local Dask, and `rapthor input.parset`
-- a clear interactive path for developers testing on systems without Slurm
-- non-Spack setup guidance: dev container, existing site module/environment, or
-  editable install once external astronomy tools are already available
-- the smallest recommended parset edits for moving from `master` to the
-  current branch
-- how to tag runs with `prefect_run_tags`
-- how to choose local Dask versus external Dask
-- how to run several production jobs without a Prefect server: no
-  `PREFECT_API_URL`, unique working directories, isolated temporary Prefect
-  state per process, and optional external Dask where site policy allows it
-- how to stage multi-node Slurm runs with external Dask and MPI WSClean,
-  including the requirement that any Prefect API used by remote Dask workers is
-  network-reachable from the allocation
-- how to enable or disable command logging, command profiling, FITS previews,
-  and postage-stamp previews
-- how to adapt calibration configuration to the strategy-driven
-  `calibration_strategy` interface
-- image-only/applycal guidance: DI h5parm products are pre-applied; DD products
-  are applied on the fly when matching directions are available
-- where outputs, logs, command records, Prefect artifacts, Dask reports, and
-  restart markers live
-- how to record manual test outcomes and report issues
-
-### 2. Manual Test Matrix For Switch Confidence
-
-Ask developers not involved in the refactor to run a small but meaningful set
-of real workflows:
-
-- at least two interactive non-Slurm runs on different developer systems, using
-  local/no-server Prefect and local Dask
-- one default-like single-sector self-calibration parset
-- one phase-only or calibration-light parset
-- one DD phase plus DI full-Jones or otherwise mixed-calibration parset
-- one image-only/applycal parset using existing DI and/or DD solutions
-- one parset using a custom `calibration_strategy`
-- one local dashboard run with `PREFECT_API_URL`
-- two independent no-server runs submitted at the same time, each with a unique
-  working directory, to confirm production-style parallel launches do not share
-  Prefect SQLite state
-- one external-Dask or Slurm staging run when the environment is available
-- one multi-node Slurm imaging run with `imaging.use_mpi = True`, confirming
-  WSClean MPI launches across the allocated nodes and does not oversubscribe
-  node/thread resources
-
-For each run, capture:
-
-- branch/commit, parset, strategy, input-data summary, and run tag
-- whether any parset changes were required
-- return code and final operation state
-- notable dashboard/log/artifact observations
-- output sanity checks by the scientist who owns the data
-- any performance surprises or operational friction
-
-Multi-sector mosaic should be smoke-tested only if a tester already has a
-relevant workflow. It is useful coverage, but it is not a primary switch
-criterion.
-
-### 3. Evidence-Driven Decision Pack
-
-Prepare a reviewer/stakeholder pack before recommending the switch:
-
-- latest `EQUIVALENCE_REPORT.md`
-- latest science gate reports
-- latest performance gate reports
-- manual test matrix summary
-- list of required parset adaptations
-- list of accepted differences from `master`
-- list of caveats and deferred work
-- clear recommendation: switch now, switch with caveats, or keep `master`
-
-This should be written for people who understand self-calibration and software
-risk, but do not know the internal refactor history.
-
-### 4. Install Paths For Manual, Staging, And Production Tests
-
-Support two installation paths during switch readiness:
-
-- **Non-Spack interactive testing:** developers may use the dev container, an
-  existing site environment/module set, or an editable install of this branch.
-  This is the fastest way to get feedback from people testing real parsets on
-  systems without Slurm.
-- **Spack/module staging:** production-like tests should use a loadable Spack
-  environment so Slurm/MPI runs can be reproduced and compared with legacy
-  deployments.
-
-Add a new Spack package under `../ska-sdp-spack/packages/` as an alternative to
-the existing `py-rapthor` recipe. Recommended working name:
-`py-rapthor-prefect-dask` unless the deployment team prefers another module
-name.
-
-Recipe requirements:
-
-- install this branch by tag/commit with `no_cache=True`, because Rapthor uses
-  `setuptools_scm`
-- expose the `rapthor` and `concat_linc_files` console scripts
-- keep the old `py-rapthor` recipe untouched until the branch switch is
-  approved
-- remove the legacy `py-toil`/CWL dependency from the new recipe
-- include Prefect/Dask runtime dependencies: `py-prefect`, `py-prefect-shell`,
-  `py-dask+distributed+diagnostics`, and add/verify a `py-prefect-dask` recipe
-  if the Spack repository does not already provide it
-- include current Rapthor Python dependencies from `pyproject.toml`, including
-  `py-bdsf`, `py-casacore`, `py-losoto`, `py-lsmtool`, `py-reproject`,
-  `py-rtree`, `py-shapely`, `py-h5py`, `py-pyyaml`, and compatible
-  `py-fastapi`
-- include external runtime tools: `dp3`, `wsclean` with MPI support including
-  `wsclean-mp`, `cfitsio+utils`, `aoflagger`, and the EveryBeam/Casacore
-  dependency stack required by DP3/WSClean
-- add module-load smoke checks: `rapthor --help`, `concat_linc_files --help`,
-  Python imports for `rapthor`, `prefect`, `prefect_dask`, and
-  `dask.distributed`, plus `DP3 --version`, `wsclean --version`, and
-  `wsclean-mp --version`
-- document the exact `spack install` and `spack load` commands used for manual
-  and Slurm staging tests
-
-### 5. Runtime UX Polish For Testers
-
-Before broad manual testing, remove avoidable friction:
-
-- make sure `rapthor input.parset` logs the selected runtime mode, Prefect API
-  mode, Dask scheduler/dashboard, run tags, and working directory clearly
-- make missing external-tool messages actionable
-- make preflight/dry-run output easy to scan
-- keep dashboard/task names readable and stable
-- ensure command timing and task timing artifacts are easy to find
-- verify reset/resume instructions still match the Prefect/Dask runtime
-- add or keep a focused runtime smoke test proving concurrent no-server
-  launches use isolated Prefect homes and independent working directories
-- keep Slurm/MPI preflight messages clear: show allocated nodes, Dask scheduler,
-  worker count, `imaging.use_mpi`, requested MPI processes, and WSClean thread
-  counts before imaging starts
-- adapt the Slurm/Dask launch pattern from the Prefect prototype scripts as
-  the staging template: use a Dask scheduler on the first allocated node, one
-  Dask worker per node, health checks before `rapthor` starts, explicit
-  dashboard tunnel instructions for a local browser demo, and a Prefect API URL
-  that is reachable by remote workers when a persistent/temporary dashboard is
-  used. Local checkout reference: `../ska-sdp-rapthor-prefect-prototype/aws-run-poc-multi-node.sbatch`
-  (the same prototype may be available as `../rapthor-prefect-prototype` in
-  other workspaces).
-
-### 6. Benchmark And Performance Follow-Up
-
-Do not start speculative optimisation until manual testers can run the branch.
-When optimisation resumes, focus on the currently visible image-side
-bottlenecks:
-
-- `filter_skymodel`
-- WSClean image runs and resource/concurrency policy
-- calibration plotting only if repeated real runs show it matters
-
-Benchmark rule:
-
-- keep the default automatic `ci-benchmark`
-- use `ci-benchmark-image-products` when changing image products,
-  `filter_skymodel`, WSClean image behavior, or image post-processing
-- use `ci-benchmark-predict-chunks` only for prediction scheduling changes
-- use `ci-benchmark-wsclean-predict` only for calibration prediction setup or
-  WSClean-predict paths
-- leave many-sector mosaic benchmarks out of automatic CI unless changing that
-  path
-
-### 7. Final Pre-Switch Verification
-
-Before recommending the branch as the new default:
-
-```bash
-python3 -m ruff check --fix --select I <touched-python-files>
-python3 -m ruff format <touched-python-files>
-python3 -m pytest -m "not integration" tests
-RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
-  python3 -m pytest -m integration -vv -ra --durations=0 \
-  tests/integration tests/operations/integration
-```
-
-Then rerun or refresh:
-
-- the saved-reference science gate if scientific products changed
-- branch repeatability/equivalence for the main decision scenarios
-- the current CI benchmark scenario set
-- at least one real-user manual parset after the final code changes
-
-## What Is Already Done
-
-- Owner-package execution architecture is in place for image, calibrate,
-  concatenate, predict, mosaic, and pipeline flows.
-- Operation adapters are thin; command builders, payload validation, output
-  discovery, migrated helper logic, and flow wiring live under
-  `rapthor/execution/<owner>/`.
-- Runtime bootstrap supports no-server local runs, explicit Prefect API runs,
-  local Dask, external Dask, and run tags.
-- No-server runs blank `PREFECT_API_URL`, disable Prefect analytics, and use an
-  isolated temporary Prefect home for each process, which is the right interim
-  production mode until a shared Prefect server has a Postgres backend.
-- Resource validation understands MPI command requests and checks that MPI
-  WSClean is exclusive and does not request more processes than the configured
-  Slurm node allocation.
-- A new Spack recipe is still required for this branch. The existing
-  `py-rapthor` recipe in `../ska-sdp-spack/packages/` is the legacy package and
-  still carries the old Toil/CWL dependency.
-- Calibration solve order is strategy-driven through `calibration_strategy`.
-- Legacy implicit solve-slot behavior has been replaced with explicit solve
-  types and order.
-- DI scalar phase, DI diagonal slow-gain, and DI full-Jones products are
-  pre-applied for image-only workflows; DD products are applied on the fly when
-  directions match.
-- Task observability is much stronger: readable flow/task names, tool tags,
-  task timing JSONL, command timing artifacts, and persistent postage-stamp
-  preview PNGs.
-- Performance-equivalence gates pass for phase-only core and DD/full-Jones
-  scenarios.
+- **Execution architecture.** Owner-package execution for image, calibrate,
+  concatenate, predict, mosaic, and pipeline flows. Operation adapters are
+  thin; command builders, payload validation, output discovery, migrated helper
+  logic, and flow wiring live under `rapthor/execution/<owner>/`.
+- **Runtime bootstrap.** No-server local runs, explicit Prefect API runs, local
+  Dask, external Dask, and run tags. No-server runs blank `PREFECT_API_URL`,
+  disable Prefect analytics, and use an isolated temporary Prefect home per
+  process — the right interim production mode until a shared Prefect server has
+  a Postgres backend. Resource validation understands MPI command requests and
+  checks that MPI WSClean is exclusive and stays within the configured Slurm
+  node allocation.
+- **Calibration semantics.** Solve order is strategy-driven through
+  `calibration_strategy`, replacing legacy implicit solve slots with explicit
+  types and order. DI scalar phase, DI diagonal slow-gain, and DI full-Jones
+  products are pre-applied for image-only workflows; DD products are applied on
+  the fly when directions match.
+- **Observability.** Readable flow/task names, tool tags, task timing JSONL,
+  command timing artifacts, persistent postage-stamp previews, and durable
+  per-command logs at `dir_working/logs/<operation>/<task-run-name>.log` linked
+  from `commands.jsonl`. `prefect_stream_output` controls forwarding to Prefect
+  only; `prefect_log_commands` controls the durable logs, so no-dashboard and
+  failed runs keep their output.
+- **Master syncs (July and August).** Ported: calibration-aware imaging/BDA
+  frequency limits, the production imaging frequency-BDA default, the official
+  `https://iers.astron.nl/WSRT_Measures.ztar` measures URL, robust RMS
+  diagnostics for facets outside an image, advisory/strict DP3 calibration
+  memory checks, and removal of DP3's unsupported `writefullresflag`. Legacy
+  solve toggles and retired CWL mechanics were deliberately not reintroduced;
+  the `e8873f19` flat-noise symlink was CWL-specific and the migrated helper
+  supplies explicit RMS output paths with a regression test. Focused suites
+  pass (354 ownership-boundary, 29 field/facet, and 71 equivalence-harness
+  tests), as does the strict OOM preflight case, which confirms that no
+  calibration command starts.
+- **Generated-initial-sky-model equivalence.** Paired
+  `initial-skymodel-regroup` and `initial-skymodel-bda-regroup` scenarios
+  compare source identities, patch membership, positions, fluxes, spectral
+  terms, and shapes rather than counts alone. Both three-repetition gates pass:
+  9/9 cross-branch pairs are repeatability-bounded in the no-imaging-BDA
+  control; the production-BDA case has two strict passes and 7/9
+  repeatability-bounded pairs.
+- **Frequency-only imaging BDA.** Resolved after DP3 preparation while
+  preserving master's intended BDA and primary-beam semantics: pass WSClean's
+  required `-reorder`, retain the calibration-derived `image_bda_minchannels`
+  safeguard, and require EveryBeam 0.8.3 or later, since earlier releases build
+  a single-band telescope model and reject DP3's multi-SPW layout. Validated on
+  2026-07-16 with a two-SPW imaging MS (`NUM_CHAN = [4, 8]`), facet-beam
+  application, and a fully finite primary-beam FITS product. The
+  branch-vs-master row stays skipped because `master` fails this path, which is
+  a documented reference-branch bug rather than an equivalence reference.
+- **Testing and deployment paths.** The interactive-testing guide, the
+  `py-rapthor-prefect-dask` and `py-prefect-dask` Spack recipes with
+  module-load smoke checks, the first interactive tester wave, the two-job
+  no-server concurrency check (isolated Prefect state, no collisions on local
+  SQLite state or output paths), and one representative Slurm allocation with
+  external Dask and `imaging.use_mpi = True` without oversubscription.
 
 ## Current Caveats
 
@@ -542,35 +205,41 @@ as everyday-user problems. They are kept here so they are not lost while the
 main plan stays focused on the branch-switch decision.
 
 - **Image-side performance:** target `filter_skymodel` first, then WSClean
-  image resource/concurrency policy. Relevant evidence is in
-  `docs/source/development/benchmark_baselines/`, especially the 2026-07-08 to
-  2026-07-11 benchmark reports.
-- **Calibration plotting:** optimize only if larger real runs keep showing it
-  as a meaningful post-processing cost.
+  image resource/concurrency policy. Calibration plotting is worth optimizing
+  only if larger real runs keep showing it as a meaningful post-processing
+  cost.
 - **WSClean prediction parallelism:** investigate splitting the internal
   frequency/facet loop inside WSClean prediction tasks only with a targeted
   benchmark and explicit resource limits.
 - **Multi-sector mosaic:** keep smoke/stored-reference coverage available, but
   treat this as lower priority than common single-sector paths.
-- **Slurm/MPI production hardening:** adapt the prototype multi-node launch
-  pattern, validate external Dask workers on each allocated node, and prove MPI
-  WSClean imaging in staging.
 - **Persistent Prefect service:** set up a shared Prefect server backed by
   Postgres so production users can monitor multiple parallel Rapthor jobs from
   one Prefect UI without relying on local SQLite state.
-- **Spack deployment:** add the new Prefect/Dask branch recipe and module-load
-  smoke checks before production-style manual testing.
 - **Deferred code tidying:** split or simplify modules such as
   `rapthor.execution.image.diagnostic_calculation`,
   `rapthor.execution.image.flux_normalization`,
   `rapthor.execution.calibrate.h5parm_combination`,
-  `rapthor.operations.calibrate.base`, and `rapthor.operations.image.base`
-  only when changing behavior or when profiling/maintenance pressure justifies
-  the edit.
+  `rapthor.operations.calibrate.base`, and `rapthor.operations.image.base` only
+  when changing behavior or when profiling/maintenance pressure justifies the
+  edit.
 - **Testing suite polish:** keep architecture and regression guards focused on
   payload serializability, thin operation adapters, task-boundary visibility,
   calibration strategy semantics, image-only apply behavior, and branch
   equivalence reporting.
+
+## Benchmark Scenario Rule
+
+- keep the default automatic `ci-benchmark`
+- use `ci-benchmark-image-products` when changing image products,
+  `filter_skymodel`, WSClean image behavior, or image post-processing
+- use `ci-benchmark-predict-chunks` only for prediction scheduling changes
+- use `ci-benchmark-wsclean-predict` only for calibration prediction setup or
+  WSClean-predict paths
+- leave many-sector mosaic benchmarks out of automatic CI unless changing that
+  path
+
+Do not start speculative optimisation until manual testers can run the branch.
 
 ## Evidence Locations
 
@@ -578,11 +247,15 @@ main plan stays focused on the branch-switch decision.
 - Science contract: `docs/source/development/science_equivalence_contract.rst`
 - Performance contract:
   `docs/source/development/performance_equivalence_contract.rst`
-- Science reports: `docs/source/development/science_equivalence_runs/`
-- Performance reports: `docs/source/development/performance_equivalence_runs/`
-- Benchmark reports: `docs/source/development/benchmark_baselines/`
-- Current DD/full-Jones manual inspection run:
-  `runs/equivalence-gate-dd-phase-plus-di-fulljones-20260712/`
+- Archived science, performance, and benchmark reports (the
+  `science_equivalence_runs/`, `performance_equivalence_runs/`, and
+  `benchmark_baselines/` trees under `docs/source/development/`) were removed
+  in commit `fa4259a8` (2026-08-06) and remain retrievable from git history,
+  for example with `git show fa4259a8^:<path>`.
+- Run products are local-only: `runs/` is gitignored, so compact reports such
+  as `runs/equivalence-gate-20260820-august-sync/` exist only on the machine
+  that produced them. Rerunnable inputs are versioned under
+  `tests/resources/equivalence/`.
 
 ## Development Rules Going Forward
 

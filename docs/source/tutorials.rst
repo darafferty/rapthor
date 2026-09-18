@@ -1,6 +1,0 @@
-:orphan:
-
-.. _tutorials:
-
-Tutorials
-=========

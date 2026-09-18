@@ -14,18 +14,29 @@ Detailed science evidence:
 Detailed performance evidence:
 `docs/source/development/performance_equivalence_runs/`
 
+> **Note on the evidence paths.** The detailed evidence trees under
+> `docs/source/development/science_equivalence_runs/` and
+> `docs/source/development/performance_equivalence_runs/` are no longer in the
+> working tree: commit `fa4259a8` ("GEC-468: Delete documentation of
+> performance, benchmarking and science equivalence", 2026-08-06) removed them.
+> Every path cited in this report can still be retrieved from git history, for
+> example with `git show fa4259a8^:<path>` or
+> `git checkout fa4259a8^ -- <path>`.
+
 ## Executive Decision
 
-**Recommendation: accept the refactored Prefect/Dask pipeline as
-scientifically sound for the tested contract, and accept the current
-repeatability-aware performance evidence for the tested phase-only and
-DD/full-Jones scenarios. Continue targeted scalability optimisation and
-operational readiness checks before making the final switch from `master`.**
+**Recommendation: treat the refactored Prefect/Dask pipeline as
+scientifically sound for the tested contract pending manual testing, and accept
+the current repeatability-aware performance evidence for the tested phase-only
+and DD/full-Jones scenarios. Final science acceptance follows manual testing on
+real data. Continue targeted scalability optimisation and operational readiness
+checks before making the final switch from `master`.**
 
 The current evidence answers two related but separate questions:
 
 - **Science equivalence:** the refactored pipeline preserves the tested
-  self-calibration product contract.
+  self-calibration product contract. Acceptance stays in progress until manual
+  testers confirm the products on their own data (see `PLAN.md`).
 - **Performance equivalence:** repeatability-aware phase-only and DD/full-Jones
   performance gates pass and show the current branch faster than `master` for
   both tested scenarios.
@@ -39,7 +50,7 @@ individual runs.
 
 | Gate | Latest Result | Evidence | Decision |
 | --- | --- | --- | --- |
-| Science equivalence | **Pass / accepted with classified repeatability differences** | `runs/equivalence-gate-20260820-august-sync/`, `2026-08-04-august-master-sync`, and earlier DD/full-Jones evidence | Exact `043c15d4` master/current repeatability gates pass for generated initial sky-model grouping with and without imaging BDA, and for the default frequency-BDA path. Earlier old-reference normalization and peeling warnings remain documented external-tool baseline differences. |
+| Science equivalence | **Pass with classified repeatability differences; acceptance pending manual testing** | `runs/equivalence-gate-20260820-august-sync/`, `2026-08-04-august-master-sync`, and earlier DD/full-Jones evidence | Exact `043c15d4` master/current repeatability gates pass for generated initial sky-model grouping with and without imaging BDA, and for the default frequency-BDA path. Earlier old-reference normalization and peeling warnings remain documented external-tool baseline differences. |
 | Performance equivalence | **Pass for phase-only core and DD/full-Jones** | `2026-07-11-phase-only-core-repeatability-gate`, `2026-07-12-dd-phase-plus-di-fulljones-repeatability-gate` | Performance equivalence is established for the current optimisation phase; continue targeted benchmarking for new scalability changes. |
 
 The manual-testing discrepancy around generated initial sky models is now
@@ -85,7 +96,8 @@ comparisons, wall-clock timing, and operation-level timing.
 
 ## Latest Science Gate
 
-Status: **accepted for the covered scientific contract**.
+Status: **gates pass for the covered scientific contract; acceptance pending
+manual testing**.
 
 Confidence: **high for the tested LOFAR HBA self-calibration paths**.
 
