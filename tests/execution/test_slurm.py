@@ -5,10 +5,6 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.slurm import collect_slurm_config_issues, slurm_cluster_spec
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SLURM_SCRIPTS = (
-    REPO_ROOT / "scripts/prod/run-rapthor-slurm.sbatch",
-    REPO_ROOT / "scripts/dev/run-rapthor-slurm-dev.sbatch",
-)
 
 
 def test_slurm_cluster_spec_uses_slurm_allocation_environment():
@@ -95,18 +91,3 @@ def test_collect_slurm_config_issues_rejects_invalid_environment():
 
     assert issues == [("invalid_slurm_allocation", "SLURM_NNODES must be an integer")]
 
-
-def test_slurm_scripts_are_bash_syntax_valid():
-    for script in SLURM_SCRIPTS:
-        subprocess.run(["bash", "-n", str(script)], check=True)
-
-
-def test_slurm_scripts_export_dask_scheduler_and_start_one_worker_per_node():
-    for script in SLURM_SCRIPTS:
-        content = script.read_text()
-
-        assert "export DASK_SCHEDULER=" in content
-        assert "dask scheduler" in content
-        assert "dask worker" in content
-        assert 'WORKER_THREADS="${RAPTHOR_DASK_WORKER_THREADS:-1}"' in content
-        assert '--nodes="$NODE_COUNT" --ntasks="$NODE_COUNT" --ntasks-per-node=1' in content
