@@ -157,9 +157,18 @@ allocator tuning does not disable glibc's adaptive allocation thresholds inside
 FastPredict. Both ordinary ``predict`` and ``h5parmpredict`` can use FastPredict;
 ``sagecalpredict`` uses a separate backend. The policy applies to DP3 calibration
 and prediction commands regardless of their selected prediction backend. Other
-DP3 tasks, IDGCal and Python tasks retain their own environments. The WSClean
+DP3 tasks and IDGCal retain their own environments. The WSClean
 helper independently removes ``MALLOC_TRIM_THRESHOLD_`` before launching either
 ``wsclean`` or ``mpirun``, while preserving its local and MPI thread policies.
+The filter-skymodel owner selects ``filter_skymodel_environment()`` for every
+source-filtering command. Filtering always uses its Python CLI subprocess,
+even for one core, so allocator and native library settings take effect before
+Python/library startup. The helper removes ``MALLOC_TRIM_THRESHOLD_`` and sets
+``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``, ``MKL_NUM_THREADS`` and
+``BLIS_NUM_THREADS`` to ``1``. PyBDSF's ``--ncores`` argument remains the process
+parallelism budget; native thread pools should not multiply it. Other Python
+tasks retain their own environments.
+
 Do not apply a task's policy globally to the worker or infer it from executable
 names in the shared runner. Worker bootstrap and in-process Python library
 initialization are separate from these subprocess policies. Test environment

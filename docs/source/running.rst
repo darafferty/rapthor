@@ -114,12 +114,24 @@ penalize FastPredict's temporary allocations. This also affects standalone
 prediction: DP3's ordinary ``predict`` and ``h5parmpredict`` steps can use
 FastPredict. Rapthor also removes the variable for WSClean imaging, including
 MPI launches, to restore adaptive allocation for its temporary buffers. The
-worker, Python tasks and other DP3 commands retain their existing environments.
-CPU/thread settings and MPI launch options are unchanged. The removal is
-recorded as
+worker and other DP3 commands retain their existing environments. DP3 and
+WSClean CPU/thread settings and MPI launch options are unchanged. The removal
+is recorded as
 ``"MALLOC_TRIM_THRESHOLD_": null`` in ``logs/commands.jsonl``. When comparing
 performance, check peak memory use as well as prediction time, since allocator
 reuse can retain more memory in the DP3 or WSClean process.
+
+
+Sky-model filtering also runs in a fresh Python subprocess with
+``MALLOC_TRIM_THRESHOLD_`` unset, including when ``filter_skymodel_ncores = 1``.
+Its environment sets ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``,
+``MKL_NUM_THREADS`` and ``BLIS_NUM_THREADS`` to ``1`` to avoid multiplying
+PyBDSF's process parallelism by native library thread pools. The
+``filter_skymodel_ncores`` setting still controls PyBDSF's requested parallelism.
+These overrides appear in ``logs/commands.jsonl`` and apply only to the filter
+subprocess and its children. Other Python tasks keep their existing environment.
+When benchmarking, compare filtering time and peak memory on identical inputs;
+removing the allocator setting can increase retained memory.
 
 
 .. _prefect_demo_helper:

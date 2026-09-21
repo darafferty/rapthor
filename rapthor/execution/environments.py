@@ -28,6 +28,19 @@ def thread_environment(resource_request: ResourceRequest) -> EnvironmentOverride
     }
 
 
+def filter_skymodel_environment() -> EnvironmentOverrides:
+    """Return allocator and native-thread overrides for source filtering."""
+    # PyBDSF uses ncores worker processes for fitting. Limit native thread
+    # pools within each process rather than multiplying that parallelism.
+    return {
+        **thread_environment(ResourceRequest(threads=1)),
+        "MKL_NUM_THREADS": "1",
+        "BLIS_NUM_THREADS": "1",
+        # Restore glibc's adaptive allocation thresholds before Python starts.
+        "MALLOC_TRIM_THRESHOLD_": None,
+    }
+
+
 def wsclean_environment(resource_request: ResourceRequest) -> EnvironmentOverrides:
     """Return overrides for WSClean imaging using the command's resources."""
     # Restore glibc's adaptive allocation thresholds for WSClean's buffers.

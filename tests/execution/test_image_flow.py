@@ -1,4 +1,5 @@
 import json
+import os
 import shlex
 from copy import deepcopy
 from pathlib import Path
@@ -108,7 +109,6 @@ def fake_direct_image_helpers(monkeypatch):
     calls = {
         "blank_image": [],
         "calculate_image_diagnostics": [],
-        "filter_image_skymodel": [],
         "make_image_cube": [],
         "make_region_file": [],
         "normalize_flux_scale": [],
@@ -201,39 +201,6 @@ def fake_direct_image_helpers(monkeypatch):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("h5parm")
 
-    def fake_filter_image_skymodel(
-        flat_noise_image,
-        true_sky_image,
-        true_sky_skymodel,
-        apparent_sky_skymodel,
-        output_root,
-        vertices_file,
-        beam_ms,
-        **kwargs,
-    ):
-        calls["filter_image_skymodel"].append(
-            {
-                "flat_noise_image": flat_noise_image,
-                "true_sky_image": true_sky_image,
-                "true_sky_skymodel": true_sky_skymodel,
-                "apparent_sky_skymodel": apparent_sky_skymodel,
-                "output_root": output_root,
-                "vertices_file": vertices_file,
-                "beam_ms": list(beam_ms),
-                "kwargs": kwargs,
-            }
-        )
-        for suffix in [
-            ".true_sky.txt",
-            ".apparent_sky.txt",
-            ".flat_noise_rms.fits",
-            ".true_sky_rms.fits",
-            ".source_catalog.fits",
-        ]:
-            Path(f"{output_root}{suffix}").write_text("filter")
-        (Path(output_root).parent / f"{Path(true_sky_image).name}.mask.fits").write_text("mask")
-        Path(f"{output_root}.image_diagnostics.json").write_text("{}")
-
     def fake_restore_skymodel(source_catalog, reference_image, output_image):
         calls["restore_skymodel"].append(
             {
@@ -319,7 +286,6 @@ def fake_direct_image_helpers(monkeypatch):
     monkeypatch.setattr(image_wsclean_module, "ensure_image_beam", fake_ensure_image_beam)
     monkeypatch.setattr(image_outputs_module, "make_image_cube", fake_make_image_cube)
     monkeypatch.setattr(image_outputs_module, "normalize_flux_scale", fake_normalize_flux_scale)
-    monkeypatch.setattr(image_outputs_module, "filter_image_skymodel", fake_filter_image_skymodel)
     monkeypatch.setattr(image_outputs_module, "restore_skymodel", fake_restore_skymodel)
     monkeypatch.setattr(
         image_diagnostics_module,
@@ -1869,7 +1835,6 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     filter_args = _filter_skymodel_args(filter_command)
     assert filter_args[4] == str(tmp_path / "sector_1")
     assert "--ncores=4" in filter_command
-    assert fake_direct_image_helpers["filter_image_skymodel"] == []
     assert fake_direct_image_helpers["calculate_image_diagnostics"][0]["output_root"] == str(
         tmp_path / "sector_1"
     )
@@ -1944,10 +1909,47 @@ def test_run_image_flow_can_skip_fits_preview_artifacts(
     ]
 
 
-def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
+@pytest.mark.parametrize("ncores", [1, 4])
+def test_filter_skymodel_products_isolates_allocator_and_native_threads(
+    tmp_path, monkeypatch, fake_image_shell_operation_cls, ncores
 ):
-    monkeypatch.setattr(image_outputs_module, "_current_process_is_daemon", lambda: True)
+    monkeypatch.setenv("MALLOC_TRIM_THRESHOLD_", "65536")
+    thread_variables = (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "BLIS_NUM_THREADS",
+    )
+    for variable in thread_variables:
+        monkeypatch.setenv(variable, "192")
+    original_environment = dict(os.environ)
+    sector = image_payload_from_inputs(_image_input_parms(), tmp_path)["sectors"][0]
+    sector["filter_skymodel_ncores"] = ncores
+
+    outputs = image_outputs_module.filter_skymodel_products(
+        sector,
+        "sector_1",
+        file_record(tmp_path / "sector_1-MFS-I-image.fits"),
+        file_record(tmp_path / "sector_1-MFS-I-image-pb.fits"),
+        file_record(tmp_path / "sector_1-sources.txt"),
+        file_record(tmp_path / "sector_1-sources-pb.txt"),
+        str(tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    assert len(fake_image_shell_operation_cls.instances) == 1
+    launch = fake_image_shell_operation_cls.instances[0].kwargs
+    assert launch["commands"][0] == "unset -- MALLOC_TRIM_THRESHOLD_"
+    command = shlex.split(launch["commands"][-1])
+    assert _is_filter_skymodel_command(command)
+    assert f"--ncores={ncores}" in command
+    assert launch["env"] == {variable: "1" for variable in thread_variables}
+    assert outputs[0] == file_record(tmp_path / "sector_1.true_sky.txt")
+    assert dict(os.environ) == original_environment
+
+
+def test_run_image_flow_uses_filter_skymodel_subprocess(tmp_path, fake_image_shell_operation_cls):
     input_parms = _image_input_parms()
     input_parms["filter_skymodel_ncores"] = 2
 
@@ -1982,7 +1984,6 @@ def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
         "/data/sector_1.vertices",
     ]
     assert "--ncores=2" in filter_command
-    assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
 
 def test_run_image_flow_rejects_invalid_prepare_task_payload(
@@ -2003,29 +2004,16 @@ def test_run_image_flow_rejects_invalid_prepare_task_payload(
 
 
 def test_run_image_flow_allows_missing_source_filtering_mask(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls
+    tmp_path, fake_image_shell_operation_cls
 ):
-    def fake_filter_without_mask(
-        flat_noise_image,
-        true_sky_image,
-        true_sky_skymodel,
-        apparent_sky_skymodel,
-        output_root,
-        vertices_file,
-        beam_ms,
-        **kwargs,
-    ):
-        for suffix in [
-            ".true_sky.txt",
-            ".apparent_sky.txt",
-            ".flat_noise_rms.fits",
-            ".true_sky_rms.fits",
-            ".source_catalog.fits",
-            ".image_diagnostics.json",
-        ]:
-            Path(f"{output_root}{suffix}").write_text("filter")
-
-    monkeypatch.setattr(image_outputs_module, "filter_image_skymodel", fake_filter_without_mask)
+    class FilterWithoutMaskShellOperation(fake_image_shell_operation_cls):
+        def run(self):
+            result = super().run()
+            command = shlex.split(self.kwargs["commands"][-1])
+            if _is_filter_skymodel_command(command):
+                true_sky_image = _filter_skymodel_args(command)[1]
+                Path(f"{true_sky_image}.mask.fits").unlink()
+            return result
 
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
     payload["sectors"][0]["max_threads"] = 1
@@ -2035,7 +2023,7 @@ def test_run_image_flow_allows_missing_source_filtering_mask(
         image_flow,
         payload,
         execution_config=ExecutionConfig(task_runner="sync"),
-        shell_operation_cls=fake_image_shell_operation_cls,
+        shell_operation_cls=FilterWithoutMaskShellOperation,
     )
 
     assert outputs["source_filtering_mask"] == [None]
@@ -2121,7 +2109,6 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
     ]
     filter_command = next(command for command in commands if _is_filter_skymodel_command(command))
     assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
-    assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
 
 def test_run_image_flow_executes_facet_commands_and_returns_region_file(
@@ -3021,7 +3008,6 @@ def test_bright_peeling_image_operation_run_uses_prefect_flow(
     assert all("/data/bright_sources_pb.txt" in command for command in restore_commands)
     filter_command = next(command for command in commands if _is_filter_skymodel_command(command))
     assert "--bright_true_sky_skymodel=/data/bright_sources_pb.txt" in filter_command
-    assert fake_direct_image_helpers["filter_image_skymodel"] == []
 
 
 def test_image_operation_run_reuses_prefect_outputs_when_done(
