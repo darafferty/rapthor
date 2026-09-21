@@ -2,6 +2,11 @@
 
 Latest status scan: 2026-08-20
 
+Targeted update, 2026-09-21: prediction chunking and peeling fixes pass a
+comparison with an unmodified current-branch run at the existing scientific
+tolerances. Both runs retain the same older saved-CWL image discrepancy; this
+does not change the overall switch-readiness decision below.
+
 Science contract:
 `docs/source/development/science_equivalence_contract.rst`
 

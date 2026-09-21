@@ -8,6 +8,7 @@ from typing import Optional
 
 import casacore.tables as pt
 import numpy as np
+import psutil
 
 from rapthor.lib import miscellaneous as misc
 
@@ -46,14 +47,22 @@ def predict_chunk_count(
     fraction: float = 1.0,
     scale_factor: float = 4.0,
     compressed: bool = False,
+    memory_budget_bytes: Optional[int] = None,
 ) -> int:
     """Return the number of chunks needed for memory-bounded model operations."""
+    if memory_budget_bytes is not None and memory_budget_bytes <= 0:
+        raise ValueError("memory_budget_bytes must be positive")
+    available_bytes = psutil.virtual_memory().available
+    if memory_budget_bytes is not None:
+        available_bytes = min(available_bytes, memory_budget_bytes)
+    if available_bytes <= 0:
+        raise MemoryError("No memory available for predict post-processing")
     if compressed:
         scale_factor *= 5.0
-    total_memory_mb = int(os.popen("free -tm").readlines()[-1].split()[1])
     ms_size_mb = float(subprocess.check_output(["du", "-smL", msin]).split()[0]) * fraction
+    # Retain the factor of two for temporary arrays and estimation headroom.
     required_mb = ms_size_mb * nsectors * scale_factor * 2.0
-    return max(1, int(np.ceil(required_mb / total_memory_mb)))
+    return max(1, int(np.ceil(required_mb * 1024**2 / available_bytes)))
 
 
 def select_models_for_starttime(model_paths: list[str], starttime: Optional[str]) -> ModelSelection:
@@ -135,23 +144,32 @@ def plan_row_chunks(
     baseline_rows: Optional[int] = None,
 ) -> list[RowChunk]:
     """Build row chunks, optionally aligning them to complete timeslots."""
-    nrows_per_chunk = int(nrows / nchunks)
+    if nrows < 0:
+        raise ValueError("nrows must be nonnegative")
+    if nchunks < 1:
+        raise ValueError("nchunks must be positive")
+    if input_startrow < 0:
+        raise ValueError("input_startrow must be nonnegative")
+    if baseline_rows is not None and baseline_rows < 1:
+        raise ValueError("baseline_rows must be positive")
+    if nrows == 0:
+        return []
+
+    nchunks = min(nchunks, nrows)
+    nrows_per_chunk, extra_rows = divmod(nrows, nchunks)
     if baseline_rows is not None:
-        while nrows_per_chunk % baseline_rows > 0.0:
-            nrows_per_chunk -= 1
-            if nrows_per_chunk < baseline_rows:
-                nrows_per_chunk = baseline_rows
-                break
-        nchunks = int(np.ceil(nrows / nrows_per_chunk))
+        nrows_per_chunk = max(baseline_rows, nrows_per_chunk // baseline_rows * baseline_rows)
+        nchunks = (nrows + nrows_per_chunk - 1) // nrows_per_chunk
 
     chunks = []
     next_input_startrow = input_startrow
     next_model_startrow = 0
     for index in range(nchunks):
-        if index == nchunks - 1:
-            chunk_nrows = nrows - (nchunks - 1) * nrows_per_chunk
+        if baseline_rows is None:
+            # Spread remainder rows so the final chunk cannot exceed the budget.
+            chunk_nrows = nrows_per_chunk + (index >= nchunks - extra_rows)
         else:
-            chunk_nrows = nrows_per_chunk
+            chunk_nrows = min(nrows_per_chunk, nrows - next_model_startrow)
         chunks.append(
             RowChunk(
                 input_startrow=next_input_startrow,

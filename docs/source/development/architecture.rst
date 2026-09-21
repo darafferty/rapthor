@@ -269,6 +269,14 @@ The standalone ``predict_flow`` handles DI/DD model-data prediction operations.
 Image-based prediction used during calibration is owned by ``calibrate_flow``
 and its calibration work-unit modules.
 
+Prediction post-processing resolves its memory budget inside the worker, bounded
+by the system/container limit, ``mem_per_node_gb`` when configured, and the Dask
+worker limit. It subtracts the process's existing RSS and shares the remainder
+across worker task threads. The add/subtract helpers receive only the resulting
+byte count and further cap it by available RAM when estimating row chunks.
+Memory estimates retain headroom for temporary arrays; they do not reserve RAM
+or replace scheduler resource constraints.
+
 Change Workflow
 ---------------
 

@@ -75,7 +75,9 @@ def fake_direct_predict_helpers(monkeypatch):
         quiet=True,
         infix="",
         output_dir=None,
+        memory_budget_bytes=None,
     ):
+        assert memory_budget_bytes > 0
         calls["add_sector_models"].append(
             {
                 "msin": msin,
@@ -119,7 +121,9 @@ def fake_direct_predict_helpers(monkeypatch):
         quiet=True,
         infix="",
         output_dir=None,
+        memory_budget_bytes=None,
     ):
+        assert memory_budget_bytes > 0
         calls["subtract_sector_models"].append(
             {
                 "msin": msin,

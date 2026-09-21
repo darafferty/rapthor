@@ -4,6 +4,9 @@ import glob
 import os
 from typing import Mapping, Optional
 
+import distributed
+import distributed.system
+import psutil
 from prefect import flow, task
 
 from rapthor.execution.config import ExecutionConfig
@@ -80,6 +83,7 @@ def _run_predict_prefect_tasks(
                 model_outputs,
             ),
             payload["pipeline_working_dir"],
+            execution_config=config,
         )
         for index, postprocess_task in enumerate(payload["postprocess_tasks"])
     ]
@@ -118,6 +122,7 @@ def predict_postprocess_task(
     postprocess_task: PredictPostprocessPayload,
     model_outputs: list[dict],
     pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> list[dict]:
     """Prefect task wrapper for DI add or DD subtract post-processing."""
     with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
@@ -126,6 +131,7 @@ def predict_postprocess_task(
             postprocess_task,
             model_outputs,
             pipeline_working_dir,
+            execution_config=execution_config,
         )
 
 
@@ -168,8 +174,11 @@ def run_predict_postprocess(
     postprocess_task: PredictPostprocessPayload,
     model_outputs: list[dict],
     pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> list[dict]:
     """Run DI add or DD subtract post-processing for one observation."""
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    memory_budget_bytes = _postprocess_memory_budget(config)
     model_paths = [str(record["path"]) for record in model_outputs]
     if mode == "di":
         add_sector_models(
@@ -179,6 +188,7 @@ def run_predict_postprocess(
             starttime=postprocess_task["obs_starttime"],
             infix=postprocess_task["infix"],
             output_dir=pipeline_working_dir,
+            memory_budget_bytes=memory_budget_bytes,
         )
         output_patterns = [
             os.path.join(
@@ -206,6 +216,7 @@ def run_predict_postprocess(
             reweight=dd_task["reweight"],
             infix=dd_task["infix"],
             output_dir=pipeline_working_dir,
+            memory_budget_bytes=memory_budget_bytes,
         )
         obs_basename = os.path.basename(dd_task["msobs"])
         output_patterns = [
@@ -217,6 +228,29 @@ def run_predict_postprocess(
 
     exclude_suffixes = ("_modeldata",) if mode == "dd" else ()
     return _glob_directory_records(output_patterns, exclude_suffixes=exclude_suffixes)
+
+
+def _postprocess_memory_budget(config: ExecutionConfig) -> int:
+    """Resolve a per-task budget on the worker without sending live state to helpers."""
+    # Dask accounts for host RAM, cgroup limits and the process RSS limit.
+    limits = [distributed.system.memory_limit()]
+    if config.mem_per_node_gb:
+        limits.append(config.mem_per_node_gb * 10**9)
+    concurrent_tasks = 1
+    try:
+        worker = distributed.get_worker()
+    except ValueError:
+        pass  # The synchronous runner has no Dask worker.
+    else:
+        if worker.memory_manager.memory_limit:
+            limits.append(worker.memory_manager.memory_limit)
+        concurrent_tasks = worker.state.nthreads
+
+    remaining_bytes = min(limits) - psutil.Process().memory_info().rss
+    budget = remaining_bytes // concurrent_tasks
+    if budget <= 0:
+        raise MemoryError("No memory available for predict post-processing within its allocation")
+    return budget
 
 
 def _model_output_futures_for_postprocess(

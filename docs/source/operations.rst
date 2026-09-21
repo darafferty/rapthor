@@ -53,6 +53,13 @@ Predict
 
 This operation predicts visibilities for subtraction. Sources that lie outside of imaged regions are subtracted, as are bright sources inside imaged regions (if desired). This operation will not be run if no prediction or subtraction needs to be done.
 
+Subtraction processes each observation time slice in row chunks, preserving the
+input row offsets and complete timeslots where required for reweighting. Chunk
+sizes use available RAM and the configured or Dask worker memory allocation,
+with headroom for temporary arrays; swap is excluded. After outlier or
+bright-source peeling, subsequent subtraction stages read the peeled output
+column, including when the original input used a different data column.
+
 When multiple nodes are available, this task is distributed.
 
 Primary products:

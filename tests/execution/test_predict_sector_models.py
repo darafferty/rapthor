@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import casacore.tables as pt
 import numpy as np
+import pytest
 
 import rapthor.execution.predict.sector_model_addition as sector_model_addition
 import rapthor.execution.predict.sector_model_subtraction as sector_model_subtraction
@@ -14,6 +15,7 @@ from rapthor.execution.predict.sector_model_subtraction import (
     subtract_sector_models,
 )
 from rapthor.execution.predict.sector_model_subtraction import get_nchunks as get_subtract_nchunks
+from rapthor.lib import miscellaneous as misc
 
 
 def _copy_ms(source, destination):
@@ -34,20 +36,15 @@ def _read_column(ms_path, column):
 
 def test_add_get_nchunks(test_ms):
     with (
-        patch("os.popen") as mock_free,
+        patch("psutil.virtual_memory") as mock_memory,
         patch("subprocess.check_output") as mock_du,
     ):
-        mock_free.return_value.readlines.return_value = [
-            "               total        used        free      shared  buff/cache   available\n",
-            "Mem:           15840        8695        2997        1918        6403        7145\n",
-            "Swap:          20479         765       19714\n",
-            "Total:         36320        9461       22711\n",
-        ]
+        mock_memory.return_value.available = 7145 * 1024**2
         mock_du.return_value = b"36039\tdummy.ms\n"
 
         nchunks = get_add_nchunks(test_ms, nsectors=4, fraction=1.0, compressed=False)
 
-    assert nchunks == 32
+    assert nchunks == 162
 
 
 def test_add_sector_models_sums_sector_model_data_into_model_column(test_ms, tmp_path, monkeypatch):
@@ -80,22 +77,17 @@ def test_add_sector_models_sums_sector_model_data_into_model_column(test_ms, tmp
 
 def test_subtract_get_nchunks(test_ms):
     with (
-        patch("os.popen") as mock_free,
+        patch("psutil.virtual_memory") as mock_memory,
         patch("subprocess.check_output") as mock_du,
     ):
-        mock_free.return_value.readlines.return_value = [
-            "               total        used        free      shared  buff/cache   available\n",
-            "Mem:           15840        8695        2997        1918        6403        7145\n",
-            "Swap:          20479         765       19714\n",
-            "Total:         36320        9461       22711\n",
-        ]
+        mock_memory.return_value.available = 7145 * 1024**2
         mock_du.return_value = b"36039\tdummy.ms\n"
 
         nchunks = get_subtract_nchunks(
             test_ms, nsectors=4, fraction=1.0, reweight=False, compressed=False
         )
 
-    assert nchunks == 32
+    assert nchunks == 162
 
 
 def test_subtract_sector_models_subtracts_other_sector_models(test_ms, tmp_path, monkeypatch):
@@ -139,6 +131,77 @@ def test_subtract_sector_models_subtracts_other_sector_models(test_ms, tmp_path,
     assert sector_2_output.is_dir()
     assert np.allclose(_read_column(sector_1_output, "DATA"), 7.0 + 0.0j)
     assert np.allclose(_read_column(sector_2_output, "DATA"), 8.0 + 0.0j)
+
+
+@pytest.mark.parametrize("nchunks", [1, 3, 57])
+@pytest.mark.parametrize("input_column", ["DATA", "CORRECTED_DATA"])
+@pytest.mark.parametrize("peeled_sources", ["outliers", "bright", "both"])
+def test_peeling_preserves_subtraction_across_chunks_and_stages(
+    test_ms, tmp_path, monkeypatch, nchunks, input_column, peeled_sources
+):
+    msin = _copy_ms(test_ms, tmp_path / "input.ms")
+    with pt.table(str(msin), readonly=False, ack=False) as table:
+        data = table.getcol("DATA")
+        data[:] = (100 + np.arange(table.nrows()))[:, None, None]
+        if input_column != "DATA":
+            description = table.getcoldesc("DATA")
+            description["name"] = input_column
+            table.addcols(description)
+        table.putcol(input_column, data)
+        times = table.getcol("TIME")
+    selected_rows = np.flatnonzero(np.isin(times, np.unique(times)[2:4]))
+    assert selected_rows[0] > 0
+
+    peel_outliers = peeled_sources in {"outliers", "both"}
+    peel_bright = peeled_sources in {"bright", "both"}
+    sector_values = [("sector_1", 2), ("sector_2", 3)]
+    if peel_bright:
+        sector_values.append(("bright_1", 5))
+    if peel_outliers:
+        sector_values.extend([("outlier_1", 7), ("outlier_2", 11)])
+    models = []
+    for name, value in sector_values:
+        model = tmp_path / f"input.ms.slice.{name}_modeldata"
+        with pt.table(str(msin), ack=False) as table:
+            with table.selectrows(selected_rows.tolist()) as selection:
+                copied = selection.copy(str(model), deep=True, valuecopy=True)
+                copied.close()
+        with pt.table(str(model), readonly=False, ack=False) as table:
+            # DP3 model outputs need not contain the original input column.
+            if input_column != "DATA":
+                table.removecols(input_column)
+            table.putcol("DATA", np.full_like(table.getcol("DATA"), value))
+        models.append(str(model))
+    monkeypatch.setattr(sector_model_subtraction, "get_nchunks", lambda *args, **kwargs: nchunks)
+
+    subtract_sector_models(
+        str(msin),
+        models,
+        msin_column=input_column,
+        nr_outliers=2 if peel_outliers else 0,
+        nr_bright=1 if peel_bright else 0,
+        peel_outliers=peel_outliers,
+        peel_bright=peel_bright,
+        reweight=False,
+        starttime=misc.convert_mjd2mvt(times[selected_rows[0]] - 0.01),
+        solint_sec=60.0,
+        solint_hz=0.0,
+        infix=".slice",
+        output_dir=str(tmp_path),
+    )
+
+    total_model = sum(value for _, value in sector_values)
+    for name, own_model in sector_values[:2]:
+        output = tmp_path / f"input.ms.slice.{name}"
+        np.testing.assert_allclose(
+            _read_column(output, "DATA"), data[selected_rows] - total_model + own_model
+        )
+        np.testing.assert_array_equal(_read_column(output, "TIME"), times[selected_rows])
+    if peel_outliers:
+        np.testing.assert_allclose(
+            _read_column(tmp_path / "input.ms.slice_field", "DATA"), data[selected_rows] - 18
+        )
+    np.testing.assert_array_equal(_read_column(msin, input_column), data)
 
 
 def test_cov_weights_get_nearest_frequstep_uses_channel_divisors():

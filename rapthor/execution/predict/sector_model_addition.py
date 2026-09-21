@@ -22,7 +22,7 @@ from rapthor.lib import miscellaneous as misc
 log = logging.getLogger("rapthor:predict:sector_model_addition")
 
 
-def get_nchunks(msin, nsectors, fraction=1.0, compressed=False):
+def get_nchunks(msin, nsectors, fraction=1.0, compressed=False, *, memory_budget_bytes=None):
     """
     Determines number of chunks for available memory of node
 
@@ -36,6 +36,8 @@ def get_nchunks(msin, nsectors, fraction=1.0, compressed=False):
         Fraction of MS file to be read
     compressed: bool
         True if data are compressed (by Dysco)
+    memory_budget_bytes : int, optional
+        Memory available to this post-processing task, excluding existing allocations
 
     Returns
     -------
@@ -47,6 +49,7 @@ def get_nchunks(msin, nsectors, fraction=1.0, compressed=False):
         nsectors,
         fraction=fraction,
         compressed=compressed,
+        memory_budget_bytes=memory_budget_bytes,
     )
 
 
@@ -61,6 +64,7 @@ def add_sector_models(
     quiet=True,
     infix="",
     output_dir: Optional[str] = None,
+    memory_budget_bytes: Optional[int] = None,
 ):
     """
     Add sector model data.
@@ -88,6 +92,8 @@ def add_sector_models(
     output_dir : str, optional
         Directory for generated Measurement Set outputs. If omitted, outputs
         are written relative to the current working directory for CLI parity.
+    memory_budget_bytes : int, optional
+        Upper bound on memory available to this task for data chunks
     """
     use_compression = misc.string2bool(use_compression)
     model_list = misc.string2list(msmod_list)
@@ -120,7 +126,7 @@ def add_sector_models(
     # Define chunks based on available memory, making sure each
     # chunk gives a full timeslot (needed for reweighting)
     fraction = float(input_rows.nrows) / float(tin.nrows())
-    nchunks = get_nchunks(msin, nsectors, fraction)
+    nchunks = get_nchunks(msin, nsectors, fraction, memory_budget_bytes=memory_budget_bytes)
     chunks = plan_row_chunks(
         nrows=input_rows.nrows,
         nchunks=nchunks,

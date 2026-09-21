@@ -1,4 +1,7 @@
+from types import SimpleNamespace
+
 import numpy as np
+import psutil
 import pytest
 
 import rapthor.execution.predict.measurement_sets as ms_helpers
@@ -23,21 +26,49 @@ class FakeTable:
         self.closed = True
 
 
-class FakeFreeCommand:
-    def readlines(self):
-        return ["Total: 1000 0 0\n"]
-
-
-def test_predict_chunk_count_uses_ms_size_sector_count_and_compression(monkeypatch):
-    monkeypatch.setattr(ms_helpers.os, "popen", lambda command: FakeFreeCommand())
+@pytest.mark.parametrize(
+    "compressed, fraction, expected", [(False, 1.0, 2), (True, 1.0, 8), (True, 0.5, 4)]
+)
+def test_predict_chunk_count_uses_available_ram(monkeypatch, compressed, fraction, expected):
+    monkeypatch.setattr(psutil, "virtual_memory", lambda: SimpleNamespace(available=1000 * 1024**2))
     monkeypatch.setattr(
         ms_helpers.subprocess,
         "check_output",
         lambda command: b"100 input.ms\n",
     )
 
-    assert ms_helpers.predict_chunk_count("input.ms", 2, scale_factor=4.0) == 2
-    assert ms_helpers.predict_chunk_count("input.ms", 2, scale_factor=4.0, compressed=True) == 8
+    assert (
+        ms_helpers.predict_chunk_count(
+            "input.ms", 2, scale_factor=4.0, compressed=compressed, fraction=fraction
+        )
+        == expected
+    )
+
+
+@pytest.mark.parametrize("available_mb, budget_mb, expected", [(1000, 200, 8), (100, 200, 16)])
+def test_predict_chunk_count_uses_smaller_of_available_ram_and_task_budget(
+    monkeypatch, available_mb, budget_mb, expected
+):
+    monkeypatch.setattr(
+        psutil, "virtual_memory", lambda: SimpleNamespace(available=available_mb * 1024**2)
+    )
+    monkeypatch.setattr(ms_helpers.subprocess, "check_output", lambda command: b"100 input.ms\n")
+    assert (
+        ms_helpers.predict_chunk_count("input.ms", 2, memory_budget_bytes=budget_mb * 1024**2)
+        == expected
+    )
+
+
+@pytest.mark.parametrize("budget", [0, -1])
+def test_predict_chunk_count_rejects_nonpositive_budget(budget):
+    with pytest.raises(ValueError, match="memory_budget_bytes"):
+        ms_helpers.predict_chunk_count("input.ms", 2, memory_budget_bytes=budget)
+
+
+def test_predict_chunk_count_rejects_exhausted_ram(monkeypatch):
+    monkeypatch.setattr(psutil, "virtual_memory", lambda: SimpleNamespace(available=0))
+    with pytest.raises(MemoryError, match="predict post-processing"):
+        ms_helpers.predict_chunk_count("input.ms", 2)
 
 
 def test_select_models_for_starttime_filters_models_and_closes_tables(monkeypatch):
@@ -159,6 +190,56 @@ def test_plan_row_chunks_aligns_to_complete_timeslots():
         ms_helpers.RowChunk(input_startrow=11, model_startrow=6, nrows=2),
         ms_helpers.RowChunk(input_startrow=13, model_startrow=8, nrows=2),
     ]
+
+
+@pytest.mark.parametrize("baseline_rows", [None, 1, 2, 4])
+@pytest.mark.parametrize("nchunks", [1, 3, 8, 9, 100])
+def test_plan_row_chunks_covers_each_row_once_without_empty_chunks(baseline_rows, nchunks):
+    chunks = ms_helpers.plan_row_chunks(
+        nrows=8, nchunks=nchunks, input_startrow=17, baseline_rows=baseline_rows
+    )
+
+    input_rows = []
+    model_rows = []
+    for chunk in chunks:
+        assert chunk.nrows > 0
+        input_rows.extend(range(chunk.input_startrow, chunk.input_startrow + chunk.nrows))
+        model_rows.extend(range(chunk.model_startrow, chunk.model_startrow + chunk.nrows))
+        if baseline_rows is not None:
+            assert chunk.model_startrow % baseline_rows == 0
+            assert chunk.nrows % baseline_rows == 0
+    assert input_rows == list(range(17, 25))
+    assert model_rows == list(range(8))
+
+
+@pytest.mark.parametrize("baseline_rows", [None, 2])
+def test_plan_row_chunks_returns_no_chunks_for_empty_selection(baseline_rows):
+    assert ms_helpers.plan_row_chunks(nrows=0, nchunks=3, baseline_rows=baseline_rows) == []
+
+
+def test_plan_row_chunks_does_not_collect_remainder_in_one_oversized_chunk():
+    chunks = ms_helpers.plan_row_chunks(nrows=100, nchunks=51)
+
+    assert len(chunks) == 51
+    assert sum(chunk.nrows for chunk in chunks) == 100
+    assert max(chunk.nrows for chunk in chunks) <= 2
+
+
+@pytest.mark.parametrize(
+    "invalid, message",
+    [
+        ({"nrows": -1}, "nrows"),
+        ({"nchunks": 0}, "nchunks"),
+        ({"nchunks": -1}, "nchunks"),
+        ({"input_startrow": -1}, "input_startrow"),
+        ({"baseline_rows": 0}, "baseline_rows"),
+        ({"baseline_rows": -1}, "baseline_rows"),
+    ],
+)
+def test_plan_row_chunks_rejects_invalid_ranges(invalid, message):
+    arguments = {"nrows": 8, "nchunks": 3, **invalid}
+    with pytest.raises(ValueError, match=message):
+        ms_helpers.plan_row_chunks(**arguments)
 
 
 def test_copy_measurement_set_replaces_existing_destination(monkeypatch):

@@ -24,7 +24,9 @@ from rapthor.lib import miscellaneous as misc
 log = logging.getLogger("rapthor:predict:sector_model_subtraction")
 
 
-def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
+def get_nchunks(
+    msin, nsectors, fraction=1.0, reweight=False, compressed=False, *, memory_budget_bytes=None
+):
     """
     Determines number of chunks for available memory of node
 
@@ -40,6 +42,8 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
         True if reweighting is to be done
     compressed: bool
         True if data are compressed (by Dysco)
+    memory_budget_bytes : int, optional
+        Memory available to this post-processing task, excluding existing allocations
 
     Returns
     -------
@@ -53,6 +57,7 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
         fraction=fraction,
         scale_factor=scale_factor,
         compressed=compressed,
+        memory_budget_bytes=memory_budget_bytes,
     )
 
 
@@ -80,6 +85,7 @@ def subtract_sector_models(
     quiet=True,
     infix="",
     output_dir: Optional[str] = None,
+    memory_budget_bytes: Optional[int] = None,
 ):
     """
     Subtract sector model data.
@@ -135,6 +141,8 @@ def subtract_sector_models(
     output_dir : str, optional
         Directory for generated Measurement Set outputs. If omitted, outputs
         are written relative to the current working directory for CLI parity.
+    memory_budget_bytes : int, optional
+        Upper bound on memory available to this task for data chunks
     """
     use_compression = misc.string2bool(use_compression)
     peel_outliers = misc.string2bool(peel_outliers)
@@ -190,7 +198,9 @@ def subtract_sector_models(
 
         # Define chunks based on available memory
         fraction = float(nrows_in) / float(tin.nrows())
-        nchunks = get_nchunks(msin, nr_outliers, fraction, compressed=True)
+        nchunks = get_nchunks(
+            msin, nr_outliers, fraction, compressed=True, memory_budget_bytes=memory_budget_bytes
+        )
         chunks = plan_row_chunks(
             nrows=nrows_in,
             nchunks=nchunks,
@@ -227,6 +237,7 @@ def subtract_sector_models(
 
         # Now reset things for the imaging sectors
         msin = msout
+        msin_column = out_column
         model_list = model_list[:-nr_outliers]
         nsectors = len(model_list)
         nr_outliers = 0
@@ -247,7 +258,9 @@ def subtract_sector_models(
 
         # Define chunks based on available memory
         fraction = float(nrows_in) / float(tin.nrows())
-        nchunks = get_nchunks(msin, nr_bright, fraction, compressed=True)
+        nchunks = get_nchunks(
+            msin, nr_bright, fraction, compressed=True, memory_budget_bytes=memory_budget_bytes
+        )
         chunks = plan_row_chunks(
             nrows=nrows_in,
             nchunks=nchunks,
@@ -284,6 +297,7 @@ def subtract_sector_models(
 
         # Now reset things for the imaging sectors
         msin = msout
+        msin_column = out_column
         model_list = model_list[:-nr_bright]
         nsectors = len(model_list)
         nr_bright = 0
@@ -306,7 +320,9 @@ def subtract_sector_models(
     # chunk gives a full timeslot (needed for reweighting)
     tin = pt.table(msin, readonly=True, ack=False)
     fraction = float(nrows_in) / float(tin.nrows())
-    nchunks = get_nchunks(msin, nsectors, fraction, reweight=reweight)
+    nchunks = get_nchunks(
+        msin, nsectors, fraction, reweight=reweight, memory_budget_bytes=memory_budget_bytes
+    )
     chunks = plan_row_chunks(
         nrows=nrows_in,
         nchunks=nchunks,
