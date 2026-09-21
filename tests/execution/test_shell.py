@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import pickle
 import sys
 from datetime import datetime, timezone
@@ -7,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from rapthor.execution.commands import command_to_string
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.shell import (
     MissingPrefectShellError,
@@ -67,6 +69,92 @@ def test_shell_operation_kwargs_include_env_and_working_dir():
         "stream_output": False,
         "env": {"OPENBLAS_NUM_THREADS": "1"},
         "working_dir": "/tmp/task",
+    }
+
+
+def test_shell_operation_kwargs_separate_environment_removals():
+    kwargs = shell_operation_kwargs(
+        ShellCommand(
+            ["DP3", "msin=input.ms"],
+            environment={"MALLOC_TRIM_THRESHOLD_": None, "OMP_NUM_THREADS": "4"},
+        ),
+        ExecutionConfig(stream_output=False),
+    )
+
+    assert kwargs["commands"] == ["unset -- MALLOC_TRIM_THRESHOLD_", "DP3 msin=input.ms"]
+    assert kwargs["env"] == {"OMP_NUM_THREADS": "4"}
+
+
+@pytest.mark.parametrize("injected_runner", [False, True])
+@pytest.mark.parametrize("inherited_trim", [None, "65536"])
+@pytest.mark.parametrize("command_string", [False, True])
+def test_command_environment_is_isolated_from_worker_and_later_commands(
+    tmp_path, monkeypatch, injected_runner, inherited_trim, command_string
+):
+    from prefect_shell import ShellOperation
+
+    if inherited_trim is None:
+        monkeypatch.delenv("MALLOC_TRIM_THRESHOLD_", raising=False)
+    else:
+        monkeypatch.setenv("MALLOC_TRIM_THRESHOLD_", inherited_trim)
+    monkeypatch.setenv("OMP_NUM_THREADS", "1")
+    monkeypatch.setenv("RAPTHOR_TEST_KEEP", "inherited")
+    monkeypatch.delenv("RAPTHOR_TEST_VALUE", raising=False)
+    monkeypatch.delenv("RAPTHOR_TEST_EMPTY", raising=False)
+    original_environment = dict(os.environ)
+    keys = [
+        "MALLOC_TRIM_THRESHOLD_",
+        "OMP_NUM_THREADS",
+        "RAPTHOR_TEST_KEEP",
+        "RAPTHOR_TEST_VALUE",
+        "RAPTHOR_TEST_EMPTY",
+    ]
+    command = [
+        sys.executable,
+        "-c",
+        f"import json, os; print(json.dumps({{key: os.environ.get(key) for key in {keys!r}}}))",
+    ]
+    if command_string:
+        command = command_to_string(command)
+    overrides = {
+        "MALLOC_TRIM_THRESHOLD_": None,
+        "OMP_NUM_THREADS": "4",
+        "RAPTHOR_TEST_VALUE": "literal spaces ' $HOME ;",
+        "RAPTHOR_TEST_EMPTY": "",
+    }
+    config = ExecutionConfig(log_commands=False, stream_output=False, command_profile="off")
+    runner = ShellOperation if injected_runner else None
+
+    output = run_external_command(
+        command, str(tmp_path), config, environment=overrides, shell_operation_cls=runner
+    )
+
+    expected = {
+        "MALLOC_TRIM_THRESHOLD_": None,
+        "OMP_NUM_THREADS": "4",
+        "RAPTHOR_TEST_KEEP": "inherited",
+        "RAPTHOR_TEST_VALUE": overrides["RAPTHOR_TEST_VALUE"],
+        "RAPTHOR_TEST_EMPTY": "",
+    }
+    assert [json.loads(line) for line in output] == [expected]
+    for key in keys:
+        assert os.environ.get(key) == original_environment.get(key)
+    assert overrides["MALLOC_TRIM_THRESHOLD_"] is None
+
+    # A subsequent command, such as WSClean, still inherits the worker's allocator setting.
+    output = run_external_command(
+        command,
+        str(tmp_path),
+        config,
+        environment={"OMP_NUM_THREADS": "2"},
+        shell_operation_cls=runner,
+    )
+    assert json.loads(output[-1]) == {
+        "MALLOC_TRIM_THRESHOLD_": inherited_trim,
+        "OMP_NUM_THREADS": "2",
+        "RAPTHOR_TEST_KEEP": "inherited",
+        "RAPTHOR_TEST_VALUE": None,
+        "RAPTHOR_TEST_EMPTY": None,
     }
 
 
@@ -423,7 +511,7 @@ def test_write_command_log_record_appends_backend_neutral_jsonl(tmp_path):
     log_path = write_command_log_record(
         ShellCommand(
             ["DP3", "msin=input.ms", "steps=[solve]"],
-            environment={"OMP_NUM_THREADS": "4"},
+            environment={"OMP_NUM_THREADS": "4", "MALLOC_TRIM_THRESHOLD_": None},
             working_directory=str(pipeline_working_dir),
             name="solve",
         ),
@@ -437,7 +525,7 @@ def test_write_command_log_record_appends_backend_neutral_jsonl(tmp_path):
     assert record["name"] == "solve"
     assert record["command"] == ["DP3", "msin=input.ms", "steps=[solve]"]
     assert record["command_string"] == "DP3 msin=input.ms 'steps=[solve]'"
-    assert record["environment"] == {"OMP_NUM_THREADS": "4"}
+    assert record["environment"] == {"OMP_NUM_THREADS": "4", "MALLOC_TRIM_THRESHOLD_": None}
 
 
 def test_write_command_log_record_honors_log_commands_false(tmp_path):

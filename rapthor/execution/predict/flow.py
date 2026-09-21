@@ -7,6 +7,7 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import dp3_environment
 from rapthor.execution.outputs import require_directory
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.predict.commands import (
@@ -268,6 +269,7 @@ def _run_command_and_validate_directory(
         command,
         pipeline_working_dir,
         execution_config,
+        environment=dp3_environment(),
         shell_operation_cls=shell_operation_cls,
     )
     return require_directory(output_path, "Predict output")

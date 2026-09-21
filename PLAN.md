@@ -370,13 +370,14 @@ main plan stays focused on the branch-switch decision.
   Annotate heavy tasks with CPU/memory resources so the scheduler serialises
   them while light Python tasks keep running. This is a prerequisite for
   raising single-machine concurrency.
-- **Uniform thread capping for external commands:** `thread_environment()` is
-  applied only in `rapthor/execution/image/wsclean.py:172`. DP3 solves,
-  predicts, applycals, and the `python -m` adapters inherit ambient
+- **Uniform thread capping for external commands:** environment policies and
+  `thread_environment()` now live in `rapthor/execution/environments.py`.
+  WSClean imaging explicitly selects its local or MPI thread policy. DP3
+  solves, predicts, applycals, and the `python -m` adapters still inherit ambient
   `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`, so each concurrent task can spawn
-  one thread per core. Apply the thread environment centrally in
-  `rapthor/execution/shell.py`, where `shell_command.environment` is merged
-  into the process environment, generalising the `wsclean-mp` fix from GEC-535.
+  one thread per core. Extend the explicit policy helpers when implementing
+  thread capping, using each task's resource budget and preserving tool-specific
+  limits such as WSClean's single OpenBLAS thread per MPI rank.
 - **Honour `local_scratch_dir` for I/O-heavy temporaries:** the option is
   parsed and passed into the pipeline capabilities dict but never consumed, and
   `rapthor/execution/image/wsclean.py:64` always places WSClean's `-temp-dir`

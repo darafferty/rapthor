@@ -4,6 +4,7 @@ import os
 from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import EnvironmentOverrides, wsclean_environment
 from rapthor.execution.image.beam import ensure_image_beam
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
@@ -29,7 +30,6 @@ from rapthor.execution.outputs import (
 )
 from rapthor.execution.resources import (
     ResourceRequest,
-    thread_environment,
     validate_resource_request,
 )
 from rapthor.execution.shell import run_external_command
@@ -65,7 +65,7 @@ def run_or_reuse_wsclean_images(
     wsclean_command = _select_wsclean_command_for_sector(
         sector, concat_record, mask_record, region_record, temp_dir
     )
-    wsclean_environment = _wsclean_environment_for_sector(sector, execution_config)
+    environment = _wsclean_environment_for_sector(sector, execution_config)
     try:
         os.makedirs(temp_dir, exist_ok=True)
         run_external_command(
@@ -73,7 +73,7 @@ def run_or_reuse_wsclean_images(
             pipeline_working_dir,
             execution_config,
             shell_operation_cls=shell_operation_cls,
-            environment=wsclean_environment,
+            environment=environment,
         )
     finally:
         cleanup_directory(temp_dir)
@@ -154,29 +154,6 @@ def _write_aterm_config(pipeline_working_dir: str, h5parm: str) -> str:
     return config_path
 
 
-def _mpi_environment(
-    threads: int,
-    processes: int,
-    execution_config: ExecutionConfig,
-) -> Mapping[str, str]:
-    resource_request = validate_resource_request(
-        ResourceRequest(
-            name="wsclean-mpi",
-            threads=threads,
-            processes=processes,
-            use_mpi=True,
-            exclusive=True,
-        ),
-        execution_config,
-    )
-    environment = dict(thread_environment(resource_request))
-    # WSClean rejects multi-threaded OpenBLAS because it interferes with
-    # WSClean's own thread pool. Keep the requested OMP/WSClean thread count,
-    # but export a single OpenBLAS thread to every MPI rank.
-    environment["OPENBLAS_NUM_THREADS"] = "1"
-    return environment
-
-
 def _wsclean_threads_for_sector(sector: ImageSectorPayload) -> int:
     if sector["use_mpi"]:
         return int(sector["mpi_cpus_per_task"])
@@ -186,14 +163,18 @@ def _wsclean_threads_for_sector(sector: ImageSectorPayload) -> int:
 def _wsclean_environment_for_sector(
     sector: ImageSectorPayload,
     execution_config: ExecutionConfig,
-) -> Mapping[str, str]:
-    if not sector["use_mpi"]:
-        return {"DUCC0_NUM_THREADS": str(_wsclean_threads_for_sector(sector))}
-    return _mpi_environment(
-        _wsclean_threads_for_sector(sector),
-        int(sector["mpi_nnodes"]),
-        execution_config,
+) -> EnvironmentOverrides:
+    use_mpi = bool(sector["use_mpi"])
+    resource_request = ResourceRequest(
+        name="wsclean-mpi" if use_mpi else "wsclean",
+        threads=_wsclean_threads_for_sector(sector),
+        processes=int(sector["mpi_nnodes"]) if use_mpi else 1,
+        use_mpi=use_mpi,
+        exclusive=use_mpi,
     )
+    if use_mpi:
+        validate_resource_request(resource_request, execution_config)
+    return wsclean_environment(resource_request)
 
 
 def _select_wsclean_command_for_sector(

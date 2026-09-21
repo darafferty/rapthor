@@ -4,7 +4,6 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.resources import (
     ResourceRequest,
     collect_resource_request_issues,
-    thread_environment,
     validate_resource_request,
 )
 
@@ -129,10 +128,3 @@ def test_collect_resource_request_issues_preserves_issue_codes():
         "mpi_not_exclusive",
         "mpi_processes_oversubscribed",
     ]
-
-
-def test_thread_environment_sets_common_thread_variables():
-    assert thread_environment(ResourceRequest(threads=3)) == {
-        "OMP_NUM_THREADS": "3",
-        "OPENBLAS_NUM_THREADS": "3",
-    }

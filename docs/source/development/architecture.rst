@@ -116,6 +116,54 @@ helper logic should live under the execution package that owns it, for example
 implementation is owned by ``rapthor.execution.concatenate`` and exposed through
 the package entry point ``rapthor.execution.concatenate.linc_cli:main``.
 
+Command Environments
+--------------------
+
+External-command environment policies live in ``rapthor.execution.environments``.
+Task owners explicitly select a named helper, such as ``dp3_environment()`` or
+``wsclean_environment(resource_request)``, and pass its result to
+``run_external_command(environment=...)``. Keep resource validation in the task
+owner and environment values in these helpers. All helpers return a fresh
+``EnvironmentOverrides`` mapping without reading or modifying ``os.environ``.
+
+To add a variable for an existing task, extend its helper. To give a different
+task its own policy, add a small named helper and select it at the command call.
+``thread_environment(resource_request)`` provides common thread settings for
+policies that need them; it is not a default applied to every command. Avoid
+executable-name detection, global worker defaults and a policy registry.
+
+The ``EnvironmentOverrides`` mapping supports three cases:
+
+* Omitted keys inherit the worker's environment.
+* String values set or replace a variable for the child command.
+* ``None`` removes an inherited variable for the child command.
+
+For example, a task can supply:
+
+.. code-block:: python
+
+    environment = {"MALLOC_TRIM_THRESHOLD_": None, "OMP_NUM_THREADS": "4"}
+    run_external_command(command, workdir, config, environment=environment)
+
+The runner never mutates ``os.environ``. The captured subprocess path removes
+keys from a private environment copy. The ``ShellOperation`` path emits an
+``unset`` command in the child script because Prefect merges its string-only
+environment mapping with the parent environment. Both paths keep changes local
+to that command. Environment removals are recorded as JSON ``null`` values in
+``logs/commands.jsonl``; the original tool command remains intact in the log.
+
+The shared DP3 helper removes ``MALLOC_TRIM_THRESHOLD_`` so that the Dask nanny's
+allocator tuning does not disable glibc's adaptive allocation thresholds inside
+FastPredict. Both ordinary ``predict`` and ``h5parmpredict`` can use FastPredict;
+``sagecalpredict`` uses a separate backend. The policy applies to DP3 calibration
+and prediction commands regardless of their selected prediction backend. Other
+DP3 tasks, IDGCal, WSClean and Python tasks retain their own environments.
+Do not apply a task's policy globally to the worker or infer it from executable
+names in the shared runner. Worker bootstrap and in-process Python library
+initialization are separate from these subprocess policies. Test environment
+inheritance and isolation with a small subprocess, and mock the scientific
+executable in task tests.
+
 Public Export Guidance
 ----------------------
 

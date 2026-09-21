@@ -11,6 +11,7 @@ from rapthor.execution.calibrate.commands import (
 )
 from rapthor.execution.calibrate.payloads import CalibrateChunkPayload, CalibratePayload
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import dp3_environment
 from rapthor.execution.outputs import require_file
 from rapthor.execution.payloads import validate_required_list
 from rapthor.execution.shell import run_external_command
@@ -37,6 +38,7 @@ def run_calibrate_chunk(
         command,
         pipeline_working_dir,
         config,
+        environment=dp3_environment(),
         shell_operation_cls=shell_operation_cls,
     )
     output_records = {}

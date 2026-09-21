@@ -1,4 +1,5 @@
 import json
+import os
 import shlex
 from pathlib import Path
 
@@ -34,7 +35,7 @@ def fake_predict_shell_operation_cls():
             self.instances.append(self)
 
         def run(self):
-            tokens = shlex.split(self.kwargs["commands"][0])
+            tokens = shlex.split(self.kwargs["commands"][-1])
             cwd = Path(self.kwargs["working_dir"])
             output_paths = self._output_paths(tokens, cwd)
             for output_path in output_paths:
@@ -612,7 +613,7 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
     }
     validate_output_record(outputs["msfiles_di_cal"])
     command_tokens = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_predict_shell_operation_cls.instances
     ]
     assert [tokens[0] for tokens in command_tokens] == [
@@ -694,7 +695,7 @@ def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
     }
     validate_output_record(outputs["subtract_models"])
     command_tokens = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_predict_shell_operation_cls.instances
     ]
     assert [tokens[0] for tokens in command_tokens] == ["DP3", "DP3"]
@@ -712,8 +713,29 @@ def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
     )
 
 
-def test_predict_model_data_task_wraps_runner(tmp_path, fake_predict_shell_operation_cls):
-    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+@pytest.mark.parametrize("mode", ["di", "dd"])
+@pytest.mark.parametrize(
+    "sagecalpredict,h5parm,predict_type",
+    [
+        (False, None, "predict"),
+        (False, "solutions.h5", "h5parmpredict"),
+        (True, None, "sagecalpredict"),
+        (True, "solutions.h5", "sagecalpredict"),
+    ],
+)
+def test_predict_model_data_task_wraps_runner(
+    tmp_path,
+    monkeypatch,
+    fake_predict_shell_operation_cls,
+    mode,
+    sagecalpredict,
+    h5parm,
+    predict_type,
+):
+    monkeypatch.setenv("MALLOC_TRIM_THRESHOLD_", "65536")
+    input_parms = _predict_input_parms() if mode == "di" else _dd_predict_input_parms()
+    payload = predict_payload_from_inputs(mode, input_parms, tmp_path)
+    payload["predict_tasks"][0].update(sagecalpredict=sagecalpredict, h5parm=h5parm)
 
     task_fn = getattr(predict_model_data_task, "fn", predict_model_data_task)
     output = task_fn(
@@ -724,7 +746,11 @@ def test_predict_model_data_task_wraps_runner(tmp_path, fake_predict_shell_opera
     )
 
     assert output == directory_record(tmp_path / "obs_0.ms.sector_1_modeldata")
-    assert fake_predict_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
+    kwargs = fake_predict_shell_operation_cls.instances[0].kwargs
+    assert kwargs["working_dir"] == str(tmp_path)
+    assert kwargs["commands"][0] == "unset -- MALLOC_TRIM_THRESHOLD_"
+    assert f"predict.type={predict_type}" in shlex.split(kwargs["commands"][-1])
+    assert os.environ["MALLOC_TRIM_THRESHOLD_"] == "65536"
 
 
 def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(

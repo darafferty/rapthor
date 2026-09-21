@@ -21,6 +21,7 @@ from typing import Mapping, Optional
 
 from rapthor.execution.commands import CommandInput, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import EnvironmentOverrides
 from rapthor.execution.task_metrics import current_prefect_task_metadata
 
 
@@ -70,10 +71,10 @@ _TIME_METRIC_FIELDS = {
 
 @dataclass(frozen=True)
 class ShellCommand:
-    """A shell command plus execution metadata."""
+    """A shell command plus metadata; None environment values remove inherited variables."""
 
     command: CommandInput
-    environment: Mapping[str, str] = field(default_factory=dict)
+    environment: EnvironmentOverrides = field(default_factory=dict)
     working_directory: Optional[str] = None
     name: Optional[str] = None
 
@@ -87,11 +88,11 @@ def run_external_command(
     working_directory: Optional[str],
     execution_config: ExecutionConfig,
     *,
-    environment: Optional[Mapping[str, str]] = None,
+    environment: Optional[EnvironmentOverrides] = None,
     name: Optional[str] = None,
     shell_operation_cls=None,
 ):
-    """Execute a command list with the configured shell runner."""
+    """Execute a command with child-only environment overrides (None means unset)."""
     return run_shell_command(
         ShellCommand(
             command=command,
@@ -174,7 +175,16 @@ def shell_operation_kwargs(
         "stream_output": execution_config.stream_output,
     }
     if shell_command.environment:
-        kwargs["env"] = dict(shell_command.environment)
+        environment = {
+            key: value for key, value in shell_command.environment.items() if value is not None
+        }
+        if environment:
+            kwargs["env"] = environment
+        unset_variables = [key for key, value in shell_command.environment.items() if value is None]
+        if unset_variables:
+            # ShellOperation merges env into os.environ and only accepts strings.
+            # Its commands share one script, so remove variables in that child shell.
+            kwargs["commands"].insert(0, command_to_string(["unset", "--", *unset_variables]))
     if shell_command.working_directory is not None:
         kwargs["working_dir"] = shell_command.working_directory
     return kwargs
@@ -578,7 +588,11 @@ def _run_captured_shell_command(
         temp_file.close()
 
         env = os.environ.copy()
-        env.update(shell_command.environment)
+        for key, value in shell_command.environment.items():
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = value
         process_args = _profiled_process_args(
             ["bash", temp_file.name],
             shell_command,

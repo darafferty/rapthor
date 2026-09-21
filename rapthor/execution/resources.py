@@ -1,7 +1,7 @@
 """Resource declarations for external commands."""
 
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Optional
+from typing import Iterable, Optional
 
 from rapthor.execution.config import ExecutionConfig
 
@@ -135,12 +135,3 @@ def validate_resource_request(
     if issues:
         raise ValueError("; ".join(message for _, message in issues))
     return resource_request
-
-
-def thread_environment(resource_request: ResourceRequest) -> Mapping[str, str]:
-    """Return thread-related environment variables for external tools."""
-    threads = str(resource_request.threads)
-    return {
-        "OMP_NUM_THREADS": threads,
-        "OPENBLAS_NUM_THREADS": threads,
-    }

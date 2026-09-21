@@ -1,4 +1,5 @@
 import json
+import os
 import shlex
 from pathlib import Path
 
@@ -130,7 +131,8 @@ def fake_calibrate_shell_operation_cls():
             self.instances.append(self)
 
         def run(self):
-            tokens = shlex.split(self.kwargs["commands"][0])
+            # Environment setup may precede the external command in the child script.
+            tokens = shlex.split(self.kwargs["commands"][-1])
             cwd = Path(self.kwargs["working_dir"])
             if tokens[0] == "wsclean":
                 if "-draw-model" in tokens:
@@ -557,7 +559,7 @@ def _configure_dd_multidirection(field):
 
 def _command_tokens(shell_operation_cls):
     return [
-        shlex.split(instance.kwargs["commands"][0]) for instance in shell_operation_cls.instances
+        shlex.split(instance.kwargs["commands"][-1]) for instance in shell_operation_cls.instances
     ]
 
 
@@ -2228,8 +2230,22 @@ def test_calibrate_payload_from_inputs_rejects_unsupported_slice(
         calibrate_payload_from_inputs(mode, input_parms, tmp_path)
 
 
-def test_calibrate_chunk_task_runs_with_mocked_shell(tmp_path, fake_calibrate_shell_operation_cls):
-    payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
+@pytest.mark.parametrize(
+    "mode,input_factory,expected_files",
+    [
+        ("di", _di_fulljones_input_parms, {"solve1": "fulljones_gain_0.h5parm"}),
+        (
+            "dd",
+            _dd_fast_medium_input_parms,
+            {"solve1": "fast_phase_0.h5parm", "solve2": "medium1_phase_0.h5parm"},
+        ),
+    ],
+)
+def test_calibrate_chunk_task_runs_with_mocked_shell(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls, mode, input_factory, expected_files
+):
+    monkeypatch.setenv("MALLOC_TRIM_THRESHOLD_", "65536")
+    payload = calibrate_payload_from_inputs(mode, input_factory(), tmp_path)
     task_fn = getattr(calibrate_chunk_task, "fn", calibrate_chunk_task)
 
     output = task_fn(
@@ -2239,8 +2255,12 @@ def test_calibrate_chunk_task_runs_with_mocked_shell(tmp_path, fake_calibrate_sh
         shell_operation_cls=fake_calibrate_shell_operation_cls,
     )
 
-    assert output == {"solve1": file_record(tmp_path / "fulljones_gain_0.h5parm")}
+    assert output == {slot: file_record(tmp_path / name) for slot, name in expected_files.items()}
     assert fake_calibrate_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
+    assert fake_calibrate_shell_operation_cls.instances[0].kwargs["commands"][0] == (
+        "unset -- MALLOC_TRIM_THRESHOLD_"
+    )
+    assert os.environ["MALLOC_TRIM_THRESHOLD_"] == "65536"
 
 
 def test_run_plot_solutions_returns_only_new_plots(tmp_path, fake_calibrate_shell_operation_cls):
@@ -2283,7 +2303,7 @@ def test_run_plot_solutions_publishes_new_plot_artifacts(
 
     assert plots == [file_record(tmp_path / "phase_solutions.png")]
     assert published == [(plots, str(tmp_path))]
-    command = shlex.split(fake_calibrate_shell_operation_cls.instances[0].kwargs["commands"][0])
+    command = shlex.split(fake_calibrate_shell_operation_cls.instances[0].kwargs["commands"][-1])
     assert "--first-dir" in command
 
 
@@ -2309,7 +2329,7 @@ def test_run_calibrate_flow_supports_di_fulljones(
         validate_output_record(value)
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == [
@@ -2377,7 +2397,7 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
         validate_output_record(value)
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
@@ -2554,7 +2574,7 @@ def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shel
         validate_output_record(value)
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == [
@@ -2596,7 +2616,7 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
         validate_output_record(value)
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == [
@@ -2668,7 +2688,7 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
         validate_output_record(value)
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
@@ -2721,7 +2741,7 @@ def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_
     )
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
@@ -2751,7 +2771,7 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
     assert (tmp_path / "field_facets_ds9.reg").is_file()
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == _calibration_command_names_after_collect_split(
@@ -2932,7 +2952,7 @@ def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
         instances = []
 
         def run(self):
-            tokens = shlex.split(self.kwargs["commands"][0])
+            tokens = shlex.split(self.kwargs["commands"][-1])
             if tokens[0] == "wsclean":
                 return "OK"
             return super().run()
@@ -2991,7 +3011,7 @@ def test_run_calibrate_flow_supports_dd_image_predict_preapply(
         tmp_path / "combined_fast_medium1_phases.h5parm"
     )
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert [command[0] for command in commands][:2] == [
@@ -3054,7 +3074,7 @@ def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell
         validate_output_record(value)
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2, 1)
@@ -3091,7 +3111,7 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
     }
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
     ]
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2)
