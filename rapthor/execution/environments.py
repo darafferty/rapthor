@@ -30,9 +30,12 @@ def thread_environment(resource_request: ResourceRequest) -> EnvironmentOverride
 
 def wsclean_environment(resource_request: ResourceRequest) -> EnvironmentOverrides:
     """Return overrides for WSClean imaging using the command's resources."""
+    # Restore glibc's adaptive allocation thresholds for WSClean's buffers.
+    environment: dict[str, Optional[str]] = {"MALLOC_TRIM_THRESHOLD_": None}
     if not resource_request.use_mpi:
-        return {"DUCC0_NUM_THREADS": str(resource_request.threads)}
-    environment = dict(thread_environment(resource_request))
+        environment["DUCC0_NUM_THREADS"] = str(resource_request.threads)
+        return environment
+    environment.update(thread_environment(resource_request))
     # WSClean rejects multi-threaded OpenBLAS because it interferes with
     # WSClean's own thread pool. Keep the requested OMP/WSClean thread count,
     # but export a single OpenBLAS thread to every MPI rank.

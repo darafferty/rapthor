@@ -157,7 +157,9 @@ allocator tuning does not disable glibc's adaptive allocation thresholds inside
 FastPredict. Both ordinary ``predict`` and ``h5parmpredict`` can use FastPredict;
 ``sagecalpredict`` uses a separate backend. The policy applies to DP3 calibration
 and prediction commands regardless of their selected prediction backend. Other
-DP3 tasks, IDGCal, WSClean and Python tasks retain their own environments.
+DP3 tasks, IDGCal and Python tasks retain their own environments. The WSClean
+helper independently removes ``MALLOC_TRIM_THRESHOLD_`` before launching either
+``wsclean`` or ``mpirun``, while preserving its local and MPI thread policies.
 Do not apply a task's policy globally to the worker or infer it from executable
 names in the shared runner. Worker bootstrap and in-process Python library
 initialization are separate from these subprocess policies. Test environment

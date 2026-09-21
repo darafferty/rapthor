@@ -112,12 +112,14 @@ DP3 calibration and prediction subprocesses remove the inherited
 workers, but it also disables glibc's adaptive allocation thresholds and can
 penalize FastPredict's temporary allocations. This also affects standalone
 prediction: DP3's ordinary ``predict`` and ``h5parmpredict`` steps can use
-FastPredict. Rapthor applies the removal to calibration and prediction commands;
-the worker, WSClean, Python tasks and other DP3 commands retain their existing
-environments. CPU/thread settings are unchanged. The removal is recorded as
+FastPredict. Rapthor also removes the variable for WSClean imaging, including
+MPI launches, to restore adaptive allocation for its temporary buffers. The
+worker, Python tasks and other DP3 commands retain their existing environments.
+CPU/thread settings and MPI launch options are unchanged. The removal is
+recorded as
 ``"MALLOC_TRIM_THRESHOLD_": null`` in ``logs/commands.jsonl``. When comparing
 performance, check peak memory use as well as prediction time, since allocator
-reuse can retain more memory in the DP3 process.
+reuse can retain more memory in the DP3 or WSClean process.
 
 
 .. _prefect_demo_helper:

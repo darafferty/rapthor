@@ -339,7 +339,7 @@ def fake_image_shell_operation_cls():
             self.instances.append(self)
 
         def run(self):
-            tokens = shlex.split(self.kwargs["commands"][0])
+            tokens = shlex.split(self.kwargs["commands"][-1])
             cwd = Path(self.kwargs["working_dir"])
             if tokens[0] == "DP3":
                 output_name = next(
@@ -1824,7 +1824,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     ]
     validate_output_record(outputs["sector_I_images"])
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
     ]
     command_names = [_command_name(command) for command in commands]
@@ -1962,7 +1962,7 @@ def test_run_image_flow_uses_filter_skymodel_subprocess_in_daemon_worker(
         file_record(tmp_path / "sector_1.true_sky.txt")
     ]
     command_tokens = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert [_command_name(tokens) for tokens in command_tokens] == [
@@ -2065,7 +2065,7 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
 
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [FILTER_SKYMODEL_COMMAND_NAME]
@@ -2083,7 +2083,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
 
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
     ]
     command_names = [_command_name(command) for command in commands]
@@ -2137,7 +2137,7 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
     assert outputs["sector_region_file"] == [file_record(tmp_path / "sector_1_facets_ds9.reg")]
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2159,9 +2159,9 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
         }
     ]
     facet_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
     assert "-apply-facet-beam" in facet_command
     assert "-apply-facet-solutions" in facet_command
@@ -2185,7 +2185,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
     aterm_config = tmp_path / ATERM_CONFIG_FILENAME
     assert aterm_config.read_text() == build_aterm_config_content("/data/screen-solutions.h5")
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2196,9 +2196,9 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
         FILTER_SKYMODEL_COMMAND_NAME,
     ]
     screen_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
     assert screen_command[screen_command.index("-gridder") + 1] == "idg"
     assert screen_command[screen_command.index("-aterm-config") + 1] == ATERM_CONFIG_FILENAME
@@ -2223,11 +2223,12 @@ def test_run_image_flow_sets_ducc0_num_threads_for_non_mpi_wsclean(
     wsclean_instance = next(
         instance
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
-    wsclean_command = shlex.split(wsclean_instance.kwargs["commands"][0])
+    wsclean_command = shlex.split(wsclean_instance.kwargs["commands"][-1])
     assert wsclean_command[wsclean_command.index("-j") + 1] == str(max_threads)
     assert wsclean_instance.kwargs["env"] == {"DUCC0_NUM_THREADS": str(max_threads)}
+    assert wsclean_instance.kwargs["commands"][0] == "unset -- MALLOC_TRIM_THRESHOLD_"
 
 
 def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_operation_cls):
@@ -2248,9 +2249,9 @@ def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_o
     ]
     assert "sector_skymodels" not in outputs
     wsclean_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
     assert wsclean_command[wsclean_command.index("-pol") + 1] == "IQUV"
     assert "-join-polarizations" in wsclean_command
@@ -2266,9 +2267,9 @@ def test_run_image_flow_supports_linked_full_stokes(tmp_path, fake_image_shell_o
     )
 
     wsclean_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
     assert wsclean_command[wsclean_command.index("-link-polarizations") + 1] == "I"
     assert "-join-polarizations" not in wsclean_command
@@ -2286,9 +2287,9 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
     mpi_instance = next(
         instance
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "mpirun"
     )
-    mpi_command = shlex.split(mpi_instance.kwargs["commands"][0])
+    mpi_command = shlex.split(mpi_instance.kwargs["commands"][-1])
     assert mpi_command[:10] == [
         "mpirun",
         "--bind-to",
@@ -2306,6 +2307,7 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
         "OMP_NUM_THREADS": "3",
         "OPENBLAS_NUM_THREADS": "1",
     }
+    assert mpi_instance.kwargs["commands"][0] == "unset -- MALLOC_TRIM_THRESHOLD_"
 
 
 def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
@@ -2320,7 +2322,7 @@ def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
         )
 
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert "mpirun" not in command_names
@@ -2338,9 +2340,9 @@ def test_run_image_flow_supports_mpi_facets(tmp_path, fake_image_shell_operation
 
     assert outputs["sector_region_file"] == [file_record(tmp_path / "sector_1_facets_ds9.reg")]
     mpi_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "mpirun"
     )
     assert "wsclean-mp" in mpi_command
     assert "-apply-facet-solutions" in mpi_command
@@ -2362,9 +2364,9 @@ def test_run_image_flow_supports_mpi_screens(tmp_path, fake_image_shell_operatio
 
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     mpi_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "mpirun"
     )
     assert "wsclean-mp" in mpi_command
     assert mpi_command[mpi_command.index("-gridder") + 1] == "idg"
@@ -2388,7 +2390,7 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         ]
     ]
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2401,9 +2403,9 @@ def test_run_image_flow_returns_compressed_image_outputs(tmp_path, fake_image_sh
         "fpack",
     ]
     fpack_commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if _command_name(shlex.split(instance.kwargs["commands"][0])) == "fpack"
+        if _command_name(shlex.split(instance.kwargs["commands"][-1])) == "fpack"
     ]
     assert fpack_commands[0] == [
         "fpack",
@@ -2434,7 +2436,7 @@ def test_run_image_flow_returns_filtered_model_image(tmp_path, fake_image_shell_
         file_record(tmp_path / "sector_1-MFS-filtered-model.fits.fz")
     ]
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2456,9 +2458,9 @@ def test_run_image_flow_supports_clean_disabled_stokes_i(tmp_path, fake_image_sh
 
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     wsclean_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
     assert wsclean_command[wsclean_command.index("-niter") + 1] == "0"
 
@@ -2475,9 +2477,9 @@ def test_run_image_flow_cleans_isolated_wsclean_temp_dirs(tmp_path, fake_image_s
     temp_dirs = [
         Path(command[command.index("-temp-dir") + 1])
         for command in [
-            shlex.split(instance.kwargs["commands"][0])
+            shlex.split(instance.kwargs["commands"][-1])
             for instance in fake_image_shell_operation_cls.instances
-            if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+            if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
         ]
     ]
     assert temp_dirs == [
@@ -2495,7 +2497,7 @@ def test_run_image_flow_cleans_wsclean_temp_dir_on_failure(
         instances = []
 
         def run(self):
-            tokens = shlex.split(self.kwargs["commands"][0])
+            tokens = shlex.split(self.kwargs["commands"][-1])
             if tokens[0] == "wsclean":
                 temp_dir = Path(tokens[tokens.index("-temp-dir") + 1])
                 temp_dir.mkdir(parents=True, exist_ok=True)
@@ -2530,7 +2532,7 @@ def test_run_image_flow_returns_image_cube_outputs(tmp_path, fake_image_shell_op
         [file_record(tmp_path / "sector_1_I_freq_cube.fits_frequencies.txt")]
     ]
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2624,7 +2626,7 @@ def test_run_image_flow_returns_normalization_outputs(
     ]
     assert "sector_skymodels" not in outputs
     command_names = [
-        _command_name(shlex.split(instance.kwargs["commands"][0]))
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [
@@ -2788,7 +2790,7 @@ def test_image_flow_creates_residual_visibilities(tmp_path, fake_image_shell_ope
     )
 
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
     ]
     wsclean_command = next(command for command in commands if command[0] == "wsclean")
@@ -3006,7 +3008,7 @@ def test_bright_peeling_image_operation_run_uses_prefect_flow(
 
     expected_outputs = _expected_image_operation_outputs(operation)
     commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
     ]
     restore_commands = [
@@ -3161,7 +3163,7 @@ def test_compressed_image_operation_run_uses_prefect_flow(
     visibility_dir = Path(field.parset["dir_working"]) / "visibilities" / "image_1" / sector.name
     diagnostics_dir = Path(field.parset["dir_working"]) / "plots" / "image_1"
     command_names = [
-        shlex.split(instance.kwargs["commands"][0])[0]
+        shlex.split(instance.kwargs["commands"][-1])[0]
         for instance in fake_image_shell_operation_cls.instances
     ]
 
@@ -3219,9 +3221,9 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
     expected_outputs = _expected_image_operation_outputs(operation)
     sector = field.imaging_sectors[0]
     wsclean_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
 
     assert operation.outputs == expected_outputs
@@ -3264,9 +3266,9 @@ def test_facet_image_operation_run_uses_prefect_flow(
     expected_outputs = _expected_facet_image_operation_outputs(operation)
     region_dir = Path(field.parset["dir_working"]) / "regions" / "image_1"
     wsclean_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
 
     assert operation.outputs == expected_outputs
@@ -3304,14 +3306,14 @@ def test_screen_image_operation_run_uses_prefect_flow(
 
     expected_outputs = _expected_image_operation_outputs(operation)
     wsclean_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
     prepare_commands = [
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "DP3"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "DP3"
     ]
 
     assert operation.outputs == expected_outputs
@@ -3370,9 +3372,9 @@ def test_normalize_image_operation_run_uses_prefect_flow(
     assert Path(operation.done_file).is_file()
     assert fake_direct_image_helpers["make_image_cube"]
     catalog_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if _is_cube_catalog_command(shlex.split(instance.kwargs["commands"][0]))
+        if _is_cube_catalog_command(shlex.split(instance.kwargs["commands"][-1]))
     )
     assert "--ncores=4" in catalog_command
     assert fake_direct_image_helpers["normalize_flux_scale"]
@@ -3401,9 +3403,9 @@ def test_mpi_image_operation_run_uses_prefect_flow(
 
     expected_outputs = _expected_image_operation_outputs(operation)
     mpi_command = next(
-        shlex.split(instance.kwargs["commands"][0])
+        shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][0])[0] == "mpirun"
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "mpirun"
     )
 
     assert operation.outputs == expected_outputs

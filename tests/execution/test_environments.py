@@ -32,12 +32,24 @@ def test_thread_environment_sets_common_thread_variables():
 
 @pytest.mark.parametrize("threads", [1, 6])
 @pytest.mark.parametrize("use_mpi", [False, True])
-def test_wsclean_environment_preserves_thread_policy(threads, use_mpi):
+@pytest.mark.parametrize("inherited_trim", [None, "65536"])
+def test_wsclean_environment_preserves_threads_and_isolates_allocator(
+    monkeypatch, threads, use_mpi, inherited_trim
+):
+    if inherited_trim is None:
+        monkeypatch.delenv("MALLOC_TRIM_THRESHOLD_", raising=False)
+    else:
+        monkeypatch.setenv("MALLOC_TRIM_THRESHOLD_", inherited_trim)
+    original_environment = dict(os.environ)
     request = ResourceRequest(threads=threads, use_mpi=use_mpi)
 
     environment = wsclean_environment(request)
 
+    expected = {"MALLOC_TRIM_THRESHOLD_": None}
     if use_mpi:
-        assert environment == {"OMP_NUM_THREADS": str(threads), "OPENBLAS_NUM_THREADS": "1"}
+        expected.update({"OMP_NUM_THREADS": str(threads), "OPENBLAS_NUM_THREADS": "1"})
     else:
-        assert environment == {"DUCC0_NUM_THREADS": str(threads)}
+        expected["DUCC0_NUM_THREADS"] = str(threads)
+    assert environment == expected
+    assert dict(os.environ) == original_environment
+    assert wsclean_environment(request) is not environment
