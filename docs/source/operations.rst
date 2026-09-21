@@ -135,6 +135,9 @@ Primary products:
 
     * In ``plots/image_X``, where ``X`` is the cycle number:
 
+        Photometry plots are generated within the configured working directory
+        and saved here with sector and survey names.
+
         .. note::
 
             In the following, the "flux ratio" is calculated (per source) as the Rapthor-derived LOFAR flux density divided by the reference catalog flux density, where the reference catalog is one of TGSS, NVSS, or LoTSS. The "positional offsets" are calculated (per source) as the Rapthor-derived RA or Dec value minus the Pan-STARRS value.

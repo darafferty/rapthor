@@ -2,6 +2,9 @@
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from threading import Barrier
 from types import SimpleNamespace
 
 import astropy.units as u
@@ -279,7 +282,7 @@ def test_check_astrometry_sources_below_minimum_number(
 
 
 def test_check_photometry_zero_sources(
-    observation, input_catalog_fits, sky_model_path, caplog, monkeypatch
+    observation, input_catalog_fits, sky_model_path, caplog, monkeypatch, tmp_path
 ):
     """
     Test the check_photometry function when the skymodel contains zero sources.
@@ -295,6 +298,7 @@ def test_check_photometry_zero_sources(
             freq=1.5e8,  # Example frequency in Hz
             comparison_skymodel=sky_model_path,
             min_number=1,
+            output_root=tmp_path / "sector_1",
         )
         assert "No sources found" in caplog.text
         assert "Skipping the photometry check..." in caplog.text
@@ -309,6 +313,7 @@ def test_check_photometry_below_min_number_sources(
     caplog,
     monkeypatch,
     mock_minimal_table,
+    tmp_path,
 ):
     """
     Test the check_photometry function when the skymodel contains fewer sources
@@ -327,6 +332,7 @@ def test_check_photometry_below_min_number_sources(
             freq=1.5e8,  # Example frequency in Hz
             comparison_skymodel=sky_model_path,
             min_number=min_number,
+            output_root=tmp_path / "sector_1",
         )
         msg = "No sources found" if num_sources == 0 else f"Fewer than {min_number} sources found"
         assert msg in caplog.text
@@ -344,6 +350,7 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
     caplog,
     monkeypatch,
     mock_full_photometry_table,
+    tmp_path,
 ):
     """
     Test that the  check_photometry function does not access the internet
@@ -373,11 +380,6 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
             "stdClippedDecOffsetDeg": 1,
         },
     )
-    mocker.patch(
-        "rapthor.execution.image.diagnostic_calculation._rename_plots",
-        autospec=True,
-    )
-
     with caplog.at_level(logging.INFO):
         diagnostics_dict = check_photometry(
             observation,
@@ -385,6 +387,7 @@ def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
             freq=15,
             comparison_skymodel=sky_model_path,
             min_number=1,
+            output_root=tmp_path / "sector_1",
         )
         assert "No sources found" not in caplog.text
         assert "Skipping the photometry check..." not in caplog.text
@@ -401,6 +404,7 @@ def test_check_photometry_without_comparison_surveys_does_not_access_internet(
     caplog,
     monkeypatch,
     mock_full_photometry_table,
+    tmp_path,
 ):
     """
     Test that the  check_photometry function does not access the internet
@@ -421,6 +425,7 @@ def test_check_photometry_without_comparison_surveys_does_not_access_internet(
             comparison_skymodel=None,
             comparison_surveys=(),
             min_number=1,
+            output_root=tmp_path / "sector_1",
         )
         assert "No sources found" not in caplog.text
         assert "The backup survey catalog" not in caplog.text
@@ -632,30 +637,22 @@ def test_fits_to_makesourcedb_single_source():
 
 
 def test_rename_plots(tmp_path):
-    """
-    Test that _rename_plots correctly renames plot files according to the specified output root.
-    """
-    # Temporarily create some dummy plot files to test the renaming
-    for filename in [
-        "flux_ratio_vs_distance.pdf",  # Should be renamed to flux_ratio_vs_distance_TEST.pdf
-        "flux_ratio_vs_flux.pdf",  # Should be renamed to flux_ratio_vs_flux_TEST.pdf
-        "flux_ratio_sky.pdf",  # Should be renamed to flux_ratio_sky_TEST.pdf
-        "positional_offsets_sky.pdf",  # Should be removed by _rename_plots
-    ]:
-        (tmp_path / filename).touch()
+    """Only expected plots are moved, replacing outputs from an earlier attempt."""
+    plot_dir = tmp_path / "comparison"
+    plot_dir.mkdir()
+    plots = ("flux_ratio_vs_distance", "flux_ratio_vs_flux", "flux_ratio_sky")
+    for plot in plots:
+        (plot_dir / f"{plot}.pdf").write_text("new plot")
+        (tmp_path / f"sector_1.{plot}_TGSS.pdf").write_text("old plot")
+    unrelated_pdf = tmp_path / "unrelated.pdf"
+    unrelated_pdf.write_text("user document")
 
-    expected_files = [
-        "flux_ratio_vs_distance_TEST.pdf",
-        "flux_ratio_vs_flux_TEST.pdf",
-        "flux_ratio_sky_TEST.pdf",
-    ]
-    _rename_plots("TEST", tmp_path)
-    for expected_file in expected_files:
-        assert (tmp_path / expected_file).exists(), f"{expected_file} was not found in {tmp_path}"
+    _rename_plots("TGSS", plot_dir, tmp_path / "sector_1")
 
-    assert not (tmp_path / "positional_offsets_sky.pdf").exists(), (
-        "positional_offsets_sky.pdf should have been removed"
-    )
+    for plot in plots:
+        assert (tmp_path / f"sector_1.{plot}_TGSS.pdf").read_text() == "new plot"
+    assert not list(plot_dir.iterdir())
+    assert unrelated_pdf.read_text() == "user document"
 
 
 def test_compare_skymodel(
@@ -692,8 +689,13 @@ def test_compare_skymodel(
     )
 
 
+@pytest.mark.parametrize("relative_output_root", [False, True])
 def test_compare_photometry_survey(
-    grouped_comparison_skymodel, mock_comparison_skymodel_table, monkeypatch, tmp_path
+    grouped_comparison_skymodel,
+    mock_comparison_skymodel_table,
+    monkeypatch,
+    tmp_path,
+    relative_output_root,
 ):
     """
     Test that compare_photometry_survey correctly compares photometry between the input catalog
@@ -701,11 +703,15 @@ def test_compare_photometry_survey(
     """
     survey = "TEST_SURVEY"
     monkeypatch.chdir(tmp_path)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    output_root = Path("work/sector_1") if relative_output_root else str(work_dir / "sector_1")
     result = compare_photometry_survey(
         mock_comparison_skymodel_table,
         survey,
         grouped_comparison_skymodel,
         freq=150e6,
+        output_root=output_root,
     )
     expected_keys = [
         "meanRatio_TEST_SURVEY",
@@ -714,16 +720,15 @@ def test_compare_photometry_survey(
         "stdClippedRatio_TEST_SURVEY",
     ]
     expected_plot_files = [
-        "flux_ratio_vs_distance_TEST_SURVEY.pdf",
-        "flux_ratio_vs_flux_TEST_SURVEY.pdf",
-        "flux_ratio_sky_TEST_SURVEY.pdf",
+        "sector_1.flux_ratio_vs_distance_TEST_SURVEY.pdf",
+        "sector_1.flux_ratio_vs_flux_TEST_SURVEY.pdf",
+        "sector_1.flux_ratio_sky_TEST_SURVEY.pdf",
     ]
     assert all(key in result for key in expected_keys), (
         "Not all expected keys are present in the result"
     )
-    assert all((tmp_path / plot).exists() for plot in expected_plot_files), (
-        "Not all expected plot files were generated"
-    )
+    assert {path.name for path in work_dir.iterdir()} == set(expected_plot_files)
+    assert list(tmp_path.iterdir()) == [work_dir]
 
 
 def test_compare_photometry_survey_no_matches(
@@ -745,6 +750,7 @@ def test_compare_photometry_survey_no_matches(
             survey,
             grouped_comparison_skymodel,
             freq=150e6,
+            output_root=tmp_path / "sector_1",
         )
     assert result == {}, (
         "Expected an empty result when there are no matches between the input catalog and the survey"
@@ -795,11 +801,12 @@ def test_check_photometry_expected_plots(
         min_number=1,
         comparison_skymodel=str(selected_sky_model_path),
         comparison_surveys=[survey],
+        output_root=tmp_path / "sector_1",
     )
     expected_plot_files = [
-        "flux_ratio_vs_distance_USER_SUPPLIED.pdf",
-        "flux_ratio_vs_flux_USER_SUPPLIED.pdf",
-        "flux_ratio_sky_USER_SUPPLIED.pdf",
+        "sector_1.flux_ratio_vs_distance_USER_SUPPLIED.pdf",
+        "sector_1.flux_ratio_vs_flux_USER_SUPPLIED.pdf",
+        "sector_1.flux_ratio_sky_USER_SUPPLIED.pdf",
     ]
     assert all((tmp_path / plot).exists() for plot in expected_plot_files), (
         "Not all expected plot files were generated"
@@ -922,10 +929,9 @@ def test_compute_facet_rms_noise_returns_empty_for_invalid_region(monkeypatch, t
     assert "Could not determine per-facet RMS diagnostics" in caplog.text
 
 
-def test_calculate_image_diagnostics_writes_facets_rms_when_region_is_valid(
-    monkeypatch, mocker, tmp_path
-):
-    """The full diagnostics JSON gains facets_rms only when facet stats are available."""
+@pytest.fixture
+def image_diagnostics_inputs(monkeypatch, tmp_path):
+    """Provide small image diagnostics inputs without requiring Measurement Sets."""
 
     class FakeObservation:
         timepersample = 2.0
@@ -970,6 +976,28 @@ def test_calculate_image_diagnostics_writes_facets_rms_when_region_is_valid(
         "rapthor.execution.image.diagnostic_calculation.misc.calc_theoretical_noise",
         lambda obs_list, use_lotss_estimate=True: (0.123, 0.456),
     )
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    return {
+        "flat_noise_image": "flat_noise_image.fits",
+        "flat_noise_rms_image": "flat_noise_rms_image.fits",
+        "true_sky_image": "true_sky_image.fits",
+        "true_sky_rms_image": "true_sky_rms_image.fits",
+        "input_catalog": "input_catalog.fits",
+        "obs_ms": ["obs.ms"],
+        "obs_starttime": ["2024-01-01T00:00:00"],
+        "obs_ntimes": [1],
+        "diagnostics_file": str(diagnostics_file),
+        "output_root": str(work_dir / "sector_1"),
+        "facet_region_file": str(region_file),
+        "allow_internet_access": False,
+    }
+
+
+def test_calculate_image_diagnostics_writes_facets_rms_when_region_is_valid(
+    mocker, image_diagnostics_inputs
+):
+    """The full diagnostics JSON gains facets_rms only when facet stats are available."""
     mocker.patch(
         "rapthor.execution.image.diagnostic_calculation.check_photometry",
         return_value={"photometry_metric": 1.0},
@@ -983,25 +1011,157 @@ def test_calculate_image_diagnostics_writes_facets_rms_when_region_is_valid(
         return_value={"facet_0": {"flat_noise": {"mean": 2.0}}},
     )
 
-    calculate_image_diagnostics(
-        flat_noise_image="flat_noise_image.fits",
-        flat_noise_rms_image="flat_noise_rms_image.fits",
-        true_sky_image="true_sky_image.fits",
-        true_sky_rms_image="true_sky_rms_image.fits",
-        input_catalog="input_catalog.fits",
-        obs_ms=["obs.ms"],
-        obs_starttime=["2024-01-01T00:00:00"],
-        obs_ntimes=[1],
-        diagnostics_file=str(diagnostics_file),
-        output_root=str(tmp_path / "output"),
-        facet_region_file=str(region_file),
-        allow_internet_access=False,
-    )
+    calculate_image_diagnostics(**image_diagnostics_inputs)
 
-    diagnostics = json.loads((tmp_path / "output.image_diagnostics.json").read_text())
+    output_root = image_diagnostics_inputs["output_root"]
+    diagnostics = json.loads(Path(f"{output_root}.image_diagnostics.json").read_text())
     assert diagnostics["existing"] == 1
     assert diagnostics["photometry_metric"] == 1.0
     assert diagnostics["astrometry_metric"] == 2.0
     assert diagnostics["theoretical_rms"] == 0.123
     assert diagnostics["unflagged_data_fraction"] == 0.456
     assert diagnostics["facets_rms"] == {"facet_0": {"flat_noise": {"mean": 2.0}}}
+
+
+@pytest.mark.parametrize("astrometry_fails", [False, True])
+def test_calculate_image_diagnostics_keeps_photometry_plots_in_work_directory(
+    astrometry_fails,
+    image_diagnostics_inputs,
+    mock_comparison_skymodel_table,
+    monkeypatch,
+    mocker,
+    tmp_path,
+):
+    """Photometry outputs belong to the work directory, even if a later step fails."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    launch_dir = tmp_path / "launch"
+    launch_dir.mkdir()
+    unrelated_pdf = launch_dir / "unrelated.pdf"
+    unrelated_pdf.write_text("user document")
+    monkeypatch.chdir(launch_dir)
+    output_root = image_diagnostics_inputs["output_root"]
+    catalog_path = tmp_path / "catalog.fits"
+    mock_comparison_skymodel_table.write(catalog_path, format="fits")
+    image_diagnostics_inputs["input_catalog"] = str(catalog_path)
+    mocker.patch(
+        f"{module}.filter_skymodel_for_photometry", side_effect=lambda catalog, *args: catalog
+    )
+    mocker.patch(
+        f"{module}.load_photometry_surveys",
+        return_value={"TGSS": mocker.Mock(), "LOTSS": mocker.Mock()},
+    )
+
+    def compare(comparison_skymodel, *, name2, outDir=".", **kwargs):
+        assert Path.cwd() == launch_dir
+        for name in (
+            "flux_ratio_sky",
+            "flux_ratio_vs_distance",
+            "flux_ratio_vs_flux",
+            "positional_offsets_sky",
+        ):
+            (Path(outDir) / f"{name}.pdf").write_text(name2)
+        (Path(outDir) / "stats.txt").write_text("comparison statistics")
+        return {"meanRatio": 1.0, "stdRatio": 0.1, "meanClippedRatio": 1.0, "stdClippedRatio": 0.1}
+
+    mocker.patch(f"{module}.fits_to_makesourcedb", return_value=SimpleNamespace(compare=compare))
+    mocker.patch(f"{module}.compute_facet_rms_noise", return_value={})
+    astrometry = mocker.patch(f"{module}.check_astrometry", return_value={})
+    if astrometry_fails:
+        astrometry.side_effect = RuntimeError("Astrometry failed")
+        with pytest.raises(RuntimeError, match="Astrometry failed"):
+            calculate_image_diagnostics(**image_diagnostics_inputs)
+    else:
+        calculate_image_diagnostics(**image_diagnostics_inputs)
+
+    assert sorted(path.name for path in launch_dir.iterdir()) == ["unrelated.pdf"]
+    assert unrelated_pdf.read_text() == "user document"
+    expected_plots = {
+        Path(f"{output_root}.{name}_{survey}.pdf")
+        for name in ("flux_ratio_sky", "flux_ratio_vs_distance", "flux_ratio_vs_flux")
+        for survey in ("TGSS", "LOTSS")
+    }
+    for path in expected_plots:
+        assert path.read_text() == ("LOTSS" if path.stem.endswith("LOTSS") else "TGSS")
+    work_outputs = set(Path(output_root).parent.iterdir())
+    if not astrometry_fails:
+        work_outputs.remove(Path(f"{output_root}.image_diagnostics.json"))
+    assert work_outputs == expected_plots
+
+
+def test_compare_photometry_survey_isolates_overlapping_sectors(monkeypatch, mocker, tmp_path):
+    """Overlapping comparisons must not overwrite each other's intermediate plots."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    launch_dir = tmp_path / "launch"
+    launch_dir.mkdir()
+    monkeypatch.chdir(launch_dir)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    barrier = Barrier(2)
+
+    def compare(skymodel, *, outDir=".", **kwargs):
+        assert Path.cwd() == launch_dir
+        for name in (
+            "flux_ratio_sky",
+            "flux_ratio_vs_distance",
+            "flux_ratio_vs_flux",
+            "positional_offsets_sky",
+        ):
+            (Path(outDir) / f"{name}.pdf").write_text(skymodel.sector_name)
+        barrier.wait(timeout=10)
+        return {"meanRatio": 1.0, "stdRatio": 0.1, "meanClippedRatio": 1.0, "stdClippedRatio": 0.1}
+
+    mocker.patch(f"{module}.fits_to_makesourcedb", return_value=SimpleNamespace(compare=compare))
+
+    models = {name: mocker.Mock(sector_name=name) for name in ("sector_1", "sector_2")}
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(
+                compare_photometry_survey, name, "TGSS", model, 150e6, output_root=work_dir / name
+            )
+            for name, model in models.items()
+        ]
+        for future in futures:
+            assert future.result()["meanRatio_TGSS"] == 1.0
+
+    expected_plots = {
+        work_dir / f"{sector}.{name}_TGSS.pdf": sector
+        for sector in models
+        for name in ("flux_ratio_sky", "flux_ratio_vs_distance", "flux_ratio_vs_flux")
+    }
+    assert set(work_dir.iterdir()) == set(expected_plots)
+    for path, sector in expected_plots.items():
+        assert path.read_text() == sector
+    assert not list(launch_dir.iterdir())
+
+
+@pytest.mark.parametrize("comparison_fails", [False, True])
+def test_compare_photometry_survey_cleans_up_unsuccessful_comparison(
+    comparison_fails, monkeypatch, mocker, tmp_path
+):
+    """Partial comparison outputs are discarded on no matches or an exception."""
+    launch_dir = tmp_path / "launch"
+    launch_dir.mkdir()
+    monkeypatch.chdir(launch_dir)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    def compare(*args, outDir=".", **kwargs):
+        (Path(outDir) / "flux_ratio_sky.pdf").write_text("partial plot")
+        (Path(outDir) / "stats.txt").write_text("partial statistics")
+        if comparison_fails:
+            raise RuntimeError("Comparison failed")
+        return None
+
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.fits_to_makesourcedb",
+        return_value=SimpleNamespace(compare=compare),
+    )
+    inputs = (None, "TGSS", mocker.Mock(), 150e6, work_dir / "sector_1")
+    if comparison_fails:
+        with pytest.raises(RuntimeError, match="Comparison failed"):
+            compare_photometry_survey(*inputs)
+    else:
+        assert compare_photometry_survey(*inputs) == {}
+
+    assert not list(launch_dir.iterdir())
+    assert not list(work_dir.iterdir())
