@@ -240,14 +240,21 @@ class Image(Operation):
         return False
 
     def _shared_facet_rw_enabled(self):
+        # Provisional benchmark policy: prefer independent channel tasks for
+        # small facet groups. The cutoff is not a measured performance crossover.
         return bool(
             self.use_facets
             and self.parset["imaging_specific"]["shared_facet_rw"]
-            and self._facet_work_units() > 1
+            and self._facet_work_units() > 4
         )
 
     def _facet_work_units(self):
         return max(0, int(getattr(self.field, "num_patches", 0) or 0))
+
+    def _wsclean_threads_for_sector(self, sector_index):
+        if self.field.use_mpi:
+            return int(self.input_parms["mpi_cpus_per_task"][sector_index])
+        return int(self.input_parms["max_threads"])
 
     def _parallel_gridding_tasks_for_sector(self, sector_index, channels_out):
         requested_tasks = self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
@@ -257,11 +264,17 @@ class Image(Operation):
             mpi_nnodes = int(self.input_parms["mpi_nnodes"][sector_index])
             channels_out_per_node = max(1, channels_out_per_node // mpi_nnodes)
 
-        facet_work_units = self._facet_work_units()
+        # Without sharing, independent channel/facet tasks can overlap. Use
+        # channels per node as a conservative concurrency cap rather than
+        # multiplying by the facet count and increasing image memory pressure.
         max_work_units = (
-            facet_work_units if self.use_facets and facet_work_units > 1 else channels_out_per_node
+            self._facet_work_units() if self._shared_facet_rw_enabled() else channels_out_per_node
         )
-        return adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units)
+        return adjust_parallel_gridding_tasks(
+            self._wsclean_threads_for_sector(sector_index),
+            requested_tasks,
+            min(max_work_units, max_cores),
+        )
 
     def _build_applycal_steps(self):
         """
@@ -584,6 +597,18 @@ class Image(Operation):
             self._parallel_gridding_tasks_for_sector(index, channels_out)
             for index, channels_out in enumerate(self.input_parms["channels_out"])
         ]
+        for index, sector in enumerate(self.imaging_sectors):
+            log.info(
+                "WSClean resources for %s: facets=%d, shared_facet_rw=%s, "
+                "channels_out=%d, nodes=%d, threads_per_rank=%d, parallel_gridding=%d",
+                sector.name,
+                self._facet_work_units() if self.use_facets else 0,
+                self.input_parms["shared_facet_rw"],
+                self.input_parms["channels_out"][index],
+                self.input_parms["mpi_nnodes"][index] if self.field.use_mpi else 1,
+                self._wsclean_threads_for_sector(index),
+                self.input_parms["parallel_gridding_tasks"][index],
+            )
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({"skymodel": FileRecord(self._facet_skymodel_file()).to_json()})

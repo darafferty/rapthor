@@ -3231,8 +3231,16 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
     assert field.lofar_to_true_flux_std == 0.0
 
 
+@pytest.mark.parametrize(("num_patches", "expected_shared"), [(4, False), (5, True)])
+@pytest.mark.parametrize("use_mpi", [False, True])
 def test_facet_image_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
+    tmp_path,
+    monkeypatch,
+    fake_image_shell_operation_cls,
+    fake_direct_image_helpers,
+    num_patches,
+    expected_shared,
+    use_mpi,
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3243,7 +3251,17 @@ def test_facet_image_operation_run_uses_prefect_flow(
     field.dd_h5parm_filename = "/data/facet-solutions.h5"
     field.calibration_strategy = {"dd": ["fast_phase"]}
     field.parset["imaging_specific"]["shared_facet_rw"] = True
-    field.num_patches = 2
+    field.use_mpi = use_mpi
+    field.parset["cluster_specific"].update(
+        batch_system="slurm_static" if use_mpi else "single_machine",
+        max_nodes=3 if use_mpi else 1,
+        cpus_per_task=192,
+        max_cores=192,
+        max_threads=192,
+        parallel_gridding_tasks=24,
+    )
+    field.num_patches = num_patches
+    field.imaging_sectors[0].wsclean_nchannels = 20
     operation = Image(field, index=1)
 
     with prefect_test_harness(server_startup_timeout=None):
@@ -3254,7 +3272,7 @@ def test_facet_image_operation_run_uses_prefect_flow(
     wsclean_command = next(
         shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
+        if {"wsclean", "wsclean-mp"}.intersection(shlex.split(instance.kwargs["commands"][-1]))
     )
 
     assert operation.outputs == expected_outputs
@@ -3269,8 +3287,13 @@ def test_facet_image_operation_run_uses_prefect_flow(
     assert "-apply-facet-solutions" in wsclean_command
     assert "/data/facet-solutions.h5" in wsclean_command
     assert "-facet-regions" in wsclean_command
-    assert "-shared-facet-reads" in wsclean_command
-    assert "-shared-facet-writes" in wsclean_command
+    assert ("-shared-facet-reads" in wsclean_command) is expected_shared
+    assert ("-shared-facet-writes" in wsclean_command) is expected_shared
+    assert wsclean_command[wsclean_command.index("-j") + 1] == "192"
+    expected_gridding = 4 if expected_shared else (6 if use_mpi else 16)
+    assert wsclean_command[wsclean_command.index("-parallel-gridding") + 1] == str(
+        expected_gridding
+    )
     assert (region_dir / "sector_1_facets_ds9.reg").is_file()
 
 

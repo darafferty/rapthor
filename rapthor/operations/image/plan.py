@@ -95,19 +95,20 @@ def get_max_divisor_less_than_or_equal(number: int, limit: int) -> int:
 
 
 def adjust_parallel_gridding_tasks(
-    max_cores: int,
+    num_threads: int,
     parallel_gridding_tasks: int,
     max_work_units: int,
 ) -> int:
     """
-    Match WSClean parallel-gridding tasks to available work units and cores.
+    Match WSClean parallel-gridding tasks to available work units and threads.
 
     WSClean parallel gridding splits either facets or output channels into task
     groups. The task count should not exceed the available work units, and it
-    should divide the core count so worker threads are assigned evenly.
+    should divide the actual WSClean ``-j`` value so threads are assigned evenly.
+    The caller also caps work units by the configured maximum core count.
     """
     capped_tasks = min(max(1, int(parallel_gridding_tasks)), max(1, int(max_work_units)))
-    return get_max_divisor_less_than_or_equal(max_cores, capped_tasks)
+    return get_max_divisor_less_than_or_equal(num_threads, capped_tasks)
 
 
 def build_image_mpi_resource_controls(

@@ -317,11 +317,15 @@ class TestImage:
     @pytest.mark.parametrize(
         ("shared_facet_rw", "use_facets", "num_patches", "expected_shared_facet_rw"),
         [
-            (True, True, 4, True),
+            (True, True, 6, True),
+            (True, True, 5, True),
+            (True, True, 4, False),
+            (True, True, 3, False),
+            (True, True, 2, False),
             (True, True, 1, False),
             (True, True, 0, False),
-            (True, False, 4, False),
-            (False, True, 4, False),
+            (True, False, 6, False),
+            (False, True, 6, False),
         ],
     )
     @pytest.mark.parametrize("use_mpi", [True, False])
@@ -340,6 +344,8 @@ class TestImage:
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = 6
         field.parset["cluster_specific"]["max_cores"] = 12
+        field.parset["cluster_specific"]["max_threads"] = 12
+        field.parset["cluster_specific"]["cpus_per_task"] = 12
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.num_patches = num_patches
         image = _initialize_operation(
@@ -361,16 +367,95 @@ class TestImage:
             assert image.input_parms["mpi_cpus_per_task"] == expected_resources["mpi_cpus_per_task"]
             channels_out_per_node = max(1, channels_out // expected_resources["mpi_nnodes"][0])
 
-        expected_work_units = (
-            num_patches if use_facets and num_patches > 1 else channels_out_per_node
-        )
+        expected_work_units = num_patches if expected_shared_facet_rw else channels_out_per_node
         assert image.input_parms["parallel_gridding_tasks"] == [
             adjust_parallel_gridding_tasks(
-                max_cores=12,
+                num_threads=12,
                 parallel_gridding_tasks=6,
-                max_work_units=expected_work_units,
+                max_work_units=min(12, expected_work_units),
             )
         ]
+
+    @pytest.mark.parametrize(
+        ("num_patches", "expected_local", "expected_mpi"),
+        [(1, 16, 6), (2, 16, 6), (3, 16, 6), (4, 16, 6), (5, 4, 4), (6, 6, 6), (12, 12, 12)],
+    )
+    @pytest.mark.parametrize("use_mpi", [False, True])
+    def test_benchmark_gridding_policy(
+        self, field, num_patches, expected_local, expected_mpi, use_mpi
+    ):
+        field.use_mpi = use_mpi
+        field.parset["imaging_specific"].update(use_mpi=use_mpi, shared_facet_rw=True)
+        field.parset["cluster_specific"].update(
+            batch_system="slurm_static" if use_mpi else "single_machine",
+            max_nodes=3 if use_mpi else 1,
+            max_cores=192,
+            max_threads=192,
+            cpus_per_task=192,
+            parallel_gridding_tasks=24,
+        )
+        field.num_patches = num_patches
+        image = Image(field, index=1)
+        image.use_facets = True
+        image.input_parms = {
+            "max_threads": 192,
+            "mpi_nnodes": [3],
+            "mpi_cpus_per_task": [192],
+        }
+
+        assert image._shared_facet_rw_enabled() is (num_patches >= 5)
+        assert image._parallel_gridding_tasks_for_sector(0, 20) == (
+            expected_mpi if use_mpi else expected_local
+        )
+
+    @pytest.mark.parametrize(
+        ("use_mpi", "max_threads", "cpus_per_task", "max_cores", "requested", "facets", "expected"),
+        [
+            (False, 8, 192, 192, 24, 2, 8),
+            (False, 10, 192, 192, 6, 2, 5),
+            (False, 192, 192, 4, 24, 2, 4),
+            (True, 192, 8, 192, 24, 2, 4),
+            (True, 192, 10, 192, 24, 2, 5),
+            (True, 8, 192, 192, 24, 2, 6),
+            (True, 192, 192, 4, 24, 2, 4),
+            (True, 192, 192, 192, 2, 2, 2),
+            (True, 192, 1, 192, 24, 2, 1),
+            (False, 8, 192, 192, 24, 12, 8),
+            (True, 192, 10, 192, 24, 12, 10),
+        ],
+    )
+    def test_gridding_policy_uses_wsclean_threads_and_respects_limits(
+        self,
+        field,
+        use_mpi,
+        max_threads,
+        cpus_per_task,
+        max_cores,
+        requested,
+        facets,
+        expected,
+    ):
+        field.use_mpi = use_mpi
+        field.parset["imaging_specific"].update(use_mpi=use_mpi, shared_facet_rw=True)
+        field.parset["cluster_specific"].update(
+            batch_system="slurm_static" if use_mpi else "single_machine",
+            max_nodes=3 if use_mpi else 1,
+            max_cores=max_cores,
+            max_threads=max_threads,
+            cpus_per_task=cpus_per_task,
+            parallel_gridding_tasks=requested,
+        )
+        field.num_patches = facets
+        image = Image(field, index=1)
+        image.use_facets = True
+        image.input_parms = {
+            "max_threads": max_threads,
+            "mpi_nnodes": [3],
+            "mpi_cpus_per_task": [cpus_per_task],
+        }
+
+        assert image._shared_facet_rw_enabled() is (facets >= 5)
+        assert image._parallel_gridding_tasks_for_sector(0, 20) == expected
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_facet_h5parm(
@@ -1420,7 +1505,7 @@ def test_get_max_divisor_less_than_or_equal(number, limit, expected):
 
 
 @pytest.mark.parametrize(
-    ("max_cores", "requested_tasks", "max_work_units", "expected"),
+    ("num_threads", "requested_tasks", "max_work_units", "expected"),
     [
         (12, 8, 5, 4),
         (12, 6, 6, 6),
@@ -1429,7 +1514,7 @@ def test_get_max_divisor_less_than_or_equal(number, limit, expected):
         (0, 0, 0, 1),
     ],
 )
-def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_core_divisor(
-    max_cores, requested_tasks, max_work_units, expected
+def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_thread_divisor(
+    num_threads, requested_tasks, max_work_units, expected
 ):
-    assert adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units) == expected
+    assert adjust_parallel_gridding_tasks(num_threads, requested_tasks, max_work_units) == expected

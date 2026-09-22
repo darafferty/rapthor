@@ -642,12 +642,24 @@ The available options are described below under their respective sections.
             environment before using it for production reductions.
 
     shared_facet_rw
-        When using facet-based imaging runs WSClean with the options
-        -shared-facet-reads and -shared-facet-writes 
-        (https://wsclean.readthedocs.io/en/latest/facet_based_imaging.html#enabling-shared-reads).
-        
-        .. warning:: 
-            This option is currently experimental and should be used with caution.
+        Permit WSClean's ``-shared-facet-reads`` and ``-shared-facet-writes``
+        during facet imaging (default = ``False``). When enabled, Rapthor uses
+        both flags only with at least five actual calibration facets. With
+        four or fewer, both flags are disabled and independent channel/facet
+        tasks can run concurrently. Setting this option to ``False`` disables
+        sharing at every facet count. DD-PSF regions do not count toward this
+        threshold.
+
+        The four-facet cutoff is a provisional heuristic from the ICAL
+        benchmarks, not a measured performance crossover. It is fixed across
+        CPU counts; :term:`parallel_gridding_tasks` is adapted to the available
+        threads and work. See the `WSClean facet documentation
+        <https://wsclean.readthedocs.io/en/latest/facet_based_imaging.html#enabling-shared-reads>`_.
+
+        .. warning::
+            This option and its cutoff are experimental. Shared I/O can save
+            repeated reads and writes, but gain/beam corrections and facet
+            geometry can outweigh those savings.
 
     reweight
         Reweight the visibility data before imaging (default = ``False``). If ``True``,
@@ -835,9 +847,20 @@ The available options are described below under their respective sections.
     parallel_gridding_tasks
         Number of task groups WSClean can use for parallel gridding. If this is
         set to 0 (default), Rapthor uses ``max_threads // 8`` with a minimum of
-        1. During imaging, Rapthor reduces the value when there are fewer facet
-        or channel work units available, and chooses a divisor of
-        :term:`max_cores` so gridding threads are distributed evenly.
+        1. During imaging, Rapthor caps the value by :term:`max_cores` and the
+        actual calibration-facet count when shared facet I/O is active. Without
+        sharing, it instead uses a conservative cap of output channels per
+        node (rounded down, with a minimum of one); independent channel/facet
+        tasks can then overlap even when there are only two to four facets.
+        It chooses a divisor of WSClean's actual ``-j`` thread count:
+        :term:`max_threads` locally, or :term:`cpus_per_task` with MPI.
+
+        For example, with 20 output channels, 192 threads per rank, three nodes,
+        and a requested limit of 24 tasks, two to four facets use six parallel
+        gridders with sharing disabled. Six facets use six gridders and twelve
+        facets use twelve gridders when :term:`shared_facet_rw` is enabled.
+        The effective facet count, sharing mode, channels, nodes, threads and
+        gridding concurrency are recorded in the Rapthor log for each sector.
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default = not
