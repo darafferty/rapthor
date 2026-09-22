@@ -187,7 +187,7 @@ def test_rapthor_run_single_loop_with_do_normalize_no_matching_sources_skips_nor
         },
     )
     result = subprocess.run(
-        ["rapthor", str(updated_parset_path)], capture_output=True, text=True, check=False
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=False
     )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
