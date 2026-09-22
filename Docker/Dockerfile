@@ -7,11 +7,12 @@ FROM ubuntu:24.04 AS builder
 ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
 ARG DP3_COMMIT=master
-ARG EVERYBEAM_COMMIT=master
+# Temporary EveryBeam/WSClean compatibility pins; keep aligned with Docker/fetch_commit_hashes.sh.
+ARG EVERYBEAM_COMMIT=882b7c0b1aefc76511815d7f5e1174f4861a6956
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=master
-ARG WSCLEAN_COMMIT=master
+ARG WSCLEAN_COMMIT=2d5c1ed8d7559e5178d243661b408baa288681e6
 
 # Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
 # Intel Haswell and newer, AMD Excavator and newer
@@ -212,11 +213,12 @@ COPY --from=builder /usr/local /usr/local
 ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
 ARG DP3_COMMIT=master
-ARG EVERYBEAM_COMMIT=master
+# Temporary EveryBeam/WSClean compatibility pins; keep aligned with Docker/fetch_commit_hashes.sh.
+ARG EVERYBEAM_COMMIT=882b7c0b1aefc76511815d7f5e1174f4861a6956
 ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=master
-ARG WSCLEAN_COMMIT=master
+ARG WSCLEAN_COMMIT=2d5c1ed8d7559e5178d243661b408baa288681e6
 
 # Add version information to the metadata of the image
 LABEL \

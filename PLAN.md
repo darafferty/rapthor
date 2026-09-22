@@ -169,10 +169,13 @@ rest are listed here in priority order.
   and therefore already matches `master`'s current default. Still unported from
   that window: `Docker/Dockerfile` pins `numpy<2` where `master` unpinned it.
 
-  Dependency commit pins were removed on 2026-09-22:
-  `Docker/fetch_commit_hashes.sh` now resolves all eight source dependencies
-  from upstream `HEAD`, including SAGECal. Both Dockerfiles default to
-  `master` (`main` for IDG) in their builder and runtime stages.
+  As of 2026-09-22, `Docker/fetch_commit_hashes.sh` resolves six source
+  dependencies from upstream `HEAD`, including DP3 and SAGECal. EveryBeam is
+  temporarily pinned to v0.8.5 (`882b7c0b`) and WSClean to `2d5c1ed8` because
+  DP3 master requires EveryBeam `<0.9`, while newer WSClean requires 0.9.x.
+  Both Dockerfiles use the same pins in their builder and runtime stages.
+  Remove the two pins together once DP3 master supports EveryBeam 0.9; track
+  the upstream update in [DP3 !1525](https://git.astron.nl/RD/DP3/-/merge_requests/1525).
 
   The ~25-line build-Boost-from-source workaround in `ci/ubuntu_24_04-base`
   cannot be deleted yet: it depended on 26.04 shipping Boost.NumPy built
