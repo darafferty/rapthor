@@ -90,4 +90,3 @@ def test_collect_slurm_config_issues_rejects_invalid_environment():
     )
 
     assert issues == [("invalid_slurm_allocation", "SLURM_NNODES must be an integer")]
-
