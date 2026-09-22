@@ -167,10 +167,12 @@ rest are listed here in priority order.
   unresolved memory issues running Rapthor under 26.04, so do **not** port
   `a39e517b` as a default change; this branch is already on `ci/ubuntu_24_04-*`
   and therefore already matches `master`'s current default. Still unported from
-  that window: `Docker/Dockerfile` pins `numpy<2` where `master` unpinned it,
-  and `Docker/fetch_commit_hashes.sh` pins DP3 to `18e793a4` where `master`
-  tracks `HEAD`. Note this branch also pins `SAGECAL_COMMIT=33d21c45…` where
-  `master` tracks `master`.
+  that window: `Docker/Dockerfile` pins `numpy<2` where `master` unpinned it.
+
+  Dependency commit pins were removed on 2026-09-22:
+  `Docker/fetch_commit_hashes.sh` now resolves all eight source dependencies
+  from upstream `HEAD`, including SAGECal. Both Dockerfiles default to
+  `master` (`main` for IDG) in their builder and runtime stages.
 
   The ~25-line build-Boost-from-source workaround in `ci/ubuntu_24_04-base`
   cannot be deleted yet: it depended on 26.04 shipping Boost.NumPy built
