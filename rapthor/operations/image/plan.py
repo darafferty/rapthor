@@ -111,6 +111,36 @@ def adjust_parallel_gridding_tasks(
     return get_max_divisor_less_than_or_equal(num_threads, capped_tasks)
 
 
+def build_image_gridding_controls(
+    *,
+    facet_count: int,
+    shared_facet_rw: bool,
+    channels_out: int,
+    nnodes: int,
+    num_threads: int,
+    max_cores: int,
+    parallel_gridding_tasks: int,
+) -> tuple[bool, int]:
+    """Select shared facet I/O and local gridding concurrency for one sector.
+
+    Pass zero facets when facet imaging is disabled. Sharing is preferred when
+    facet concurrency matches or exceeds channel concurrency, at any facet count.
+    Both candidates respect the same CPU and requested-task limits. This is an
+    experimental resource heuristic, not a prediction of the fastest runtime.
+    """
+    channels_per_node = max(1, int(channels_out) // max(1, int(nnodes)))
+    # Cap independent work conservatively by channels per node rather than
+    # channels times facets, to limit concurrent image memory allocations.
+    channel_tasks = adjust_parallel_gridding_tasks(
+        num_threads, parallel_gridding_tasks, min(channels_per_node, max_cores)
+    )
+    facet_tasks = adjust_parallel_gridding_tasks(
+        num_threads, parallel_gridding_tasks, min(facet_count, max_cores)
+    )
+    use_shared_io = bool(shared_facet_rw and facet_count > 1 and facet_tasks >= channel_tasks)
+    return use_shared_io, facet_tasks if use_shared_io else channel_tasks
+
+
 def build_image_mpi_resource_controls(
     *,
     nsectors: int,

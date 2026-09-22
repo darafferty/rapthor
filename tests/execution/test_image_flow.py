@@ -657,7 +657,7 @@ def _image_input_parms():
         "photometry_skymodel": None,
         "astrometry_skymodel": None,
         "peel_bright_sources": False,
-        "shared_facet_rw": False,
+        "shared_facet_rw": [False],
     }
 
 
@@ -675,7 +675,7 @@ def _facet_image_input_parms():
             "soltabs": "phase000",
             "scalar_visibilities": True,
             "diagonal_visibilities": False,
-            "shared_facet_rw": True,
+            "shared_facet_rw": [True],
         }
     )
     return input_parms
@@ -1483,6 +1483,62 @@ def test_image_payload_from_inputs_keeps_prepare_and_facet_h5parms_separate(tmp_
     sector = payload["sectors"][0]
     assert sector["prepare_data_h5parm"] == "/data/di-solutions.h5"
     assert sector["h5parm"] == "/data/facet-solutions.h5"
+
+
+@pytest.mark.parametrize("shared_facet_rw", [True, [], [True, False], [None], ["False"]])
+def test_image_payload_from_inputs_rejects_invalid_sector_sharing(tmp_path, shared_facet_rw):
+    input_parms = _facet_image_input_parms()
+    input_parms["shared_facet_rw"] = shared_facet_rw
+
+    with pytest.raises(ValueError, match="shared_facet_rw"):
+        image_payload_from_inputs(input_parms, tmp_path, use_facets=True)
+
+
+def test_facet_image_operation_plans_sharing_per_sector(tmp_path):
+    field = FieldStub(tmp_path)
+    field.dde_method = "full"
+    field.dd_h5parm_filename = "/data/facet-solutions.h5"
+    field.calibration_strategy = {"dd": ["fast_phase"]}
+    field.parset["imaging_specific"]["shared_facet_rw"] = True
+    field.use_mpi = True
+    field.parset["cluster_specific"].update(
+        batch_system="slurm_static",
+        max_nodes=6,
+        cpus_per_task=192,
+        max_cores=192,
+        max_threads=192,
+        parallel_gridding_tasks=24,
+    )
+    field.num_patches = 3
+    second_sector = deepcopy(field.imaging_sectors[0])
+    second_sector.name = "sector_2"
+    field.imaging_sectors.append(second_sector)
+    field.imaging_sectors[0].wsclean_nchannels = 20
+    second_sector.wsclean_nchannels = 3
+    operation = Image(field, index=1)
+    operation.set_parset_parameters()
+    operation.set_input_parameters()
+
+    assert operation.input_parms["mpi_nnodes"] == [3, 3]
+    assert operation.input_parms["shared_facet_rw"] == [False, True]
+    assert operation.input_parms["parallel_gridding_tasks"] == [6, 3]
+    payload = image_payload_from_inputs(
+        operation.input_parms, operation.pipeline_working_dir, use_facets=True, use_mpi=True
+    )
+    assert json.loads(json.dumps(payload)) == payload
+    for sector, expected_shared, expected_tasks in zip(payload["sectors"], [False, True], [6, 3]):
+        assert sector["shared_facet_reads"] is expected_shared
+        assert sector["shared_facet_writes"] is expected_shared
+        command = image_wsclean_module._select_wsclean_command_for_sector(
+            sector,
+            directory_record(sector["concat_path"]),
+            file_record(sector["mask_path"]),
+            file_record(sector["facet_region_path"]),
+            str(tmp_path / "wsclean_tmp"),
+        )
+        assert ("-shared-facet-reads" in command) is expected_shared
+        assert ("-shared-facet-writes" in command) is expected_shared
+        assert command[command.index("-parallel-gridding") + 1] == str(expected_tasks)
 
 
 def test_image_payload_from_inputs_builds_serializable_screen_payload(tmp_path):
@@ -3231,16 +3287,40 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
     assert field.lofar_to_true_flux_std == 0.0
 
 
-@pytest.mark.parametrize(("num_patches", "expected_shared"), [(4, False), (5, True)])
-@pytest.mark.parametrize("use_mpi", [False, True])
+@pytest.mark.parametrize(
+    (
+        "nodes",
+        "threads",
+        "num_patches",
+        "sharing_requested",
+        "expected_shared",
+        "expected_gridding",
+    ),
+    [
+        (1, 192, 4, True, False, 16),
+        (1, 192, 5, True, False, 16),
+        (1, 192, 16, True, True, 16),
+        (3, 192, 4, True, False, 6),
+        (3, 192, 5, True, False, 6),
+        (3, 192, 6, True, True, 6),
+        (5, 192, 4, True, True, 4),
+        (20, 192, 2, True, True, 2),
+        (3, 4, 4, True, True, 4),
+        (20, 192, 2, False, False, 1),
+        (20, 192, 1, True, False, 1),
+    ],
+)
 def test_facet_image_operation_run_uses_prefect_flow(
     tmp_path,
     monkeypatch,
     fake_image_shell_operation_cls,
     fake_direct_image_helpers,
+    nodes,
+    threads,
     num_patches,
+    sharing_requested,
     expected_shared,
-    use_mpi,
+    expected_gridding,
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3250,14 +3330,15 @@ def test_facet_image_operation_run_uses_prefect_flow(
     field.dde_method = "full"
     field.dd_h5parm_filename = "/data/facet-solutions.h5"
     field.calibration_strategy = {"dd": ["fast_phase"]}
-    field.parset["imaging_specific"]["shared_facet_rw"] = True
+    field.parset["imaging_specific"]["shared_facet_rw"] = sharing_requested
+    use_mpi = nodes > 1
     field.use_mpi = use_mpi
     field.parset["cluster_specific"].update(
         batch_system="slurm_static" if use_mpi else "single_machine",
-        max_nodes=3 if use_mpi else 1,
-        cpus_per_task=192,
+        max_nodes=nodes,
+        cpus_per_task=threads,
         max_cores=192,
-        max_threads=192,
+        max_threads=threads,
         parallel_gridding_tasks=24,
     )
     field.num_patches = num_patches
@@ -3289,8 +3370,7 @@ def test_facet_image_operation_run_uses_prefect_flow(
     assert "-facet-regions" in wsclean_command
     assert ("-shared-facet-reads" in wsclean_command) is expected_shared
     assert ("-shared-facet-writes" in wsclean_command) is expected_shared
-    assert wsclean_command[wsclean_command.index("-j") + 1] == "192"
-    expected_gridding = 4 if expected_shared else (6 if use_mpi else 16)
+    assert wsclean_command[wsclean_command.index("-j") + 1] == str(threads)
     assert wsclean_command[wsclean_command.index("-parallel-gridding") + 1] == str(
         expected_gridding
     )

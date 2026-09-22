@@ -299,9 +299,10 @@ use_clean_mask = False
 # must not be set unless it is on a shared filesystem
 use_mpi = False
 
-# Permit shared reads and writes for imaging with at least five calibration
-# facets. With four or fewer, Rapthor disables both and allows independent
-# channel/facet tasks. This cutoff is an experimental performance heuristic.
+# Permit shared reads and writes during facet imaging. Requires at least two
+# facets and facet concurrency matching or exceeding channel concurrency per
+# node. Both candidates respect CPU/thread and task limits, with no fixed facet
+# cutoff. This policy is experimental.
 shared_facet_rw = False
 
 # Reweight the visibility data before imaging (default = False)
