@@ -357,9 +357,9 @@ main plan stays focused on the branch-switch decision.
   image resource/concurrency policy. Calibration plotting is worth optimizing
   only if larger real runs keep showing it as a meaningful post-processing
   cost.
-- **WSClean prediction parallelism:** investigate splitting the internal
-  frequency/facet loop inside WSClean prediction tasks only with a targeted
-  benchmark and explicit resource limits.
+- **Parallelisation candidates:** the reviewed checklist below covers WSClean
+  prediction, per-facet astrometry, and other remaining serial work and
+  unnecessary task dependencies.
 - **Single-machine task concurrency:** `local_dask_workers` falls back to
   `max_nodes`, which `rapthor/lib/parset.py:431` sets to 1 for
   `batch_system = single_machine`, so a default single-machine run gets one
@@ -377,8 +377,9 @@ main plan stays focused on the branch-switch decision.
   raising single-machine concurrency.
 - **Uniform thread capping for external commands:** environment policies and
   `thread_environment()` now live in `rapthor/execution/environments.py`.
-  WSClean imaging explicitly selects its local or MPI thread policy. DP3
-  solves, predicts, applycals, and the `python -m` adapters still inherit ambient
+  WSClean imaging explicitly selects its local or MPI thread policy, and
+  sky-model filtering caps native threads within its PyBDSF worker processes. DP3
+  solves, predicts, applycals, and other `python -m` adapters still inherit ambient
   `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`, so each concurrent task can spawn
   one thread per core. Extend the explicit policy helpers when implementing
   thread capping, using each task's resource budget and preserving tool-specific
@@ -395,13 +396,6 @@ main plan stays focused on the branch-switch decision.
   `_get_data_from_skymodel` round-trips each result through a temporary FITS
   file. The phase centre is fixed for a run, so a run-scoped cache removes the
   repeated network round-trips and makes runs resilient to VO outages.
-- **Parallelise the per-facet astrometry check:** `check_astrometry` in
-  `rapthor/execution/image/diagnostic_calculation.py:777` loops over facets
-  serially, copies the full PyBDSF sky model for each one, and, when no
-  comparison sky model is supplied, fetches a Pan-STARRS cone per facet. With
-  many facets that is tens of sequential network queries per imaging cycle.
-  Fetch once per field where the 0.5-degree cone limit allows, or run the
-  per-facet comparisons concurrently.
 - **Multi-sector mosaic:** keep smoke/stored-reference coverage available, but
   treat this as lower priority than common single-sector paths.
 - **Remove the legacy solve-flag translation:** `do_slowgain_solve` and
@@ -427,6 +421,121 @@ main plan stays focused on the branch-switch decision.
   payload serializability, thin operation adapters, task-boundary visibility,
   calibration strategy semantics, image-only apply behavior, and branch
   equivalence reporting.
+
+### Parallelisation Opportunities — Code Review 2026-09-21
+
+These nine candidates come from the current execution code. Priorities indicate
+which to investigate first, not measured speedups. Existing concurrency across
+calibration chunks, image sectors, concatenation epochs, mosaic products, and
+matching prediction/post-processing tasks is already expressed in the flows.
+
+**Prerequisites:** address the resource gating, thread capping, and local worker
+count items above before increasing concurrency. Keep one Prefect task-engine
+thread per Dask worker process. Enforce a node-wide CPU/memory budget across
+worker processes, including external subprocesses; per-worker resource labels
+alone do not reserve a shared node budget. In particular,
+`rapthor/execution/task_runner.py:local_cluster_kwargs` currently assigns the
+full `mem_per_node_gb` limit to each worker, so increasing worker count must not
+multiply the assumed available memory. New worker payloads must contain paths
+and plain records, with domain objects and file handles constructed locally.
+
+- [ ] **High — Overlap calibration prediction and solving across chunks.**
+  In `rapthor/execution/calibrate/flow.py`,
+  `_prepare_prediction_payload_with_tasks` resolves every WSClean prediction
+  future before `_run_calibrate_prefect_tasks` submits any solve. Submit each
+  solve against its own prepared-chunk future and the shared region/facet and
+  normalization prerequisites, so chunk A can solve while chunk B predicts.
+  Keep each copied MS owned by its chunk, preserve the ordered solves within
+  that chunk, and retain the all-chunk dependency for solution collection.
+  Benchmark with `ci-benchmark-wsclean-predict`.
+
+- [ ] **High — Overlap residual-MS creation with image post-processing.**
+  In `rapthor/execution/image/flow.py:_submit_split_image_sector_tasks`,
+  `image_sector_prepare_outputs_task` takes the residual-MS future, making
+  filtering, diagnostics, cubes, and other image products wait for DP3.
+  `rapthor/execution/image/sector.py:assemble_image_sector_preparation` only
+  carries that residual record through to finalization. Separate image-ready
+  records from residual records, run independent image work alongside residual
+  creation, and join both at finalization. Retain the WSClean completion
+  dependency and wait for all MS readers before cleanup. Benchmark with
+  `ci-benchmark-image-products` and residual output enabled.
+
+- [ ] **Medium — Build requested Stokes cubes independently.**
+  `rapthor/execution/image/outputs.py:make_image_cube_records` loops over
+  `image_cube_specs` inside one sector task. Submit one task per requested
+  Stokes cube, each producing its FITS, beam, and frequency records, and
+  assemble results in specification order. Where applicable, let catalogue
+  creation depend only on its selected cube instead of the whole list;
+  `ImageNormalize` currently requests only Stokes I. Bound simultaneous dense
+  cube allocations and disk reads. Benchmark an I/Q/U/V image-products case;
+  a single-Stokes run has no additional cube concurrency to expose.
+
+- [ ] **Medium — Run independent diagnostic checks concurrently.**
+  `rapthor/execution/image/diagnostic_calculation.py:calculate_image_diagnostics`
+  calls photometry, astrometry, and facet RMS calculation serially, although
+  these checks consume independently readable inputs. Give the substantial
+  checks separate tasks and merge their result dictionaries in one final JSON
+  writer. Use process isolation for plotting, distinct temporary/output paths,
+  and retain empty-catalogue, offline, and comparison-survey fallback behavior.
+  Keep small statistics calculations together when task overhead would dominate.
+  Benchmark with `ci-benchmark-image-products` and diagnostics enabled.
+
+- [ ] **Medium — Compare astrometry facets concurrently.**
+  In the same module, `check_astrometry` copies the source sky model and calls
+  `find_astrometry_offsets` serially for each facet. Use bounded facet tasks
+  returning plain offset/statistics records, followed by one ordered reduction
+  and plot writer. Reuse a cached comparison catalogue where its footprint
+  permits; preserve Pan-STARRS query limits, offline behavior, skipped-facet
+  handling, and the existing averaging semantics. Avoid sending live facet or
+  sky-model objects to workers, and account for per-worker catalogue copies.
+  Benchmark a many-facet diagnostic case with fixed local reference catalogues.
+
+- [ ] **Conditional — Render WSClean prediction bands concurrently.**
+  `rapthor/execution/calibrate/prediction.py:_run_wsclean_predict_for_chunk`
+  serially renders each frequency-band model and then predicts every facet.
+  Start with independent band rendering, using the existing distinct model
+  roots, while retaining a single writer for each copied MS. Concurrent
+  frequency/facet prediction itself needs a separate design using isolated
+  outputs and a deterministic merge: those commands currently write to the
+  same MS, so different columns or channel ranges alone are insufficient
+  isolation. Measure the extra memory, scratch space, and merge cost with
+  `ci-benchmark-wsclean-predict` before adopting that larger split.
+
+- [ ] **Low — Regrid mosaic sector inputs concurrently.**
+  `rapthor/execution/mosaic/flow.py:run_mosaic_product` regrids sector inputs
+  in a serial loop within each already-parallel mosaic product. Submit one
+  regrid task per product/sector against the shared read-only template, then
+  run `make_mosaic` once that product's inputs are ready. Require unique output
+  paths and bound memory/filesystem traffic. Preserve the distinction between
+  regular regridding, sparse-model regridding, and the WSClean model-rendering
+  path. Use an explicit multi-sector benchmark; keep this low priority and
+  outside automatic CI unless changing the mosaic path.
+
+- [ ] **Low — Compress independent image files or batches concurrently.**
+  `rapthor/execution/image/outputs.py:compress_image_records` runs regular
+  and sparse-model `fpack` batches sequentially. Split sufficiently large
+  batches into bounded tasks with disjoint output files, then collect records
+  deterministically. Preserve lossless compression for sparse model images
+  and wait for astrometry-corrected images to be written. Measure storage
+  throughput as well as CPU time with `ci-benchmark-image-products`; extra
+  compression workers may only add contention on a shared filesystem.
+
+- [ ] **Low — Plot slow-gain phase and amplitude concurrently.**
+  `rapthor/execution/calibrate/collection.py:plot_processed_solve_product`
+  makes these two plot calls serially. Split them only if profiling shows
+  meaningful cost; different solve products already have separate plot tasks.
+  First replace `run_plot_solutions`' shared-directory before/after PNG glob
+  with explicit output ownership or per-task directories. Verify read-only
+  h5parm access or use private copies, and use separate plotting processes.
+  Check artifact attribution and solution equivalence on a slow-gain benchmark.
+
+For each implementation, add focused dependency/output-ownership checks and
+compare scientific products, peak memory, I/O, and elapsed time with one and
+multiple workers. Preserve failure propagation and wait for outstanding tasks
+before cleanup. Keep self-calibration cycles, strategy solve order, and writes
+to a shared MS/h5parm ordered; the memory-bounded row loops in
+`rapthor/execution/predict/measurement_sets.py` are not safe parallel tasks
+without a separate ownership and memory-budget design.
 
 ## Benchmark Scenario Rule
 
