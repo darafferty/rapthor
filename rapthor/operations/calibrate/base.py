@@ -251,6 +251,10 @@ class Calibrate(Operation):
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
+                "dp3_max_threads": self.parset["cluster_specific"].get("dp3_max_threads")
+                or self.parset["cluster_specific"]["max_threads"],
+                "wsclean_max_threads": self.parset["cluster_specific"].get("wsclean_max_threads")
+                or self.parset["cluster_specific"]["max_threads"],
             }
             self._apply_solve_plan_inputs(
                 solve_plan,
@@ -385,6 +389,10 @@ class Calibrate(Operation):
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
+                "dp3_max_threads": self.parset["cluster_specific"].get("dp3_max_threads")
+                or self.parset["cluster_specific"]["max_threads"],
+                "wsclean_max_threads": self.parset["cluster_specific"].get("wsclean_max_threads")
+                or self.parset["cluster_specific"]["max_threads"],
             }
             self._apply_solve_plan_inputs(solve_plan)
 

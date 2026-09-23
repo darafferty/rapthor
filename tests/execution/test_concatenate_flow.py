@@ -59,6 +59,7 @@ def fake_select_concatenation_command(monkeypatch):
         data_colname="DATA",
         concat_property="frequency",
         overwrite=False,
+        num_threads=None,
     ):
         calls.append(
             {
@@ -539,3 +540,22 @@ def test_concatenate_operation_run_failure_does_not_mark_done(
     assert field.ms_filenames == []
     assert field.data_colname == "CORRECTED_DATA"
     assert field.scan_count == 0
+
+
+def test_concatenation_passes_dp3_budget_to_command_builder(
+    tmp_path, monkeypatch, fake_shell_operation_cls
+):
+    def fake_command(msfiles, output_file, data_colname, *, num_threads):
+        assert num_threads == 3
+        return ["DP3", f"msout={output_file}", f"numthreads={num_threads}"]
+
+    monkeypatch.setattr(concatenate_module, "select_concatenation_command", fake_command)
+    output_path = tmp_path / "concatenated.ms"
+    concatenate_module.run_concatenate_epoch(
+        {"input_filenames": ["a.ms", "b.ms"], "output_path": str(output_path)},
+        "DATA",
+        str(tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync", dp3_max_threads=3),
+        shell_operation_cls=fake_shell_operation_cls,
+    )
+    assert output_path.is_dir()

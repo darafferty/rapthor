@@ -1048,3 +1048,27 @@ def test_predict_dd_operation_run_uses_prefect_flow(
         Path(operation.pipeline_working_dir) / "obs_0.ms.selfcal.sector_2"
     )
     assert len(fake_predict_shell_operation_cls.instances) == 2
+
+
+@pytest.mark.parametrize(
+    "mode, inputs", [("di", _predict_input_parms), ("dd", _dd_predict_input_parms)]
+)
+@pytest.mark.prefect
+def test_prediction_uses_dp3_thread_budget(
+    tmp_path, fake_predict_shell_operation_cls, mode, inputs
+):
+    input_parms = inputs()
+    input_parms["dp3_max_threads"] = 2
+    run_flow_for_test(
+        predict_flow,
+        predict_payload_from_inputs(mode, input_parms, tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_predict_shell_operation_cls,
+    )
+    commands = [
+        shlex.split(instance.kwargs["commands"][-1])
+        for instance in fake_predict_shell_operation_cls.instances
+    ]
+    dp3_commands = [command for command in commands if command[0] == "DP3"]
+    assert dp3_commands
+    assert all("numthreads=2" in command for command in dp3_commands)

@@ -102,6 +102,8 @@ class Predict(Operation):
             "correctfreqsmearing": field.correct_smearing_in_calibration,
             "correcttimesmearing": field.correct_smearing_in_calibration,
             "max_threads": field.parset["cluster_specific"]["max_threads"],
+            "dp3_max_threads": field.parset["cluster_specific"].get("dp3_max_threads")
+            or field.parset["cluster_specific"]["max_threads"],
         }
 
         self.input_parms = {**common_params, **dd_params}

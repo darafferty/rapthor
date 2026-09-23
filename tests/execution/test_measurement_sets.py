@@ -159,3 +159,11 @@ def test_concat_linc_cli_passes_arguments_to_execution_helper(monkeypatch):
 
     assert exit_code == 4
     assert calls == [("/input", "/output.ms", True)]
+
+
+def test_frequency_concatenation_passes_thread_budget(test_ms, tmp_path):
+    command = select_concatenation_command(
+        [test_ms, test_ms], str(tmp_path / "concat.ms"), num_threads=3
+    )
+    assert command[0] == "DP3"
+    assert "numthreads=3" in command

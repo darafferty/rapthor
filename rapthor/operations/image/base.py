@@ -245,7 +245,7 @@ class Image(Operation):
     def _wsclean_threads_for_sector(self, sector_index):
         if self.field.use_mpi:
             return int(self.input_parms["mpi_cpus_per_task"][sector_index])
-        return int(self.input_parms["max_threads"])
+        return int(self.input_parms.get("wsclean_max_threads") or self.input_parms["max_threads"])
 
     def _gridding_controls_for_sector(self, sector_index, channels_out):
         return build_image_gridding_controls(
@@ -543,6 +543,11 @@ class Image(Operation):
             "apply_time_frequency_smearing": self.field.correct_smearing_in_imaging,
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
+            "dp3_max_threads": self.field.parset["cluster_specific"].get("dp3_max_threads")
+            or self.field.parset["cluster_specific"]["max_threads"],
+            "wsclean_max_threads": self.field.parset["cluster_specific"].get(
+                "wsclean_max_threads", 0
+            ),
             "filter_skymodel_ncores": self.field.parset["cluster_specific"].get(
                 "filter_skymodel_ncores",
                 self.field.parset["cluster_specific"]["max_threads"],
@@ -572,7 +577,11 @@ class Image(Operation):
                 build_image_mpi_resource_controls(
                     nsectors=nsectors,
                     max_nodes=self.parset["cluster_specific"]["max_nodes"],
-                    cpus_per_task=self.parset["cluster_specific"]["cpus_per_task"],
+                    cpus_per_task=min(
+                        self.parset["cluster_specific"].get("wsclean_max_threads")
+                        or self.parset["cluster_specific"]["cpus_per_task"],
+                        self.parset["cluster_specific"]["cpus_per_task"],
+                    ),
                     batch_system=self.batch_system,
                 )
             )

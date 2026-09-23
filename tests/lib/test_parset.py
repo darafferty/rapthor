@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
 
 RESOURCE_DIR = Path(__file__).parents[1] / "resources"
@@ -197,6 +198,52 @@ def test_default_imaging_frequency_bda_uses_production_value(parset_scenario):
     parset = parset_read(str(parset_scenario.parset))
 
     assert parset["imaging_specific"]["bda_frequencybase"] == 20000.0
+
+
+def test_shared_facets_reject_default_frequency_bda(parset_scenario):
+    _append_to_parset(parset_scenario.parset, "\n[imaging]\nshared_facet_rw = True\n")
+
+    with pytest.raises(ValueError, match="shared_facet_rw = False"):
+        parset_read(str(parset_scenario.parset))
+
+
+@pytest.mark.parametrize("timebase", [0.0, 20000.0])
+def test_shared_facets_allow_time_only_bda(parset_scenario, timebase):
+    _append_to_parset(
+        parset_scenario.parset,
+        f"\n[imaging]\nshared_facet_rw = True\nbda_frequencybase = 0\nbda_timebase = {timebase}\n",
+    )
+
+    imaging = parset_read(str(parset_scenario.parset))["imaging_specific"]
+
+    assert imaging["shared_facet_rw"] is True
+    assert imaging["bda_timebase"] == timebase
+
+
+def test_unused_shared_facets_allow_frequency_bda(parset_scenario):
+    _append_to_parset(
+        parset_scenario.parset,
+        "\n[imaging]\nshared_facet_rw = True\ndde_method = single\n",
+    )
+
+    imaging = parset_read(str(parset_scenario.parset))["imaging_specific"]
+
+    assert imaging["bda_frequencybase"] == 20000.0
+
+
+@pytest.mark.parametrize("grid", [[0, 2], [2, 0], [-1, 2], [1.5, 2], [True, 2], [1], "2,2"])
+def test_dd_psf_grid_rejects_invalid_dimensions(parset_scenario, grid):
+    _append_to_parset(parset_scenario.parset, f"\n[imaging]\ndd_psf_grid = {grid!r}\n")
+
+    with pytest.raises(ValueError, match="dd_psf_grid.*two positive integers"):
+        parset_read(str(parset_scenario.parset))
+
+
+@pytest.mark.parametrize("grid", [[0, 0], [1, 1], [2, 3]])
+def test_dd_psf_grid_allows_auto_and_positive_dimensions(parset_scenario, grid):
+    _append_to_parset(parset_scenario.parset, f"\n[imaging]\ndd_psf_grid = {grid!r}\n")
+
+    assert parset_read(str(parset_scenario.parset))["imaging_specific"]["dd_psf_grid"] == grid
 
 
 def test_filter_skymodel_ncores_zero_uses_max_threads(parset_scenario):
@@ -610,3 +657,32 @@ def test_diagnostic_skymodel_empty_no_internet_ok(caplog):
 
     assert any("The astrometry check will be skipped" in message for message in caplog.messages)
     assert any("The photometry check will be skipped" in message for message in caplog.messages)
+
+
+@pytest.mark.parametrize("option", ["dp3_max_threads", "wsclean_max_threads"])
+@pytest.mark.parametrize("value", [-1, 1.5, True, "many"])
+def test_tool_thread_limits_reject_invalid_values(parset_scenario, option, value):
+    _append_to_parset(parset_scenario.parset, f"\n[cluster]\n{option} = {value!r}\n")
+    with pytest.raises(ValueError, match=f"{option}.*non-negative integer"):
+        parset_read(str(parset_scenario.parset))
+
+
+def test_tool_thread_limits_inherit_max_threads(parset_scenario):
+    _append_to_parset(parset_scenario.parset, "\n[cluster]\nmax_threads = 24\n")
+    cluster = parset_read(str(parset_scenario.parset))["cluster_specific"]
+    config = ExecutionConfig.from_parset({"cluster_specific": cluster})
+    assert config.dp3_max_threads == 24
+    assert config.wsclean_max_threads == 24
+
+
+def test_tool_thread_limits_override_independently_and_set_wsclean_defaults(parset_scenario):
+    _append_to_parset(
+        parset_scenario.parset,
+        "\n[cluster]\nmax_threads = 8\ndp3_max_threads = 64\nwsclean_max_threads = 192\n",
+    )
+    cluster = parset_read(str(parset_scenario.parset))["cluster_specific"]
+    assert cluster["max_threads"] == 8
+    assert cluster["dp3_max_threads"] == 64
+    assert cluster["wsclean_max_threads"] == 192
+    assert cluster["deconvolution_threads"] == 14
+    assert cluster["parallel_gridding_tasks"] == 24

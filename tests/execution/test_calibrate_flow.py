@@ -3903,3 +3903,35 @@ def test_calibrate_reference_output_fixture_matches_output_contract():
         validate_output_record(value)
     for value in outputs["calibrate_dd_with_slow"].values():
         validate_output_record(value)
+
+
+@pytest.mark.parametrize(
+    "mode, inputs",
+    [
+        ("di", _di_fulljones_input_parms),
+        ("dd", _dd_image_predict_input_parms),
+        ("dd", _dd_wsclean_predict_input_parms),
+        ("dd", _dd_screen_input_parms),
+    ],
+)
+@pytest.mark.prefect
+def test_calibration_uses_tool_specific_threads(
+    tmp_path, fake_calibrate_shell_operation_cls, mode, inputs
+):
+    input_parms = _use_local_timechunk_dirs(inputs(), tmp_path)
+    input_parms.update(dp3_max_threads=2, wsclean_max_threads=8)
+    run_flow_for_test(
+        calibrate_flow,
+        calibrate_payload_from_inputs(mode, input_parms, tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+    commands = _command_tokens(fake_calibrate_shell_operation_cls)
+    dp3_commands = [command for command in commands if command[0] == "DP3"]
+    assert dp3_commands
+    for command in dp3_commands:
+        assert "numthreads=2" in command
+    wsclean_commands = [command for command in commands if command[0] == "wsclean"]
+    assert bool(wsclean_commands) == (mode == "dd")
+    for command in wsclean_commands:
+        assert command[command.index("-j") + 1] == "8"

@@ -36,6 +36,8 @@ class ExecutionConfig:
     max_nodes: int = 1
     local_dask_workers: int = 0
     cpus_per_task: int = 0
+    dp3_max_threads: int = 0
+    wsclean_max_threads: int = 0
     mem_per_node_gb: int = 0
     fail_on_calibration_oom_risk: bool = False
     use_container: bool = False
@@ -116,6 +118,14 @@ class ExecutionConfig:
                 cluster.get("local_dask_workers", 0), "local_dask_workers"
             ),
             cpus_per_task=_as_non_negative_int(cluster.get("cpus_per_task", 0), "cpus_per_task"),
+            dp3_max_threads=_as_non_negative_int(
+                cluster.get("dp3_max_threads") or cluster.get("max_threads", 0),
+                "dp3_max_threads",
+            ),
+            wsclean_max_threads=_as_non_negative_int(
+                cluster.get("wsclean_max_threads") or cluster.get("max_threads", 0),
+                "wsclean_max_threads",
+            ),
             mem_per_node_gb=_as_non_negative_int(
                 cluster.get("mem_per_node_gb", 0), "mem_per_node_gb"
             ),
@@ -147,8 +157,8 @@ class ExecutionConfig:
 
         Prefect task execution is not thread-safe inside one Dask worker
         process, so Rapthor keeps worker task execution single-threaded.
-        External tools still receive ``cpus_per_task`` through command builders
-        and command environments.
+        External tools receive their own thread budgets through command builders
+        and command environments, independently of Dask task-engine threads.
         """
         return 1
 

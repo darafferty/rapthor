@@ -36,7 +36,7 @@ def prepare_visibility_ms(
                 freqstep=int(prepare_task["freqstep"]),
                 timestep=int(prepare_task["timestep"]),
                 beamdir=str(sector["phasecenter"]),
-                num_threads=int(sector["max_threads"]),
+                num_threads=int(sector.get("dp3_max_threads") or sector["max_threads"]),
                 steps=str(sector["prepare_data_steps"]),
                 minchannels=int(prepare_task["minchannels"]),
                 maxinterval=prepare_task.get("maxinterval"),

@@ -302,7 +302,8 @@ use_mpi = False
 # Permit shared reads and writes during facet imaging. Requires at least two
 # facets and facet concurrency matching or exceeding channel concurrency per
 # node. Both candidates respect CPU/thread and task limits, with no fixed facet
-# cutoff. This policy is experimental.
+# cutoff. Incompatible with imaging frequency BDA: set bda_frequencybase = 0
+# to enable sharing. Time-only BDA is supported. This policy is experimental.
 shared_facet_rw = False
 
 # Reweight the visibility data before imaging (default = False)
@@ -403,19 +404,26 @@ fail_on_calibration_oom_risk = False
 max_cores = 0
 max_threads = 0
 
+# Per-command thread limits for DP3 and WSClean (0 inherits max_threads).
+# MPI imaging keeps cpus_per_task when wsclean_max_threads is 0; an explicit
+# value is capped by cpus_per_task for each rank.
+# These do not change Dask concurrency or reserve CPUs/memory across workers.
+dp3_max_threads = 0
+wsclean_max_threads = 0
+
 # Number of cores to pass to the PyBDSF/LSMTool sky-model filtering step
 # (default = 15; set to 0 to use max_threads)
 filter_skymodel_ncores = 15
 
 # Number of threads to use by WSClean during deconvolution (default = 0 = 2/5
-# of max_threads, but not more than 14). Higher values will speed up imaging at
-# the expense of higher memory usage
+# of the effective wsclean_max_threads, but not more than 14). Higher values
+# will speed up imaging at the expense of higher memory usage
 deconvolution_threads = 0
 
 # Number of tasks WSClean can use for parallel gridding (default = 0 =
-# max_threads // 8). Capped by max_cores and facets with shared I/O, or channels
-# per node without sharing. Adjusted to divide WSClean's actual thread count
-# (max_threads locally; cpus_per_task with MPI).
+# effective wsclean_max_threads // 8). Capped by max_cores and facets with
+# shared I/O, or channels per node without sharing. Adjusted to divide
+# WSClean's actual thread count (cpus_per_task by default with MPI).
 parallel_gridding_tasks = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =

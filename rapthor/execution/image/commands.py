@@ -12,6 +12,7 @@ from rapthor.execution.commands import (
     comma_join,
     python_module_command,
 )
+from rapthor.lib.imaging_options import WSCLEAN_AUTO_THRESHOLD
 
 ATERM_CONFIG_FILENAME = "aterm_plus_beam.cfg"
 CUBE_CATALOG_MODULE = "rapthor.execution.image.cube_catalog_cli"
@@ -227,7 +228,7 @@ def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
         "-multiscale-scale-bias",
         "0.8",
         "-auto-threshold",
-        "1.0",
+        str(WSCLEAN_AUTO_THRESHOLD),
         "-mgain-boosting",
         "1.3",
         "-weight",
@@ -270,7 +271,7 @@ def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
         "-multiscale-scale-bias",
         "0.8",
         "-auto-threshold",
-        "1.0",
+        str(WSCLEAN_AUTO_THRESHOLD),
         "-mgain-boosting",
         "1.3",
         "-facet-beam-update",
@@ -320,7 +321,7 @@ def build_wsclean_screens_command(options: WscleanScreenOptions) -> list[str]:
         "-parallel-deconvolution",
         "2048",
         "-auto-threshold",
-        "1.0",
+        str(WSCLEAN_AUTO_THRESHOLD),
         "-mgain-boosting",
         "1.3",
         "-aterm-kernel-size",

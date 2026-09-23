@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import casacore.tables as pt
 import numpy as np
@@ -73,6 +73,7 @@ def select_concatenation_command(
     data_colname: str = "DATA",
     concat_property: str = "frequency",
     overwrite: bool = False,
+    num_threads: Optional[int] = None,
 ) -> list[str]:
     """
     Validate inputs and choose the external command for Measurement Set concatenation.
@@ -85,7 +86,7 @@ def select_concatenation_command(
     if len(msfiles) == 1:
         return copy_measurement_set_command(msfiles[0], output_file)
     if concat_property.lower() == "frequency":
-        return concat_freq_command(msfiles, data_colname, output_file)
+        return concat_freq_command(msfiles, data_colname, output_file, num_threads=num_threads)
     return concat_time_command(msfiles, output_file)
 
 
@@ -94,6 +95,7 @@ def concat_freq_command(
     data_colname: str,
     output_file: str,
     make_dummies: bool = True,
+    num_threads: Optional[int] = None,
 ) -> list[str]:
     """
     Build the DP3 command used to concatenate Measurement Sets in frequency.
@@ -114,6 +116,7 @@ def concat_freq_command(
         "msin.orderms=False",
         "msin.missingdata=True",
         "msout.storagemanager=Dysco",
+        *([] if num_threads is None else [f"numthreads={num_threads}"]),
     ]
 
 

@@ -53,6 +53,27 @@ Rapthor operation is done in a separate flow. See :ref:`structure` for an overvi
 operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
+Imaging compatibility checks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before starting Prefect/Dask, Rapthor checks the parset for incompatible
+frequency BDA and shared facet I/O, and for invalid DD-PSF grid dimensions.
+To keep frequency BDA enabled, use::
+
+    [imaging]
+    shared_facet_rw = False
+
+For shared facet I/O instead, set ``bda_frequencybase = 0`` in the imaging
+section. Time-only BDA can remain enabled. This setting does not remove BDA
+from existing input MSs; shared facet processing requires a single spectral
+window in those inputs too.
+
+After resolving the strategy, Rapthor checks that every imaging cycle's
+``auto_mask`` is finite and greater than its fixed stopping threshold of 1.0.
+These strategy checks run before calibration and imaging, but after any
+required initial frequency concatenation. Image payloads repeat the checks
+before submitting preparation tasks, so direct flow callers also fail early.
+
 
 .. _persistent_prefect_dashboard:
 
@@ -365,3 +386,26 @@ operation to reset:
     Enter number of operation to reset or "q" to quit:
 
 All operations after the selected one will also be reset.
+
+Tool thread budgets
+-------------------
+
+Set CPU thread budgets by external tool in the parset, independently of the
+Dask worker count::
+
+    [cluster]
+    max_threads = 192
+    cpus_per_task = 192
+    dp3_max_threads = 64
+    wsclean_max_threads = 192
+
+Both tool options default to 0, which inherits ``max_threads``. MPI imaging
+keeps its existing ``cpus_per_task`` default; an explicit WSClean limit is
+capped by ``cpus_per_task`` for each rank. The options apply wherever the
+tool is used: DP3 imaging preparation uses ``dp3_max_threads``,
+and WSClean prediction during calibration uses ``wsclean_max_threads``.
+Other tools retain their existing thread settings. These are command thread
+budgets, not CPU reservations or Dask scheduling constraints. Keep concurrent
+commands within the node's CPU and memory capacity, and ensure Slurm CPU
+binding permits each worker to access its command's requested CPUs. Increasing
+the worker count does not automatically reduce either tool's budget.

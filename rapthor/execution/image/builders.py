@@ -418,6 +418,12 @@ def image_payload_from_inputs(
                 "source_finder": str(input_parms["source_finder"]),
                 "apply_time_frequency_smearing": bool(input_parms["apply_time_frequency_smearing"]),
                 "max_threads": int(input_parms["max_threads"]),
+                "dp3_max_threads": int(
+                    input_parms.get("dp3_max_threads") or input_parms["max_threads"]
+                ),
+                "wsclean_max_threads": int(
+                    input_parms.get("wsclean_max_threads") or input_parms["max_threads"]
+                ),
                 "filter_skymodel_ncores": int(
                     input_parms.get("filter_skymodel_ncores", input_parms["max_threads"])
                 ),
@@ -426,7 +432,15 @@ def image_payload_from_inputs(
                     None if not use_mpi else int(input_parms["mpi_nnodes"][sector_index])
                 ),
                 "mpi_cpus_per_task": (
-                    None if not use_mpi else int(input_parms["mpi_cpus_per_task"][sector_index])
+                    None
+                    if not use_mpi
+                    else min(
+                        int(
+                            input_parms.get("wsclean_max_threads")
+                            or input_parms["mpi_cpus_per_task"][sector_index]
+                        ),
+                        int(input_parms["mpi_cpus_per_task"][sector_index]),
+                    )
                 ),
                 "allow_internet_access": bool(input_parms["allow_internet_access"]),
                 "photometry_skymodel": photometry_skymodel,

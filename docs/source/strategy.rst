@@ -142,7 +142,10 @@ The following processing parameters can be set for each cycle:
         Boolean flag that determines whether the imaging step should be done for this cycle.
 
     auto_mask
-        Float that sets WSClean's automask value for this cycle.
+        Float that sets WSClean's automask value for this cycle. It must be
+        finite and greater than 1.0, the fixed WSClean CLEAN stopping threshold
+        used by Rapthor. Every imaging cycle is checked during strategy
+        validation, before calibration or imaging starts.
 
     auto_mask_nmiter
         Integer that sets the maximum number of WSClean's major iterations done once the automasking threshold is reached for this cycle.

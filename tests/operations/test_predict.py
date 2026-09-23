@@ -29,6 +29,7 @@ PREDICT_COMMON_INPUT_KEYS = {
     "correctfreqsmearing",
     "correcttimesmearing",
     "max_threads",
+    "dp3_max_threads",
 }
 
 PREDICT_DD_INPUT_KEYS = {
@@ -135,6 +136,7 @@ class TestPredict:
     def test_set_input_parameters(
         self, predict_field, mode, reweight, peel_outliers, peel_bright_sources
     ):
+        predict_field.parset["cluster_specific"]["dp3_max_threads"] = 2
         predict_field.reweight = reweight
         predict_field.peel_outliers = peel_outliers
         predict_field.peel_bright_sources = peel_bright_sources
@@ -142,6 +144,7 @@ class TestPredict:
         predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_input_parameters()
 
+        assert predict.input_parms["dp3_max_threads"] == 2
         input_parms_keys = set(predict.input_parms.keys())
         expected_keys = set(PREDICT_COMMON_INPUT_KEYS)
         if mode == "dd":

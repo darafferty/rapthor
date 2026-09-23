@@ -6,6 +6,8 @@ import logging
 import os
 import runpy
 
+from rapthor.lib.imaging_options import validate_auto_mask
+
 log = logging.getLogger("rapthor:strategy")
 
 DEFAULT_CALIBRATION_STRATEGY = {
@@ -543,6 +545,15 @@ def validate_strategy(strategy_steps, parset):
         If any inconsistencies are found in the strategy or between the strategy and
         the parset
     """
+    for cycle, step in enumerate(strategy_steps, start=1):
+        if step.get("do_image"):
+            try:
+                validate_auto_mask(float(step["auto_mask"]))
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid imaging settings in strategy cycle {cycle}: {exc}"
+                ) from exc
+
     # Check do_normalize in all cycles except the first one.
     for i in range(1, len(strategy_steps)):
         if strategy_steps[i].get("do_normalize", False):

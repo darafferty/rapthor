@@ -621,7 +621,9 @@ The available options are described below under their respective sections.
         The number of direction-dependent PSFs which should be fit horizontally and
         vertically in the image (default = ``[0, 0]`` = scale with the image size, with
         approximately one PSF per square degree of imaged area). Set to ``[1, 1]`` to use
-        a direction-independent PSF.
+        a direction-independent PSF. Apart from the automatic ``[0, 0]`` setting,
+        both dimensions must be positive integers. Mixed zero/nonzero dimensions
+        are rejected when the parset is read.
 
     use_mpi
         Use MPI to distribute WSClean jobs over multiple nodes (default = ``False``)? If
@@ -643,7 +645,18 @@ The available options are described below under their respective sections.
 
     shared_facet_rw
         Permit WSClean's ``-shared-facet-reads`` and ``-shared-facet-writes``
-        during facet imaging (default = ``False``). When requested, Rapthor
+        during facet imaging (default = ``False``). This cannot be enabled with
+        :term:`bda_frequencybase (imaging)` greater than zero when
+        :term:`dde_method` is ``full``. WSClean's bulk facet processing requires
+        a single spectral window, whereas frequency BDA produces multiple
+        spectral windows. Rapthor rejects this combination when reading the
+        parset, before starting the runtime. Set ``shared_facet_rw = False``
+        to retain frequency BDA, or ``bda_frequencybase = 0`` to enable sharing.
+        Time-only BDA is allowed. Input MSs that already have multiple spectral
+        windows also require sharing to be disabled; setting the BDA limit to
+        zero does not undo existing averaging.
+
+        When requested with compatible data, Rapthor
         chooses both flags together for each sector:
 
         * One facet: sharing is disabled.
@@ -841,7 +854,31 @@ The available options are described below under their respective sections.
         Maximum number of cores per task to use on each node (default = 0 = all).
 
     max_threads
-        Maximum number of threads per task to use on each node (default = 0 = all).
+        Default maximum number of threads per task to use on each node
+        (default = 0 = all). DP3 and WSClean can override this independently.
+
+    dp3_max_threads
+        Maximum threads per DP3 command (default = 0, inherit :term:`max_threads`).
+        Applies to calibration, including screen solves, prediction, imaging
+        preparation, residual visibility creation, and frequency concatenation.
+        Must be a non-negative integer.
+
+    wsclean_max_threads
+        Maximum threads per WSClean command (default = 0, inherit
+        :term:`max_threads`). Applies to imaging, calibration model rendering and
+        prediction, restoration, and mosaic model rendering. MPI imaging retains
+        its :term:`cpus_per_task` default when this is 0; an explicit value is
+        capped by :term:`cpus_per_task` for each rank. Must be a non-negative
+        integer. Deconvolution threads are also capped by the imaging thread budget.
+
+        These tool limits do not change the number of Dask workers, reserve CPUs,
+        or divide memory between concurrent tasks. For example, with three
+        workers on a 192-CPU node, ``dp3_max_threads = 64`` and
+        ``wsclean_max_threads = 192`` allow three DP3 chunks to run concurrently
+        and a single WSClean command to use the whole node. Workers must have
+        access to those CPUs. Multiple WSClean tasks, including calibration
+        prediction tasks, may run concurrently and need a suitable combined
+        CPU and memory budget.
 
     filter_skymodel_ncores
         Number of cores to pass to the PyBDSF/LSMTool sky-model filtering step
@@ -851,18 +888,20 @@ The available options are described below under their respective sections.
 
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
-        ``max_threads``, but not more than 14).
+        the effective ``wsclean_max_threads``, but not more than 14).
 
     parallel_gridding_tasks
         Number of task groups WSClean can use for parallel gridding. If this is
-        set to 0 (default), Rapthor uses ``max_threads // 8`` with a minimum of
-        1. During imaging, Rapthor caps the value by :term:`max_cores` and the
-        actual calibration-facet count when shared facet I/O is active. Without
+        set to 0 (default), Rapthor uses the effective ``wsclean_max_threads // 8``
+        with a minimum of 1. During imaging, Rapthor caps the value by
+        :term:`max_cores` and the actual calibration-facet count when shared facet
+        I/O is active. Without
         sharing, it instead uses a conservative cap of output channels per
         node (rounded down, with a minimum of one); independent channel/facet
         tasks can then overlap.
         It chooses a divisor of WSClean's actual ``-j`` thread count:
-        :term:`max_threads` locally, or :term:`cpus_per_task` with MPI.
+        :term:`wsclean_max_threads` locally, or :term:`cpus_per_task` with MPI
+        (capped by an explicit ``wsclean_max_threads``).
 
         For example, with 20 output channels, 192 threads per rank, three nodes,
         ``max_cores = 192`` and a requested limit of 24 tasks, two to five facets

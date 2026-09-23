@@ -266,3 +266,12 @@ def test_execution_config_rejects_invalid_postage_stamp_preview_settings():
         ExecutionConfig.from_parset(
             {"cluster_specific": {"prefect_fits_preview_clip_percentile": 100.1}}
         )
+
+
+@pytest.mark.parametrize(
+    "overrides, expected",
+    [({}, (12, 12)), ({"dp3_max_threads": 3}, (3, 12)), ({"wsclean_max_threads": 24}, (12, 24))],
+)
+def test_execution_config_carries_tool_thread_budgets(overrides, expected):
+    config = ExecutionConfig.from_parset({"cluster_specific": {"max_threads": 12, **overrides}})
+    assert (config.dp3_max_threads, config.wsclean_max_threads) == expected

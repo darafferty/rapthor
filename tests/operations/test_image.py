@@ -223,9 +223,12 @@ class TestImage:
 
     def test_set_input_parameters(self, field):
         _prepare_field_for_image(field)
+        field.parset["cluster_specific"].update(dp3_max_threads=2, wsclean_max_threads=8)
         image = Image(field=field, index=1)
         image.set_parset_parameters()
         image.set_input_parameters()
+        assert image.input_parms["dp3_max_threads"] == 2
+        assert image.input_parms["wsclean_max_threads"] == 8
         assert image.input_parms["obs_filename"] is not None
         assert image.input_parms["image_name"] is not None
         first_observation = field.observations[0]

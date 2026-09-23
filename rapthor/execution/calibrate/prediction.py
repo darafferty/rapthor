@@ -222,7 +222,7 @@ def _run_wsclean_predict_for_chunk(
                     model_root=model_root,
                     channel_range=frequency_chunk["channel_range"],
                     model_storage_manager=WSCLEAN_MODEL_STORAGE_MANAGER,
-                    num_threads=int(payload["max_threads"]),
+                    num_threads=int(payload.get("wsclean_max_threads") or payload["max_threads"]),
                     apply_time_frequency_smearing=time_frequency_smearing,
                 )
             )
@@ -256,7 +256,7 @@ def _draw_model_options(
         frequency_bandwidth=list(image_predict["model_image_frequency_bandwidth"]),
         cellsize_deg=image_predict["model_image_cellsize"],
         imsize=list(image_predict["model_image_imsize"]),
-        num_threads=int(payload["max_threads"]),
+        num_threads=int(payload.get("wsclean_max_threads") or payload["max_threads"]),
     )
 
 
@@ -275,7 +275,7 @@ def _wsclean_draw_model_options(
         frequency_bandwidth=frequency_bandwidth,
         cellsize_deg=image_predict["model_image_cellsize"],
         imsize=list(image_predict["model_image_imsize"]),
-        num_threads=int(payload["max_threads"]),
+        num_threads=int(payload.get("wsclean_max_threads") or payload["max_threads"]),
     )
 
 

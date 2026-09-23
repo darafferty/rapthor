@@ -37,6 +37,13 @@ def assert_serializable_payload(value: Any, path: str = "payload") -> Any:
     )
 
 
+def validate_positive_int(value: object, name: str) -> int:
+    """Require a positive integer for an explicit task resource budget."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
 def validate_basename(filename: object, name: str) -> str:
     """Return a non-empty basename or raise a stable payload validation error."""
     if not isinstance(filename, str) or not filename:

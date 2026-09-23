@@ -82,6 +82,8 @@ CALIBRATE_COMMON_INPUT_KEYS = {
     "correctfreqsmearing",
     "correcttimesmearing",
     "max_threads",
+    "dp3_max_threads",
+    "wsclean_max_threads",
 }
 
 CALIBRATE_DD_INPUT_KEYS = {
@@ -828,6 +830,7 @@ class TestCalibrate:
         field.use_image_based_predict = use_image_based_predict
         field.calibration_strategy = calibration_strategy
         field._calibration_strategy_defaulted = False
+        field.parset["cluster_specific"].update(dp3_max_threads=2, wsclean_max_threads=8)
 
         calibrate = Calibrate(mode=mode, field=calibrate_field, index=1 if mode == "dd" else 2)
         calibrate.set_input_parameters()
@@ -842,6 +845,8 @@ class TestCalibrate:
         assert expected_input_keys.issubset(input_parms_keys), (
             f"input_parms is missing flow inputs: {expected_input_keys - input_parms_keys}"
         )
+        assert calibrate.input_parms["dp3_max_threads"] == 2
+        assert calibrate.input_parms["wsclean_max_threads"] == 8
         assert calibrate.input_parms["has_slow_gain_solve"] is has_slow_gain_solve
         if mode == "dd":
             assert calibrate.input_parms["generate_screens"] is generate_screens

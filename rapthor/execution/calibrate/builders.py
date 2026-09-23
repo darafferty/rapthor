@@ -94,6 +94,12 @@ def calibrate_payload_from_inputs(
             "wsclean_predict": False,
             "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
             "max_threads": int(input_parms["max_threads"]),
+            "dp3_max_threads": int(
+                input_parms.get("dp3_max_threads") or input_parms["max_threads"]
+            ),
+            "wsclean_max_threads": int(
+                input_parms.get("wsclean_max_threads") or input_parms["max_threads"]
+            ),
             "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
             "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
             "has_slow_gain_solve": has_slow_gain_solve,
@@ -603,6 +609,10 @@ def _solve_slots_for_kind(calibration_kind: str, input_parms: Mapping[str, objec
 def _solver_payload_from_inputs(input_parms: Mapping[str, object]) -> dict:
     return {
         "max_threads": int(input_parms["max_threads"]),
+        "dp3_max_threads": int(input_parms.get("dp3_max_threads") or input_parms["max_threads"]),
+        "wsclean_max_threads": int(
+            input_parms.get("wsclean_max_threads") or input_parms["max_threads"]
+        ),
         "maxiter": int(input_parms["maxiter"]),
         "llssolver": str(input_parms["llssolver"]),
         "propagatesolutions": bool(input_parms["propagatesolutions"]),

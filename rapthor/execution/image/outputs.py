@@ -310,6 +310,7 @@ def make_filtered_model_image(
         Path(filtered_apparent_sky["path"]),
         Path(pb_image["path"]),
         Path(str(sector["filtered_model_image_path"])),
+        num_threads=int(sector.get("wsclean_max_threads") or sector["max_threads"]),
     )
     return require_file(str(sector["filtered_model_image_path"]), "Filtered skymodel image")
 

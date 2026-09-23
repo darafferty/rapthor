@@ -49,6 +49,7 @@ from rapthor.execution.image.flow import (
     image_sector_task,
     image_sector_wsclean_task,
 )
+from rapthor.execution.image.validation import validate_image_payload
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.image.base import Image
@@ -201,12 +202,13 @@ def fake_direct_image_helpers(monkeypatch):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("h5parm")
 
-    def fake_restore_skymodel(source_catalog, reference_image, output_image):
+    def fake_restore_skymodel(source_catalog, reference_image, output_image, num_threads=None):
         calls["restore_skymodel"].append(
             {
                 "source_catalog": str(source_catalog),
                 "reference_image": str(reference_image),
                 "output_image": str(output_image),
+                "num_threads": num_threads,
             }
         )
         output_path = Path(output_image)
@@ -676,6 +678,7 @@ def _facet_image_input_parms():
             "scalar_visibilities": True,
             "diagonal_visibilities": False,
             "shared_facet_rw": [True],
+            "image_frequencybase": [0.0],
         }
     )
     return input_parms
@@ -1492,6 +1495,65 @@ def test_image_payload_from_inputs_rejects_invalid_sector_sharing(tmp_path, shar
 
     with pytest.raises(ValueError, match="shared_facet_rw"):
         image_payload_from_inputs(input_parms, tmp_path, use_facets=True)
+
+
+@pytest.mark.parametrize("use_mpi", [False, True])
+@pytest.mark.parametrize("sharing", [(True, False), (False, True), (True, True)])
+def test_frequency_bda_rejects_shared_facets_before_tasks(tmp_path, monkeypatch, use_mpi, sharing):
+    input_parms = _facet_image_input_parms()
+    input_parms.update(image_frequencybase=[20000.0], mpi_nnodes=[2], mpi_cpus_per_task=[4])
+    payload = image_payload_from_inputs(input_parms, tmp_path, use_facets=True, use_mpi=use_mpi)
+    sector = payload["sectors"][0]
+    sector["shared_facet_reads"], sector["shared_facet_writes"] = sharing
+    submitted = []
+    monkeypatch.setattr(
+        "rapthor.execution.image.flow._submit_split_image_sector_tasks",
+        lambda *args: submitted.append(args),
+    )
+    from rapthor.execution.image.flow import _run_image_prefect_tasks
+
+    with pytest.raises(ValueError, match="shared_facet_rw = False"):
+        _run_image_prefect_tasks(payload)
+
+    assert submitted == []
+    with pytest.raises(ValueError, match="shared_facet_rw = False"):
+        image_wsclean_module._select_wsclean_command_for_sector(
+            sector,
+            directory_record(sector["concat_path"]),
+            file_record(sector["mask_path"]),
+            file_record(sector["facet_region_path"]),
+            str(tmp_path / "wsclean_tmp"),
+        )
+
+
+@pytest.mark.parametrize("use_mpi", [False, True])
+@pytest.mark.parametrize("frequencybase, sharing", [(0.0, True), (20000.0, False)])
+def test_facet_bda_supported_combinations_keep_command_options(
+    tmp_path, use_mpi, frequencybase, sharing
+):
+    input_parms = _facet_image_input_parms()
+    input_parms.update(
+        image_frequencybase=[frequencybase],
+        shared_facet_rw=[sharing],
+        mpi_nnodes=[2],
+        mpi_cpus_per_task=[4],
+    )
+    payload = validate_image_payload(
+        image_payload_from_inputs(input_parms, tmp_path, use_facets=True, use_mpi=use_mpi)
+    )
+    sector = payload["sectors"][0]
+    command = image_wsclean_module._select_wsclean_command_for_sector(
+        sector,
+        directory_record(sector["concat_path"]),
+        file_record(sector["mask_path"]),
+        file_record(sector["facet_region_path"]),
+        str(tmp_path / "wsclean_tmp"),
+    )
+
+    assert sector["timebase"] > 0
+    assert ("-shared-facet-reads" in command) is sharing
+    assert ("-shared-facet-writes" in command) is sharing
+    assert ("-reorder" in command) is (frequencybase > 0)
 
 
 def test_facet_image_operation_plans_sharing_per_sector(tmp_path):
@@ -3586,3 +3648,57 @@ def test_image_normalize_finalizer_accepts_prefect_outputs(tmp_path):
     assert field.normalize_flux_scale is False
     assert field.apply_normalizations is True
     assert Path(operation.done_file).is_file()
+
+
+@pytest.mark.prefect
+def test_image_uses_tool_specific_threads_for_preparation_imaging_and_restoration(
+    tmp_path,
+    fake_image_shell_operation_cls,
+    fake_direct_image_helpers,
+):
+    input_parms = _bright_peeling_image_input_parms()
+    input_parms.update(dp3_max_threads=2, wsclean_max_threads=8, save_filtered_model_image=True)
+    input_parms["residual_filename"] = ["sector_1_residual.ms"]
+    run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(input_parms, tmp_path, make_residual_visibilities=True),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    commands = [
+        shlex.split(instance.kwargs["commands"][-1])
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    dp3_commands = [command for command in commands if command[0] == "DP3"]
+    assert len(dp3_commands) == 3  # Two preparation chunks and residual visibility creation.
+    for command in dp3_commands:
+        assert "numthreads=2" in command
+    wsclean_commands = [command for command in commands if command[0] == "wsclean"]
+    assert len(wsclean_commands) == 3  # Imaging and two bright-source restorations.
+    for command in wsclean_commands:
+        assert command[command.index("-j") + 1] == "8"
+    assert fake_direct_image_helpers["restore_skymodel"][0]["num_threads"] == 8
+
+
+@pytest.mark.parametrize("requested, expected", [(2, 2), (8, 3)])
+@pytest.mark.prefect
+def test_mpi_wsclean_tool_threads_respect_rank_allocation(
+    tmp_path, fake_image_shell_operation_cls, requested, expected
+):
+    input_parms = _mpi_image_input_parms()
+    input_parms["wsclean_max_threads"] = requested
+    run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(input_parms, tmp_path, use_mpi=True),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    instance = next(
+        instance
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "mpirun"
+    )
+    command = shlex.split(instance.kwargs["commands"][-1])
+    assert command[command.index("-j") + 1] == str(expected)
+    assert instance.kwargs["env"]["OMP_NUM_THREADS"] == str(expected)
+    assert int(command[command.index("-deconvolution-threads") + 1]) <= expected

@@ -33,6 +33,7 @@ from rapthor.execution.resources import (
     validate_resource_request,
 )
 from rapthor.execution.shell import run_external_command
+from rapthor.lib.imaging_options import validate_shared_facet_bda
 
 
 def run_or_reuse_wsclean_images(
@@ -101,7 +102,7 @@ def restore_bright_source_images(
         str(sector["bright_skymodel_pb"]),
         pipeline_working_dir,
         execution_config,
-        int(sector["max_threads"]),
+        int(sector.get("wsclean_max_threads") or sector["max_threads"]),
         "Bright-source restored PB image",
         shell_operation_cls=shell_operation_cls,
     )
@@ -110,7 +111,7 @@ def restore_bright_source_images(
         str(sector["bright_skymodel_pb"]),
         pipeline_working_dir,
         execution_config,
-        int(sector["max_threads"]),
+        int(sector.get("wsclean_max_threads") or sector["max_threads"]),
         "Bright-source restored non-PB image",
         shell_operation_cls=shell_operation_cls,
     )
@@ -157,7 +158,7 @@ def _write_aterm_config(pipeline_working_dir: str, h5parm: str) -> str:
 def _wsclean_threads_for_sector(sector: ImageSectorPayload) -> int:
     if sector["use_mpi"]:
         return int(sector["mpi_cpus_per_task"])
-    return int(sector["max_threads"])
+    return int(sector.get("wsclean_max_threads") or sector["max_threads"])
 
 
 def _wsclean_environment_for_sector(
@@ -216,7 +217,9 @@ def _select_wsclean_command_for_sector(
         auto_mask_nmiter=int(sector["auto_mask_nmiter"]),
         idg_mode=str(sector["idg_mode"]),
         num_threads=_wsclean_threads_for_sector(sector),
-        num_deconvolution_threads=int(sector["deconvolution_threads"]),
+        num_deconvolution_threads=min(
+            int(sector["deconvolution_threads"]), _wsclean_threads_for_sector(sector)
+        ),
         num_gridding_tasks=int(sector["parallel_gridding_tasks"]),
         dd_psf_grid=list(sector["dd_psf_grid"]),
         apply_time_frequency_smearing=bool(sector["apply_time_frequency_smearing"]),
@@ -227,6 +230,10 @@ def _select_wsclean_command_for_sector(
     if sector["use_facets"]:
         if region_record is None:
             raise ValueError("Facet imaging requires a facet region record")
+        validate_shared_facet_bda(
+            sector.get("frequencybase"),
+            bool(sector["shared_facet_reads"] or sector["shared_facet_writes"]),
+        )
         facet_options = WscleanFacetOptions(
             common=common_options,
             scalar_visibilities=bool(sector["scalar_visibilities"]),

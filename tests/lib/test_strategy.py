@@ -364,6 +364,21 @@ def test_validate_strategy_logs_warning_for_do_normalize_in_non_first_cycle(
             assert expected_log_string not in caplog.text
 
 
+@pytest.mark.parametrize("auto_mask", [-1, 0, 0.5, 1.0, float("nan"), float("inf")])
+def test_validate_strategy_rejects_invalid_auto_mask_in_later_cycle(auto_mask):
+    steps = [{"do_image": False}, {"do_image": True, "auto_mask": auto_mask}]
+    parset = {"cluster_specific": {"allow_internet_access": True}}
+
+    with pytest.raises(ValueError, match="strategy cycle 2: auto_mask.*greater than 1.0"):
+        validate_strategy(steps, parset)
+
+
+def test_validate_strategy_allows_valid_auto_mask_and_ignores_non_imaging_cycle():
+    steps = [{"do_image": False, "auto_mask": 0}, {"do_image": True, "auto_mask": 1.01}]
+
+    validate_strategy(steps, {"cluster_specific": {"allow_internet_access": True}})
+
+
 @pytest.mark.parametrize("normalization_skymodels", [None, ["skymodel1.txt", "skymodel2.txt"]])
 @pytest.mark.parametrize("do_normalize", [True, False])
 @pytest.mark.parametrize("allow_internet_access", [True, False])

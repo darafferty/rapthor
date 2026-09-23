@@ -39,6 +39,7 @@ def representative_image_payload(work_dir: object = "/work/image_1") -> dict:
                 ],
                 "wsclean_imsize": [1024, 1024],
                 "dd_psf_grid": [4, 4],
+                "auto_mask": 5.0,
                 "obs_original_paths": ["/data/obs.ms"],
                 "obs_starttime": ["59000.0"],
                 "obs_ntimes": [10],

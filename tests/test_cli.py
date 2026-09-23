@@ -165,6 +165,31 @@ prefect_api_mode = ephemeral
     ]
 
 
+@pytest.mark.parametrize(
+    "settings, message",
+    [
+        ("shared_facet_rw = True", "shared_facet_rw = False"),
+        ("dd_psf_grid = [0, 2]", "dd_psf_grid"),
+    ],
+)
+def test_incompatible_imaging_settings_fail_before_runtime_start(
+    monkeypatch, tmp_path, caplog, settings, message
+):
+    (tmp_path / "input.ms").mkdir()
+    parset = tmp_path / "input.parset"
+    parset.write_text(
+        f"[global]\ninput_ms = input.ms\ndir_working = work\n\n[imaging]\n{settings}\n"
+    )
+    runtime_calls = []
+    monkeypatch.setattr(
+        "rapthor.execution.runtime_bootstrap.bootstrapped_runtime", runtime_calls.append
+    )
+
+    assert cli.main([str(parset)]) == 1
+    assert runtime_calls == []
+    assert message in caplog.text
+
+
 def test_main_returns_error_when_pipeline_fails(monkeypatch):
     def fail_pipeline(parset_file, *, logging_level):
         raise RuntimeError("boom")

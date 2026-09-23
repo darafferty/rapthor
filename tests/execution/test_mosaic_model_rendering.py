@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS
 
@@ -11,7 +12,10 @@ from rapthor.execution.mosaic.model_rendering import render_model_mosaic_with_ws
 from rapthor.lib.records import file_record
 
 
-def test_render_model_mosaic_with_wsclean_uses_template_geometry(tmp_path, monkeypatch):
+@pytest.mark.parametrize("wsclean_threads, expected_threads", [(0, 6), (12, 12)])
+def test_render_model_mosaic_with_wsclean_uses_template_geometry(
+    tmp_path, monkeypatch, wsclean_threads, expected_threads
+):
     template = tmp_path / "mosaic_template.fits"
     output = tmp_path / "mosaic_1-MFS-model-pb.fits"
     combined_skymodel = tmp_path / "mosaic_1-MFS-model-pb.skymodel"
@@ -50,7 +54,7 @@ def test_render_model_mosaic_with_wsclean_uses_template_geometry(tmp_path, monke
         str(template),
         str(output),
         str(tmp_path),
-        ExecutionConfig(task_runner="sync", cpus_per_task=6),
+        ExecutionConfig(task_runner="sync", cpus_per_task=6, wsclean_max_threads=wsclean_threads),
     )
 
     assert result == file_record(output)
@@ -65,7 +69,7 @@ def test_render_model_mosaic_with_wsclean_uses_template_geometry(tmp_path, monke
     assert command[:5] == [
         "wsclean",
         "-j",
-        "6",
+        str(expected_threads),
         "-draw-model",
         str(combined_skymodel),
     ]

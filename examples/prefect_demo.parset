@@ -63,6 +63,9 @@ cpus_per_task = 4
 mem_per_node_gb = 0
 max_cores = 4
 max_threads = 4
+# Tool-specific overrides; 0 inherits max_threads.
+dp3_max_threads = 0
+wsclean_max_threads = 0
 deconvolution_threads = 2
 parallel_gridding_tasks = 1
 local_scratch_dir =

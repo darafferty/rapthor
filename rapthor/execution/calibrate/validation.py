@@ -12,12 +12,16 @@ from rapthor.execution.payloads import (
     optional_file_path,
     validate_basename,
     validate_int_list,
+    validate_positive_int,
     validate_string_list,
 )
 
 
 def validate_calibrate_payload(payload: Mapping[str, object]) -> CalibratePayload:
     """Validate an incoming Calibrate flow payload and return its typed shape."""
+    for name in ("dp3_max_threads", "wsclean_max_threads"):
+        if name in payload:
+            validate_positive_int(payload[name], name)
     mode = str(payload["mode"])
     if mode not in {"di", "dd"}:
         raise ValueError("mode must be 'di' or 'dd'")

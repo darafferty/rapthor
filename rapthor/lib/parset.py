@@ -16,6 +16,10 @@ import astropy.coordinates
 import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
 from rapthor._version import __version__
+from rapthor.lib.imaging_options import (
+    validate_dd_psf_grid,
+    validate_shared_facet_bda,
+)
 
 log = logging.getLogger("rapthor:parset")
 
@@ -368,8 +372,9 @@ class Parset:
                 "must all have the same number of entries"
             )
 
-        if len(options["dd_psf_grid"]) != 2:
-            raise ValueError("The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')")
+        validate_dd_psf_grid(options["dd_psf_grid"], allow_auto=True)
+        if options["dde_method"] == "full":
+            validate_shared_facet_bda(options["bda_frequencybase"], options["shared_facet_rw"])
 
         if (
             settings["imaging"]["correct_time_frequency_smearing"]
@@ -436,14 +441,19 @@ class Parset:
             options["max_threads"] = cpu_count
 
         max_threads = options["max_threads"]
+        for name in ("dp3_max_threads", "wsclean_max_threads"):
+            value = options[name]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"The option '{name}' must be a non-negative integer")
+        wsclean_threads = options["wsclean_max_threads"] or max_threads
         if not options["filter_skymodel_ncores"]:
             options["filter_skymodel_ncores"] = max_threads
         if options["filter_skymodel_ncores"] < 1:
             raise ValueError("The option 'filter_skymodel_ncores' must be greater than 0")
         if not options["deconvolution_threads"]:
-            options["deconvolution_threads"] = max(1, min(14, max_threads * 2 // 5))
+            options["deconvolution_threads"] = max(1, min(14, wsclean_threads * 2 // 5))
         if not options["parallel_gridding_tasks"]:
-            options["parallel_gridding_tasks"] = max(1, max_threads // 8)
+            options["parallel_gridding_tasks"] = max(1, wsclean_threads // 8)
 
     def read_file(self, parset_file):
         """

@@ -11,7 +11,13 @@ from rapthor.execution.image.payloads import (
 from rapthor.execution.payloads import (
     validate_basename,
     validate_int_list,
+    validate_positive_int,
     validate_string_list,
+)
+from rapthor.lib.imaging_options import (
+    validate_auto_mask,
+    validate_dd_psf_grid,
+    validate_shared_facet_bda,
 )
 
 
@@ -103,19 +109,25 @@ def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSec
             raise ValueError(f"sectors[{index}].image_cube_specs[{spec_index}] must be a mapping")
         image_cube_specs.append(_validate_image_cube_spec(spec, index, spec_index))
 
+    for name in ("dp3_max_threads", "wsclean_max_threads"):
+        if name in sector:
+            validate_positive_int(sector[name], f"sectors[{index}].{name}")
     validated_sector = dict(sector)
     validated_sector["prepare_tasks"] = prepare_tasks
     validated_sector["image_cube_specs"] = image_cube_specs
     frequencybase = sector.get("frequencybase")
     validated_sector["frequencybase"] = None if frequencybase is None else float(frequencybase)
+    if sector.get("use_facets"):
+        validate_shared_facet_bda(
+            validated_sector["frequencybase"],
+            bool(sector.get("shared_facet_reads") or sector.get("shared_facet_writes")),
+        )
+    validate_auto_mask(float(sector["auto_mask"]))
     validated_sector["wsclean_imsize"] = validate_int_list(
         sector.get("wsclean_imsize"),
         f"sectors[{index}].wsclean_imsize",
     )
-    validated_sector["dd_psf_grid"] = validate_int_list(
-        sector.get("dd_psf_grid"),
-        f"sectors[{index}].dd_psf_grid",
-    )
+    validated_sector["dd_psf_grid"] = validate_dd_psf_grid(sector.get("dd_psf_grid"))
     validated_sector["obs_original_paths"] = validate_string_list(
         sector.get("obs_original_paths"),
         f"sectors[{index}].obs_original_paths",
