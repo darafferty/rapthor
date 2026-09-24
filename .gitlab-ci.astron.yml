@@ -1,0 +1,35 @@
+# Copyright (C) 2026 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# At Astron GitLab, docker-in-docker jobs require a 'dind' tag.
+.dind:
+  tags:
+    - dind
+
+include: .gitlab-ci.common.yml
+
+### Stage: deploy. Only happens @ Astron.
+
+.deploy:
+  stage: deploy
+  extends: .setup_docker
+  before_script:
+    - !reference [.setup_docker, before_script]
+    - echo "Logging in as $DH_REGISTRY_USER @ DockerHub"
+    - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
+
+deploy_docker:
+  stage: deploy
+  extends: .deploy
+  script:
+    - echo "Deploying to DockerHub, using tag '$RAPTHOR_TAG'"
+    - docker pull $FULL_IMAGE
+    - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_TAG
+    - docker tag $FULL_IMAGE astronrd/rapthor:latest
+    - docker push astronrd/rapthor:$RAPTHOR_TAG
+    - docker push astronrd/rapthor:latest
+  rules:
+    # Run on the default branch or on a release branch
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH =~ /^releases//'
+      when: on_success
