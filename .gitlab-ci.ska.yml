@@ -3,7 +3,7 @@
 
 # SKA GitLab doesn't require any extra configuration for docker-in-docker.
 .dind:
-  extends: [] # .dind can't be empty, so add empty extends.
+  extends: [] # .dind can't be empty, so add an empty 'extends'.
 
 default:
   tags: # Use SKA runners instead of standard gitlab.com runners.
