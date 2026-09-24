@@ -118,7 +118,7 @@ versioning:
     - !reference [.versioning, script]
     - ./Docker/fetch_commit_hashes.sh | tee commits.txt >> versions.env
     # Use hash of commits and CI/CD build files to determine tag of base image
-    - SHA_FILES=".gitlab-ci.yml ci/ubuntu_24_04-* commits.txt"
+    - SHA_FILES=".gitlab-ci.common.yml ci/ubuntu_24_04-* commits.txt"
     - BASE_NAME=$CI_REGISTRY_IMAGE/base
     - BASE_TAG=$(shasum ${SHA_FILES} | shasum | cut -d" " -f1)
     - FULL_NAME=$CI_REGISTRY_IMAGE/full
