@@ -778,7 +778,7 @@ outputs:
   - id: sector_skymodel_image_fits
     outputSource:
       - image_sector/skymodel_image_fits
-    type: File[]
+    type: File[]?
 
 steps:
   - id: image_sector
