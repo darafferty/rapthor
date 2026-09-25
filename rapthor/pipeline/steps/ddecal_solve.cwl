@@ -30,7 +30,7 @@ arguments:
   - applycal.normalization.solset=sol000
   - applycal.normalization.usemodeldata=True
   - applycal.normalization.invert=False
-  - avg.type=bdaaverager
+  - bdaavg.type=bdaaverager
   - predict.type=wgridderpredict
   - solve1.type=ddecal
   - solve1.usebeammodel=True
@@ -142,7 +142,7 @@ inputs:
       The baseline length (in meters) below which BDA time averaging is done.
     type: float?
     inputBinding:
-      prefix: avg.timebase=
+      prefix: bdaavg.timebase=
       separate: False
 
   - id: frequencybase
@@ -151,7 +151,7 @@ inputs:
       The baseline length (in meters) below which BDA frequency averaging is done.
     type: float?
     inputBinding:
-      prefix: avg.frequencybase=
+      prefix: bdaavg.frequencybase=
       separate: False
 
   - id: maxinterval
@@ -160,7 +160,7 @@ inputs:
       The maximum interval duration (in sec) over which BDA time averaging is done.
     type: float?
     inputBinding:
-      prefix: avg.maxinterval=
+      prefix: bdaavg.maxinterval=
       separate: False
 
   - id: minchannels
@@ -169,7 +169,7 @@ inputs:
       The minimum number of channels remaining after BDA frequency averaging is done.
     type: int?
     inputBinding:
-      prefix: avg.minchannels=
+      prefix: bdaavg.minchannels=
       separate: False
 
   - id: directions

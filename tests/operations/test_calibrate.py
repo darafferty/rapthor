@@ -714,8 +714,8 @@ class TestCalibrate:
         "bda_time, bda_freq, slowgain, expected_dp3_steps",
         [
             (0, 0, False, ["solve1", "solve2"]),
-            (1, 1, False, ["avg", "solve1", "solve2", "null"]),
-            (1, 1, True, ["avg", "solve1", "solve2", "solve3", "solve4", "null"]),
+            (1, 1, False, ["bdaavg", "solve1", "solve2", "null"]),
+            (1, 1, True, ["bdaavg", "solve1", "solve2", "solve3", "solve4", "null"]),
         ],
     )
     def test_set_input_parameters_dd_bda_cases(
