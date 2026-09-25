@@ -1114,7 +1114,7 @@ steps:
         source: 
         - solve_fast_phases_only/output_h5parm
         - solve_fast_phases_slow_gains/output_h5parm
-        pickValue: "the_only_non_null"
+        pickValue: the_only_non_null
       - id: outputh5parm
         source: combined_h5parms
     out:
