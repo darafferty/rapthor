@@ -70,7 +70,7 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "solve2" not in dp3_arguments["steps"]
     assert "solve3" not in dp3_arguments["steps"]
     assert "solve4" not in dp3_arguments["steps"]
-    assert "avg" not in dp3_arguments["steps"]
+    assert "bdaavg" not in dp3_arguments["steps"]
     assert "scalarphase" in dp3_arguments["solve1.mode"]
 
 
@@ -129,7 +129,7 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     assert "solve2" not in dp3_arguments["steps"]
     assert "solve3" not in dp3_arguments["steps"]
     assert "solve4" not in dp3_arguments["steps"]
-    assert "avg" not in dp3_arguments["steps"]
+    assert "bdaavg" not in dp3_arguments["steps"]
     assert "diagonal" in dp3_arguments["solve1.mode"]
     assert "slow_gains_di_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples
@@ -307,7 +307,7 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
     assert "solve2" not in dp3_arguments["steps"]
     assert "solve3" not in dp3_arguments["steps"]
     assert "solve4" not in dp3_arguments["steps"]
-    assert "avg" not in dp3_arguments["steps"]
+    assert "bdaavg" not in dp3_arguments["steps"]
     assert "fulljones" in dp3_arguments["solve1.mode"]
 
 
