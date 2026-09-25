@@ -625,8 +625,9 @@ outputs:
   - id: skymodel_image_fits
     outputSource:
       - make_skymodel_image/output_image
-    pickValue: the_only_non_null
-    type: File
+    type:
+      - "null"
+      - File
   - id: sector_diagnostics
     outputSource:
       - find_diagnostics/diagnostics
