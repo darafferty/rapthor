@@ -157,7 +157,7 @@ ignore = ["E501"]  # line-too-long
 
 
 [tool.tox]
-requires = ["tox>4"]
+requires = ["tox>4", "tox-uv"]
 envlist = ["lint", "format", "py3{10,11,12,13,14}", "test_integration"]
 
 [tool.tox.env_run_base]
@@ -173,12 +173,13 @@ commands = [
         "--cov=rapthor",
         "tests/{posargs}",
     ],
-    # Run all other tests with 4 parallel processes.
+    # Run all other tests with 8 parallel processes. Don't use "-n auto", since
+    # SKA CI then uses up to 64 workers, which results in out-of-memory errors.
     # Add to the existing coverage report from the run above.
     [
         "python", "-m", "pytest",
         "-m", "not integration",
-        "-n", "auto",
+        "-n", "8",
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
@@ -191,6 +192,11 @@ commands = [
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"
+# Python <= 3.12 raises "OSError: AF_UNIX path too long" in the Python
+# multiprocessing library on the SKA mirror of Rapthor. Using Python >= 3.13.7
+# fixes it. See also https://jira.skatelescope.org/browse/SKB-1067 .
+base_python = ["3.13"]
+uv_python_preference = "managed"
 deps = [
     { replace = "ref", of = ["dependency-groups", "test"], extend = true },
     "pytest-split<0.11",

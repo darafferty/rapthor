@@ -1,0 +1,143 @@
+# Copyright (C) 2026 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# At Astron GitLab, docker-in-docker jobs require a 'dind' tag.
+.dind:
+  tags:
+    - dind
+
+include: .gitlab-ci.common.yml
+
+
+### Stage: initialize. Only for Astron.
+
+prepare_release:
+  stage: initialize
+  image: python:3.13
+  extends: .setup_git
+  rules:
+    # Run this job when current branch is a release branch
+    - if: '$CI_COMMIT_BRANCH =~ /^releases//'
+      when: always
+  artifacts:
+    # Create a marker file if release tag already exists. The presence of this
+    # file is used in the `rollback_release` job, to decide that the existing
+    # tag should not be removed.
+    paths:
+      - .tag.exists
+    untracked: true
+    when: on_failure
+  before_script:
+    - !reference [.versioning, before_script]
+    # When building a release, bail out if release tag already exists
+    - |
+      if git ls-remote --tags --exit-code origin $RELEASE > /dev/null
+      then
+        echo "*** Release '$RELEASE' already exists. Bailing out! ***"
+        touch .tag.exists
+        exit 1
+      fi
+    - !reference [.setup_git, before_script]
+  script:
+    # Use .versioning:script to get RAPTHOR_TAG
+    - !reference [.versioning, script]
+    - echo "Updating dockerPull URI to use image tag '$RAPTHOR_TAG'"
+    - CWL_FILES=$(git ls-files | grep '\.cwl$')
+    - sed -ri "/dockerPull/s,['\"]?(astronrd/rapthor).*,\1:$RAPTHOR_TAG," $CWL_FILES
+    - git add -u $CWL_FILES
+    # Only commit if there are changes
+    - |
+      if test -n "$(git status -uno --porcelain)"
+      then
+        git commit -m "Tag $RELEASE added to dockerPull URI in CWL steps (by GitLab CI)"
+      fi
+    # Tag current revision
+    - git tag -a $RELEASE -m "Git tag $RELEASE created (by GitLab CI)"
+    # Skip CI on this push
+    - git push --follow-tags -o ci.skip
+
+
+### Stage: deploy. Only for Astron.
+
+.deploy:
+  stage: deploy
+  extends: .setup_docker
+  before_script:
+    - !reference [.setup_docker, before_script]
+    - echo "Logging in as $DH_REGISTRY_USER @ DockerHub"
+    - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
+
+deploy_docker:
+  stage: deploy
+  extends: .deploy
+  script:
+    - echo "Deploying to DockerHub, using tag '$RAPTHOR_TAG'"
+    - docker pull $FULL_IMAGE
+    - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_TAG
+    - docker tag $FULL_IMAGE astronrd/rapthor:latest
+    - docker push astronrd/rapthor:$RAPTHOR_TAG
+    - docker push astronrd/rapthor:latest
+  rules:
+    # Run on the default branch or on a release branch
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH =~ /^releases//'
+      when: on_success
+
+
+### Stage: finalize. Only for Astron.
+
+.finalize:
+  extends: .setup_git
+  stage: finalize
+
+rollback_release:
+  extends: .finalize
+  rules:
+    # Run this job if the pipeline fails, to undo changes made in prepare_release.
+    # We only care about removing the tag; other changes can remain.
+    - if: '$CI_COMMIT_BRANCH =~ /^releases//'
+      when: on_failure
+  script:
+    - echo "Rolling back release $RELEASE"
+    - |
+      if test -f .tag.exists
+      then
+        echo "*** Not removing existing tag '$RELEASE'! ***"
+      else
+        git push origin -d $RELEASE
+      fi
+
+finalize_release:
+  extends: .finalize
+  rules:
+    # Run this job if the pipeline succeeds, to create a versioned release.
+    # A versioned release is a release whose branch/tag name matches a string
+    # that looks like "v<major-version>[.<minor_version>][...]".
+    # We want to ensure that the release tag also exists on the default branch,
+    # so that `git describe --tags` yields the desired output. Hence, we must
+    # undo the changes made in the `prepare_release` job, before merging to
+    # the default branch.
+    - if: '$CI_COMMIT_BRANCH =~ /^releases\/v[0-9]+(\.[0-9]+)*/'
+      when: on_success
+  script:
+    - echo "Finalizing release $RELEASE"
+    # Update dockerPull image URI in CWL steps by removing version tag
+    - CWL_FILES=$(git ls-files | grep '\.cwl$')
+    - sed -ri "/dockerPull/s,(astronrd/rapthor).*,\1," $CWL_FILES
+    - git add -u $CWL_FILES
+    # Only commit if there are changes
+    - |
+      if test -n "$(git status -uno --porcelain)"
+      then
+        git commit -m "Tag removed from dockerPull URI in CWL steps (by GitLab CI)"
+      fi
+    # Skip CI on this push
+    - git push -o ci.skip
+    # Next switch to the default branch and make sure it's up to date
+    - git checkout $CI_DEFAULT_BRANCH
+    - git pull
+    - echo "Merging changes from $CI_COMMIT_BRANCH into $CI_DEFAULT_BRANCH"
+    # Merge release branch into the default branch
+    - git merge $CI_COMMIT_BRANCH -m"Merged release branch into default branch (by Gitlab CI)"
+    # Skip CI on this push
+    - git push -o ci.skip
