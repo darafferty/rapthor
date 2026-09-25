@@ -173,13 +173,13 @@ commands = [
         "--cov=rapthor",
         "tests/{posargs}",
     ],
-    # Run all other tests with 4 parallel processes. Don't use "-n auto", since
+    # Run all other tests with 8 parallel processes. Don't use "-n auto", since
     # SKA CI then uses up to 64 workers, which results in out-of-memory errors.
     # Add to the existing coverage report from the run above.
     [
         "python", "-m", "pytest",
         "-m", "not integration",
-        "-n", "4",
+        "-n", "8",
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
