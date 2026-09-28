@@ -8,6 +8,7 @@ import pytest
 from matplotlib import pyplot as plt
 
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
+from rapthor.lib.observation import Observation
 
 
 @pytest.fixture
@@ -99,9 +100,62 @@ def test_chunk_observations_high_el(field):
     full_obs = field.full_observations[0]
     obs = field.imaging_sectors[0].observations[0]
     chunked_starttime = full_obs.starttime + 2 * full_obs.timepersample
-    chunked_endtime = full_obs.endtime - 3 * full_obs.timepersample
+    chunked_endtime = full_obs.endtime - 2 * full_obs.timepersample
+    assert obs.numsamples == 2
     assert obs.starttime == chunked_starttime
     assert obs.endtime == chunked_endtime
+
+
+@pytest.mark.parametrize(
+    "num_samples, expected_sizes",
+    [
+        (3594, [1198, 1198, 1198]),
+        (3595, [1198, 1198, 1199]),
+        (3596, [1198, 1199, 1199]),
+        (4791, [1597, 1597, 1597]),
+    ],
+)
+def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expected_sizes):
+    obs = field.full_observations[0]
+    obs.endtime += (num_samples - obs.numsamples) * obs.timepersample
+    obs.numsamples = num_samples
+    obs.data_fraction = 1.0
+    create_observation = mocker.patch("rapthor.lib.observation.Observation")
+
+    field.chunk_observations(1198 * obs.timepersample, prefer_high_el_periods=False)
+
+    boundaries = np.cumsum([0, *expected_sizes])
+    starts = [call.kwargs["starttime"] for call in create_observation.call_args_list]
+    ends = [call.kwargs["endtime"] for call in create_observation.call_args_list]
+    assert starts == pytest.approx(
+        obs.starttime + boundaries[:-1] * obs.timepersample, rel=0, abs=0.001
+    )
+    assert ends == pytest.approx(
+        obs.endtime - (num_samples - boundaries[1:]) * obs.timepersample, rel=0, abs=0.001
+    )
+
+
+@pytest.mark.parametrize(
+    "num_samples, max_chunks, expected_sizes",
+    [(5, None, [2, 3]), (6, None, [2, 2, 2]), (6, 2, [3, 3]), (5, 3, [2, 3])],
+)
+def test_chunk_observations_with_real_scan(field, num_samples, max_chunks, expected_sizes):
+    ms_filename = field.full_observations[0].ms_filename
+    with pt.table(ms_filename, ack=False) as table:
+        times = np.unique(table.getcol("TIME"))
+    obs = Observation(ms_filename, starttime=times[0], endtime=times[num_samples - 1])
+    field.full_observations = [obs]
+
+    field.chunk_observations(
+        2 * obs.timepersample, prefer_high_el_periods=False, max_chunks=max_chunks
+    )
+
+    assert [chunk.numsamples for chunk in field.observations] == expected_sizes
+    selected_times = [
+        times[(times >= chunk.starttime) & (times <= chunk.endtime)] for chunk in field.observations
+    ]
+    assert [len(chunk_times) for chunk_times in selected_times] == expected_sizes
+    np.testing.assert_array_equal(np.concatenate(selected_times), times[:num_samples])
 
 
 def test_get_obs_parameters(field):

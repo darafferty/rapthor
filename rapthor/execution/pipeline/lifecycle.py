@@ -53,7 +53,8 @@ def chunk_observations(field, steps, data_fraction):
         return
 
     _set_observation_data_fractions(field, data_fraction, solve_time)
-    field.chunk_observations(chunk_time)
+    max_chunks = None if data_fraction < 1.0 else field.parset["cluster_specific"]["max_nodes"]
+    field.chunk_observations(chunk_time, max_chunks=max_chunks)
 
 
 def make_report(field, outfile=None):
@@ -97,16 +98,13 @@ def _calibration_solve_time(field, steps):
 def _chunk_time_for_run(field, data_fraction, solve_time):
     max_nodes = field.parset["cluster_specific"]["max_nodes"]
     if data_fraction < 1.0:
-        return solve_time or 600.0
+        return solve_time or 600.0  # Use a default chunk time of 600 seconds
 
     if max_nodes <= 1:
         return None
 
-    split_time = min(
-        (obs.endtime - obs.starttime) / max_nodes - obs.timepersample / 10
-        for obs in field.full_observations
-    )
-    return max(solve_time or 0, split_time)
+    # Keep the calibration minimum independent of the requested node count.
+    return solve_time or min(obs.timepersample for obs in field.full_observations)
 
 
 def _set_observation_data_fractions(field, data_fraction, solve_time):

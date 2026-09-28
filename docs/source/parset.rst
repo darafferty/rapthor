@@ -72,6 +72,8 @@ The available options are described below under their respective sections.
         Fraction of data to use during the generation of the initial sky model (default =
         0.2). If less than one, the input data are divided by time into chunks that sum to
         the requested fraction, spaced out evenly over the full time range.
+        Very small selections retain at least two time samples when available, as
+        required for Dysco compression, even if this exceeds the requested fraction.
 
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one
@@ -790,8 +792,9 @@ for how these options are used.
         value of 1 for ``single_machine`` and 12 for the Slurm batch systems.
         Set this to the number of nodes in your Slurm job. When all of the data
         are used (a data fraction of 1), each observation is split in time
-        into this many chunks so that the nodes can work on them at the same
-        time.
+        into up to this many balanced chunks, subject to the minimum calibration
+        duration and two samples per chunk, so that the nodes can work on them
+        at the same time.
 
     local_dask_workers
         Number of Dask workers to start when Rapthor is run on a single machine
