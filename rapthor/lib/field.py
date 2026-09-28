@@ -68,6 +68,9 @@ class Field(object):
         self.wsclean_predict_beam_interval = self.parset["calibration_specific"][
             "wsclean_predict_beam_interval"
         ]
+        # GEC-613: Use dummy averaging factors until the actual values are available.
+        self.calibrate_avg_timestep = 1
+        self.calibrate_avg_freqstep = 1
         self.calibrate_bda_timebase = self.parset["calibration_specific"]["bda_timebase"]
         self.calibrate_bda_frequencybase = self.parset["calibration_specific"]["bda_frequencybase"]
         self.dd_interval_factor = self.parset["calibration_specific"]["dd_interval_factor"]

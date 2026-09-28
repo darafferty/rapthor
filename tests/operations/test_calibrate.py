@@ -85,6 +85,8 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.apply_normalizations = False
             self.generate_screens = False
             self.normalize_h5parm = None
+            self.calibrate_avg_timestep = 1
+            self.calibrate_avg_freqstep = 1
             self.calibrate_bda_timebase = 0
             self.calibrate_bda_frequencybase = 0
             self.h5parm_filename = None
@@ -679,30 +681,15 @@ class TestCalibrate:
         calibrate.set_input_parameters()
 
         rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
-        if mode == "dd":
-            resolved_use_image_based_predict = (
-                field.generate_screens or field.use_image_based_predict
-            )
-            template_parset_parms = {
-                "use_image_based_predict": resolved_use_image_based_predict,
-                "generate_screens": field.generate_screens,
-                "do_slowgain_solve": field.do_slowgain_solve,
-                "max_cores": None,
-                "rapthor_pipeline_dir": rapthor_pipeline_dir,
-            }
-            expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
-        else:
-            resolved_use_image_based_predict = (
-                field.generate_screens or field.use_image_based_predict
-            )
-            template_parset_parms = {
-                "use_image_based_predict": resolved_use_image_based_predict,
-                "generate_screens": field.generate_screens,
-                "do_slowgain_solve": field.do_slowgain_solve,
-                "max_cores": None,
-                "rapthor_pipeline_dir": rapthor_pipeline_dir,
-            }
-            expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
+        resolved_use_image_based_predict = field.generate_screens or field.use_image_based_predict
+        template_parset_parms = {
+            "use_image_based_predict": resolved_use_image_based_predict,
+            "generate_screens": field.generate_screens,
+            "do_slowgain_solve": field.do_slowgain_solve,
+            "max_cores": None,
+            "rapthor_pipeline_dir": rapthor_pipeline_dir,
+        }
+        expected_cwl_ids = get_cwl_input_ids("calibrate_pipeline.cwl", template_parset_parms)
 
         input_parms_keys = set(calibrate.input_parms.keys())
         assert expected_cwl_ids.issubset(input_parms_keys), (
@@ -932,6 +919,19 @@ class TestCalibrate:
         calibrate_dd.set_input_parameters()
 
         assert calibrate_dd.input_parms["solution_combine_mode"] == expected_mode
+
+    def test_set_input_parameters_avg_timestep_and_freqstep(self, calibrate_field):
+        """
+        Test that set_input_parameters correctly propagates avg_timestep and avg_freqstep.
+        """
+        calibrate_field.calibrate_avg_timestep = 6
+        calibrate_field.calibrate_avg_freqstep = 7
+
+        calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate_dd.set_input_parameters()
+
+        assert calibrate_dd.input_parms["avg_timestep"] == calibrate_field.calibrate_avg_timestep
+        assert calibrate_dd.input_parms["avg_freqstep"] == calibrate_field.calibrate_avg_freqstep
 
     def test_adjust_phase_sources_falls_back_to_single_solve_h5parm(self):
         template = env_parset.get_template("calibrate_pipeline.cwl")

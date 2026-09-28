@@ -30,6 +30,7 @@ arguments:
   - applycal.normalization.solset=sol000
   - applycal.normalization.usemodeldata=True
   - applycal.normalization.invert=False
+  - avg.type=averager
   - bdaavg.type=bdaaverager
   - predict.type=wgridderpredict
   - solve1.type=ddecal
@@ -134,6 +135,24 @@ inputs:
     type: File?
     inputBinding:
       prefix: applycal.fulljones.parmdb=
+      separate: False
+
+  - id: timestep
+    label: Averaging interval in time
+    doc: |
+      The averaging interval in number of timeslots.
+    type: int?
+    inputBinding:
+      prefix: avg.timestep=
+      separate: False
+
+  - id: freqstep
+    label: Averaging interval in frequency
+    doc: |
+      The averaging interval in number of frequency channels.
+    type: int?
+    inputBinding:
+      prefix: avg.freqstep=
       separate: False
 
   - id: timebase

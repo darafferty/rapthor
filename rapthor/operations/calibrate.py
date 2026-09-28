@@ -265,6 +265,9 @@ class Calibrate(Operation):
                 # the case in which it is a separate step that preceeds the DDECal step.
                 # The latter is used when image-based predict is done
                 **applycal_inputs,
+                # Get the regular averaging parameters.
+                "avg_timestep": field.calibrate_avg_timestep,
+                "avg_freqstep": field.calibrate_avg_freqstep,
                 # Get the BDA (baseline-dependent averaging) parameters
                 "bda_maxinterval": field.get_obs_parameters("bda_maxinterval"),
                 "bda_minchannels": field.get_obs_parameters("bda_minchannels"),
@@ -359,6 +362,9 @@ class Calibrate(Operation):
                 "calibration_skymodel_file": None,
                 "starttime": starttime,
                 "ntimes": ntimes,
+                # Get the regular averaging parameters.
+                "avg_timestep": field.calibrate_avg_timestep,
+                "avg_freqstep": field.calibrate_avg_freqstep,
                 # Get the BDA (baseline-dependent averaging) parameters
                 "bda_maxinterval": field.get_obs_parameters("bda_maxinterval"),
                 "bda_minchannels": field.get_obs_parameters("bda_minchannels"),

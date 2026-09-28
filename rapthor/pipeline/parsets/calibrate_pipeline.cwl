@@ -36,7 +36,7 @@ inputs:
     doc: |
       The data column to be read from the MS files (length = 1).
     type: string
-  
+
   - id: modeldatacolumn
     type: string?
 
@@ -249,7 +249,7 @@ inputs:
       The solution interval in number of frequency channels for the medium2 solve (length =
       n_obs * n_time_chunks).
     type: int[]
-  
+
   - id: solve1_solutions_per_direction
     label: Solve1 number of solutions per direction
     doc: |
@@ -307,9 +307,9 @@ inputs:
         items:
           - "null"
           - type: array
-            items: 
+            items:
             - float
-         
+
   - id: solve1_smoothnessconstraint
     label: Solve1 smoothnessconstraint
     doc: |
@@ -373,9 +373,9 @@ inputs:
         items:
           - "null"
           - type: array
-            items: 
+            items:
             - int
-        
+
   - id: solve3_solutions_per_direction
     label: Solve3 number of solutions per direction
     doc: |
@@ -386,9 +386,9 @@ inputs:
         items:
           - "null"
           - type: array
-            items: 
+            items:
             - int
-  
+
   - id: solve4_solutions_per_direction
     label: Solve4 number of solutions per direction
     doc: |
@@ -399,9 +399,9 @@ inputs:
         items:
           - "null"
           - type: array
-            items: 
+            items:
             - int
-        
+
   - id: output_solve2_h5parm
     label: Medium output solution table
     doc: |
@@ -434,7 +434,7 @@ inputs:
         items:
           - "null"
           - type: array
-            items: 
+            items:
             - float
 
   - id: solve2_smoothnessconstraint
@@ -522,6 +522,18 @@ inputs:
     doc: |
       The filename of the input full-Jones h5parm to apply before calibration.
     type: File?
+
+  - id: avg_timestep
+    label: Averaging interval in time
+    doc: |
+      The averaging interval in number of timeslots.
+    type: int
+
+  - id: avg_freqstep
+    label: Averaging interval in frequency
+    doc: |
+      The averaging interval in number of frequency channels.
+    type: int
 
   - id: bda_timebase
     label: BDA timebase
@@ -711,7 +723,7 @@ inputs:
         items:
           - "null"
           - type: array
-            items: 
+            items:
             - float
 
   - id: solve4_smoothness_dd_factors
@@ -724,7 +736,7 @@ inputs:
         items:
           - "null"
           - type: array
-            items: 
+            items:
             - float
 
   - id: solve3_smoothnessconstraint
@@ -978,7 +990,7 @@ steps:
     out:
       - id: region_file
 
-  - id: wsclean_predict 
+  - id: wsclean_predict
     label: Predict using WSClean
     doc: |
       This step predicts model data using WSClean (not DP3)
@@ -1024,7 +1036,7 @@ steps:
       - id: patches
 
 {% endif %}
-# end use_wsclean_predict 
+# end use_wsclean_predict
 
 {% if generate_screens %}
 # start generate_screens
@@ -1111,7 +1123,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/collect_screen_h5parms.cwl
     in:
       - id: inh5parms
-        source: 
+        source:
         - solve_fast_phases_only/output_h5parm
         - solve_fast_phases_slow_gains/output_h5parm
         pickValue: "the_only_non_null"
@@ -1172,6 +1184,10 @@ steps:
       - id: normalize_h5parm
         source: normalize_h5parm
 {% endif %}
+      - id: timestep
+        source: avg_timestep
+      - id: freqstep
+        source: avg_freqstep
       - id: timebase
         source: bda_timebase
       - id: maxinterval
@@ -1455,7 +1471,7 @@ steps:
       - id: solve4_antennaconstraint
         source: solve4_antennaconstraint
     scatter: [msin, starttime, ntimes, maxinterval,
-              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors, 
+              solve1_h5parm, solve1_solint, solve1_nchan, solve1_smoothnessreffrequency, solve1_solutions_per_direction, solve1_smoothness_dd_factors,
               solve2_h5parm, solve2_solint, solve2_nchan, solve2_smoothnessreffrequency, solve2_solutions_per_direction, solve2_smoothness_dd_factors,
               solve3_h5parm, solve3_solint, solve3_nchan, solve3_solutions_per_direction, solve3_smoothness_dd_factors,
               solve4_h5parm, solve4_solint, solve4_nchan, solve4_smoothnessreffrequency, solve4_solutions_per_direction, solve4_smoothness_dd_factors,
@@ -1777,7 +1793,7 @@ steps:
       - id: h5parm
         source: combine_fast_and_full_slow_h5parms/combinedh5parm
       - id: do_slowgain_solve
-        source: do_slowgain_solve 
+        source: do_slowgain_solve
       - id: dp3_steps
         source: dp3_steps
       - id: directions
