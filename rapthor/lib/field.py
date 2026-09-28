@@ -398,19 +398,26 @@ class Field(object):
                 else:
                     chunked_observations.append(obs)
             else:
-                # Calculate the start time of each chunk so that they are spaced out
-                # evenly over the full observation.
-                num_samples_in_all_gaps = num_samples - num_chunks * num_samples_in_chunk
-                num_samples_in_gap = int(num_samples_in_all_gaps / (num_chunks - 1))
-                num_samples_in_step = num_samples_in_gap + num_samples_in_chunk
-                step_time = num_samples_in_step * obs.timepersample
+                if data_fraction == 1.0:
+                    # Divide all samples into contiguous chunks differing in size by at most one.
+                    sample_boundaries = np.arange(num_chunks + 1) * num_samples // num_chunks
+                    starttimes = target_starttime + sample_boundaries[:-1] * obs.timepersample
+                    endtimes = (
+                        target_endtime - (num_samples - sample_boundaries[1:]) * obs.timepersample
+                    )
+                else:
+                    # Space the selected chunks evenly over the full observation.
+                    num_samples_in_all_gaps = num_samples - num_chunks * num_samples_in_chunk
+                    num_samples_in_gap = int(num_samples_in_all_gaps / (num_chunks - 1))
+                    num_samples_in_step = num_samples_in_gap + num_samples_in_chunk
+                    step_time = num_samples_in_step * obs.timepersample
 
-                starttimes = np.arange(target_starttime, target_endtime, step_time)
-                endtimes = np.arange(
-                    target_endtime - (num_samples - num_samples_in_chunk) * obs.timepersample,
-                    target_endtime + num_samples_in_chunk * obs.timepersample,
-                    step_time,
-                )
+                    starttimes = target_starttime + np.arange(num_chunks) * step_time
+                    endtimes = (
+                        target_endtime
+                        - (num_samples - num_samples_in_chunk) * obs.timepersample
+                        + np.arange(num_chunks) * step_time
+                    )
                 for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
                     chunked_observations.append(
                         Observation(

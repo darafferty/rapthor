@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from rapthor.lib.field import Field
@@ -56,6 +57,35 @@ def test_chunk_observations_high_el(field):
     chunked_endtime = full_obs.endtime - 3 * full_obs.timepersample
     assert obs.starttime == chunked_starttime
     assert obs.endtime == chunked_endtime
+
+
+@pytest.mark.parametrize(
+    "num_samples, expected_sizes",
+    [
+        (3594, [1198, 1198, 1198]),
+        (3595, [1198, 1198, 1199]),
+        (3596, [1198, 1199, 1199]),
+        (4791, [1597, 1597, 1597]),
+    ],
+)
+def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expected_sizes):
+    obs = field.full_observations[0]
+    obs.endtime += (num_samples - obs.numsamples) * obs.timepersample
+    obs.numsamples = num_samples
+    obs.data_fraction = 1.0
+    create_observation = mocker.patch("rapthor.lib.field.Observation")
+
+    field.chunk_observations(1198 * obs.timepersample, prefer_high_el_periods=False)
+
+    boundaries = np.cumsum([0, *expected_sizes])
+    starts = [call.kwargs["starttime"] for call in create_observation.call_args_list]
+    ends = [call.kwargs["endtime"] for call in create_observation.call_args_list]
+    assert starts == pytest.approx(
+        obs.starttime + boundaries[:-1] * obs.timepersample, rel=0, abs=0.001
+    )
+    assert ends == pytest.approx(
+        obs.endtime - (num_samples - boundaries[1:]) * obs.timepersample, rel=0, abs=0.001
+    )
 
 
 def test_get_obs_parameters(field):

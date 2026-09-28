@@ -405,24 +405,41 @@ class TestObservation:
         assert isinstance(max_solint, int)
 
 
+@pytest.mark.parametrize("max_nodes", [1, 2, 3, 5])
 @pytest.mark.parametrize(
-    "max_nodes, data_fraction, num_chunks",
-    [(1, 1.0, 1), (1, 0.2, 1), (3, 1.0, 3), (3, 0.5, 3), (5, 1.0, 5)],
+    "num_samples, data_fraction, num_chunks, gap_samples, tail_samples",
+    [
+        (900, 1.0, None, 0, 0),
+        (3595, 1.0, None, 0, 0),
+        # Partial-data chunks have 75 samples (600 s / 8 s), regardless of node count.
+        # The high-elevation periods contain 725 and 3420 samples, respectively.
+        (900, 0.2, 2, 575, 0),
+        (900, 0.5, 6, 55, 0),
+        (3595, 0.2, 9, 343, 1),
+        (3595, 0.5, 23, 77, 1),
+    ],
 )
-def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fraction, num_chunks):
-    if data_fraction < 1.0:
-        pytest.xfail(
-            "Number of chunks currently becomes larger than the number of nodes when data_fraction is less than 1.0."
-        )
-
+def test_chunking_by_time(
+    observation,
+    field,
+    monkeypatch,
+    max_nodes,
+    data_fraction,
+    num_chunks,
+    num_samples,
+    gap_samples,
+    tail_samples,
+):
+    observation.timepersample = 8.0
     observation.starttime = 4453731483.92
-    observation.endtime = 4453738676.08
+    observation.endtime = (
+        observation.starttime + (num_samples - 1 + 0.02) * observation.timepersample
+    )
     # Note that high_el_starttime is much larger than starttime. When data_fraction < 1.0 in this
     # test, chunk_observations creates chunks between high_el_starttime and high_el_endtime.
     observation.high_el_starttime = 4453732884.0
-    observation.high_el_endtime = 4453738676.0
-    observation.numsamples = 900
-    observation.timepersample = 8.0
+    observation.high_el_endtime = observation.endtime - observation.timepersample / 100
+    observation.numsamples = num_samples
     observation.data_fraction = data_fraction
 
     def scan_ms(self):
@@ -446,28 +463,28 @@ def test_chunking_by_time(observation, field, monkeypatch, max_nodes, data_fract
 
     chunk_observations(field, steps, data_fraction)
 
+    if data_fraction == 1.0:
+        num_chunks = max_nodes
     assert len(field.observations) == num_chunks
+    chunk_sizes = [
+        round((chunk.endtime - chunk.starttime) / observation.timepersample) + 1
+        for chunk in field.observations
+    ]
 
     if data_fraction == 1.0:
         assert field.observations[0].starttime == observation.starttime
         assert field.observations[-1].endtime == observation.endtime
+        assert sum(chunk_sizes) == num_samples
+        assert max(chunk_sizes) - min(chunk_sizes) <= 1
     else:
+        assert chunk_sizes == [75] * num_chunks
         assert field.observations[0].starttime == observation.high_el_starttime
-        assert field.observations[-1].endtime == observation.high_el_endtime
+        assert (
+            field.observations[-1].endtime
+            == observation.high_el_endtime - tail_samples * observation.timepersample
+        )
 
-    if data_fraction == 1.0:
-        # With a data fraction of 1.0 there are no gaps between the chunks.
-        gap_time = 0 * observation.timepersample
-    elif data_fraction == 0.5:
-        # chunk_observations only chunks the time between high_el_starttime and high_el_endtime,
-        # which has 725 samples. The chunks consume 6*75=450 samples, which leaves 275 samples
-        # for 5 gaps, thus 55 samples per gap.
-        gap_time = 55 * observation.timepersample
-    elif data_fraction == 0.2:
-        # With a data fraction of 0.2, there are again 725 samples between high_el_starttime and
-        # high_el_endtime. There are two chunks of 75 samples and a single gap of 575 samples.
-        gap_time = 575 * observation.timepersample
-
+    gap_time = gap_samples * observation.timepersample
     for i in range(len(field.observations) - 1):
         # Since the start time and end time are mid points, add one time sample.
         # The tolerance is 5 % of the sample time, since Rapthor may adjust the start and
