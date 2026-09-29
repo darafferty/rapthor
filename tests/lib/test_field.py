@@ -8,6 +8,7 @@ import pytest
 from matplotlib import pyplot as plt
 
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
+from rapthor.lib.observation import Observation
 
 
 @pytest.fixture
@@ -131,6 +132,24 @@ def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expe
     assert ends == pytest.approx(
         obs.endtime - (num_samples - boundaries[1:]) * obs.timepersample, rel=0, abs=0.001
     )
+
+
+@pytest.mark.parametrize("num_samples, expected_sizes", [(5, [2, 3]), (6, [2, 2, 2])])
+def test_chunk_observations_with_real_scan(field, num_samples, expected_sizes):
+    ms_filename = field.full_observations[0].ms_filename
+    with pt.table(ms_filename, ack=False) as table:
+        times = np.unique(table.getcol("TIME"))
+    obs = Observation(ms_filename, starttime=times[0], endtime=times[num_samples - 1])
+    field.full_observations = [obs]
+
+    field.chunk_observations(2 * obs.timepersample, prefer_high_el_periods=False)
+
+    assert [chunk.numsamples for chunk in field.observations] == expected_sizes
+    selected_times = [
+        times[(times >= chunk.starttime) & (times <= chunk.endtime)] for chunk in field.observations
+    ]
+    assert [len(chunk_times) for chunk_times in selected_times] == expected_sizes
+    np.testing.assert_array_equal(np.concatenate(selected_times), times[:num_samples])
 
 
 def test_get_obs_parameters(field):
