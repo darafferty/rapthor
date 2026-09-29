@@ -8,6 +8,13 @@ Instructions for downloading and installing Rapthor are available on the
 recommended minimum specifications for hardware and a number of frequently asked
 questions regarding the installation of Rapthor.
 
+Python dependencies
+-------------------
+
+Rapthor requires LSMTool version 1.9.0 or later (``lsmtool>=1.9.0``). It is
+installed automatically by pip from a published release, replacing the previous
+installation from LSMTool's Git master branch.
+
 Hardware requirements
 ---------------------
 The minimum recommended hardware is a 20-core machine with 192 GB of memory and

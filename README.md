@@ -15,6 +15,10 @@ To install rapthor, follow the instructions below.
 
 ### Dependencies
 
+Rapthor requires LSMTool version 1.9.0 or later. It is installed automatically
+by pip from a published release, replacing the previous installation from
+LSMTool's Git master branch.
+
 Rapthor requires the following packages (beyond those installed automatically with rapthor):
 
 * [DP3](https://git.astron.nl/RD/DP3.git) (version 6.5 or later; building with [AOFlagger](https://gitlab.com/aroffringa/aoflagger), [EveryBeam](https://git.astron.nl/RD/EveryBeam), and [IDG](https://git.astron.nl/RD/idg) is required)
