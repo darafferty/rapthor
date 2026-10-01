@@ -166,9 +166,10 @@ solverlbfgs_dof = 200.0
 solverlbfgs_iter = 4
 solverlbfgs_minibatches = 1
 
-# Baseline-dependent averaging (BDA) baseline limits (default = 20000 m)
+# Baseline-dependent averaging (BDA) baseline limits (default = 20000 m for time
+# averaging and 5000 m for frequency averaging)
 bda_timebase = 20000.0
-bda_frequencybase = 20000.0
+bda_frequencybase = 5000.0
 
 # Correct for time and frequency smearing during prediction part of calibration
 # (default = False). Generally, if enabled and imaging is to be done, the
@@ -183,7 +184,8 @@ correct_time_frequency_smearing = False
 # (default = none), local rms parameters (defaults = 0.8, 50, and "rms"
 # for the strength, window, and method, respectively), whether multiscale
 # clean should be used (default = True), and the baseline-dependent averaging
-# (BDA) timebase value in m (default = 20000)
+# (BDA) timebase values in m (default = 20000 m for time averaging and 5000 m
+# for frequency averaging)
 cellsize_arcsec = 1.5
 robust = -0.65
 min_uv_lambda = 80.0
@@ -195,7 +197,7 @@ local_rms_window = 50
 local_rms_method = rms
 do_multiscale_clean = True
 bda_timebase = 20000.0
-bda_frequencybase = 20000.0
+bda_frequencybase = 5000.0
 
 # Method to use to correct for direction-dependent effects during imaging:
 # single or full (default = full). If "single", a single, direction-independent

@@ -417,7 +417,7 @@ The available options are described below under their respective sections.
 
     bda_frequencybase
         Maximum baseline used in baseline-dependent frequency averaging (BDA) during the
-        calibration, in m (default = 20000). A value of 0 will disable the averaging.
+        calibration, in m (default = 5000). A value of 0 will disable the averaging.
         Depending on the solution time step used during the calibration,
         activating this option may improve the speed of the solve and lower the memory
         usage during solving.
@@ -477,7 +477,7 @@ The available options are described below under their respective sections.
 
     bda_frequencybase
         Maximum baseline used in baseline-dependent averaging (BDA) in frequency
-        direction during imaging, in m (default = 20000). A value of 0 will disable the
+        direction during imaging, in m (default = 5000). A value of 0 will disable the
         averaging. Activating this option should improve the speed of imaging.
 
     dde_method

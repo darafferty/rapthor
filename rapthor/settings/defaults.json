@@ -61,7 +61,7 @@
         "solverlbfgs_iter": 4,
         "solverlbfgs_minibatches": 1,
         "bda_timebase": 20000.0,
-        "bda_frequencybase": 20000.0,
+        "bda_frequencybase": 5000.0,
         "correct_time_frequency_smearing": false
     },
     "imaging": {
@@ -76,7 +76,7 @@
         "local_rms_method": "rms",
         "do_multiscale_clean": true,
         "bda_timebase": 20000.0,
-        "bda_frequencybase": 20000.0,
+        "bda_frequencybase": 5000.0,
         "dde_method": "full",
         "filter_skymodel": true,
         "source_finder": "bdsf",
