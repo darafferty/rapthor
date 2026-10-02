@@ -5,9 +5,11 @@ Test cases for the `rapthor.lib.observation` module.
 from logging import Logger
 from unittest import mock
 
+import casacore.tables as pt
 import numpy as np
 import pytest
 
+from rapthor.lib.observation import Observation
 from rapthor.process import chunk_observations
 
 
@@ -405,160 +407,253 @@ class TestObservation:
         assert isinstance(max_solint, int)
 
 
-@pytest.mark.parametrize("max_nodes", range(1, 20))
-@pytest.mark.parametrize("do_calibrate", [True, False])
-@pytest.mark.parametrize(
-    "num_samples, data_fraction, num_chunks, gap_samples, tail_samples",
-    [
-        (900, 1.0, None, 0, 0),
-        (3595, 1.0, None, 0, 0),
-        # Partial-data chunks have 75 samples (600 s / 8 s), regardless of node count.
-        # The high-elevation periods contain 725 and 3420 samples, respectively.
-        (900, 0.2, 2, 575, 0),
-        (900, 0.5, 6, 55, 0),
-        (3595, 0.2, 9, 343, 1),
-        (3595, 0.5, 23, 77, 1),
-    ],
-)
-def test_chunking_by_time(
-    observation,
-    field,
-    monkeypatch,
-    max_nodes,
-    do_calibrate,
-    data_fraction,
-    num_chunks,
-    num_samples,
-    gap_samples,
-    tail_samples,
-):
-    observation.timepersample = 8.0
-    observation.starttime = 4453731483.92
-    observation.endtime = (
-        observation.starttime + (num_samples - 1 + 0.02) * observation.timepersample
-    )
-    # Note that high_el_starttime is much larger than starttime. When data_fraction < 1.0 in this
-    # test, chunk_observations creates chunks between high_el_starttime and high_el_endtime.
-    observation.high_el_starttime = 4453732884.0
-    observation.high_el_endtime = observation.endtime - observation.timepersample / 100
-    observation.numsamples = num_samples
-    observation.data_fraction = data_fraction
+@pytest.fixture
+def make_chunking_observation(field, monkeypatch):
+    """Create evenly spaced sample midpoints in seconds, starting at zero.
 
-    def scan_ms(self):
-        self.startsat_startofms = True
-        self.goesto_endofms = False
-        return None
+    The field must initialize before MS reads are skipped.
+    """
 
-    monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", scan_ms)
-
-    steps = [
-        {
-            "do_calibrate": do_calibrate,
-            "fast_timestep_sec": 20,
-            "medium_timestep_sec": 120,
-            "slow_timestep_sec": 600,
-            "fulljones_timestep_sec": 600,
-        },
-    ]
-    field.parset["cluster_specific"]["max_nodes"] = max_nodes
-    field.full_observations = [observation]
-
-    chunk_observations(field, steps, data_fraction)
-
-    if data_fraction == 1.0:
-        min_samples = 75 if do_calibrate else 2
-        num_chunks = max(1, min(max_nodes, num_samples // min_samples))
-    assert len(field.observations) == num_chunks
-    chunk_sizes = [
-        round((chunk.endtime - chunk.starttime) / observation.timepersample) + 1
-        for chunk in field.observations
-    ]
-
-    if data_fraction == 1.0:
-        assert field.observations[0].starttime == observation.starttime
-        assert field.observations[-1].endtime == observation.endtime
-        assert sum(chunk_sizes) == num_samples
-        assert min(chunk_sizes) >= min_samples
-        assert max(chunk_sizes) - min(chunk_sizes) <= 1
-    else:
-        assert chunk_sizes == [75] * num_chunks
-        assert field.observations[0].starttime == observation.high_el_starttime
-        assert (
-            field.observations[-1].endtime
-            == observation.high_el_endtime - tail_samples * observation.timepersample
-        )
-
-    gap_time = gap_samples * observation.timepersample
-    for i in range(len(field.observations) - 1):
-        # Since the start time and end time are mid points, add one time sample.
-        # The tolerance is 5 % of the sample time, since Rapthor may adjust the start and
-        # end times for avoiding rounding errors.
-        assert np.isclose(
-            field.observations[i].endtime + observation.timepersample + gap_time,
-            field.observations[i + 1].starttime,
-            rtol=0,
-            atol=observation.timepersample * 0.05,
-        )
-
-
-@pytest.mark.parametrize(
-    "samples_and_intervals, solve_time, max_nodes, expected_sizes",
-    [
-        ([(2, 8)], None, 19, [[2]]),
-        ([(3, 8)], None, 19, [[3]]),
-        ([(4, 8)], None, 19, [[2, 2]]),
-        ([(149, 8)], 600, 3, [[149]]),
-        ([(150, 8)], 600, 3, [[75, 75]]),
-        ([(151, 8)], 600, 3, [[75, 76]]),
-        # A 601-second solve requires 76 samples, so two chunks need 152 samples.
-        ([(150, 8)], 601, 3, [[150]]),
-        ([(151, 8)], 601, 3, [[151]]),
-        ([(152, 8)], 601, 3, [[76, 76]]),
-        ([(149, 8), (151, 16)], 600, 3, [[149], [50, 50, 51]]),
-        ([(4, 4), (5, 16)], None, 19, [[2, 2], [2, 3]]),
-    ],
-)
-def test_chunking_limits(
-    observation, field, monkeypatch, samples_and_intervals, solve_time, max_nodes, expected_sizes
-):
-    def scan_ms(self):
-        self.startsat_startofms = True
+    def skip_ms_scan(self):
+        self.startsat_startofms = False
         self.goesto_endofms = False
 
-    monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", scan_ms)
-    field.full_observations = []
-    for index, (num_samples, interval) in enumerate(samples_and_intervals):
-        obs = observation.copy()
-        obs.ms_filename = f"{observation.ms_filename}.{index}"
+    monkeypatch.setattr(Observation, "scan_ms", skip_ms_scan)
+
+    def make(num_samples, timepersample=10, ms_filename="test.ms"):
+        sample_times = [index * timepersample for index in range(num_samples)]
+        obs = Observation(ms_filename, starttime=sample_times[0], endtime=sample_times[-1])
+        obs.timepersample = timepersample
         obs.numsamples = num_samples
-        obs.timepersample = interval
-        obs.endtime = obs.starttime + (num_samples - 1 + 0.02) * interval
         obs.high_el_starttime = obs.starttime
         obs.high_el_endtime = obs.endtime
-        field.full_observations.append(obs)
+        return obs, sample_times
+
+    return make
+
+
+def samples_in_chunks(sample_times, chunks):
+    """List the original sample timestamps selected by each chunk."""
+    return [
+        [time for time in sample_times if chunk.starttime <= time <= chunk.endtime]
+        for chunk in chunks
+    ]
+
+
+@pytest.mark.parametrize(
+    "num_samples, max_nodes, expected_chunks",
+    [
+        pytest.param(6, 1, [[0, 10, 20, 30, 40, 50]], id="one_node_keeps_all_samples"),
+        pytest.param(6, 2, [[0, 10, 20], [30, 40, 50]], id="two_equal_chunks"),
+        pytest.param(7, 3, [[0, 10], [20, 30], [40, 50, 60]], id="uneven_split_keeps_every_sample"),
+        pytest.param(2, 19, [[0, 10]], id="two_samples_stay_together"),
+        pytest.param(3, 19, [[0, 10, 20]], id="avoid_a_one_sample_chunk"),
+        pytest.param(4, 19, [[0, 10], [20, 30]], id="at_least_two_samples_per_chunk"),
+    ],
+)
+def test_chunking_full_data(
+    field, make_chunking_observation, num_samples, max_nodes, expected_chunks
+):
+    """Use every sample, sharing work across nodes without making chunks too small."""
+    obs, sample_times = make_chunking_observation(num_samples)
+    field.full_observations = [obs]
     field.parset["cluster_specific"]["max_nodes"] = max_nodes
-    steps = [{"do_calibrate": True, "fulljones_timestep_sec": solve_time}] if solve_time else []
+
+    chunk_observations(field, steps=[], data_fraction=1.0)
+
+    assert samples_in_chunks(sample_times, field.observations) == expected_chunks
+
+
+@pytest.mark.parametrize(
+    "num_samples, solve_time, expected_chunks",
+    [
+        pytest.param(5, 30, [[0, 10, 20, 30, 40]], id="too_short_for_two_solves"),
+        pytest.param(6, 30, [[0, 10, 20], [30, 40, 50]], id="exactly_two_solves"),
+        pytest.param(7, 30, [[0, 10, 20], [30, 40, 50, 60]], id="extra_sample_is_kept"),
+        pytest.param(6, 31, [[0, 10, 20, 30, 40, 50]], id="solve_rounds_up_to_four_samples"),
+        pytest.param(7, 31, [[0, 10, 20, 30, 40, 50, 60]], id="still_too_short_for_two_solves"),
+        pytest.param(8, 31, [[0, 10, 20, 30], [40, 50, 60, 70]], id="two_rounded_up_solves"),
+        pytest.param(
+            12,
+            30,
+            [[0, 10, 20, 30], [40, 50, 60, 70], [80, 90, 100, 110]],
+            id="node_count_limits_calibration_chunks",
+        ),
+    ],
+)
+def test_chunking_respects_calibration_duration(
+    field, make_chunking_observation, num_samples, solve_time, expected_chunks
+):
+    """A 30-second solve needs three 10-second samples; a 31-second solve needs four."""
+    obs, sample_times = make_chunking_observation(num_samples)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 3
+    steps = [{"do_calibrate": True, "fulljones_timestep_sec": solve_time}]
 
     chunk_observations(field, steps, data_fraction=1.0)
 
-    assert len(field.observations) == sum(len(sizes) for sizes in expected_sizes)
-    for obs, sizes in zip(field.full_observations, expected_sizes):
-        chunks = [chunk for chunk in field.observations if chunk.ms_filename == obs.ms_filename]
-        assert [
-            round((chunk.endtime - chunk.starttime) / obs.timepersample) + 1 for chunk in chunks
-        ] == sizes
-        assert chunks[0].starttime == obs.starttime
-        assert chunks[-1].endtime == obs.endtime
-        for left, right in zip(chunks, chunks[1:]):
-            assert right.starttime - left.endtime == pytest.approx(
-                obs.timepersample, rel=0, abs=0.05 * obs.timepersample
-            )
+    assert samples_in_chunks(sample_times, field.observations) == expected_chunks
+
+
+def test_chunking_ignores_solve_duration_when_calibration_is_disabled(
+    field, make_chunking_observation
+):
+    """An unused calibration interval must not prevent splitting across three nodes."""
+    obs, sample_times = make_chunking_observation(6)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 3
+    steps = [{"do_calibrate": False, "fulljones_timestep_sec": 600}]
+
+    chunk_observations(field, steps, data_fraction=1.0)
+
+    assert samples_in_chunks(sample_times, field.observations) == [[0, 10], [20, 30], [40, 50]]
+
+
+def test_chunking_calibration_duration_applies_to_each_observation(
+    field, make_chunking_observation
+):
+    """A 60-second solve needs six samples at 10 s/sample, but only three at 20 s/sample."""
+    short_interval_obs, short_interval_times = make_chunking_observation(8, 10, "short_interval.ms")
+    long_interval_obs, long_interval_times = make_chunking_observation(8, 20, "long_interval.ms")
+    field.full_observations = [short_interval_obs, long_interval_obs]
+    field.parset["cluster_specific"]["max_nodes"] = 3
+    steps = [{"do_calibrate": True, "fulljones_timestep_sec": 60}]
+
+    chunk_observations(field, steps, data_fraction=1.0)
+
+    assert len(field.observations) == 3
+    short_interval_chunks = [
+        chunk for chunk in field.observations if chunk.ms_filename == "short_interval.ms"
+    ]
+    long_interval_chunks = [
+        chunk for chunk in field.observations if chunk.ms_filename == "long_interval.ms"
+    ]
+    assert samples_in_chunks(short_interval_times, short_interval_chunks) == [
+        [0, 10, 20, 30, 40, 50, 60, 70]
+    ]
+    assert samples_in_chunks(long_interval_times, long_interval_chunks) == [
+        [0, 20, 40, 60],
+        [80, 100, 120, 140],
+    ]
+
+
+def test_chunking_different_sample_intervals_without_calibration(field, make_chunking_observation):
+    """Each observation keeps at least two samples per chunk, regardless of sample spacing."""
+    short_interval_obs, short_interval_times = make_chunking_observation(4, 10, "short_interval.ms")
+    long_interval_obs, long_interval_times = make_chunking_observation(5, 40, "long_interval.ms")
+    field.full_observations = [short_interval_obs, long_interval_obs]
+    field.parset["cluster_specific"]["max_nodes"] = 19
+
+    chunk_observations(field, steps=[], data_fraction=1.0)
+
+    assert len(field.observations) == 4
+    short_interval_chunks = [
+        chunk for chunk in field.observations if chunk.ms_filename == "short_interval.ms"
+    ]
+    long_interval_chunks = [
+        chunk for chunk in field.observations if chunk.ms_filename == "long_interval.ms"
+    ]
+    assert samples_in_chunks(short_interval_times, short_interval_chunks) == [[0, 10], [20, 30]]
+    assert samples_in_chunks(long_interval_times, long_interval_chunks) == [[0, 40], [80, 120, 160]]
+
+
+@pytest.mark.parametrize("max_nodes", [1, 2])
+@pytest.mark.parametrize("do_calibrate", [False, True])
+def test_chunking_partial_data_is_independent_of_node_count(
+    field, make_chunking_observation, max_nodes, do_calibrate
+):
+    """Keep six of ten samples in three 600-second chunks, even with fewer nodes."""
+    obs, sample_times = make_chunking_observation(10, timepersample=300)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = max_nodes
+    steps = [{"do_calibrate": do_calibrate, "fulljones_timestep_sec": 600}]
+
+    chunk_observations(field, steps, data_fraction=0.6)
+
+    assert samples_in_chunks(sample_times, field.observations) == [
+        [0, 300],
+        [1200, 1500],
+        [2400, 2700],
+    ]
+
+
+@pytest.mark.parametrize("num_samples", [10, 11], ids=["equal_gaps", "leftover_sample_at_end"])
+def test_chunking_partial_data_leaves_equal_gaps(make_chunking_observation, num_samples):
+    """Keep three pairs with two skipped samples per gap; leave any leftover at the end."""
+    obs, sample_times = make_chunking_observation(num_samples)
+    obs.data_fraction = 0.6
+
+    chunks = obs.chunk_observation(mintime=20)
+
+    assert samples_in_chunks(sample_times, chunks) == [[0, 10], [40, 50], [80, 90]]
+
+
+@pytest.mark.parametrize(
+    "prefer_high_el_periods, expected_chunks",
+    [
+        pytest.param(True, [[20, 30], [60, 70]], id="select_within_high_elevation_period"),
+        pytest.param(False, [[0, 10], [80, 90]], id="select_across_whole_observation"),
+    ],
+)
+def test_chunking_partial_data_can_prefer_high_elevation(
+    make_chunking_observation, prefer_high_el_periods, expected_chunks
+):
+    """Keep four of ten samples, optionally restricting them to the period from 20 to 70 s."""
+    obs, sample_times = make_chunking_observation(10)
+    obs.high_el_starttime = 20
+    obs.high_el_endtime = 70
+    obs.data_fraction = 0.4
+
+    chunks = obs.chunk_observation(mintime=20, prefer_high_el_periods=prefer_high_el_periods)
+
+    assert samples_in_chunks(sample_times, chunks) == expected_chunks
+
+
+@pytest.mark.parametrize(
+    "data_fraction, expected_chunks, expected_starts, expected_ends",
+    [
+        pytest.param(1.0, [[0, 10, 20], [30, 40, 50]], [-0.1, 29.9], [20.1, 50.1], id="full_data"),
+        pytest.param(0.8, [[0, 10], [40, 50]], [-0.1, 39.9], [10.1, 50.1], id="partial_data"),
+    ],
+)
+def test_chunking_preserves_timestamp_margin(
+    make_chunking_observation, data_fraction, expected_chunks, expected_starts, expected_ends
+):
+    """Retain the 0.1-second margins used to avoid excluding samples through rounding."""
+    obs, sample_times = make_chunking_observation(6)
+    obs.starttime = -0.1
+    obs.endtime = 50.1
+    obs.high_el_starttime = obs.starttime
+    obs.high_el_endtime = obs.endtime
+    obs.data_fraction = data_fraction
+
+    chunks = obs.chunk_observation(mintime=20, max_chunks=2)
+
+    assert samples_in_chunks(sample_times, chunks) == expected_chunks
+    assert [chunk.starttime for chunk in chunks] == pytest.approx(expected_starts)
+    assert [chunk.endtime for chunk in chunks] == pytest.approx(expected_ends)
+
+
+def test_chunking_increases_data_fraction_to_fit_a_calibration_solve(
+    field, make_chunking_observation
+):
+    """A 40-second solve needs four central samples even when only 1% was requested."""
+    obs, sample_times = make_chunking_observation(10)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 3
+    steps = [{"do_calibrate": True, "fulljones_timestep_sec": 40}]
+
+    chunk_observations(field, steps, data_fraction=0.01)
+
+    assert samples_in_chunks(sample_times, field.observations) == [[30, 40, 50, 60]]
 
 
 @pytest.mark.parametrize("data_fraction", [0.01, 0.2, 0.4])
 def test_chunking_small_data_fraction(observation, field, data_fraction):
-    # The real six-sample MS would yield zero, one or two samples before applying
-    # the minimum. Select from the whole observation so the centered pair is fixed.
+    """Retain the third and fourth of six real MS samples, even for tiny data fractions."""
+    with pt.table(observation.ms_filename, ack=False) as table:
+        sample_times = np.unique(table.getcol("TIME")).tolist()
+    assert len(sample_times) == 6
     observation.high_el_starttime = observation.starttime
     observation.high_el_endtime = observation.endtime
     field.full_observations = [observation]
@@ -567,10 +662,4 @@ def test_chunking_small_data_fraction(observation, field, data_fraction):
     chunk_observations(field, [], data_fraction)
 
     assert [chunk.numsamples for chunk in field.observations] == [2]
-    chunk = field.observations[0]
-    assert chunk.starttime == pytest.approx(
-        observation.starttime + 2 * observation.timepersample, rel=0, abs=0.001
-    )
-    assert chunk.endtime == pytest.approx(
-        observation.endtime - 2 * observation.timepersample, rel=0, abs=0.001
-    )
+    assert samples_in_chunks(sample_times, field.observations) == [sample_times[2:4]]
