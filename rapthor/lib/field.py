@@ -353,9 +353,7 @@ class Field(object):
 
         chunked_observations = []
         for obs in self.full_observations:
-            chunked_observations.extend(
-                obs.chunk_observation(mintime, prefer_high_el_periods)
-            )
+            chunked_observations.extend(obs.chunk_observation(mintime, prefer_high_el_periods))
 
         # Update the observations in the field and imaging sectors with the new ones
         self.update_observations(chunked_observations)
