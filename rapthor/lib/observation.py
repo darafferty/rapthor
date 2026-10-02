@@ -838,9 +838,7 @@ class Observation(object):
             # Center the chunk at the midpoint (which is generally the most
             # sensitive, near transit)
             # Keep enough samples for Dysco, without extending beyond the observation.
-            num_samples_in_chunk = min(
-                num_samples, max(2, round(data_fraction * num_samples))
-            )
+            num_samples_in_chunk = min(num_samples, max(2, round(data_fraction * num_samples)))
             num_samples_from_start = (num_samples - num_samples_in_chunk) // 2
             num_samples_from_end = num_samples - num_samples_from_start - num_samples_in_chunk
             yield Observation(
@@ -865,7 +863,9 @@ class Observation(object):
             # Divide all samples into contiguous chunks differing in size by at most one.
             sample_boundaries = np.arange(num_chunks + 1) * num_samples // num_chunks
             chunk_start_times = target_starttime + sample_boundaries[:-1] * self.timepersample
-            chunk_end_times = target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample
+            chunk_end_times = (
+                target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample
+            )
         else:
             # Spread equal-sized chunks across the observation:
             # |chunk1|---gap---|chunk2|---gap---|chunk3|
