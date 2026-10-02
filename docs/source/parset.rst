@@ -762,6 +762,8 @@ The available options are described below under their respective sections.
         When :term:`batch_system` is ``slurm`` or ``slurm_static``, the maximum number of
         nodes of the cluster to use at once. The configuration default is 0, which is
         resolved to 1 for ``single_machine`` and 12 for Slurm batch systems.
+        When using all the data, each observation is split into up to this many balanced
+        chunks, subject to the minimum calibration duration and two samples per chunk.
 
     cpus_per_task
         When :term:`batch_system` = ``slurm``, the number of processors per task to

@@ -405,7 +405,8 @@ class TestObservation:
         assert isinstance(max_solint, int)
 
 
-@pytest.mark.parametrize("max_nodes", [1, 2, 3, 5])
+@pytest.mark.parametrize("max_nodes", range(1, 20))
+@pytest.mark.parametrize("do_calibrate", [True, False])
 @pytest.mark.parametrize(
     "num_samples, data_fraction, num_chunks, gap_samples, tail_samples",
     [
@@ -424,6 +425,7 @@ def test_chunking_by_time(
     field,
     monkeypatch,
     max_nodes,
+    do_calibrate,
     data_fraction,
     num_chunks,
     num_samples,
@@ -451,7 +453,7 @@ def test_chunking_by_time(
 
     steps = [
         {
-            "do_calibrate": True,
+            "do_calibrate": do_calibrate,
             "fast_timestep_sec": 20,
             "medium_timestep_sec": 120,
             "slow_timestep_sec": 600,
@@ -464,7 +466,8 @@ def test_chunking_by_time(
     chunk_observations(field, steps, data_fraction)
 
     if data_fraction == 1.0:
-        num_chunks = max_nodes
+        min_samples = 75 if do_calibrate else 2
+        num_chunks = max(1, min(max_nodes, num_samples // min_samples))
     assert len(field.observations) == num_chunks
     chunk_sizes = [
         round((chunk.endtime - chunk.starttime) / observation.timepersample) + 1
@@ -475,6 +478,7 @@ def test_chunking_by_time(
         assert field.observations[0].starttime == observation.starttime
         assert field.observations[-1].endtime == observation.endtime
         assert sum(chunk_sizes) == num_samples
+        assert min(chunk_sizes) >= min_samples
         assert max(chunk_sizes) - min(chunk_sizes) <= 1
     else:
         assert chunk_sizes == [75] * num_chunks

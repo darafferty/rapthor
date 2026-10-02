@@ -763,7 +763,7 @@ class Observation(object):
 
         return delta_freq
 
-    def chunk_observation(self, mintime, prefer_high_el_periods=True):
+    def chunk_observation(self, mintime, prefer_high_el_periods=True, max_chunks=None):
         """
         Break existing observation into smaller observations (chunks).
 
@@ -778,6 +778,9 @@ class Observation(object):
             activity can increase and sensitivity decrease). If the requested mintime is
             larger than the total time of the high-elevation period for a given
             observation, then the full observation is used instead
+        max_chunks : int, optional
+            Maximum number of chunks. The minimum chunk duration may require fewer
+            chunks
         """
 
         # The computations below first determine the number of samples, e.g., per chunk, and
@@ -806,6 +809,8 @@ class Observation(object):
             num_samples = int(np.round(total_high_el_time / self.timepersample))
 
         num_chunks = max(1, int(data_fraction * num_samples / num_samples_in_chunk))
+        if max_chunks is not None:
+            num_chunks = min(num_chunks, max_chunks)
 
         if num_chunks == 1:
             return list(
@@ -852,7 +857,6 @@ class Observation(object):
         num_samples,
         num_chunks,
         num_samples_in_chunk,
-        
     ):
         if data_fraction == 1.0:
             # Divide all samples into contiguous chunks differing in size by at most one.
