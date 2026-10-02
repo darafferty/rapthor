@@ -864,22 +864,27 @@ class Observation(object):
         if data_fraction == 1.0:
             # Divide all samples into contiguous chunks differing in size by at most one.
             sample_boundaries = np.arange(num_chunks + 1) * num_samples // num_chunks
-            starttimes = target_starttime + sample_boundaries[:-1] * self.timepersample
-            endtimes = target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample
+            chunk_start_times = target_starttime + sample_boundaries[:-1] * self.timepersample
+            chunk_end_times = target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample
         else:
-            # Space the selected chunks evenly over the full observation.
-            num_samples_in_all_gaps = num_samples - num_chunks * num_samples_in_chunk
-            num_samples_in_gap = int(num_samples_in_all_gaps / (num_chunks - 1))
-            num_samples_in_step = num_samples_in_gap + num_samples_in_chunk
-            step_time = num_samples_in_step * self.timepersample
+            # Spread equal-sized chunks across the observation:
+            # |chunk1|---gap---|chunk2|---gap---|chunk3|
+            num_samples_selected = num_chunks * num_samples_in_chunk
+            num_samples_skipped = num_samples - num_samples_selected
+            num_gaps_between_chunks = num_chunks - 1
+            # Divide the skipped samples equally between the gaps; leave leftovers at the end.
+            num_samples_per_gap = int(num_samples_skipped / num_gaps_between_chunks)
+            num_samples_in_step = num_samples_per_gap + num_samples_in_chunk
 
-            starttimes = target_starttime + np.arange(num_chunks) * step_time
-            endtimes = (
-                target_endtime
-                - (num_samples - num_samples_in_chunk) * self.timepersample
-                + np.arange(num_chunks) * step_time
-            )
-        for index, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
+            # Count the samples before and after each chunk.
+            samples_before_chunk = np.arange(num_chunks) * num_samples_in_step
+            samples_after_chunk = num_samples - samples_before_chunk - num_samples_in_chunk
+
+            # Start and end times refer to the chunk's first and last samples.
+            chunk_start_times = target_starttime + samples_before_chunk * self.timepersample
+            chunk_end_times = target_endtime - samples_after_chunk * self.timepersample
+
+        for index, (starttime, endtime) in enumerate(zip(chunk_start_times, chunk_end_times)):
             yield Observation(
                 self.ms_filename,
                 starttime=starttime,
