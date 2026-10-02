@@ -785,7 +785,7 @@ class Observation(object):
 
         # The computations below first determine the number of samples, e.g., per chunk, and
         # then derive the corresponding time intervals.
-        num_samples_in_chunk = np.ceil(mintime / self.timepersample)
+        num_samples_in_chunk = int(np.ceil(mintime / self.timepersample))
 
         # Due to a limitation in Dysco, we make sure to have at least two time slots
         # per observation, otherwise the output MS cannot be written with compression.
@@ -806,7 +806,7 @@ class Observation(object):
             data_fraction = min(1, data_fraction * total_time / total_high_el_time)
             target_starttime = self.high_el_starttime
             target_endtime = self.high_el_endtime
-            num_samples = int(np.round(total_high_el_time / self.timepersample))
+            num_samples = round(total_high_el_time / self.timepersample)
 
         num_chunks = max(1, int(data_fraction * num_samples / num_samples_in_chunk))
         if max_chunks is not None:
@@ -839,9 +839,9 @@ class Observation(object):
             # sensitive, near transit)
             # Keep enough samples for Dysco, without extending beyond the observation.
             num_samples_in_chunk = min(
-                num_samples, max(2, int(np.round(data_fraction * num_samples)))
+                num_samples, max(2, round(data_fraction * num_samples))
             )
-            num_samples_from_start = int((num_samples - num_samples_in_chunk) / 2)
+            num_samples_from_start = (num_samples - num_samples_in_chunk) // 2
             num_samples_from_end = num_samples - num_samples_from_start - num_samples_in_chunk
             yield Observation(
                 self.ms_filename,
