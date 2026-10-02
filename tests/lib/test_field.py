@@ -56,7 +56,8 @@ def test_chunk_observations_high_el(field):
     full_obs = field.full_observations[0]
     obs = field.imaging_sectors[0].observations[0]
     chunked_starttime = full_obs.starttime + 2 * full_obs.timepersample
-    chunked_endtime = full_obs.endtime - 3 * full_obs.timepersample
+    chunked_endtime = full_obs.endtime - 2 * full_obs.timepersample
+    assert obs.numsamples == 2
     assert obs.starttime == chunked_starttime
     assert obs.endtime == chunked_endtime
 
