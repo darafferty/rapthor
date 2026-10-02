@@ -75,7 +75,7 @@ def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expe
     obs.endtime += (num_samples - obs.numsamples) * obs.timepersample
     obs.numsamples = num_samples
     obs.data_fraction = 1.0
-    create_observation = mocker.patch("rapthor.lib.field.Observation")
+    create_observation = mocker.patch("rapthor.lib.observation.Observation")
 
     field.chunk_observations(1198 * obs.timepersample, prefer_high_el_periods=False)
 
