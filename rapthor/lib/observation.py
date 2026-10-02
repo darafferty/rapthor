@@ -852,7 +852,6 @@ class Observation(object):
         num_samples,
         num_chunks,
         num_samples_in_chunk,
-        
     ):
         if data_fraction == 1.0:
             # Divide all samples into contiguous chunks differing in size by at most one.
