@@ -332,7 +332,7 @@ class Field(object):
         mid_index = np.argmin(np.abs(np.array(times) - mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
-    def chunk_observations(self, mintime, prefer_high_el_periods=True):
+    def chunk_observations(self, mintime, prefer_high_el_periods=True, max_chunks=None):
         """
         Break existing observations into smaller observations
 
@@ -347,13 +347,18 @@ class Field(object):
             activity can increase and sensitivity decrease). If the requested mintime is
             larger than the total time of the high-elevation period for a given
             observation, then the full observation is used instead
+        max_chunks : int, optional
+            Maximum number of chunks per observation. The minimum chunk duration may
+            require fewer chunks
         """
         if mintime <= 0:
             raise ValueError("mintime must be greater than zero")
 
         chunked_observations = []
         for obs in self.full_observations:
-            chunked_observations.extend(obs.chunk_observation(mintime, prefer_high_el_periods))
+            chunked_observations.extend(
+                obs.chunk_observation(mintime, prefer_high_el_periods, max_chunks=max_chunks)
+            )
 
         # Update the observations in the field and imaging sectors with the new ones
         self.update_observations(chunked_observations)

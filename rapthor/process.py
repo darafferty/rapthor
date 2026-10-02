@@ -401,24 +401,17 @@ def chunk_observations(field, steps, data_fraction):
     # is less than one (so that the uv coverage can be optimized in this case) or when
     # there is more than one node (so the processing can be parallelized efficiently)
     max_nodes = field.parset["cluster_specific"]["max_nodes"]
+    max_chunks = None
     if data_fraction < 1.0:
         # Use the minmum duration set by the calibration. If no calibration is to be
         # done, set the minimum duration to a typical value (600 s) that should result
         # in enough chunks to obtain good uv coverage
         chunk_time = solve_time or 600.0
     elif max_nodes > 1:
-        # Set the minimum duration that results in at least as many chunks for each
-        # observation as there are nodes (for parallelization over nodes)
-        #
-        # Note: we reduce the duration slightly to avoid making fewer chunks than
-        # desired due to rounding done during the chunking
-        split_time = min(
-            (obs.endtime - obs.starttime) / max_nodes - obs.timepersample / 10
-            for obs in field.full_observations
-        )
-
-        # Use the largest of the solve and split times as the chunking time
-        chunk_time = max(solve_time or 0, split_time)
+        # Limit the chunk count directly, keeping the calibration minimum independent
+        # of the requested parallelism.
+        chunk_time = solve_time or min(obs.timepersample for obs in field.full_observations)
+        max_chunks = max_nodes
     else:
         # Chunking not needed: use the original (full) observations
         field.update_observations(field.full_observations)
@@ -443,7 +436,7 @@ def chunk_observations(field, steps, data_fraction):
                 )
                 obs.data_fraction = min_fraction
 
-    field.chunk_observations(chunk_time)
+    field.chunk_observations(chunk_time, max_chunks=max_chunks)
 
 
 def make_report(field, outfile=None):

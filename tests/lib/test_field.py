@@ -90,15 +90,20 @@ def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expe
     )
 
 
-@pytest.mark.parametrize("num_samples, expected_sizes", [(5, [2, 3]), (6, [2, 2, 2])])
-def test_chunk_observations_with_real_scan(field, num_samples, expected_sizes):
+@pytest.mark.parametrize(
+    "num_samples, max_chunks, expected_sizes",
+    [(5, None, [2, 3]), (6, None, [2, 2, 2]), (6, 2, [3, 3]), (5, 3, [2, 3])],
+)
+def test_chunk_observations_with_real_scan(field, num_samples, max_chunks, expected_sizes):
     ms_filename = field.full_observations[0].ms_filename
     with pt.table(ms_filename, ack=False) as table:
         times = np.unique(table.getcol("TIME"))
     obs = Observation(ms_filename, starttime=times[0], endtime=times[num_samples - 1])
     field.full_observations = [obs]
 
-    field.chunk_observations(2 * obs.timepersample, prefer_high_el_periods=False)
+    field.chunk_observations(
+        2 * obs.timepersample, prefer_high_el_periods=False, max_chunks=max_chunks
+    )
 
     assert [chunk.numsamples for chunk in field.observations] == expected_sizes
     selected_times = [
