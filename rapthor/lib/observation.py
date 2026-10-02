@@ -837,7 +837,10 @@ class Observation(object):
         if data_fraction < 1.0:
             # Center the chunk at the midpoint (which is generally the most
             # sensitive, near transit)
-            num_samples_in_chunk = int(np.round(data_fraction * num_samples))
+            # Keep enough samples for Dysco, without extending beyond the observation.
+            num_samples_in_chunk = min(
+                num_samples, max(2, int(np.round(data_fraction * num_samples)))
+            )
             num_samples_from_start = int((num_samples - num_samples_in_chunk) / 2)
             num_samples_from_end = num_samples - num_samples_from_start - num_samples_in_chunk
             yield Observation(

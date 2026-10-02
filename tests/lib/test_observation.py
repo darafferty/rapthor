@@ -499,3 +499,78 @@ def test_chunking_by_time(
             rtol=0,
             atol=observation.timepersample * 0.05,
         )
+
+
+@pytest.mark.parametrize(
+    "samples_and_intervals, solve_time, max_nodes, expected_sizes",
+    [
+        ([(2, 8)], None, 19, [[2]]),
+        ([(3, 8)], None, 19, [[3]]),
+        ([(4, 8)], None, 19, [[2, 2]]),
+        ([(149, 8)], 600, 3, [[149]]),
+        ([(150, 8)], 600, 3, [[75, 75]]),
+        ([(151, 8)], 600, 3, [[75, 76]]),
+        # A 601-second solve requires 76 samples, so two chunks need 152 samples.
+        ([(150, 8)], 601, 3, [[150]]),
+        ([(151, 8)], 601, 3, [[151]]),
+        ([(152, 8)], 601, 3, [[76, 76]]),
+        ([(149, 8), (151, 16)], 600, 3, [[149], [50, 50, 51]]),
+        ([(4, 4), (5, 16)], None, 19, [[2, 2], [2, 3]]),
+    ],
+)
+def test_chunking_limits(
+    observation, field, monkeypatch, samples_and_intervals, solve_time, max_nodes, expected_sizes
+):
+    def scan_ms(self):
+        self.startsat_startofms = True
+        self.goesto_endofms = False
+
+    monkeypatch.setattr("rapthor.lib.observation.Observation.scan_ms", scan_ms)
+    field.full_observations = []
+    for index, (num_samples, interval) in enumerate(samples_and_intervals):
+        obs = observation.copy()
+        obs.ms_filename = f"{observation.ms_filename}.{index}"
+        obs.numsamples = num_samples
+        obs.timepersample = interval
+        obs.endtime = obs.starttime + (num_samples - 1 + 0.02) * interval
+        obs.high_el_starttime = obs.starttime
+        obs.high_el_endtime = obs.endtime
+        field.full_observations.append(obs)
+    field.parset["cluster_specific"]["max_nodes"] = max_nodes
+    steps = [{"do_calibrate": True, "fulljones_timestep_sec": solve_time}] if solve_time else []
+
+    chunk_observations(field, steps, data_fraction=1.0)
+
+    assert len(field.observations) == sum(len(sizes) for sizes in expected_sizes)
+    for obs, sizes in zip(field.full_observations, expected_sizes):
+        chunks = [chunk for chunk in field.observations if chunk.ms_filename == obs.ms_filename]
+        assert [
+            round((chunk.endtime - chunk.starttime) / obs.timepersample) + 1 for chunk in chunks
+        ] == sizes
+        assert chunks[0].starttime == obs.starttime
+        assert chunks[-1].endtime == obs.endtime
+        for left, right in zip(chunks, chunks[1:]):
+            assert right.starttime - left.endtime == pytest.approx(
+                obs.timepersample, rel=0, abs=0.05 * obs.timepersample
+            )
+
+
+@pytest.mark.parametrize("data_fraction", [0.01, 0.2, 0.4])
+def test_chunking_small_data_fraction(observation, field, data_fraction):
+    # The real six-sample MS would yield zero, one or two samples before applying
+    # the minimum. Select from the whole observation so the centered pair is fixed.
+    observation.high_el_starttime = observation.starttime
+    observation.high_el_endtime = observation.endtime
+    field.full_observations = [observation]
+    field.parset["cluster_specific"]["max_nodes"] = 19
+
+    chunk_observations(field, [], data_fraction)
+
+    assert [chunk.numsamples for chunk in field.observations] == [2]
+    chunk = field.observations[0]
+    assert chunk.starttime == pytest.approx(
+        observation.starttime + 2 * observation.timepersample, rel=0, abs=0.001
+    )
+    assert chunk.endtime == pytest.approx(
+        observation.endtime - 2 * observation.timepersample, rel=0, abs=0.001
+    )
