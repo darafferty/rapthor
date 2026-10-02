@@ -422,7 +422,7 @@ The available options are described below under their respective sections.
 
     bda_frequencybase (calibration)
         Maximum baseline used in baseline-dependent frequency averaging (BDA) during the
-        calibration, in m (default = 20000). A value of 0 will disable the averaging.
+        calibration, in m (default = 5000). A value of 0 will disable the averaging.
         Depending on the solution time step used during the calibration,
         activating this option may improve the speed of the solve and lower the memory
         usage during solving.
@@ -482,7 +482,7 @@ The available options are described below under their respective sections.
 
     bda_frequencybase (imaging)
         Maximum baseline used in baseline-dependent frequency averaging (BDA) during
-        imaging, in m (default = 20000). A value of 0 will disable frequency BDA.
+        imaging, in m (default = 5000). A value of 0 will disable frequency BDA.
         Activating this option may improve the speed of imaging.
 
         Frequency BDA produces a Measurement Set with multiple spectral windows.
