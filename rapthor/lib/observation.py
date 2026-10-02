@@ -812,23 +812,23 @@ class Observation(object):
                 self._chunk_single(
                     target_starttime,
                     target_endtime,
-                    num_samples,
                     data_fraction,
+                    num_samples,
                 )
             )
         else:
             return list(
                 self._chunk_multiple(
-                    num_samples_in_chunk,
                     target_starttime,
                     target_endtime,
-                    num_samples,
                     data_fraction,
+                    num_samples,
                     num_chunks,
+                    num_samples_in_chunk,
                 )
             )
 
-    def _chunk_single(self, target_starttime, target_endtime, num_samples, data_fraction):
+    def _chunk_single(self, target_starttime, target_endtime, data_fraction, num_samples):
         if data_fraction < 1.0:
             # Center the chunk at the midpoint (which is generally the most
             # sensitive, near transit)
@@ -846,12 +846,13 @@ class Observation(object):
 
     def _chunk_multiple(
         self,
-        num_samples_in_chunk,
         target_starttime,
         target_endtime,
-        num_samples,
         data_fraction,
+        num_samples,
         num_chunks,
+        num_samples_in_chunk,
+        
     ):
         if data_fraction == 1.0:
             # Divide all samples into contiguous chunks differing in size by at most one.
