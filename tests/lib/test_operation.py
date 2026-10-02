@@ -134,15 +134,51 @@ def test_run_executes_workflow_stores_outputs_and_marks_done(tmp_path):
         "finalize",
     ]
     assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_outputs_file) == (
+        Path(operation.pipeline_working_dir) / "pipeline_outputs.json"
+    )
+    assert Path(operation.outputs_file) == Path(operation.pipeline_working_dir) / ".outputs.json"
+    assert (
+        json.loads(Path(operation.pipeline_outputs_file).read_text()) == operation.workflow_outputs
+    )
     assert json.loads(Path(operation.outputs_file).read_text()) == operation.workflow_outputs
     assert operation.outputs == operation.workflow_outputs
 
 
-def test_run_reuses_outputs_when_done(tmp_path):
+def test_run_preserves_workflow_outputs_before_finalization(tmp_path, monkeypatch):
+    operation = _operation(tmp_path)
+    workflow_path = operation.workflow_outputs["result"]["path"]
+    finalized_path = str(tmp_path / "products" / "result.txt")
+    finalize = operation.finalize
+
+    def update_output_path():
+        assert json.loads(Path(operation.pipeline_outputs_file).read_text()) == {
+            "result": {"class": "File", "path": workflow_path}
+        }
+        operation.outputs["result"]["path"] = finalized_path
+        finalize()
+
+    monkeypatch.setattr(operation, "finalize", update_output_path)
+
+    operation.run()
+
+    assert json.loads(Path(operation.pipeline_outputs_file).read_text()) == {
+        "result": {"class": "File", "path": workflow_path}
+    }
+    assert json.loads(Path(operation.outputs_file).read_text()) == {
+        "result": {"class": "File", "path": finalized_path}
+    }
+
+
+@pytest.mark.parametrize("has_pipeline_outputs", [False, True])
+def test_run_reuses_outputs_when_done(tmp_path, has_pipeline_outputs):
     operation = _operation(tmp_path)
     persisted_outputs = {"persisted": {"class": "Directory", "path": "already-done.ms"}}
+    pipeline_outputs = {"original": {"class": "Directory", "path": "workflow.ms"}}
     Path(operation.done_file).touch()
     Path(operation.outputs_file).write_text(json.dumps(persisted_outputs))
+    if has_pipeline_outputs:
+        Path(operation.pipeline_outputs_file).write_text(json.dumps(pipeline_outputs))
 
     operation.run()
 
@@ -153,6 +189,10 @@ def test_run_reuses_outputs_when_done(tmp_path):
     ]
     assert operation.outputs == persisted_outputs
     assert json.loads(Path(operation.outputs_file).read_text()) == persisted_outputs
+    if has_pipeline_outputs:
+        assert json.loads(Path(operation.pipeline_outputs_file).read_text()) == pipeline_outputs
+    else:
+        assert not Path(operation.pipeline_outputs_file).exists()
     assert Path(operation.done_file).is_file()
 
 
@@ -160,11 +200,15 @@ def test_run_reruns_workflow_after_done_marker_is_deleted(tmp_path):
     operation = _operation(tmp_path)
     stale_outputs = {"persisted": {"class": "Directory", "path": "old.ms"}}
     Path(operation.outputs_file).write_text(json.dumps(stale_outputs))
+    Path(operation.pipeline_outputs_file).write_text(json.dumps(stale_outputs))
 
     operation.run()
 
     assert "execute_workflow" in operation.calls
     assert operation.outputs == operation.workflow_outputs
+    assert (
+        json.loads(Path(operation.pipeline_outputs_file).read_text()) == operation.workflow_outputs
+    )
     assert json.loads(Path(operation.outputs_file).read_text()) == operation.workflow_outputs
     assert Path(operation.done_file).is_file()
 
@@ -202,6 +246,7 @@ def test_failed_workflow_does_not_mark_operation_done_or_store_outputs(tmp_path)
         "execute_workflow",
     ]
     assert not Path(operation.done_file).exists()
+    assert not Path(operation.pipeline_outputs_file).exists()
     assert not Path(operation.outputs_file).exists()
 
 
@@ -218,4 +263,7 @@ def test_finalizer_failure_does_not_mark_operation_done_or_store_outputs(tmp_pat
         "finalize",
     ]
     assert not Path(operation.done_file).exists()
+    assert (
+        json.loads(Path(operation.pipeline_outputs_file).read_text()) == operation.workflow_outputs
+    )
     assert not Path(operation.outputs_file).exists()

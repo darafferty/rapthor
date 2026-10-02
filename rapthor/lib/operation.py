@@ -62,6 +62,9 @@ class Operation(object):
         self.rapthor_pipeline_dir = os.path.join(rapthor_root_dir, "pipeline")
 
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir, "pipeline_inputs.json")
+        self.pipeline_outputs_file = os.path.join(
+            self.pipeline_working_dir, "pipeline_outputs.json"
+        )
 
         # File indicating whether a step was completely done.
         self.done_file = os.path.join(self.pipeline_working_dir, ".done")
@@ -235,6 +238,9 @@ class Operation(object):
                 success, outputs = self.execute_workflow()
                 if success:
                     self.outputs = outputs
+                    # Preserve workflow results before finalizers update output records.
+                    with open(self.pipeline_outputs_file, "w") as f:
+                        f.write(json.dumps(self.outputs, cls=NpEncoder, indent=4, sort_keys=True))
         else:
             self.log.info("Operation %s already done, skipping.", self.name)
             # Reloads outputs

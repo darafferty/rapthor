@@ -14,6 +14,14 @@ Rapthor produces the following output inside the working directory:
 ``pipelines/``
     Directory containing intermediate files for each operation flow. Once a run has finished successfully, this directory can be removed if restart/debug state is no longer needed.
 
+    Each operation subdirectory contains ``pipeline_inputs.json`` for its inputs.
+    A successful flow writes ``pipeline_outputs.json`` before finalization;
+    ``.outputs.json`` records the finalized outputs alongside the ``.done``
+    marker. Restarts of completed operations load ``.outputs.json`` and leave
+    ``pipeline_outputs.json`` unchanged. Runs made before
+    ``pipeline_outputs.json`` was restored can still restart using
+    ``.outputs.json``; rerunning an operation creates both output manifests.
+
 ``plots/``
     Directory containing the PNG plots of the calibration solutions and images. See :ref:`calibrate` and :ref:`image` for a detailed description of the plots.
 
