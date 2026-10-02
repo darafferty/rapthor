@@ -788,7 +788,7 @@ class Observation(object):
         num_samples_in_chunk = np.ceil(mintime / self.timepersample)
 
         # Due to a limitation in Dysco, we make sure to have at least two time slots
-        # per selfervation, otherwise the output MS cannot be written with compression.
+        # per observation, otherwise the output MS cannot be written with compression.
         num_samples_in_chunk = max(num_samples_in_chunk, 2)
 
         target_starttime = self.starttime
@@ -801,7 +801,7 @@ class Observation(object):
 
         if prefer_high_el_periods and data_fraction < total_high_el_time / total_time:
             # Use high-elevation period for chunking. We increase the data fraction
-            # to account for the decreased total selfervation time so that the
+            # to account for the decreased total observation time so that the
             # amount of data used is kept the same
             data_fraction = min(1, data_fraction * total_time / total_high_el_time)
             target_starttime = self.high_el_starttime
@@ -867,7 +867,7 @@ class Observation(object):
             starttimes = target_starttime + sample_boundaries[:-1] * self.timepersample
             endtimes = target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample
         else:
-            # Space the selected chunks evenly over the full selfervation.
+            # Space the selected chunks evenly over the full observation.
             num_samples_in_all_gaps = num_samples - num_chunks * num_samples_in_chunk
             num_samples_in_gap = int(num_samples_in_all_gaps / (num_chunks - 1))
             num_samples_in_step = num_samples_in_gap + num_samples_in_chunk
