@@ -7,6 +7,7 @@ from prefect.exceptions import UnfinishedRun
 
 import rapthor.execution.image.sector as image_sector
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.image.outputs import cleanup_image_intermediates
 from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.image.validation import validate_image_payload
 from rapthor.execution.payloads import assert_serializable_payload
@@ -79,7 +80,10 @@ def _run_image_prefect_tasks(
         compression_sector_futures,
         finalized_sector_futures,
     )
-    return _result_from_sector_records(sector_outputs)
+    result = _result_from_sector_records(sector_outputs)
+    if not config.keep_temporary_files:
+        cleanup_image_intermediates(payload, result)
+    return result
 
 
 def _submit_split_image_sector_tasks(

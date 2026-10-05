@@ -2,9 +2,10 @@
 
 from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import Optional
+from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.workspace import shared_scratch_workspace
 
 
 class MissingPrefectDaskError(RuntimeError):
@@ -60,7 +61,11 @@ def run_flow_with_task_runner(
         flow_options["flow_run_name"] = flow_run_name
     configured_flow = prefect_flow.with_options(**flow_options)
     tag_context = _prefect_tags(*config.run_tags) if config.run_tags else nullcontext()
-    with tag_context:
+    payload = flow_args[0] if flow_args and isinstance(flow_args[0], Mapping) else {}
+    with (
+        tag_context,
+        shared_scratch_workspace(payload.get("pipeline_working_dir"), config.global_scratch_dir),
+    ):
         return configured_flow(*flow_args, execution_config=config, **flow_kwargs)
 
 
@@ -108,6 +113,9 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
         kwargs["memory_limit"] = f"{execution_config.mem_per_node_gb}GB"
     if execution_config.dask_dashboard_address:
         kwargs["dashboard_address"] = execution_config.dask_dashboard_address
+    local_directory = execution_config.resolved_local_scratch_dir()
+    if local_directory:
+        kwargs["local_directory"] = local_directory
     return kwargs
 
 

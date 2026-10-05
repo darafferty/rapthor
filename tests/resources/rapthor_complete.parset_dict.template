@@ -43,7 +43,6 @@
                       'dask_dashboard_address': None,
                       'debug_workflow': True,
                       'deconvolution_threads': 16,
-                      'dir_local': '/tmp',
                       'global_scratch_dir': '/shared/scratch',
                       'keep_temporary_files': True,
                       'allow_internet_access': True,

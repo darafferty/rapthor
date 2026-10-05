@@ -631,9 +631,8 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            If MPI is activated, :term:`dir_local` (under the
-            :ref:`parset_cluster_options` section below) must not be set unless it is on a
-            shared filesystem.
+            MPI temporaries use :term:`global_scratch_dir` when configured,
+            otherwise the shared operation workspace under :term:`dir_working`.
 
         .. note::
 
@@ -839,53 +838,55 @@ The available options are described below under their respective sections.
         or channel work units available, and chooses a divisor of
         :term:`max_cores` so gridding threads are distributed evenly.
 
-    dir_local
-        Full path to a local disk on the nodes for IO-intensive processing (default = not
-        used). The path must exist on all nodes (but does not have to be on a shared
-        filesystem). This parameter is useful if you have a fast local disk (e.g., an SSD)
-        that is not the one used for :term:`dir_working`. If this parameter is not set,
-        IO-intensive processing (e.g., WSClean) will use a default path in
-        :term:`dir_working` instead.
-
-        .. note::
-
-            This parameter should not be set in the following situations:
-
-            - when :term:`batch_system` = ``single_machine`` and multiple imaging sectors
-              are used (as each sector will overwrite files from the other sectors).
-
-            - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
-              section and ``dir_local`` is not on a shared filesystem.
-
-        .. attention::
-
-            This parameter is deprecated. Use :term:`local_scratch_dir` instead.
-
     local_scratch_dir
-        Full path to a local disk on the nodes for IO-intensive processing
-        (default = ``None``). When :term:`batch_system` = ``slurm``, the path
-        must exist on all the compute nodes, but not necessarily on the head
-        node. The intent is to let IO-intensive processing use a fast local
-        disk (e.g., an SSD) that is not the one used for :term:`dir_working`.
+        Full path to a fast local disk for command temporaries, including
+        WSClean's ``-temp-dir`` (default = ``None``). Rapthor creates isolated
+        child directories on the executing worker, so the path need not exist
+        on the head node. Each worker must be able to create and write its
+        scratch directory. Environment variables and ``~`` in this path are
+        expanded on the executing host.
 
-        .. attention::
+        Non-MPI commands use this directory. When it is unset, commands inherit
+        their temporary environment and WSClean imaging uses an explicit
+        temporary directory in the operation workspace. Separate directories
+        isolate sectors, tasks and independent workflows. Rapthor removes its
+        temporary directories after commands finish or fail, unless
+        :term:`keep_temporary_files` or :term:`debug_workflow` is enabled.
+        If removal fails, Rapthor logs a warning with the remaining directory
+        and the filesystem error, without hiding a command failure.
 
-            This parameter currently has no effect. The Prefect/Dask execution
-            path accepts and records it, but IO-intensive temporary products
-            (such as WSClean's ``-temp-dir``) are always written under
-            :term:`dir_working`.
+        PyBDSF helper commands continue to use ``/tmp`` for temporary files to
+        keep multiprocessing socket paths short, matching the CWL behavior.
+
+        Local Dask workers also use this path for spill storage. For an external
+        Dask cluster, configure worker spill storage in the worker launcher's
+        ``--local-directory`` option.
+
+        MPI commands use :term:`global_scratch_dir`, or the shared operation
+        workspace when it is unset, because all ranks must see the same files.
 
     global_scratch_dir
         Full path to a directory on a shared disk that is readable and writable
         by all the compute nodes and the head node (default = ``None``),
-        intended for intermediate outputs that need to be shared between the
-        different steps in the workflow.
+        used for workflow intermediates that pass between tasks and for MPI
+        command temporaries. Rapthor creates a separate workspace for each
+        workflow, and only cleans its own child directories.
 
-        .. attention::
-
-            This parameter currently has no effect. The Prefect/Dask execution
-            path accepts and records it, but shared intermediate products are
-            always written under :term:`dir_working`.
+        The stable ``dir_working/pipelines/<operation>`` path temporarily links
+        to the scratch workspace, so task inputs and output records keep the
+        same paths. When a workflow exits, including after a command failure,
+        its products are promoted back to the operation directory for restart
+        and finalization, using a rename on the same filesystem or a copy
+        between filesystems. If promotion fails, the scratch products and their
+        recovery record remain available. A small sibling directory named
+        ``.<operation>.scratch`` records the workspace before any directory
+        moves. Restart repairs interrupted moves before operation setup, even
+        if global scratch is then disabled. It removes the recovery directory
+        after promotion completes. Links within the workspace remain valid
+        after promotion. Restart records, final outputs and
+        logs retain their paths under :term:`dir_working`. When this option is
+        unset, shared intermediates use the operation directory under
+        :term:`dir_working` directly.
 
     use_container
         Legacy container setting retained for compatibility with older parsets.

@@ -280,6 +280,31 @@ These cover work that is already on the branch but untested here.
   a Postgres backend. Resource validation understands MPI command requests and
   checks that MPI WSClean is exclusive and stays within the configured Slurm
   node allocation.
+- **Scratch-directory wiring (2026-10-02).** `local_scratch_dir` now routes
+  command temporaries and WSClean's `-temp-dir` to worker-local storage and
+  supplies local Dask worker spill storage, with paths expanded on the executing
+  host. External workers retain their launcher's spill configuration. The
+  obsolete `dir_local` option has been removed.
+  `global_scratch_dir` hosts isolated workflow workspaces and MPI temporaries;
+  a temporary operation-directory symlink preserves recorded paths. Products
+  are promoted back to `dir_working/pipelines/<operation>` when the workflow
+  exits, including after command failure, using rename or cross-filesystem
+  copy. A sibling recovery record survives interrupted directory moves and is
+  checked before operation setup. Failed promotion preserves products for
+  recovery; internal symlinks remain portable when the workspace moves.
+  Successful owner flows now discard task-only image, prediction, calibration
+  and mosaic products, matching master's CWL output staging. Declared outputs,
+  their backing files, inputs, restart metadata and dashboard previews remain
+  available at their durable paths. Failed flows retain intermediates.
+  `keep_temporary_files` or `debug_workflow` retains both intermediates and
+  command temporaries.
+  Command scratch removal failures report the path and filesystem error.
+  Cleanup shares product names with their execution owners.
+  Focused checks and a real local-Dask failure/restart run pass with separate
+  local and global scratch roots and unchanged WSClean product timestamps.
+  Recovery tests cover forced process exits at eight staging/promotion
+  boundaries, portable internal links, and cross-filesystem promotion.
+  Representative multi-node Slurm/MPI staging remains pending.
 - **Calibration semantics.** Solve order is strategy-driven through
   `calibration_strategy`, replacing legacy implicit solve slots with explicit
   types and order. DI scalar phase, DI diagonal slow-gain, and DI full-Jones
@@ -383,12 +408,6 @@ main plan stays focused on the branch-switch decision.
   one thread per core. Extend the explicit policy helpers when implementing
   thread capping, using each task's resource budget and preserving tool-specific
   limits such as WSClean's single OpenBLAS thread per MPI rank.
-- **Honour `local_scratch_dir` for I/O-heavy temporaries:** the option is
-  parsed and passed into the pipeline capabilities dict but never consumed, and
-  `rapthor/execution/image/wsclean.py:64` always places WSClean's `-temp-dir`
-  under `dir_working`. On multi-node runs that puts reordering and gridding
-  temporaries on the shared filesystem. Route WSClean temp dirs and other
-  I/O-heavy intermediates to node-local scratch when the option is set.
 - **Cache reference catalogues per run:** `_download_survey_data` in
   `rapthor/execution/image/flux_normalization.py:622` repeats the 5-degree VO
   query for every normalization call, once per sector per cycle, and

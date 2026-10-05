@@ -426,6 +426,7 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "container_type": execution_config.container_type,
             "local_scratch_dir": execution_config.local_scratch_dir,
             "global_scratch_dir": execution_config.global_scratch_dir,
+            "keep_temporary_files": execution_config.keep_temporary_files,
         }
     )
 

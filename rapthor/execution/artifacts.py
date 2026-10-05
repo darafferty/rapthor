@@ -663,17 +663,21 @@ def _data_url(path: Path) -> str:
 
 
 def _local_file_path(path: Path) -> Path:
-    resolved_path = path.resolve()
+    # Operation directories temporarily link to shared scratch. Keep the
+    # durable lexical path so published links survive workspace promotion.
+    absolute_path = Path(os.path.abspath(path.expanduser()))
     container_workspace = os.environ.get("RAPTHOR_CONTAINER_WORKSPACE")
     host_workspace = os.environ.get("RAPTHOR_HOST_WORKSPACE")
     if not container_workspace or not host_workspace:
-        return resolved_path
+        return absolute_path
 
     try:
-        relative_path = resolved_path.relative_to(Path(container_workspace).resolve())
+        relative_path = absolute_path.relative_to(
+            os.path.abspath(os.path.expanduser(container_workspace))
+        )
     except ValueError:
-        return resolved_path
-    return Path(host_workspace).expanduser().resolve() / relative_path
+        return absolute_path
+    return Path(os.path.abspath(os.path.expanduser(host_workspace))) / relative_path
 
 
 def _local_file_url(path: Path) -> str:

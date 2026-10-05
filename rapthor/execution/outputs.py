@@ -3,7 +3,8 @@
 import glob
 import os
 import shutil
-from typing import Optional
+from pathlib import Path
+from typing import Iterable, Mapping, Optional, Union
 
 from rapthor.lib.records import directory_record, file_record
 
@@ -71,7 +72,47 @@ def compressed_file_record(record: dict, description: str) -> dict:
     return require_file(f"{record['path']}.fz", description)
 
 
-def cleanup_directory(path: str) -> None:
-    """Remove a temporary directory if it exists."""
-    if os.path.isdir(path):
-        shutil.rmtree(path)
+def cleanup_intermediate_outputs(
+    paths: Iterable[Union[str, Path]],
+    working_directory: str,
+    retained_outputs: object,
+    *,
+    input_paths: Iterable[Union[str, Path]] = (),
+) -> None:
+    """Remove owned intermediates while protecting inputs, outputs and their targets."""
+    retained_paths = list(input_paths)
+
+    def retain_records(value):
+        if isinstance(value, Mapping):
+            if value.get("class") in {"File", "Directory"}:
+                retained_paths.append(value["path"])
+            for item in value.values():
+                retain_records(item)
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                retain_records(item)
+
+    retain_records(retained_outputs)
+    retained = set()
+    for item in retained_paths:
+        path = Path(os.path.abspath(item))
+        retained.update((path, path.resolve()))
+    root = Path(os.path.abspath(working_directory))
+    resolved_root = root.resolve()
+    for candidate in paths:
+        path = Path(os.path.abspath(candidate))
+        if path == root or not path.is_relative_to(root):
+            continue
+        if not path.parent.resolve().is_relative_to(resolved_root):
+            continue
+        aliases = (path, path.resolve())
+        if any(
+            alias.is_relative_to(output) or output.is_relative_to(alias)
+            for alias in aliases
+            for output in retained
+        ):
+            continue
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)

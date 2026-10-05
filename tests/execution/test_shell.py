@@ -189,6 +189,104 @@ def test_run_external_command_builds_shell_command_metadata():
     assert FakeShellOperation.instances[0].kwargs["env"] == {"OMP_NUM_THREADS": "4"}
 
 
+@pytest.mark.parametrize("injected_runner", [False, True])
+@pytest.mark.parametrize("direct_shell", [False, True])
+def test_command_scratch_environment_is_child_only_and_cleaned(
+    tmp_path, monkeypatch, injected_runner, direct_shell
+):
+    from prefect_shell import ShellOperation
+
+    for key in ("TMPDIR", "TMP", "TEMP"):
+        monkeypatch.setenv(key, str(tmp_path / "inherited"))
+    original_environment = dict(os.environ)
+    scratch_root = tmp_path / "scratch"
+    command = [
+        sys.executable,
+        "-c",
+        "import json, os, pathlib, tempfile; "
+        "root = pathlib.Path(tempfile.gettempdir()); "
+        "(root / 'temporary').write_text('data'); "
+        "print(json.dumps({key: os.environ[key] for key in ('TMPDIR', 'TMP', 'TEMP')}))",
+    ]
+    config = ExecutionConfig(
+        local_scratch_dir=str(scratch_root),
+        log_commands=False,
+        stream_output=False,
+        command_profile="off",
+    )
+    runner = ShellOperation if injected_runner else None
+    if direct_shell:
+        output = run_shell_command(
+            ShellCommand(command, working_directory=str(tmp_path)),
+            config,
+            shell_operation_cls=runner,
+        )
+    else:
+        output = run_external_command(command, str(tmp_path), config, shell_operation_cls=runner)
+
+    environment = json.loads(output[-1])
+    temporary_directory = Path(environment["TMPDIR"])
+    assert temporary_directory.parent == scratch_root
+    assert environment == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory))
+    assert not temporary_directory.exists()
+    assert dict(os.environ) == original_environment
+
+
+def test_shell_command_reuses_caller_owned_mpi_scratch(tmp_path):
+    FakeShellOperation.instances = []
+    temporary_directory = tmp_path / "shared-task"
+    temporary_directory.mkdir()
+    run_external_command(
+        ["mpirun", "wsclean-mp"],
+        str(tmp_path),
+        ExecutionConfig(local_scratch_dir=str(tmp_path / "local")),
+        environment=dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory)),
+        shell_operation_cls=FakeShellOperation,
+    )
+
+    assert temporary_directory.is_dir()
+    assert not (tmp_path / "local").exists()
+    assert FakeShellOperation.instances[0].kwargs["env"] == dict.fromkeys(
+        ("TMPDIR", "TMP", "TEMP"), str(temporary_directory)
+    )
+
+
+@pytest.mark.parametrize("injected_runner", [False, True])
+def test_explicit_short_temp_environment_overrides_configured_scratch(
+    tmp_path, monkeypatch, injected_runner
+):
+    from prefect_shell import ShellOperation
+
+    for key in ("TMPDIR", "TMP", "TEMP"):
+        monkeypatch.setenv(key, str(tmp_path / "inherited"))
+    original_environment = dict(os.environ)
+    command = [
+        sys.executable,
+        "-c",
+        "import json, os, socket, tempfile\n"
+        "with tempfile.TemporaryDirectory() as root:\n"
+        "    with socket.socket(socket.AF_UNIX) as worker:\n"
+        "        worker.bind(os.path.join(root, 'worker.sock'))\n"
+        "        print(json.dumps({key: os.environ[key] for key in ('TMPDIR', 'TMP', 'TEMP')}))\n",
+    ]
+    config = ExecutionConfig(
+        local_scratch_dir="/dev/null/scratch",
+        log_commands=False,
+        stream_output=False,
+        command_profile="off",
+    )
+    output = run_external_command(
+        command,
+        str(tmp_path),
+        config,
+        environment=dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp"),
+        shell_operation_cls=ShellOperation if injected_runner else None,
+    )
+
+    assert json.loads(output[-1]) == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp")
+    assert dict(os.environ) == original_environment
+
+
 def test_run_shell_command_records_duration_metadata(tmp_path):
     FakeShellOperation.instances = []
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"

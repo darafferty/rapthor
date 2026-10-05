@@ -10,9 +10,8 @@ from typing import List, Union
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.flow import image_flow
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
-from rapthor.operations.flow_execution import run_prefect_flow
+from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 from rapthor.operations.image.diagnostics import report_sector_diagnostics
 from rapthor.operations.image.plan import (
     adjust_parallel_gridding_tasks,
@@ -30,7 +29,7 @@ log = logging.getLogger("rapthor:image")
 NON_FULLJONES_SOLVES = {"fast_phase", "medium_phase", "slow_gains"}
 
 
-class Image(Operation):
+class Image(FlowOperation):
     """
     Operation to image a field sector
     """

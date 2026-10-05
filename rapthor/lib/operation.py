@@ -46,7 +46,7 @@ class Operation(object):
 
         # Workflow working dir
         self.pipeline_working_dir = os.path.join(working_dir, "pipelines", self.name)
-        os.makedirs(self.pipeline_working_dir, exist_ok=True)
+        self._prepare_working_directory()
 
         self.keep_temporary_files = (
             self.parset["cluster_specific"]["keep_temporary_files"]
@@ -74,6 +74,10 @@ class Operation(object):
         self.batch_system = self.parset["cluster_specific"]["batch_system"]
 
         self.outputs = {}
+
+    def _prepare_working_directory(self):
+        """Create the working directory before setup writes operation inputs."""
+        os.makedirs(self.pipeline_working_dir, exist_ok=True)
 
     def flow_max_cores(self):
         """

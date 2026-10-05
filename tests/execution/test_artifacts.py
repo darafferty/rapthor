@@ -2,6 +2,7 @@ from pathlib import Path
 
 from rapthor.execution.artifacts import (
     ArtifactWriters,
+    _local_file_path,
     publish_command_metrics_artifact,
     publish_fits_image_artifacts,
     publish_fits_image_artifacts_for_field,
@@ -12,6 +13,7 @@ from rapthor.execution.artifacts import (
     render_fits_png,
     render_fits_postage_stamp_pngs,
 )
+from rapthor.execution.workspace import shared_scratch_workspace
 
 
 class RecordingArtifactWriters:
@@ -37,6 +39,37 @@ class RecordingArtifactWriters:
     def markdown(self, **kwargs):
         self.calls.append(("markdown", kwargs))
         return f"markdown-{len(self.calls)}"
+
+
+def test_plot_links_keep_durable_paths_while_workspace_uses_scratch(tmp_path, monkeypatch):
+    container_root = tmp_path / "container"
+    host_root = tmp_path / "host"
+    workdir = container_root / "working" / "pipelines" / "calibrate_1"
+    monkeypatch.setenv("RAPTHOR_CONTAINER_WORKSPACE", str(container_root))
+    monkeypatch.setenv("RAPTHOR_HOST_WORKSPACE", str(host_root))
+    recorder = RecordingArtifactWriters()
+
+    with shared_scratch_workspace(str(workdir), str(tmp_path / "scratch")):
+        plot_file = workdir / "solutions.png"
+        plot_file.write_bytes(b"plot")
+        records = publish_plot_file_records(
+            [{"class": "File", "path": str(plot_file)}],
+            workdir,
+            artifact_writers=recorder.writers,
+            in_run_context=lambda: True,
+        )
+
+    expected_path = host_root / "working" / "pipelines" / "calibrate_1" / "solutions.png"
+    assert records[0]["file_url"] == expected_path.as_uri()
+    assert plot_file.is_file()
+
+
+def test_artifact_path_outside_container_is_not_mapped_to_host(tmp_path, monkeypatch):
+    container_root = tmp_path / "container"
+    monkeypatch.setenv("RAPTHOR_CONTAINER_WORKSPACE", str(container_root))
+    monkeypatch.setenv("RAPTHOR_HOST_WORKSPACE", str(tmp_path / "host"))
+
+    assert _local_file_path(container_root / ".." / "output.fits") == tmp_path / "output.fits"
 
 
 def test_publish_plot_artifacts_embeds_images_and_links_other_files(tmp_path):

@@ -22,12 +22,14 @@ from rapthor.execution.calibrate.prediction import (
     adjust_prediction_normalization_h5parm,
     draw_predict_model_images,
     make_predict_region_file,
+    prediction_intermediate_paths,
     prepare_wsclean_predict_chunk,
     wsclean_predict_facet_info,
 )
 from rapthor.execution.calibrate.solves import run_calibrate_chunk, run_calibrate_screen_chunk
 from rapthor.execution.calibrate.validation import validate_calibrate_payload
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.outputs import cleanup_intermediate_outputs
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
@@ -68,6 +70,7 @@ def _run_calibrate_prefect_tasks(
     assert_serializable_payload(payload)
     config = execution_config or ExecutionConfig(task_runner="sync")
     payload = validate_calibrate_payload(payload)
+    original_payload = payload
     payload = _prepare_prediction_payload_with_tasks(payload, config)
     if payload["calibration_kind"] == "dd_screen":
         screen_records = [
@@ -77,13 +80,16 @@ def _run_calibrate_prefect_tasks(
             for index, chunk in enumerate(payload["chunks"])
         ]
         screen_records = [record.result() for record in screen_records]
-        return (
+        result = (
             collect_screen_h5parms_task.with_options(
                 **task_run_options("collect_screen_h5parms", tags=["python"])
             )
             .submit(payload, screen_records)
             .result()
         )
+        if not config.keep_temporary_files:
+            _cleanup_calibrate_intermediates(original_payload, payload, result)
+        return result
 
     solve_records = [
         calibrate_chunk_task.with_options(
@@ -122,13 +128,35 @@ def _run_calibrate_prefect_tasks(
         ).submit(payload, processed_products)
     else:
         active_solution = processed_products[active_solution_product_index(payload)]
-    return (
+    result = (
         finalize_solutions_task.with_options(
             **task_run_options("finalize_solutions", tags=["python"])
         )
         .submit(payload, processed_products, plot_products, active_solution)
         .result()
     )
+    if not config.keep_temporary_files:
+        _cleanup_calibrate_intermediates(original_payload, payload, result)
+    return result
+
+
+def _cleanup_calibrate_intermediates(original_payload, payload, result) -> None:
+    """Discard step-only solve and prediction products after the entire flow succeeds."""
+    paths = []
+    inputs = [chunk["msin"] for chunk in original_payload["chunks"]]
+    for chunk in payload["chunks"]:
+        if chunk.get("output_h5parm_path"):
+            paths.append(chunk["output_h5parm_path"])
+        for slot in chunk.get("solve_slots", []):
+            paths.append(slot["h5parm_path"])
+            if slot.get("initialsolutions_h5parm"):
+                inputs.append(slot["initialsolutions_h5parm"])
+    for key in ("sourcedb", "normalize_h5parm", "applycal_h5parm", "fulljones_h5parm"):
+        if original_payload.get(key):
+            inputs.append(original_payload[key])
+    paths.extend(product["path"] for product in payload.get("combined_h5parms", {}).values())
+    paths.extend(prediction_intermediate_paths(original_payload, payload))
+    cleanup_intermediate_outputs(paths, payload["pipeline_working_dir"], result, input_paths=inputs)
 
 
 def _prepare_prediction_payload_with_tasks(

@@ -7,12 +7,11 @@ import shutil
 
 from rapthor.execution.mosaic.flow import mosaic_flow
 from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs
-from rapthor.lib.operation import Operation
 from rapthor.lib.records import FileRecord
-from rapthor.operations.flow_execution import run_prefect_flow
+from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 
 
-class Mosaic(Operation):
+class Mosaic(FlowOperation):
     """
     Operation to mosaic sector images
     """

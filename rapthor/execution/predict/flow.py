@@ -11,7 +11,7 @@ from prefect import flow, task
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.environments import dp3_environment
-from rapthor.execution.outputs import require_directory
+from rapthor.execution.outputs import cleanup_intermediate_outputs, require_directory
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.predict.commands import (
     build_predict_model_data_command,
@@ -22,7 +22,10 @@ from rapthor.execution.predict.payloads import (
     validate_predict_payload,
 )
 from rapthor.execution.predict.sector_model_addition import add_sector_models
-from rapthor.execution.predict.sector_model_subtraction import subtract_sector_models
+from rapthor.execution.predict.sector_model_subtraction import (
+    peeled_field_filename,
+    subtract_sector_models,
+)
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_options
 from rapthor.execution.shell import run_external_command
@@ -96,7 +99,28 @@ def _run_predict_prefect_tasks(
             except Exception:
                 raise
         raise
-    return _result_from_postprocess_records(payload["mode"], postprocess_outputs)
+    result = _result_from_postprocess_records(payload["mode"], postprocess_outputs)
+    if not config.keep_temporary_files:
+        intermediates = [output.result()["path"] for output in model_outputs]
+        if payload["mode"] == "dd":
+            for task in payload["postprocess_tasks"]:
+                if task["peel_bright"] and task["nr_bright"] > 0:
+                    name = os.path.basename(task["msobs"])
+                    if task["peel_outliers"] and task["nr_outliers"] > 0:
+                        name = peeled_field_filename(name, task["infix"])
+                    intermediates.append(
+                        os.path.join(
+                            payload["pipeline_working_dir"],
+                            peeled_field_filename(name, task["infix"], exclude_bright=True),
+                        )
+                    )
+        cleanup_intermediate_outputs(
+            intermediates,
+            payload["pipeline_working_dir"],
+            result,
+            input_paths=(task["msobs"] for task in payload["postprocess_tasks"]),
+        )
+    return result
 
 
 @task(name="dp3_predict_chunk")

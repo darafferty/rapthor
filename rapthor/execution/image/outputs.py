@@ -1,5 +1,6 @@
 """Image-sector output filename patterns, discovery, and product helpers."""
 
+import glob
 import multiprocessing
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.commands import (
+    ATERM_CONFIG_FILENAME,
     build_compress_sector_images_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
@@ -17,13 +19,48 @@ from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPa
 from rapthor.execution.image.restoration import restore_skymodel
 from rapthor.execution.image.skymodel_filter import filter_image_skymodel
 from rapthor.execution.outputs import (
+    cleanup_intermediate_outputs,
     compressed_file_record,
     file_records_for_patterns,
     file_records_for_required_patterns,
     require_file,
 )
+from rapthor.execution.scratch import temporary_environment
 from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record
+
+
+def cleanup_image_intermediates(payload: Mapping[str, object], result: dict) -> None:
+    """Remove owned sector products after every image task has succeeded."""
+    root = Path(payload["pipeline_working_dir"])
+    intermediates = []
+    inputs = []
+    for sector in payload["sectors"]:
+        name = glob.escape(sector["image_name"])
+        inputs.extend(task["msin"] for task in sector["prepare_tasks"])
+        for key in (
+            "previous_mask_filename",
+            "bright_skymodel_pb",
+            "facet_skymodel",
+            "h5parm",
+            "prepare_data_h5parm",
+            "fulljones_h5parm",
+            "input_normalize_h5parm",
+        ):
+            if sector.get(key):
+                inputs.append(sector[key])
+        if sector["apply_screens"]:
+            intermediates.append(root / ATERM_CONFIG_FILENAME)
+        intermediates.extend((sector["concat_path"], sector["mask_path"]))
+        for pattern in (
+            f"{name}-*.fits",
+            f"{name}-*.fits.fz",
+            f"{name}-sources*.txt",
+            f"{name}.*_rms.fits",
+            f"{name}*.pybdsf.log",
+        ):
+            intermediates.extend(root.glob(pattern))
+    cleanup_intermediate_outputs(intermediates, str(root), result, input_paths=inputs)
 
 
 def mfs_non_pb_image_patterns(image_name: str, pipeline_working_dir: str) -> list[str]:
@@ -165,6 +202,8 @@ def make_image_cube_catalog_record(
         str(Path(image_cube["path"]).parent),
         config,
         name="make_catalog_from_image_cube",
+        # PyBDSF multiprocessing uses Unix sockets with a short path limit.
+        environment=temporary_environment("/tmp"),
         shell_operation_cls=shell_operation_cls,
     )
     return require_file(str(sector["output_source_catalog_path"]), "Normalization source catalog")
@@ -251,6 +290,7 @@ def filter_skymodel_products(
             pipeline_working_dir,
             config,
             name="filter_skymodel",
+            environment=temporary_environment("/tmp"),
             shell_operation_cls=shell_operation_cls,
         )
     else:

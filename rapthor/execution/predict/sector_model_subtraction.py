@@ -24,6 +24,12 @@ from rapthor.lib import miscellaneous as misc
 log = logging.getLogger("rapthor:predict:sector_model_subtraction")
 
 
+def peeled_field_filename(msin: str, infix: str, *, exclude_bright: bool = False) -> str:
+    """Name the field MS after outlier or bright-source subtraction."""
+    suffix = "_field_no_bright" if exclude_bright else "_field"
+    return f"{os.path.basename(msin)}{infix}{suffix}"
+
+
 def get_nchunks(
     msin, nsectors, fraction=1.0, reweight=False, compressed=False, *, memory_budget_bytes=None
 ):
@@ -190,8 +196,7 @@ def subtract_sector_models(
     if peel_outliers and nr_outliers > 0:
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
-        root_filename = os.path.basename(msin)
-        msout = output_path(output_dir, f"{root_filename}{infix}_field")
+        msout = output_path(output_dir, peeled_field_filename(msin, infix))
 
         copy_measurement_set(ms_template, msout)
         tout = pt.table(msout, readonly=False, ack=False)
@@ -250,8 +255,7 @@ def subtract_sector_models(
     if peel_bright and nr_bright > 0:
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
-        root_filename = os.path.basename(msin)
-        msout = output_path(output_dir, f"{root_filename}{infix}_field_no_bright")
+        msout = output_path(output_dir, peeled_field_filename(msin, infix, exclude_bright=True))
 
         copy_measurement_set(ms_template, msout)
         tout = pt.table(msout, readonly=False, ack=False)

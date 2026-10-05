@@ -10,14 +10,13 @@ from losoto.h5parm import h5parm
 from rapthor.execution.predict.flow import predict_flow
 from rapthor.execution.predict.payloads import predict_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
-from rapthor.operations.flow_execution import run_prefect_flow
+from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 
 log = logging.getLogger("rapthor:predict")
 
 
-class Predict(Operation):
+class Predict(FlowOperation):
     """
     Operation to predict model data for further direction-dependent (DD)
     processing

@@ -119,18 +119,20 @@ def test_misspelled_option(parset_scenario, caplog):
     )
 
 
-def test_deprecated_option(parset_scenario, caplog):
+def test_removed_dir_local_is_invalid_and_does_not_configure_scratch(parset_scenario, caplog):
     section = "[cluster]"
     option = "dir_local"
     _append_to_parset(parset_scenario.parset, f"\n{section}\n{option} = some value\n")
     caplog.set_level("WARNING", logger="rapthor:parset")
 
-    parset_read(str(parset_scenario.parset))
+    parset = parset_read(str(parset_scenario.parset))
 
     assert any(
-        f"Option '{option}' in section {section} is deprecated" in message
+        f"Option '{option}' in section {section} is invalid" in message
         for message in caplog.messages
     )
+    assert "dir_local" not in parset["cluster_specific"]
+    assert parset["cluster_specific"]["local_scratch_dir"] is None
 
 
 def test_fraction_out_of_range(parset_scenario):

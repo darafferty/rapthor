@@ -104,7 +104,11 @@ def fake_direct_mosaic_helpers(monkeypatch):
         )
         output_path = Path(output_image)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text("wsclean model mosaic")
+        model_root = output_path.with_suffix("")
+        Path(f"{model_root}.skymodel").write_text("combined sky model")
+        term_model = Path(f"{model_root}-term-0.fits")
+        term_model.write_text("wsclean model mosaic")
+        output_path.symlink_to(term_model.name)
         return file_record(output_path)
 
     monkeypatch.setattr(mosaic_module, "make_mosaic_template", fake_make_mosaic_template)
@@ -132,6 +136,7 @@ def fake_mosaic_shell_operation_cls():
             tokens = shlex.split(self.kwargs["commands"][0])
             cwd = Path(self.kwargs["working_dir"])
             if tokens[0] == "fpack":
+                assert (cwd / tokens[1]).is_file()
                 output_path = cwd / f"{tokens[1]}.fz"
             else:
                 raise AssertionError(f"Unexpected command: {tokens[0]}")
@@ -165,7 +170,6 @@ class FieldStub:
                 "batch_system": "single_machine",
                 "cpus_per_task": 1,
                 "mem_per_node_gb": 0,
-                "dir_local": None,
                 "local_scratch_dir": None,
                 "global_scratch_dir": None,
                 "use_container": False,
@@ -385,12 +389,32 @@ def test_mosaic_task_run_name_uses_output_product_label(mosaic_filename, expecte
     assert mosaic_module._mosaic_task_run_name(mosaic_product, index=0) == expected_run_name
 
 
+@pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
-    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+    tmp_path,
+    monkeypatch,
+    fake_mosaic_shell_operation_cls,
+    fake_direct_mosaic_helpers,
+    keep_temporary_files,
 ):
     published = []
+    inputs = [
+        tmp_path / name
+        for name in (
+            "sector_1-I-image.fits",
+            "sector_2-I-image.fits",
+            "sector_1.vertices",
+            "sector_2.vertices",
+        )
+    ]
+    for path in inputs:
+        path.write_text("input")
 
     def fake_publish_fits_image_artifacts(records, root_dir, *, clip_percentile):
+        assert (tmp_path / "mosaic_1_template.fits").is_file()
+        assert all(
+            (tmp_path / f"sector_{index}-I-image.fits.regridded").is_file() for index in (1, 2)
+        )
         published.append(
             ([Path(record["path"]).name for record in records], root_dir, clip_percentile)
         )
@@ -409,11 +433,19 @@ def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
             task_runner="sync",
             publish_fits_previews=True,
             fits_preview_clip_percentile=99.7,
+            keep_temporary_files=keep_temporary_files,
         ),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
     )
 
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits")]}
+    assert (tmp_path / "mosaic_1-I-image.fits").is_file()
+    assert (tmp_path / "mosaic_1_template.fits").exists() is keep_temporary_files
+    for index in (1, 2):
+        assert (
+            tmp_path / f"sector_{index}-I-image.fits.regridded"
+        ).exists() is keep_temporary_files
+    assert all(path.read_text() == "input" for path in inputs)
     assert published == [(["mosaic_1-I-image.fits"], str(tmp_path), 99.7)]
     validate_output_record(outputs["mosaic_image"])
     assert fake_mosaic_shell_operation_cls.instances == []
@@ -479,12 +511,23 @@ def test_run_mosaic_flow_builds_shared_template_once_for_multiple_mosaic_product
         str(tmp_path / "mosaic_1_template.fits")
     }
     assert fake_direct_mosaic_helpers["regrid_sparse_model_image"] == []
+    assert all(Path(record["path"]).is_file() for record in outputs["mosaic_image"])
+    assert not (tmp_path / "mosaic_1_template.fits").exists()
+    for product in ("image", "apparent"):
+        for index in (1, 2):
+            assert not (tmp_path / f"sector_{index}-I-{product}.fits.regridded").exists()
 
 
+@pytest.mark.parametrize("keep_temporary_files", [False, True])
+@pytest.mark.parametrize("compress_images", [False, True])
 def test_run_mosaic_flow_uses_wsclean_for_model_products_with_skymodels(
-    tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+    tmp_path,
+    fake_mosaic_shell_operation_cls,
+    fake_direct_mosaic_helpers,
+    keep_temporary_files,
+    compress_images,
 ):
-    payload = _mosaic_payload(tmp_path)
+    payload = _mosaic_payload(tmp_path, compress_images=compress_images)
     payload["mosaic_products"][0].update(
         {
             "sector_image_filenames": [
@@ -503,15 +546,30 @@ def test_run_mosaic_flow_uses_wsclean_for_model_products_with_skymodels(
             "mosaic_path": str(tmp_path / "mosaic_1-MFS-model-pb.fits"),
         }
     )
+    for filename in payload["mosaic_products"][0]["sector_model_skymodel_filenames"]:
+        (tmp_path / filename).write_text("input sky model")
 
     outputs = run_flow_for_test(
         mosaic_flow,
         payload,
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(
+            task_runner="sync", keep_temporary_files=keep_temporary_files
+        ),
         shell_operation_cls=fake_mosaic_shell_operation_cls,
     )
 
-    assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-MFS-model-pb.fits")]}
+    output_path = tmp_path / "mosaic_1-MFS-model-pb.fits"
+    returned_path = Path(f"{output_path}.fz") if compress_images else output_path
+    assert outputs == {"mosaic_image": [file_record(returned_path)]}
+    assert returned_path.is_file()
+    assert output_path.is_symlink() is (not compress_images or keep_temporary_files)
+    assert (tmp_path / "mosaic_1-MFS-model-pb-term-0.fits").exists() is (
+        not compress_images or keep_temporary_files
+    )
+    assert (tmp_path / "mosaic_1-MFS-model-pb.skymodel").exists() is keep_temporary_files
+    assert (tmp_path / "mosaic_1_template.fits").exists() is keep_temporary_files
+    for filename in payload["mosaic_products"][0]["sector_model_skymodel_filenames"]:
+        assert (tmp_path / filename).read_text() == "input sky model"
     assert fake_direct_mosaic_helpers["render_model_mosaic_with_wsclean"] == [
         {
             "sector_skymodels": [
@@ -637,6 +695,11 @@ def test_run_mosaic_flow_returns_compressed_records(tmp_path, fake_mosaic_shell_
     )
 
     assert outputs == {"mosaic_image": [file_record(tmp_path / "mosaic_1-I-image.fits.fz")]}
+    assert (tmp_path / "mosaic_1-I-image.fits.fz").is_file()
+    assert not (tmp_path / "mosaic_1-I-image.fits").exists()
+    assert not (tmp_path / "mosaic_1_template.fits").exists()
+    for index in (1, 2):
+        assert not (tmp_path / f"sector_{index}-I-image.fits.regridded").exists()
     assert [
         instance.kwargs["commands"][0] for instance in fake_mosaic_shell_operation_cls.instances
     ] == [
@@ -700,6 +763,40 @@ def test_run_mosaic_flow_fails_when_expected_output_is_missing(tmp_path, monkeyp
             _mosaic_payload(tmp_path),
             execution_config=ExecutionConfig(task_runner="sync"),
         )
+
+
+@pytest.mark.parametrize("compress_images", [False, True])
+def test_run_mosaic_flow_retains_intermediates_when_later_product_fails(
+    tmp_path, monkeypatch, fake_mosaic_shell_operation_cls, compress_images
+):
+    payload = _mosaic_payload(tmp_path, compress_images=compress_images, mosaic_product_count=2)
+    finalize = mosaic_module._finalize_mosaic_output
+    completed = []
+
+    def fail_after_second_output(*args, **kwargs):
+        result = finalize(*args, **kwargs)
+        completed.append(result)
+        if len(completed) == 2:
+            raise RuntimeError("later mosaic product failed")
+        return result
+
+    monkeypatch.setattr(mosaic_module, "_finalize_mosaic_output", fail_after_second_output)
+
+    with pytest.raises(RuntimeError, match="later mosaic product failed"):
+        run_flow_for_test(
+            mosaic_flow,
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_mosaic_shell_operation_cls,
+        )
+
+    assert len(completed) == 2
+    assert all(Path(record["path"]).is_file() for record in completed)
+    assert (tmp_path / "mosaic_1_template.fits").is_file()
+    for product in ("image", "apparent"):
+        assert (tmp_path / f"mosaic_1-I-{product}.fits").is_file()
+        for index in (1, 2):
+            assert (tmp_path / f"sector_{index}-I-{product}.fits.regridded").is_file()
 
 
 def test_mosaic_finalizer_accepts_prefect_outputs(tmp_path, fake_mosaic_shell_operation_cls):

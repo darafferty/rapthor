@@ -6,12 +6,11 @@ import os
 
 from rapthor.execution.concatenate.flow import concatenate_flow
 from rapthor.execution.concatenate.payloads import concatenate_payload_from_inputs
-from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord
-from rapthor.operations.flow_execution import run_prefect_flow
+from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 
 
-class Concatenate(Operation):
+class Concatenate(FlowOperation):
     """
     Operation to concatenate MS files
     """

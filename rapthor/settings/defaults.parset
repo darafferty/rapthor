@@ -295,8 +295,8 @@ use_clean_mask = False
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
 # True and more than one node can be allocated to each WSClean job (i.e.,
 # max_nodes / num_images >= 2), then distributed imaging will be used.
-# Note that if MPI is activated, dir_local (under the [cluster] section below) 
-# must not be set unless it is on a shared filesystem
+# MPI temporaries use global_scratch_dir when configured, otherwise the shared
+# operation workspace under dir_working.
 use_mpi = False
 
 # Enable shared reads and writes for imaging when working with facets. If multiple nodes are used
@@ -415,33 +415,26 @@ deconvolution_threads = 0
 # max_threads // 8)
 parallel_gridding_tasks = 0
 
-# Full path to a local disk on the nodes for IO-intensive processing (default =
-# not used). The path must exist on all nodes (but does not have to be on a
-# shared filesystem). This parameter is useful if you have a fast local disk
-# (e.g., an SSD) that is not the one used for dir_working. If this parameter is
-# not set, IO-intensive processing (e.g., WSClean) will use a default path in
-# dir_working instead. This parameter should not be set in the following
-# situations:
-#   - when batch_system = single_machine and multiple imaging sectors are
-#     used (as each sector will overwrite files from the other sectors)
-#   - when use_mpi = True under the [imaging] section above and dir_local is
-#     not on a shared filesystem
-# This parameter is deprecated. Use local_scratch_dir instead.
-dir_local = None
-
-# Full path to a local disk on the nodes for IO-intensive processing. When
-# batch_system = slurm or slurm_static, the path must exist on all the compute
-# nodes, but not necessarily on the head node. The intent is to use a fast
-# local disk (e.g., an SSD) that is not the one used for dir_working.
-# NOTE: this parameter currently has no effect. IO-intensive temporary products
-# (such as WSClean's -temp-dir) are always written under dir_working.
+# Full path to a fast local disk for command temporaries and WSClean's
+# -temp-dir (default = None). Rapthor creates isolated children on the executing
+# worker; the path need not exist on the head node. MPI commands use
+# global_scratch_dir, or the shared operation workspace when it is unset.
+# Local Dask workers also use this path for spill storage; external workers
+# configure their own --local-directory. Without local_scratch_dir,
+# commands inherit their temp environment, while WSClean imaging uses the
+# operation workspace. keep_temporary_files or debug_workflow retains command
+# temporaries.
+# PyBDSF helper commands use /tmp to keep multiprocessing socket paths short.
 local_scratch_dir = None
 
-# Full path to a directory on a shared disk that is readable and writable by all
-# the compute nodes and the head node, intended for the intermediate outputs
-# that need to be shared between the different steps in the workflow.
-# NOTE: this parameter currently has no effect. Shared intermediate products are
-# always written under dir_working.
+# Full path to shared scratch readable and writable by all compute nodes and
+# the head node (default = None). Workflow intermediates and MPI temporaries
+# use isolated children here, through a stable operation-directory symlink.
+# On workflow exit, including command failure, products are promoted back to
+# dir_working/pipelines/<operation>. If promotion fails, the link and scratch
+# products remain available for recovery. Restart records, final products and
+# logs retain their dir_working paths.
+# Without global_scratch_dir, shared intermediates use dir_working directly.
 global_scratch_dir = None
 
 # Legacy container settings retained for compatibility with older parsets.

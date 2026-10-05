@@ -588,7 +588,6 @@ def _operation_parset(tmp_path):
             "batch_system": "single_machine",
             "cpus_per_task": 1,
             "mem_per_node_gb": 0,
-            "dir_local": None,
             "local_scratch_dir": None,
             "global_scratch_dir": None,
             "use_container": False,
@@ -1715,11 +1714,25 @@ def test_image_payload_from_inputs_requires_filtered_model_filename(tmp_path):
 
 
 def test_run_image_flow_executes_no_dde_commands_and_returns_records(
-    tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
+    tmp_path,
+    monkeypatch,
+    fake_image_shell_operation_cls,
+    fake_direct_image_helpers,
 ):
     published = []
     fits_published = []
     postage_published = []
+    for name in ("sector_1-MFS-I-psf.fits", "sector_1-sources-fpb.txt"):
+        (tmp_path / name).write_text("intermediate")
+    protected_paths = [
+        tmp_path / "output.json",
+        tmp_path / "logs" / "wsclean.log",
+        tmp_path / ".rapthor-artifacts" / "preview.png",
+        tmp_path / "other_sector-0000-image.fits",
+    ]
+    for path in protected_paths:
+        path.parent.mkdir(exist_ok=True)
+        path.write_text("retain")
 
     def fake_publish_plot_file_records(records, root_dir):
         published.append(([Path(record["path"]).name for record in records], root_dir))
@@ -1783,6 +1796,21 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
     )
 
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
+    intermediates = [
+        "sector_1_concat.ms",
+        "sector_1_mask.fits",
+        "sector_1-0000-I-image-pb.fits",
+        "sector_1-MFS-I-psf.fits",
+        "sector_1-sources-fpb.txt",
+        "sector_1.flat_noise_rms.fits",
+        "sector_1.true_sky_rms.fits",
+    ]
+    assert all(not (tmp_path / name).exists() for name in intermediates)
+    assert all(path.read_text() == "retain" for path in protected_paths)
+    for record in outputs["sector_I_images"][0] + outputs["sector_extra_images"][0]:
+        assert Path(record["path"]).is_file()
+    for record in outputs["visibilities"][0]:
+        assert Path(record["path"]).is_dir()
     assert outputs["visibilities"] == [
         [
             directory_record(tmp_path / "sector_1_obs_0_prep.ms"),
@@ -2171,19 +2199,24 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
     assert "-diagonal-visibilities" not in facet_command
 
 
+@pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
-    tmp_path, fake_image_shell_operation_cls
+    tmp_path, fake_image_shell_operation_cls, keep_temporary_files
 ):
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(_screens_image_input_parms(), tmp_path, apply_screens=True),
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(
+            task_runner="sync", keep_temporary_files=keep_temporary_files
+        ),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
     assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
     aterm_config = tmp_path / ATERM_CONFIG_FILENAME
-    assert aterm_config.read_text() == build_aterm_config_content("/data/screen-solutions.h5")
+    assert aterm_config.exists() is keep_temporary_files
+    if keep_temporary_files:
+        assert aterm_config.read_text() == build_aterm_config_content("/data/screen-solutions.h5")
     command_names = [
         _command_name(shlex.split(instance.kwargs["commands"][0]))
         for instance in fake_image_shell_operation_cls.instances
@@ -2227,7 +2260,10 @@ def test_run_image_flow_sets_ducc0_num_threads_for_non_mpi_wsclean(
     )
     wsclean_command = shlex.split(wsclean_instance.kwargs["commands"][0])
     assert wsclean_command[wsclean_command.index("-j") + 1] == str(max_threads)
-    assert wsclean_instance.kwargs["env"] == {"DUCC0_NUM_THREADS": str(max_threads)}
+    assert wsclean_instance.kwargs["env"] == {
+        "DUCC0_NUM_THREADS": str(max_threads),
+        **dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(tmp_path / "sector_1_wsclean_tmp")),
+    }
 
 
 def test_run_image_flow_supports_full_stokes_no_dde(tmp_path, fake_image_shell_operation_cls):
@@ -2305,6 +2341,7 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
     assert mpi_instance.kwargs["env"] == {
         "OMP_NUM_THREADS": "3",
         "OPENBLAS_NUM_THREADS": "1",
+        **dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(tmp_path / "sector_1_wsclean_tmp")),
     }
 
 
@@ -2486,6 +2523,141 @@ def test_run_image_flow_cleans_isolated_wsclean_temp_dirs(tmp_path, fake_image_s
     ]
     assert len(set(temp_dirs)) == 2
     assert all(not temp_dir.exists() for temp_dir in temp_dirs)
+
+
+@pytest.mark.parametrize(
+    "mpi, local, global_, expected",
+    [
+        (False, True, True, "local"),
+        (False, False, True, "work"),
+        (True, True, True, "global"),
+        (True, True, False, "work"),
+    ],
+)
+def test_wsclean_scratch_uses_local_for_serial_and_shared_for_mpi(
+    tmp_path, fake_image_shell_operation_cls, mpi, local, global_, expected
+):
+    pipeline_dir = tmp_path / "work"
+    pipeline_dir.mkdir()
+    config = ExecutionConfig(
+        task_runner="sync",
+        max_nodes=2,
+        cpus_per_task=3,
+        local_scratch_dir=str(tmp_path / "local") if local else None,
+        global_scratch_dir=str(tmp_path / "global") if global_ else None,
+    )
+    inputs = _mpi_image_input_parms() if mpi else _image_input_parms()
+    sector = image_payload_from_inputs(inputs, pipeline_dir, use_mpi=mpi)["sectors"][0]
+    nonpb, pb, created = image_wsclean_module.run_or_reuse_wsclean_images(
+        sector,
+        {"path": "input.ms"},
+        {"path": "mask.fits"},
+        None,
+        str(sector["image_name"]),
+        str(pipeline_dir),
+        config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    wsclean_instance = next(
+        instance
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] in {"wsclean", "mpirun"}
+    )
+    command = shlex.split(wsclean_instance.kwargs["commands"][0])
+    temporary_directory = Path(command[command.index("-temp-dir") + 1])
+    assert temporary_directory.parent == tmp_path / expected
+    assert not temporary_directory.exists()
+    for key in ("TMPDIR", "TMP", "TEMP"):
+        assert wsclean_instance.kwargs["env"][key] == str(temporary_directory)
+    assert [nonpb, pb] == _sector_i_image_records(pipeline_dir)[:2]
+    assert created
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_wsclean_keeps_requested_scratch_on_success_and_failure(
+    tmp_path, fake_image_shell_operation_cls, fail
+):
+    class RetainedScratchShellOperation(fake_image_shell_operation_cls):
+        instances = []
+
+        def run(self):
+            tokens = shlex.split(self.kwargs["commands"][0])
+            if tokens[0] == "wsclean" and fail:
+                temporary_directory = Path(tokens[tokens.index("-temp-dir") + 1])
+                (temporary_directory / "wsclean.tmp").write_text("temporary")
+                raise RuntimeError("wsclean failed")
+            return super().run()
+
+    def run_image():
+        sector = image_payload_from_inputs(_image_input_parms(), tmp_path)["sectors"][0]
+        return image_wsclean_module.run_or_reuse_wsclean_images(
+            sector,
+            {"path": "input.ms"},
+            {"path": "mask.fits"},
+            None,
+            str(sector["image_name"]),
+            str(tmp_path),
+            ExecutionConfig(
+                task_runner="sync",
+                local_scratch_dir=str(tmp_path / "scratch"),
+                keep_temporary_files=True,
+            ),
+            shell_operation_cls=RetainedScratchShellOperation,
+        )
+
+    if fail:
+        with pytest.raises(RuntimeError, match="wsclean failed"):
+            run_image()
+    else:
+        run_image()
+    command = next(
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in RetainedScratchShellOperation.instances
+        if shlex.split(instance.kwargs["commands"][0])[0] == "wsclean"
+    )
+    temporary_directory = Path(command[command.index("-temp-dir") + 1])
+    assert (temporary_directory / "wsclean.tmp").is_file()
+
+
+@pytest.mark.parametrize("tool", ["filter", "catalog"])
+def test_pybdsf_commands_keep_temporary_socket_paths_short(
+    tmp_path, fake_image_shell_operation_cls, tool
+):
+    config = ExecutionConfig(local_scratch_dir=str(tmp_path / ("deep-" + "x" * 100)))
+    if tool == "filter":
+        sector = image_payload_from_inputs(_image_input_parms(), tmp_path)["sectors"][0]
+        sector["filter_skymodel_ncores"] = 2
+        image_outputs_module.filter_skymodel_products(
+            sector,
+            str(sector["image_name"]),
+            {"path": str(tmp_path / "image.fits")},
+            {"path": str(tmp_path / "image-pb.fits")},
+            {"path": "apparent.txt"},
+            {"path": "true.txt"},
+            str(tmp_path),
+            config,
+            shell_operation_cls=fake_image_shell_operation_cls,
+        )
+    else:
+        sector = image_payload_from_inputs(
+            _normalize_image_input_parms(),
+            tmp_path,
+            make_image_cube=True,
+            normalize_flux_scale=True,
+        )["sectors"][0]
+        image_outputs_module.make_image_cube_catalog_record(
+            {"path": str(tmp_path / "cube.fits")},
+            {"path": "beams.txt"},
+            {"path": "frequencies.txt"},
+            sector,
+            config,
+            shell_operation_cls=fake_image_shell_operation_cls,
+        )
+
+    assert fake_image_shell_operation_cls.instances[-1].kwargs["env"] == dict.fromkeys(
+        ("TMPDIR", "TMP", "TEMP"), "/tmp"
+    )
 
 
 def test_run_image_flow_cleans_wsclean_temp_dir_on_failure(
@@ -3318,7 +3490,7 @@ def test_screen_image_operation_run_uses_prefect_flow(
     assert Path(operation.done_file).is_file()
     assert "-aterm-config" in wsclean_command
     assert wsclean_command[wsclean_command.index("-aterm-config") + 1] == ATERM_CONFIG_FILENAME
-    assert (Path(operation.pipeline_working_dir) / ATERM_CONFIG_FILENAME).is_file()
+    assert not (Path(operation.pipeline_working_dir) / ATERM_CONFIG_FILENAME).exists()
     assert any("steps=[applybeam,shift,applycal,avg]" in command for command in prepare_commands)
 
 

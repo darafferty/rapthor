@@ -100,7 +100,7 @@ class Parset:
 
         # Deprecated options are hard-coded below. Each deprecated option can have
         # zero or more suggestions for alternative options.
-        self.deprecated_options = {"cluster": {"dir_local": {"local_scratch_dir"}}}
+        self.deprecated_options = {}
 
         # Sanity check. Ensure that all required sections and options are also allowed.
         assert self.required_sections <= self.allowed_sections, "%s <= %s" % (

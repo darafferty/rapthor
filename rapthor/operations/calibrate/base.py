@@ -12,7 +12,6 @@ import numpy as np
 from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.flow import calibrate_flow
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.operation import Operation
 from rapthor.lib.records import DirectoryRecord, FileRecord
 from rapthor.operations.calibrate.plan import (
     build_calibration_core_stations,
@@ -23,10 +22,10 @@ from rapthor.operations.calibrate.plan import (
     requested_calibration_solves,
     solution_interval_for_solve_type,
 )
-from rapthor.operations.flow_execution import run_prefect_flow
+from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 
 
-class Calibrate(Operation):
+class Calibrate(FlowOperation):
     """
     Class for performing the calibration operation through the Prefect/Dask flow.
     This class is used for both direction-dependent (DD) and direction-independent (DI) calibration, with

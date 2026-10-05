@@ -35,7 +35,7 @@ def render_model_mosaic_with_wsclean(
     shell_operation_cls=None,
 ) -> dict:
     """Render one model mosaic from sector sky-model component lists."""
-    combined_skymodel = _combined_skymodel_path(output_image)
+    combined_skymodel, term_model = model_mosaic_intermediate_paths(output_image)
     combine_sector_skymodels(sector_skymodels, combined_skymodel)
     output_root = _draw_model_output_root(output_image)
     options = _draw_model_options(
@@ -50,7 +50,7 @@ def render_model_mosaic_with_wsclean(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    _expose_wsclean_term_model(output_root, output_image)
+    _expose_wsclean_term_model(term_model, output_image)
     return require_file(output_image, "Mosaic output")
 
 
@@ -136,17 +136,17 @@ def _skymodel_reference_frequency_hz(skymodel: str) -> float:
     raise ValueError(f"Could not determine reference frequency for {skymodel}")
 
 
-def _combined_skymodel_path(output_image: str) -> str:
-    return f"{_draw_model_output_root(output_image)}.skymodel"
+def model_mosaic_intermediate_paths(output_image: str) -> tuple[str, str]:
+    """Return the sky model and rendered FITS paths used to assemble a mosaic."""
+    root = _draw_model_output_root(output_image)
+    return f"{root}.skymodel", f"{root}-term-0.fits"
 
 
 def _draw_model_output_root(output_image: str) -> str:
     return _FITS_SUFFIX.sub("", output_image)
 
 
-def _expose_wsclean_term_model(output_root: str, output_image: str) -> None:
-    root = Path(output_root)
-    term_model = root.with_name(f"{root.name}-term-0.fits")
+def _expose_wsclean_term_model(term_model: str, output_image: str) -> None:
     require_file(str(term_model), "WSClean mosaic model image")
 
     output_path = Path(output_image)

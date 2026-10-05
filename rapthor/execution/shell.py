@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -22,6 +22,7 @@ from typing import Mapping, Optional
 from rapthor.execution.commands import CommandInput, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.environments import EnvironmentOverrides
+from rapthor.execution.scratch import task_temporary_directory, temporary_environment
 from rapthor.execution.task_metrics import current_prefect_task_metadata
 
 
@@ -110,7 +111,33 @@ def run_shell_command(
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ):
-    """Execute one command using the configured Prefect shell runner."""
+    """Execute a command with worker-owned scratch and child-only temp variables.
+
+    Commands that specify TMPDIR own their temporary storage, including WSClean
+    and PyBDSF. Other commands receive an isolated local scratch directory.
+    """
+    if "TMPDIR" in shell_command.environment:
+        return _run_shell_command(shell_command, execution_config, shell_operation_cls)
+    with task_temporary_directory(
+        execution_config, name=shell_command.name or "command"
+    ) as temporary_directory:
+        if temporary_directory is not None:
+            shell_command = replace(
+                shell_command,
+                environment={
+                    **temporary_environment(temporary_directory),
+                    **shell_command.environment,
+                },
+            )
+        return _run_shell_command(shell_command, execution_config, shell_operation_cls)
+
+
+def _run_shell_command(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+):
+    """Run and record one command while its temporary directory is available."""
     started_at = datetime.now(timezone.utc)
     start_time = time.monotonic()
     status = "completed"

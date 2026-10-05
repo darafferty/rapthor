@@ -6,6 +6,7 @@ from typing import Mapping, Optional
 from rapthor.execution.commands import (
     append_flag,
     append_key_value,
+    append_option_values,
     bracketed_list_token,
     comma_join,
     python_module_command,
@@ -192,6 +193,7 @@ class WscleanPredictOptions:
     model_storage_manager: str
     num_threads: int
     apply_time_frequency_smearing: bool = False
+    temp_dir: Optional[str] = None
 
 
 def build_calibration_solve_command(options: CalibrationSolveOptions) -> list[str]:
@@ -277,6 +279,7 @@ def build_wsclean_predict_command(options: WscleanPredictOptions) -> list[str]:
         "-apply-time-frequency-smearing",
         options.apply_time_frequency_smearing,
     )
+    append_option_values(command, [("-temp-dir", options.temp_dir)])
     command.extend(
         [
             "-model-column",

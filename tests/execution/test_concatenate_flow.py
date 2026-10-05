@@ -125,7 +125,6 @@ def _operation_parset(tmp_path):
             "batch_system": "single_machine",
             "cpus_per_task": 1,
             "mem_per_node_gb": 0,
-            "dir_local": None,
             "local_scratch_dir": None,
             "global_scratch_dir": None,
             "use_container": False,

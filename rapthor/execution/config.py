@@ -42,7 +42,7 @@ class ExecutionConfig:
     container_type: Optional[str] = None
     local_scratch_dir: Optional[str] = None
     global_scratch_dir: Optional[str] = None
-    deprecated_dir_local: Optional[str] = None
+    keep_temporary_files: bool = False
 
     @classmethod
     def from_parset(cls, parset: Mapping[str, Any]) -> "ExecutionConfig":
@@ -125,14 +125,22 @@ class ExecutionConfig:
             ),
             use_container=_as_bool(cluster.get("use_container", False), "use_container"),
             container_type=_optional_str(cluster.get("container_type")),
+            # Node-local paths may contain variables available only on workers.
             local_scratch_dir=_optional_str(cluster.get("local_scratch_dir")),
-            global_scratch_dir=_optional_str(cluster.get("global_scratch_dir")),
-            deprecated_dir_local=_optional_str(cluster.get("dir_local")),
+            global_scratch_dir=_optional_path(cluster.get("global_scratch_dir")),
+            keep_temporary_files=(
+                _as_bool(cluster.get("keep_temporary_files", False), "keep_temporary_files")
+                or _as_bool(cluster.get("debug_workflow", False), "debug_workflow")
+            ),
         )
 
     def resolved_dask_scheduler(self, environ: Optional[Mapping[str, str]] = None) -> Optional[str]:
         """Return the configured Dask scheduler, including environment fallback."""
         return self.dask_scheduler or dask_scheduler_from_environment(environ)
+
+    def resolved_local_scratch_dir(self) -> Optional[str]:
+        """Resolve node-local scratch on the host that will use it."""
+        return _optional_path(self.local_scratch_dir)
 
     @property
     def local_dask_worker_count(self) -> int:
@@ -178,6 +186,14 @@ def _optional_str(value: Any) -> Optional[str]:
     if value in (None, "", "None"):
         return None
     return str(value)
+
+
+def _optional_path(value: Any) -> Optional[str]:
+    """Expand and normalize an optional filesystem path."""
+    path = _optional_str(value)
+    if path is None:
+        return None
+    return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
 
 
 def _as_bool(value: Any, name: str) -> bool:

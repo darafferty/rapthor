@@ -23,7 +23,6 @@ from rapthor.execution.image.commands import (
 from rapthor.execution.image.outputs import mfs_non_pb_image_patterns, mfs_pb_image_patterns
 from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import (
-    cleanup_directory,
     first_existing_file,
     optional_first_existing_file,
     require_file,
@@ -32,6 +31,7 @@ from rapthor.execution.resources import (
     ResourceRequest,
     validate_resource_request,
 )
+from rapthor.execution.scratch import task_temporary_directory, temporary_environment
 from rapthor.execution.shell import run_external_command
 
 
@@ -61,22 +61,23 @@ def run_or_reuse_wsclean_images(
     if sector["apply_screens"]:
         _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
 
-    temp_dir = os.path.join(pipeline_working_dir, f"{image_name}_wsclean_tmp")
-    wsclean_command = _select_wsclean_command_for_sector(
-        sector, concat_record, mask_record, region_record, temp_dir
-    )
     environment = _wsclean_environment_for_sector(sector, execution_config)
-    try:
-        os.makedirs(temp_dir, exist_ok=True)
+    with task_temporary_directory(
+        execution_config,
+        name=f"{image_name}_wsclean",
+        use_mpi=bool(sector["use_mpi"]),
+        fallback_path=os.path.join(pipeline_working_dir, f"{image_name}_wsclean_tmp"),
+    ) as temp_dir:
+        wsclean_command = _select_wsclean_command_for_sector(
+            sector, concat_record, mask_record, region_record, str(temp_dir)
+        )
         run_external_command(
             wsclean_command,
             pipeline_working_dir,
             execution_config,
             shell_operation_cls=shell_operation_cls,
-            environment=environment,
+            environment={**environment, **temporary_environment(str(temp_dir))},
         )
-    finally:
-        cleanup_directory(temp_dir)
 
     return (
         first_existing_file(nonpb_image_patterns, "WSClean non-PB image"),

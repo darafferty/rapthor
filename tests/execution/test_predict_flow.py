@@ -271,7 +271,6 @@ def _operation_parset(tmp_path):
             "batch_system": "single_machine",
             "cpus_per_task": 1,
             "mem_per_node_gb": 0,
-            "dir_local": None,
             "local_scratch_dir": None,
             "global_scratch_dir": None,
             "use_container": False,
@@ -673,6 +672,62 @@ def test_run_predict_flow_rejects_invalid_prediction_directions(
     assert fake_predict_shell_operation_cls.instances == []
 
 
+@pytest.mark.parametrize("mode", ["di", "dd"])
+@pytest.mark.parametrize("keep_temporary_files", [False, True])
+def test_predict_flow_removes_modeldata_only_after_postprocessing_succeeds(
+    tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode, keep_temporary_files
+):
+    input_parms = _predict_input_parms() if mode == "di" else _dd_predict_input_parms()
+    if mode == "dd":
+        input_parms.update(nr_bright=1, peel_bright=True)
+    inputs = [tmp_path / Path(record["path"]).name for record in input_parms["obs_filename"]]
+    reference = tmp_path / "reference_modeldata"
+    for path in inputs + [reference]:
+        path.mkdir()
+        (path / "table.dat").write_text("preserve")
+    input_parms["sector_filename"] = [directory_record(path) for path in inputs]
+    input_parms["obs_filename"] = [directory_record(path) for path in inputs]
+    payload = predict_payload_from_inputs(mode, input_parms, tmp_path)
+    helper_name = "add_sector_models" if mode == "di" else "subtract_sector_models"
+    postprocess = getattr(predict_module, helper_name)
+    consumed_models = []
+    bright_peel_intermediates = []
+
+    def check_models_survive_until_all_postprocessing_finishes(msin, models, **kwargs):
+        assert all(Path(path).is_dir() for path in consumed_models + list(models))
+        postprocess(msin, models, **kwargs)
+        consumed_models.extend(models)
+        if mode == "dd":
+            infix = kwargs["infix"]
+            root = Path(msin).name
+            if kwargs["peel_outliers"] and kwargs["nr_outliers"] > 0:
+                root = f"{root}{infix}_field"
+            intermediate = Path(kwargs["output_dir"]) / f"{root}{infix}_field_no_bright"
+            intermediate.mkdir()
+            bright_peel_intermediates.append(intermediate)
+
+    monkeypatch.setattr(
+        predict_module, helper_name, check_models_survive_until_all_postprocessing_finishes
+    )
+    outputs = run_flow_for_test(
+        predict_flow,
+        payload,
+        execution_config=ExecutionConfig(
+            task_runner="sync", keep_temporary_files=keep_temporary_files
+        ),
+        shell_operation_cls=fake_predict_shell_operation_cls,
+    )
+
+    assert len(consumed_models) == 2
+    assert all(Path(path).exists() is keep_temporary_files for path in consumed_models)
+    assert len(bright_peel_intermediates) == (2 if mode == "dd" else 0)
+    assert all(path.exists() is keep_temporary_files for path in bright_peel_intermediates)
+    for records in next(iter(outputs.values())):
+        assert records
+        assert all(Path(record["path"]).is_dir() for record in records)
+    assert all((path / "table.dat").read_text() == "preserve" for path in inputs + [reference])
+
+
 def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
     tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
@@ -800,14 +855,20 @@ def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
         )
 
 
+@pytest.mark.parametrize("mode", ["di", "dd"])
 def test_run_predict_flow_fails_when_postprocess_output_is_missing(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+    tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode
 ):
-    def skip_add_sector_models(*args, **kwargs):
-        return None
+    helper_name = "add_sector_models" if mode == "di" else "subtract_sector_models"
+    postprocess = getattr(predict_module, helper_name)
 
-    monkeypatch.setattr(predict_module, "add_sector_models", skip_add_sector_models)
-    payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
+    def skip_second_observation(msin, models, **kwargs):
+        if Path(msin).name == "obs_0.ms":
+            postprocess(msin, models, **kwargs)
+
+    monkeypatch.setattr(predict_module, helper_name, skip_second_observation)
+    input_parms = _predict_input_parms() if mode == "di" else _dd_predict_input_parms()
+    payload = predict_payload_from_inputs(mode, input_parms, tmp_path)
 
     with pytest.raises(FileNotFoundError, match="post-processing outputs"):
         run_flow_for_test(
@@ -816,6 +877,10 @@ def test_run_predict_flow_fails_when_postprocess_output_is_missing(
             execution_config=ExecutionConfig(task_runner="sync"),
             shell_operation_cls=fake_predict_shell_operation_cls,
         )
+
+    assert all(Path(task["msout_path"]).is_dir() for task in payload["predict_tasks"])
+    first_output = "obs_0.ms.sector_1_di.ms" if mode == "di" else "obs_0.ms.sector_1"
+    assert (tmp_path / first_output).is_dir()
 
 
 def test_predict_reference_output_fixtures_match_output_contract():

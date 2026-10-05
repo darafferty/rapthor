@@ -145,7 +145,8 @@ def fake_calibrate_shell_operation_cls():
                 return "OK"
             if tokens[0] == "DP3":
                 for token in tokens:
-                    if token.startswith("solve") and ".h5parm=" in token:
+                    key = token.partition("=")[0]
+                    if key.startswith("solve") and key.split(".")[1:] == ["h5parm"]:
                         output_path = cwd / token.split("=", 1)[1]
                         output_path.write_text("h5parm")
                 return "OK"
@@ -346,7 +347,6 @@ class CalibrateFieldStub:
                 "batch_system": "single_machine",
                 "cpus_per_task": 1,
                 "mem_per_node_gb": 0,
-                "dir_local": None,
                 "local_scratch_dir": None,
                 "global_scratch_dir": None,
                 "use_container": False,
@@ -2308,9 +2308,15 @@ def test_run_plot_solutions_publishes_new_plot_artifacts(
 
 
 def test_run_calibrate_flow_supports_di_fulljones(
-    tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
+    tmp_path,
+    fake_calibrate_shell_operation_cls,
+    fake_direct_calibrate_helpers,
 ):
-    payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
+    input_parms = _use_local_timechunk_dirs(_di_fulljones_input_parms(), tmp_path)
+    seed = tmp_path / "previous_fulljones_0.h5parm"
+    seed.write_text("seed")
+    input_parms["solve1_initialsolutions_h5parm"] = file_record(seed)
+    payload = calibrate_payload_from_inputs("di", input_parms, tmp_path)
 
     outputs = run_flow_for_test(
         calibrate_flow,
@@ -2327,6 +2333,12 @@ def test_run_calibrate_flow_supports_di_fulljones(
     }
     for value in outputs.values():
         validate_output_record(value)
+    assert Path(expected_solution["path"]).is_file()
+    assert (tmp_path / "fulljones_phase_solutions.png").is_file()
+    for index in range(2):
+        assert not (tmp_path / f"fulljones_gain_{index}.h5parm").exists()
+        assert (tmp_path / f"input_chunk_{index}.ms").is_dir()
+    assert seed.read_text() == "seed"
 
     commands = [
         shlex.split(instance.kwargs["commands"][-1])
@@ -2766,9 +2778,10 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
     assert outputs["combined_solutions"] == file_record(
         tmp_path / "combined_fast_medium1_phases.h5parm"
     )
-    assert (tmp_path / "calibration_model-term-0.fits").is_file()
-    assert (tmp_path / "calibration_model-term-1.fits").is_file()
-    assert (tmp_path / "field_facets_ds9.reg").is_file()
+    assert Path(outputs["combined_solutions"]["path"]).is_file()
+    assert not (tmp_path / "calibration_model-term-0.fits").exists()
+    assert not (tmp_path / "calibration_model-term-1.fits").exists()
+    assert not (tmp_path / "field_facets_ds9.reg").exists()
 
     commands = [
         shlex.split(instance.kwargs["commands"][-1])
@@ -2810,10 +2823,12 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
     assert not any(token.startswith("solve1.directions=") for token in commands[1])
 
 
+@pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_calibrate_flow_supports_dd_wsclean_predict(
     tmp_path,
     fake_calibrate_shell_operation_cls,
     fake_direct_calibrate_helpers,
+    keep_temporary_files,
 ):
     input_parms = _use_local_timechunk_dirs(_dd_wsclean_predict_input_parms(), tmp_path)
     payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
@@ -2821,18 +2836,26 @@ def test_run_calibrate_flow_supports_dd_wsclean_predict(
     outputs = run_flow_for_test(
         calibrate_flow,
         payload,
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(
+            task_runner="sync", keep_temporary_files=keep_temporary_files
+        ),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
     )
 
     assert outputs["combined_solutions"] == file_record(
         tmp_path / "combined_fast_medium1_phases.h5parm"
     )
-    assert (tmp_path / "predict_field_facets_ds9.reg").is_file()
-    assert (tmp_path / "wsclean_predict_chunk_1_band_1-term-0.fits").is_file()
-    assert (tmp_path / "wsclean_predict_chunk_1_band_1-model.fits").is_file()
-    assert (tmp_path / "input_chunk_0_wsclean_predict_1.ms").is_dir()
-    assert (tmp_path / "input_chunk_1_wsclean_predict_2.ms").is_dir()
+    assert Path(outputs["combined_solutions"]["path"]).is_file()
+    assert (tmp_path / "predict_field_facets_ds9.reg").exists() is keep_temporary_files
+    for index in range(2):
+        root = f"wsclean_predict_chunk_{index + 1}_band_1"
+        assert (tmp_path / f"{root}-term-0.fits").exists() is keep_temporary_files
+        model_link = tmp_path / f"{root}-model.fits"
+        assert (model_link.exists() or model_link.is_symlink()) is keep_temporary_files
+        assert (
+            tmp_path / f"input_chunk_{index}_wsclean_predict_{index + 1}.ms"
+        ).exists() is keep_temporary_files
+        assert (tmp_path / f"input_chunk_{index}.ms").is_dir()
     assert fake_direct_calibrate_helpers["patch_names_from_region"] == [
         str(tmp_path / "predict_field_facets_ds9.reg")
     ]
@@ -2882,23 +2905,29 @@ def test_run_calibrate_flow_supports_dd_wsclean_predict(
     assert "solve2.reusemodel=[solve1.*]" not in solve_command
 
 
+@pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_calibrate_flow_supports_dd_screen_generation(
-    tmp_path, fake_calibrate_shell_operation_cls
+    tmp_path, fake_calibrate_shell_operation_cls, keep_temporary_files
 ):
     payload = calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
         calibrate_flow,
         payload,
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(
+            task_runner="sync", keep_temporary_files=keep_temporary_files
+        ),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
     )
 
     assert outputs == {"combined_solutions": file_record(tmp_path / "combined_solutions.h5")}
     validate_output_record(outputs["combined_solutions"])
-    assert (tmp_path / "calibration_model-term-0.fits").is_file()
-    assert (tmp_path / "calibration_model-term-1.fits").is_file()
-    assert (tmp_path / "field_facets_ds9.reg").is_file()
+    assert Path(outputs["combined_solutions"]["path"]).is_file()
+    assert (tmp_path / "calibration_model-term-0.fits").exists() is keep_temporary_files
+    assert (tmp_path / "calibration_model-term-1.fits").exists() is keep_temporary_files
+    assert (tmp_path / "field_facets_ds9.reg").exists() is keep_temporary_files
+    for index in range(2):
+        assert (tmp_path / f"idgcal_{index}").exists() is keep_temporary_files
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == [
@@ -2943,6 +2972,61 @@ def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
     assert "solve.polynomialdegamplitude=2" in commands[1]
     assert "solve.solintphase=3" in commands[1]
     assert "solve.solintamplitude=11" in commands[1]
+
+
+@pytest.mark.parametrize(
+    "mode,input_factory",
+    [
+        ("di", _di_fulljones_input_parms),
+        ("dd", _dd_image_predict_input_parms),
+        ("dd", _dd_wsclean_predict_input_parms),
+        ("dd", _dd_screen_input_parms),
+    ],
+    ids=["normal", "image-predict", "wsclean-predict", "screens"],
+)
+def test_run_calibrate_flow_retains_intermediates_on_late_failure(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls, mode, input_factory
+):
+    input_parms = _use_local_timechunk_dirs(input_factory(), tmp_path)
+    payload = calibrate_payload_from_inputs(mode, input_parms, tmp_path)
+    finalizer_name = (
+        "collect_screen_solutions"
+        if payload["calibration_kind"] == "dd_screen"
+        else "finalize_processed_solution_products"
+    )
+    finalize = getattr(calibrate_module, finalizer_name)
+
+    def fail_after_final_outputs(*args, **kwargs):
+        finalize(*args, **kwargs)
+        raise RuntimeError("calibration finalization failed")
+
+    monkeypatch.setattr(calibrate_module, finalizer_name, fail_after_final_outputs)
+
+    with pytest.raises(RuntimeError, match="calibration finalization failed"):
+        run_flow_for_test(
+            calibrate_flow,
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_calibrate_shell_operation_cls,
+        )
+
+    for chunk in payload["chunks"]:
+        assert Path(chunk["msin"]).is_dir()
+        if "solve_slots" in chunk:
+            for slot in chunk["solve_slots"]:
+                assert Path(slot["h5parm_path"]).is_file()
+        else:
+            assert Path(chunk["output_h5parm_path"]).is_file()
+    if payload.get("image_predict"):
+        assert Path(payload["image_predict"]["facet_region_path"]).is_file()
+        if payload["image_based_predict"]:
+            assert all(Path(path).is_file() for path in payload["image_predict"]["model_images"])
+        else:
+            for index in range(2):
+                root = f"wsclean_predict_chunk_{index + 1}_band_1"
+                assert (tmp_path / f"{root}-term-0.fits").is_file()
+                assert (tmp_path / f"{root}-model.fits").is_file()
+                assert (tmp_path / f"input_chunk_{index}_wsclean_predict_{index + 1}.ms").is_dir()
 
 
 def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
@@ -2994,9 +3078,11 @@ def test_run_calibrate_flow_fails_when_image_predict_region_is_missing(
 def test_run_calibrate_flow_supports_dd_image_predict_preapply(
     tmp_path, fake_calibrate_shell_operation_cls
 ):
+    normalization = tmp_path / "normalize_solutions.h5"
+    normalization.write_text("normalization input")
     payload = calibrate_payload_from_inputs(
         "dd",
-        _dd_image_predict_preapply_input_parms(tmp_path / "normalize_solutions.h5"),
+        _dd_image_predict_preapply_input_parms(normalization),
         tmp_path,
     )
 
@@ -3010,6 +3096,7 @@ def test_run_calibrate_flow_supports_dd_image_predict_preapply(
     assert outputs["combined_solutions"] == file_record(
         tmp_path / "combined_fast_medium1_phases.h5parm"
     )
+    assert normalization.read_text() == "adjusted"
     commands = [
         shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_calibrate_shell_operation_cls.instances
@@ -3048,13 +3135,18 @@ def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
     assert fake_direct_calibrate_helpers["adjust_h5parm_sources"] == []
 
 
-def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell_operation_cls):
+@pytest.mark.parametrize("keep_temporary_files", [False, True])
+def test_run_calibrate_flow_supports_dd_with_slow(
+    tmp_path, fake_calibrate_shell_operation_cls, keep_temporary_files
+):
     payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
         calibrate_flow,
         payload,
-        execution_config=ExecutionConfig(task_runner="sync"),
+        execution_config=ExecutionConfig(
+            task_runner="sync", keep_temporary_files=keep_temporary_files
+        ),
         shell_operation_cls=fake_calibrate_shell_operation_cls,
     )
 
@@ -3072,6 +3164,13 @@ def test_run_calibrate_flow_supports_dd_with_slow(tmp_path, fake_calibrate_shell
     }
     for value in outputs.values():
         validate_output_record(value)
+        for record in value if isinstance(value, list) else [value]:
+            assert Path(record["path"]).is_file()
+    for filename in (
+        "combined_fast_medium1_phases.h5parm",
+        "combined_fast_medium1_medium2_phases.h5parm",
+    ):
+        assert (tmp_path / filename).exists() is keep_temporary_files
 
     commands = [
         shlex.split(instance.kwargs["commands"][-1])
@@ -3543,8 +3642,8 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
     pipeline_dir = Path(operation.pipeline_working_dir)
 
     assert operation.outputs == expected_outputs
-    assert (pipeline_dir / "calibration_model-term-0.fits").is_file()
-    assert (pipeline_dir / "field_facets_ds9.reg").is_file()
+    assert not (pipeline_dir / "calibration_model-term-0.fits").exists()
+    assert not (pipeline_dir / "field_facets_ds9.reg").exists()
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert [command[0] for command in commands][:2] == ["wsclean", "DP3"]
     assert commands[0][1:] == [
@@ -3614,8 +3713,8 @@ def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
     assert field.dd_h5parm_filename == str(solutions_dir / "field-solutions.h5")
     assert (solutions_dir / "field-solutions.h5").read_text() == "screens"
     assert not (solutions_dir / "field-solutions-fast-phase.h5").exists()
-    assert (pipeline_dir / "calibration_model-term-0.fits").is_file()
-    assert (pipeline_dir / "field_facets_ds9.reg").is_file()
+    assert not (pipeline_dir / "calibration_model-term-0.fits").exists()
+    assert not (pipeline_dir / "field_facets_ds9.reg").exists()
     assert flagged_calls == [(field.h5parm_filename, {"solsetname": "coefficients000"})]
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     assert field.scan_h5parms_calls == 1

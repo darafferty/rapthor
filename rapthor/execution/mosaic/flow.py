@@ -17,9 +17,12 @@ from rapthor.execution.mosaic.images import (
     regrid_image,
     regrid_sparse_model_image,
 )
-from rapthor.execution.mosaic.model_rendering import render_model_mosaic_with_wsclean
+from rapthor.execution.mosaic.model_rendering import (
+    model_mosaic_intermediate_paths,
+    render_model_mosaic_with_wsclean,
+)
 from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mosaic_payload
-from rapthor.execution.outputs import require_file
+from rapthor.execution.outputs import cleanup_intermediate_outputs, require_file
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
@@ -90,7 +93,32 @@ def _run_mosaic_prefect_tasks(
         for index, mosaic_product in enumerate(payload["mosaic_products"])
     ]
     outputs = [output.result() for output in outputs]
-    return _result_from_mosaic_records(outputs)
+    result = _result_from_mosaic_records(outputs)
+    if not config.keep_temporary_files:
+        paths = [template_record.result()["path"]]
+        inputs = []
+        for product in payload["mosaic_products"]:
+            paths.append(product["mosaic_path"])
+            paths.extend(
+                _work_path(payload["pipeline_working_dir"], name)
+                for name in product["regridded_image_filenames"]
+            )
+            for key in (
+                "sector_image_filenames",
+                "sector_vertices_filenames",
+                "sector_model_skymodel_filenames",
+            ):
+                inputs.extend(
+                    _work_path(payload["pipeline_working_dir"], name) for name in product[key] or []
+                )
+            if product["sector_model_skymodel_filenames"] and is_sparse_model_product(
+                product["mosaic_filename"]
+            ):
+                paths.extend(model_mosaic_intermediate_paths(product["mosaic_path"]))
+        cleanup_intermediate_outputs(
+            paths, payload["pipeline_working_dir"], result, input_paths=inputs
+        )
+    return result
 
 
 @task(name="make_mosaic_template")

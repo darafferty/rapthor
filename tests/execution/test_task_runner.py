@@ -97,6 +97,35 @@ class FakeTagContext:
         self.calls.append(("exit", self.tags))
 
 
+def test_run_flow_with_task_runner_routes_shared_workspace(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    workdir = tmp_path / "pipelines" / "image_1"
+    scratch = tmp_path / "scratch"
+    config = ExecutionConfig(task_runner="sync", global_scratch_dir=str(scratch))
+    payload = {"pipeline_working_dir": str(workdir)}
+
+    class WritingFlow(FakeFlow):
+        def __call__(self, payload_arg, *, execution_config):
+            assert payload_arg is payload
+            assert execution_config is config
+            assert workdir.is_symlink()
+            assert workdir.resolve().is_relative_to(scratch)
+            output = workdir / "result.fits"
+            output.write_text("image")
+            return {"result": {"class": "File", "path": str(output)}}
+
+        def with_options(self, **kwargs):
+            return self
+
+    monkeypatch.setattr("rapthor.execution.task_runner.build_task_runner", lambda config: object())
+    result = run_flow_with_task_runner(WritingFlow(), payload, execution_config=config)
+
+    assert not workdir.is_symlink()
+    assert Path(result["result"]["path"]).read_text() == "image"
+    assert list(scratch.iterdir()) == []
+
+
 def test_sync_task_runner_uses_single_worker_thread_pool():
     runner = build_task_runner(
         ExecutionConfig(task_runner="sync"),
@@ -142,6 +171,12 @@ def test_local_cluster_kwargs_include_dashboard_address():
         "processes": True,
         "dashboard_address": ":8787",
     }
+
+
+def test_local_dask_spill_directory_resolves_local_scratch(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAPTHOR_WORKER_SCRATCH", str(tmp_path / "node-local"))
+    config = ExecutionConfig(local_scratch_dir="$RAPTHOR_WORKER_SCRATCH")
+    assert local_cluster_kwargs(config)["local_directory"] == str(tmp_path / "node-local")
 
 
 def test_start_local_dask_cluster_returns_managed_handle():

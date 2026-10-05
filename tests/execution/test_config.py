@@ -33,6 +33,7 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
     assert config.batch_system == "single_machine"
     assert config.fail_on_calibration_oom_risk is False
     assert config.local_scratch_dir is None
+    assert config.keep_temporary_files is False
 
 
 def test_execution_config_reads_cluster_specific_values():
@@ -64,7 +65,6 @@ def test_execution_config_reads_cluster_specific_values():
                 "container_type": "singularity",
                 "local_scratch_dir": "/local",
                 "global_scratch_dir": "/shared",
-                "dir_local": "/deprecated",
             }
         }
     )
@@ -94,7 +94,6 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.container_type == "singularity"
     assert config.local_scratch_dir == "/local"
     assert config.global_scratch_dir == "/shared"
-    assert config.deprecated_dir_local == "/deprecated"
 
 
 def test_execution_config_rejects_invalid_calibration_oom_policy():
@@ -181,10 +180,30 @@ def test_execution_config_prefers_parset_prefect_api_url_over_environment(monkey
     assert config.prefect_api_url == "http://prefect-parset:4200/api"
 
 
-def test_execution_config_uses_deprecated_dir_local_as_scratch_fallback():
-    config = ExecutionConfig.from_parset({"cluster_specific": {"dir_local": "/tmp/rapthor"}})
+@pytest.mark.parametrize("keep, debug", [(False, False), (True, False), (False, True)])
+def test_execution_config_preserves_temporary_files_in_debug_mode(keep, debug):
+    config = ExecutionConfig.from_parset(
+        {"cluster_specific": {"keep_temporary_files": keep, "debug_workflow": debug}}
+    )
 
-    assert config.deprecated_dir_local == "/tmp/rapthor"
+    assert config.keep_temporary_files is (keep or debug)
+
+
+@pytest.mark.parametrize("local_path", ["local", "~/rapthor-scratch", "$RAPTHOR_WORKER_SCRATCH"])
+def test_execution_config_resolves_only_shared_scratch_on_driver(tmp_path, monkeypatch, local_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("RAPTHOR_TEST_SCRATCH_ROOT", str(tmp_path / "shared"))
+    config = ExecutionConfig.from_parset(
+        {
+            "cluster_specific": {
+                "local_scratch_dir": local_path,
+                "global_scratch_dir": "$RAPTHOR_TEST_SCRATCH_ROOT",
+            }
+        }
+    )
+
+    assert config.local_scratch_dir == local_path
+    assert config.global_scratch_dir == str(tmp_path / "shared")
 
 
 def test_execution_config_exposes_effective_local_dask_capacity():

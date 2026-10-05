@@ -18,11 +18,33 @@ from rapthor.execution.calibrate.payloads import CalibrateImagePredictPayload, C
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.outputs import require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel
+from rapthor.execution.scratch import task_temporary_directory, temporary_environment
 from rapthor.execution.shell import run_external_command
 from rapthor.lib.records import file_record
 
 WSCLEAN_PREDICT_MAX_BANDWIDTH_HZ = 2.0e6
 WSCLEAN_MODEL_STORAGE_MANAGER = "default"
+WSCLEAN_PREDICT_MODEL_ROOT = "wsclean_predict_chunk_{chunk}_band_{band}"
+
+
+def prediction_intermediate_paths(original_payload: Mapping, payload: Mapping) -> list:
+    """List the prediction products owned by this calibration workflow."""
+    image_predict = payload.get("image_predict")
+    if not image_predict or not (
+        payload.get("image_based_predict") or payload.get("wsclean_predict")
+    ):
+        return []
+    paths = [image_predict["facet_region_path"]]
+    if payload.get("image_based_predict"):
+        paths.extend(payload["predict_images"])
+    if payload.get("wsclean_predict"):
+        root = Path(payload["pipeline_working_dir"])
+        for index, chunk in enumerate(payload["chunks"]):
+            if chunk["msin"] != original_payload["chunks"][index]["msin"]:
+                paths.append(chunk["msin"])
+            pattern = WSCLEAN_PREDICT_MODEL_ROOT.format(chunk=index + 1, band="*")
+            paths.extend(root.glob(f"{pattern}-*.fits"))
+    return paths
 
 
 def prepare_image_based_predict(
@@ -194,7 +216,7 @@ def _run_wsclean_predict_for_chunk(
     for frequency_index, frequency_chunk in enumerate(frequency_chunks):
         model_root = os.path.join(
             pipeline_dir,
-            f"wsclean_predict_chunk_{chunk_index + 1}_band_{frequency_index + 1}",
+            WSCLEAN_PREDICT_MODEL_ROOT.format(chunk=chunk_index + 1, band=frequency_index + 1),
         )
         draw_command = build_draw_model_command(
             _wsclean_draw_model_options(
@@ -213,25 +235,31 @@ def _run_wsclean_predict_for_chunk(
         _ensure_wsclean_model_fits(model_root)
 
         for patch_name in patch_names:
-            predict_command = build_wsclean_predict_command(
-                WscleanPredictOptions(
-                    msin=copied_msin,
-                    region_file=str(image_predict["facet_region_path"]),
-                    model_column=str(patch_name),
-                    facet=str(patch_name),
-                    model_root=model_root,
-                    channel_range=frequency_chunk["channel_range"],
-                    model_storage_manager=WSCLEAN_MODEL_STORAGE_MANAGER,
-                    num_threads=int(payload["max_threads"]),
-                    apply_time_frequency_smearing=time_frequency_smearing,
-                )
-            )
-            run_external_command(
-                predict_command,
-                pipeline_dir,
+            with task_temporary_directory(
                 execution_config,
-                shell_operation_cls=shell_operation_cls,
-            )
+                name=f"wsclean-predict-{chunk_index + 1}-{frequency_index + 1}-{patch_name}",
+            ) as temp_dir:
+                predict_command = build_wsclean_predict_command(
+                    WscleanPredictOptions(
+                        msin=copied_msin,
+                        region_file=str(image_predict["facet_region_path"]),
+                        model_column=str(patch_name),
+                        facet=str(patch_name),
+                        model_root=model_root,
+                        channel_range=frequency_chunk["channel_range"],
+                        model_storage_manager=WSCLEAN_MODEL_STORAGE_MANAGER,
+                        num_threads=int(payload["max_threads"]),
+                        apply_time_frequency_smearing=time_frequency_smearing,
+                        temp_dir=temp_dir,
+                    )
+                )
+                run_external_command(
+                    predict_command,
+                    pipeline_dir,
+                    execution_config,
+                    shell_operation_cls=shell_operation_cls,
+                    environment=temporary_environment(temp_dir) if temp_dir is not None else None,
+                )
 
     return copied_msin
 

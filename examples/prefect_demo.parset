@@ -9,7 +9,7 @@
 # Measurement Set path if that fixture is not present in your checkout.
 
 [global]
-dir_working = prefect-demo-work-1
+dir_working = prefect-demo-work-3
 input_ms = tests/resources/test.ms
 data_colname = DATA
 generate_initial_skymodel = False
@@ -65,8 +65,8 @@ max_cores = 4
 max_threads = 4
 deconvolution_threads = 2
 parallel_gridding_tasks = 1
-local_scratch_dir =
-global_scratch_dir =
+local_scratch_dir = /tmp/prefect_demo_local_scratch
+global_scratch_dir = /tmp/prefect_demo_global_scratch
 use_container = False
 container_type = docker
 prefect_task_runner = local_dask
@@ -84,3 +84,4 @@ prefect_fits_preview_clip_percentile = 99.9
 debug_workflow = False
 keep_temporary_files = False
 allow_internet_access = False
+
