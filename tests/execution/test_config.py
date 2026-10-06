@@ -236,9 +236,17 @@ def test_execution_config_rejects_invalid_prefect_api_mode():
         ExecutionConfig.from_parset({"cluster_specific": {"prefect_api_mode": "always"}})
 
 
-def test_execution_config_rejects_invalid_command_profile():
+@pytest.mark.parametrize("mode", ["auto", "time", "off"])
+def test_execution_config_accepts_command_profile_modes(mode):
+    config = ExecutionConfig.from_parset({"cluster_specific": {"prefect_command_profile": mode}})
+
+    assert config.command_profile == mode
+
+
+@pytest.mark.parametrize("mode", ["always", "perf"])
+def test_execution_config_rejects_invalid_command_profile(mode):
     with pytest.raises(ValueError, match="prefect_command_profile"):
-        ExecutionConfig.from_parset({"cluster_specific": {"prefect_command_profile": "always"}})
+        ExecutionConfig.from_parset({"cluster_specific": {"prefect_command_profile": mode}})
 
 
 def test_execution_config_treats_none_command_profile_as_auto():

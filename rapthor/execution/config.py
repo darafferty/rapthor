@@ -7,7 +7,7 @@ from typing import Any, Mapping, Optional
 from rapthor.execution.run_names import task_tags
 
 TASK_RUNNERS = ("local_dask", "external_dask", "sync")
-COMMAND_PROFILE_MODES = ("auto", "time", "perf", "off")
+COMMAND_PROFILE_MODES = ("auto", "time", "off")
 PREFECT_API_MODES = ("auto", "external", "ephemeral")
 DASK_SCHEDULER_ENV = "DASK_SCHEDULER"
 PREFECT_API_URL_ENV = "PREFECT_API_URL"

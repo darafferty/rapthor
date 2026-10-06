@@ -1007,14 +1007,11 @@ for how these options are used.
 
     prefect_command_profile
         Sets how the resource use of each command is measured: ``auto``,
-        ``time``, ``perf``, or ``off`` (default = ``auto``). If ``auto`` or
+        ``time``, or ``off`` (default = ``auto``). If ``auto`` or
         ``time``, the CPU time, memory use, and disk I/O of each command are
         recorded in ``dir_working/logs/commands.jsonl``, using
-        ``/usr/bin/time`` when it is available. If ``perf``, each command is
-        also run under the Linux ``perf`` profiler and flame graphs are
-        written to ``dir_working/logs/profiles``; this mode is intended for
-        developers and requires that the system allows the use of ``perf``. If
-        ``off``, only the run time of each command is recorded.
+        ``/usr/bin/time`` when it is available. If ``off``, only the run time
+        of each command is recorded.
 
     prefect_publish_fits_previews
         Make PNG previews of the images and show them in the Prefect dashboard
