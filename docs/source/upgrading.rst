@@ -89,6 +89,62 @@ replacement. A cycle that sets both one of these parameters and
 wanted.
 
 
+.. _migration_behavior_differences:
+
+Processing and output differences
+---------------------------------
+
+The following differences from the version 2 CWL workflows are intentional:
+
+Calibration carried between cycles
+    After a new calibration step, imaging uses the active cycle's solutions.
+    In particular, a DD-only cycle does not silently apply a DI full-Jones
+    solution from an earlier cycle. Explicit image-only cycles can reuse
+    compatible previous solutions.
+
+    Earlier solutions can still seed the same solve in the same calibration
+    mode. DD seeds need not have the same direction names or count: DP3 uses
+    the nearest h5parm direction for each new direction. Seeding the optimizer
+    does not apply those solutions as corrections to the data.
+
+    Related documentation: :ref:`calibration_strategy_details`.
+
+Slow-gain amplitudes
+    The combined ``field-solutions.h5`` retains the slow-gain amplitudes when
+    those solves were requested. The old CWL combination path could report
+    success while leaving only phase solutions in the combined product.
+
+    Related documentation: :ref:`calibrate` lists the individual and combined
+    solution products.
+
+WSClean prediction channels
+    With :term:`use_wsclean_predict`, prediction covers every requested channel,
+    including the last channel of each frequency chunk. The ``-channel-range``
+    end index is exclusive; the old path could omit that last channel.
+
+    Related documentation: :term:`wsclean_predict_bw` controls prediction
+    frequency grouping.
+
+Output records
+    File and directory entries in the operation's JSON output records contain
+    ``class`` and ``path``. They omit the checksums and file-size metadata
+    produced by CWL; scripts reading these records should use the path to
+    inspect the product. This changes the metadata, not the scientific product
+    itself.
+
+    Related documentation: :ref:`products` lists record locations and restart
+    files.
+
+Task counts and timing
+    Prefect exposes more processing steps as separate tasks and records their
+    runtime metrics. Task counts therefore cannot be compared directly with
+    CWL task counts. Compare elapsed time for the full run and its operations,
+    using repeated runs to account for runtime variation.
+
+    Related documentation: :ref:`architecture_tasks` lists the task boundaries;
+    :ref:`monitoring_rapthor` describes logs and resource metrics.
+
+
 Other changes
 -------------
 

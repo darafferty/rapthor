@@ -161,29 +161,17 @@ The following rules are part of the decision:
   solution seeding, same-cycle solution use, DI pre-apply, and DD on-the-fly
   application.
 
-Evidence Required Before Acceptance
------------------------------------
+Validation
+----------
 
-This ADR should move from Proposed to Accepted when the switch-readiness
-criteria in ``PLAN.md`` are met.
+Manual testing of the current pipeline supersedes the migration-era science
+and performance equivalence reports. Record current verification results,
+remaining deployment issues and the final acceptance decision in the merge
+request and relevant follow-up issues.
 
-The evidence package should include:
-
-* a current reviewer-facing summary in ``EQUIVALENCE_REPORT.md``
-* science equivalence reports under
-  ``docs/source/development/science_equivalence_runs/``
-* performance equivalence reports under
-  ``docs/source/development/performance_equivalence_runs/``
-* representative integration-test results
-* benchmark reports for the current optimisation phase
-* manual tester feedback from developers who were not involved in the refactor
-* documented caveats and accepted differences from ``master``
-
-At the time this ADR was written, the branch already had accepted science
-equivalence for the covered LOFAR HBA self-calibration contract and
-repeatability-aware performance evidence showing the current branch faster than
-``master`` for the tested phase-only and DD/full-Jones scenarios. Final
-acceptance still depends on switch-readiness and operational validation.
+The :ref:`migration_behavior_differences` section of the upgrade guide records
+intentional behavior and output differences from the CWL/Toil implementation,
+with links to their maintained documentation.
 
 Operational Requirements
 ------------------------
@@ -229,16 +217,8 @@ Documentation Impact
 
 The following documentation should stay aligned with this ADR:
 
-* ``docs/source/development/architecture.rst`` (which now also holds the
-  architecture diagrams that were in ``architecture_views.rst``)
-* ``docs/source/upgrading.rst`` (formerly ``migrating_from_cwl.rst``)
-* ``EQUIVALENCE_REPORT.md``
-
-The science and performance equivalence contracts
-(``docs/source/development/science_equivalence_contract.rst`` and
-``performance_equivalence_contract.rst``) were removed from the published
-documentation once the migration was complete; they were last present in
-commit ``90135fe0``.
+* :doc:`architecture`, including the architecture diagrams
+* :ref:`upgrading`, including the intentional behavior and output differences
 
 Follow-Up Decisions
 -------------------

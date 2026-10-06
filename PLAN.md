@@ -27,7 +27,7 @@ and tool thread limits must precede changes that run more heavy tasks at once.
 ## 1. Establish the Baseline and Carry Forward Issues
 
 Record the merge revision, dependency versions and final manual-test findings
-in [EQUIVALENCE_REPORT.md](EQUIVALENCE_REPORT.md) or a linked compact report.
+in the merge request or a linked compact baseline report.
 Use that revision and its products as the reference for subsequent changes.
 Turn outstanding findings into focused follow-up issues with a reproducer and
 expected behavior. Keep large run products in ignored directories or artifacts.
@@ -255,9 +255,9 @@ priority, dependencies, scope and verification results. Update this roadmap as
 work lands; remove completed tasks rather than accumulating another migration
 status report.
 
-[EQUIVALENCE_REPORT.md](EQUIVALENCE_REPORT.md) retains the historical science and
-performance summary. Archived contracts, comparison scripts and inputs are
-available from `90135fe0`; older tracked reports are available from
-`fa4259a8^`. The former benchmark/equivalence harness is not an active CI job.
-Reuse useful historical material for a specific comparison, and keep new compact
-reports accessible without committing large Measurement Sets or raw products.
+Manual testing supersedes the historical migration equivalence reports. The
+[upgrade guide](docs/source/upgrading.rst) records the intentional behavior and
+output differences from the CWL/Toil implementation, with links to their
+maintained documentation. Keep new verification results with the relevant
+issue or merge request, without committing large Measurement Sets or raw
+products.
