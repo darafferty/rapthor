@@ -18,6 +18,7 @@ from rapthor.operations.image.plan import (
     adjust_parallel_gridding_tasks,
     build_image_applycal_steps,
     build_image_facet_solution_controls,
+    build_image_gridding_controls,
     build_image_mpi_resource_controls,
     build_image_prepare_data_steps,
     build_image_screen_interval,
@@ -314,13 +315,17 @@ class TestImage:
         assert image.is_done()
 
     @pytest.mark.parametrize(
-        ("shared_facet_rw", "use_facets", "num_patches", "expected_shared_facet_rw"),
+        ("shared_facet_rw", "use_facets", "num_patches", "expected_local", "expected_mpi"),
         [
-            (True, True, 4, True),
-            (True, True, 1, False),
-            (True, True, 0, False),
-            (True, False, 4, False),
-            (False, True, 4, False),
+            (True, True, 6, (True, 6), (True, 6)),
+            (True, True, 5, (True, 4), (True, 4)),
+            (True, True, 4, (True, 4), (True, 4)),
+            (True, True, 3, (False, 4), (True, 3)),
+            (True, True, 2, (False, 4), (True, 2)),
+            (True, True, 1, (False, 4), (False, 1)),
+            (True, True, 0, (False, 4), (False, 1)),
+            (True, False, 6, (False, 4), (False, 1)),
+            (False, True, 6, (False, 4), (False, 1)),
         ],
     )
     @pytest.mark.parametrize("use_mpi", [True, False])
@@ -331,7 +336,8 @@ class TestImage:
         shared_facet_rw,
         use_facets,
         num_patches,
-        expected_shared_facet_rw,
+        expected_local,
+        expected_mpi,
         use_mpi,
     ):
         field.parset["imaging_specific"]["use_mpi"] = use_mpi
@@ -339,6 +345,12 @@ class TestImage:
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = 6
         field.parset["cluster_specific"]["max_cores"] = 12
+        field.parset["cluster_specific"]["max_threads"] = 12
+        field.parset["cluster_specific"]["cpus_per_task"] = 12
+        field.parset["cluster_specific"]["batch_system"] = (
+            "slurm_static" if use_mpi else "single_machine"
+        )
+        field.parset["cluster_specific"]["max_nodes"] = 3 if use_mpi else 1
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.num_patches = num_patches
         image = _initialize_operation(
@@ -346,9 +358,10 @@ class TestImage:
             do_predict=False,
             use_facets=use_facets,
         )
-        assert image.input_parms["shared_facet_rw"] is expected_shared_facet_rw
-        channels_out = int(image.input_parms["channels_out"][0])
-        channels_out_per_node = channels_out
+        expected_shared, expected_gridding = expected_mpi if use_mpi else expected_local
+        assert image.input_parms["channels_out"] == [4]
+        assert image.input_parms["shared_facet_rw"] == [expected_shared]
+        assert image.input_parms["parallel_gridding_tasks"] == [expected_gridding]
         if use_mpi:
             expected_resources = build_image_mpi_resource_controls(
                 nsectors=len(field.imaging_sectors),
@@ -358,18 +371,161 @@ class TestImage:
             )
             assert image.input_parms["mpi_nnodes"] == expected_resources["mpi_nnodes"]
             assert image.input_parms["mpi_cpus_per_task"] == expected_resources["mpi_cpus_per_task"]
-            channels_out_per_node = max(1, channels_out // expected_resources["mpi_nnodes"][0])
 
-        expected_work_units = (
-            num_patches if use_facets and num_patches > 1 else channels_out_per_node
-        )
-        assert image.input_parms["parallel_gridding_tasks"] == [
-            adjust_parallel_gridding_tasks(
-                max_cores=12,
-                parallel_gridding_tasks=6,
-                max_work_units=expected_work_units,
+    @pytest.mark.parametrize(
+        ("nodes", "expected"),
+        [
+            (
+                1,
+                [
+                    (False, 16),
+                    (False, 16),
+                    (False, 16),
+                    (False, 16),
+                    (False, 16),
+                    (False, 16),
+                    (False, 16),
+                    (False, 16),
+                    (True, 16),
+                ],
+            ),
+            (
+                3,
+                [
+                    (False, 6),
+                    (False, 6),
+                    (False, 6),
+                    (False, 6),
+                    (False, 6),
+                    (True, 6),
+                    (True, 12),
+                    (True, 12),
+                    (True, 16),
+                ],
+            ),
+            (
+                5,
+                [
+                    (False, 4),
+                    (False, 4),
+                    (False, 4),
+                    (True, 4),
+                    (True, 4),
+                    (True, 6),
+                    (True, 12),
+                    (True, 12),
+                    (True, 16),
+                ],
+            ),
+            (
+                10,
+                [
+                    (False, 2),
+                    (True, 2),
+                    (True, 3),
+                    (True, 4),
+                    (True, 4),
+                    (True, 6),
+                    (True, 12),
+                    (True, 12),
+                    (True, 16),
+                ],
+            ),
+            (
+                20,
+                [
+                    (False, 1),
+                    (True, 2),
+                    (True, 3),
+                    (True, 4),
+                    (True, 4),
+                    (True, 6),
+                    (True, 12),
+                    (True, 12),
+                    (True, 16),
+                ],
+            ),
+        ],
+    )
+    def test_benchmark_gridding_policy(self, nodes, expected):
+        for facets, controls in zip([1, 2, 3, 4, 5, 6, 12, 15, 16], expected):
+            assert (
+                build_image_gridding_controls(
+                    facet_count=facets,
+                    shared_facet_rw=True,
+                    channels_out=20,
+                    nnodes=nodes,
+                    num_threads=192,
+                    max_cores=192,
+                    parallel_gridding_tasks=24,
+                )
+                == controls
             )
-        ]
+
+    @pytest.mark.parametrize("nodes", [1, 3, 5, 10, 20])
+    @pytest.mark.parametrize("facets", [2, 4, 12, 16])
+    def test_gridding_policy_honours_explicitly_disabled_sharing(self, nodes, facets):
+        shared, _ = build_image_gridding_controls(
+            facet_count=facets,
+            shared_facet_rw=False,
+            channels_out=20,
+            nnodes=nodes,
+            num_threads=192,
+            max_cores=192,
+            parallel_gridding_tasks=24,
+        )
+        assert shared is False
+
+    @pytest.mark.parametrize(
+        ("use_mpi", "max_threads", "cpus_per_task", "max_cores", "requested", "facets", "expected"),
+        [
+            (False, 8, 192, 192, 24, 2, (False, 8)),
+            (False, 10, 192, 192, 6, 2, (False, 5)),
+            (False, 192, 192, 4, 24, 2, (False, 4)),
+            (True, 192, 8, 192, 24, 2, (False, 4)),
+            (True, 192, 10, 192, 24, 2, (False, 5)),
+            (True, 8, 192, 192, 24, 2, (False, 6)),
+            (True, 192, 192, 4, 24, 2, (False, 4)),
+            (True, 192, 192, 192, 2, 2, (True, 2)),
+            (True, 192, 1, 192, 24, 2, (True, 1)),
+            (False, 8, 192, 192, 24, 12, (True, 8)),
+            (True, 192, 10, 192, 24, 12, (True, 10)),
+            (True, 192, 4, 192, 24, 4, (True, 4)),
+            (False, 4, 192, 192, 24, 4, (True, 4)),
+            (True, 192, 192, 2, 24, 2, (True, 2)),
+        ],
+    )
+    def test_gridding_policy_uses_wsclean_threads_and_respects_limits(
+        self,
+        field,
+        use_mpi,
+        max_threads,
+        cpus_per_task,
+        max_cores,
+        requested,
+        facets,
+        expected,
+    ):
+        field.use_mpi = use_mpi
+        field.parset["imaging_specific"].update(use_mpi=use_mpi, shared_facet_rw=True)
+        field.parset["cluster_specific"].update(
+            batch_system="slurm_static" if use_mpi else "single_machine",
+            max_nodes=3 if use_mpi else 1,
+            max_cores=max_cores,
+            max_threads=max_threads,
+            cpus_per_task=cpus_per_task,
+            parallel_gridding_tasks=requested,
+        )
+        field.num_patches = facets
+        image = Image(field, index=1)
+        image.use_facets = True
+        image.input_parms = {
+            "max_threads": max_threads,
+            "mpi_nnodes": [3],
+            "mpi_cpus_per_task": [cpus_per_task],
+        }
+
+        assert image._gridding_controls_for_sector(0, 20) == expected
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_facet_h5parm(
@@ -1418,7 +1574,7 @@ def test_get_max_divisor_less_than_or_equal(number, limit, expected):
 
 
 @pytest.mark.parametrize(
-    ("max_cores", "requested_tasks", "max_work_units", "expected"),
+    ("num_threads", "requested_tasks", "max_work_units", "expected"),
     [
         (12, 8, 5, 4),
         (12, 6, 6, 6),
@@ -1427,7 +1583,7 @@ def test_get_max_divisor_less_than_or_equal(number, limit, expected):
         (0, 0, 0, 1),
     ],
 )
-def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_core_divisor(
-    max_cores, requested_tasks, max_work_units, expected
+def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_thread_divisor(
+    num_threads, requested_tasks, max_work_units, expected
 ):
-    assert adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units) == expected
+    assert adjust_parallel_gridding_tasks(num_threads, requested_tasks, max_work_units) == expected

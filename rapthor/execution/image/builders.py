@@ -104,6 +104,7 @@ def image_payload_from_inputs(
                 "width_ra",
                 "width_dec",
                 "facet_region_file",
+                "shared_facet_rw",
             ]
         )
     if save_filtered_model_image:
@@ -140,9 +141,11 @@ def image_payload_from_inputs(
     facet_skymodel = None
     if use_facets:
         facet_skymodel = file_record_path(input_parms.get("skymodel"))
-        for key in ["soltabs", "scalar_visibilities", "diagonal_visibilities", "shared_facet_rw"]:
+        for key in ["soltabs", "scalar_visibilities", "diagonal_visibilities"]:
             if key not in input_parms:
                 raise ValueError(f"{key} is required when use_facets=True")
+        if not all(isinstance(value, bool) for value in input_parms["shared_facet_rw"]):
+            raise ValueError("shared_facet_rw must contain one boolean per sector")
     fulljones_h5parm = optional_file_record_path(input_parms.get("fulljones_h5parm"))
     input_normalize_h5parm = optional_file_record_path(input_parms.get("input_normalize_h5parm"))
     photometry_skymodel = optional_file_record_path(input_parms.get("photometry_skymodel"))
@@ -402,10 +405,10 @@ def image_payload_from_inputs(
                     None if not use_facets else bool(input_parms["diagonal_visibilities"])
                 ),
                 "shared_facet_reads": (
-                    None if not use_facets else bool(input_parms["shared_facet_rw"])
+                    None if not use_facets else input_parms["shared_facet_rw"][sector_index]
                 ),
                 "shared_facet_writes": (
-                    None if not use_facets else bool(input_parms["shared_facet_rw"])
+                    None if not use_facets else input_parms["shared_facet_rw"][sector_index]
                 ),
                 "pol": pol,
                 "save_source_list": bool(input_parms["save_source_list"]),
