@@ -453,15 +453,21 @@ Environment of external commands
 Each command inherits the environment of the worker that starts it. A task
 can change variables for its own command only, using the helper functions in
 ``rapthor.execution.environments``; the worker's environment is never
-changed. Two such changes are made at present:
+changed. The following policies apply:
 
 * WSClean imaging is given thread limits that match the threads requested for
-  its task.
-* DP3 calibration and prediction commands are run without the
-  ``MALLOC_TRIM_THRESHOLD_`` variable that Dask sets on its workers. That
-  setting slows DP3's prediction down. Because of this, DP3 may hold on to
-  more memory, so look at peak memory as well as run time when comparing
-  performance.
+  its task, for both local and MPI runs.
+* DP3 calibration and prediction commands, WSClean imaging and sky-model
+  filtering remove the ``MALLOC_TRIM_THRESHOLD_`` variable that Dask sets on
+  its workers. This restores glibc's adaptive allocation thresholds in those
+  processes. Look at peak memory as well as run time when comparing
+  performance, since allocator reuse can retain more memory.
+* Sky-model filtering always starts a fresh Python process, including
+  single-core runs. It sets ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``,
+  ``MKL_NUM_THREADS`` and ``BLIS_NUM_THREADS`` to ``1`` before libraries are
+  loaded. PyBDSF's ``ncores`` setting controls process parallelism; native
+  thread pools should not multiply it. PyBDSF commands keep their temporary
+  files under ``/tmp`` so multiprocessing socket paths stay short.
 
 Changes of this kind are recorded with the command in
 ``dir_working/logs/commands.jsonl``; a variable that was removed is shown

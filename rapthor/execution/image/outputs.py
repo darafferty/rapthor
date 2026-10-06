@@ -1,12 +1,12 @@
 """Image-sector output filename patterns, discovery, and product helpers."""
 
 import glob
-import multiprocessing
 import os
 from pathlib import Path
 from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import filter_skymodel_environment
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
     build_compress_sector_images_command,
@@ -17,7 +17,6 @@ from rapthor.execution.image.cubes import make_image_cube
 from rapthor.execution.image.flux_normalization import normalize_flux_scale
 from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPayload
 from rapthor.execution.image.restoration import restore_skymodel
-from rapthor.execution.image.skymodel_filter import filter_image_skymodel
 from rapthor.execution.outputs import (
     cleanup_intermediate_outputs,
     compressed_file_record,
@@ -269,32 +268,11 @@ def filter_skymodel_products(
     source_finder = str(sector["source_finder"])
     ncores = int(sector.get("filter_skymodel_ncores", sector["max_threads"]))
 
-    if _filter_skymodel_needs_subprocess(source_finder, ncores):
-        config = execution_config or ExecutionConfig(task_runner="sync")
-        run_external_command(
-            build_filter_skymodel_command(
-                nonpb_image["path"],
-                pb_image["path"],
-                true_sky_skymodel,
-                apparent_sky_skymodel,
-                output_root,
-                str(sector["vertices_file"]),
-                beam_ms,
-                threshisl,
-                threshpix,
-                filter_by_mask,
-                source_finder,
-                ncores,
-                bright_true_sky_skymodel=bright_true_sky_skymodel,
-            ),
-            pipeline_working_dir,
-            config,
-            name="filter_skymodel",
-            environment=temporary_environment("/tmp"),
-            shell_operation_cls=shell_operation_cls,
-        )
-    else:
-        filter_image_skymodel(
+    # Always start a fresh interpreter so allocator and native-thread settings
+    # take effect before library initialization, including single-core runs.
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    run_external_command(
+        build_filter_skymodel_command(
             nonpb_image["path"],
             pb_image["path"],
             true_sky_skymodel,
@@ -302,13 +280,19 @@ def filter_skymodel_products(
             output_root,
             str(sector["vertices_file"]),
             beam_ms,
+            threshisl,
+            threshpix,
+            filter_by_mask,
+            source_finder,
+            ncores,
             bright_true_sky_skymodel=bright_true_sky_skymodel,
-            threshisl=threshisl,
-            threshpix=threshpix,
-            filter_by_mask=filter_by_mask,
-            source_finder=source_finder,
-            ncores=ncores,
-        )
+        ),
+        pipeline_working_dir,
+        config,
+        name="filter_skymodel",
+        environment={**temporary_environment("/tmp"), **filter_skymodel_environment()},
+        shell_operation_cls=shell_operation_cls,
+    )
 
     filtered_true_sky = require_file(
         os.path.join(pipeline_working_dir, f"{image_name}.true_sky.txt"),
@@ -390,15 +374,3 @@ def _compress_images(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-
-
-def _current_process_is_daemon() -> bool:
-    """Return whether the current process is a daemonic worker."""
-    return bool(multiprocessing.current_process().daemon)
-
-
-def _filter_skymodel_needs_subprocess(source_finder: str, ncores: int) -> bool:
-    """Return whether source filtering should be isolated from the task process."""
-    if _current_process_is_daemon():
-        return True
-    return source_finder.lower() == "bdsf" and ncores != 1

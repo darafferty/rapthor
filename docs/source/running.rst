@@ -76,6 +76,24 @@ These files do not depend on the dashboards described below. They are written
 when :term:`prefect_log_commands` is set, which is the default.
 
 
+Environment of commands
+~~~~~~~~~~~~~~~~~~~~~~~
+
+DP3 calibration and prediction, WSClean imaging (including MPI launches), and
+sky-model filtering remove the ``MALLOC_TRIM_THRESHOLD_`` setting inherited
+from Dask workers. This restores glibc's adaptive allocation thresholds in
+those processes. The removal appears as ``"MALLOC_TRIM_THRESHOLD_": null``
+in ``logs/commands.jsonl``. When comparing performance, check peak memory as
+well as elapsed time, since allocator reuse can retain more memory.
+
+Sky-model filtering always runs in a fresh Python process, even when
+``filter_skymodel_ncores = 1``. Its OpenMP, OpenBLAS, MKL and BLIS thread pools
+are limited to one thread per process so that they do not multiply PyBDSF's
+requested process count. ``filter_skymodel_ncores`` still controls that count.
+These settings affect only the command and its children, and are recorded in
+``logs/commands.jsonl``.
+
+
 .. _persistent_prefect_dashboard:
 
 Persistent Prefect dashboard
