@@ -198,6 +198,8 @@ def test_rapthor_run_frequency_only_imaging_bda(
             "bda_frequencybase": "1000.0",
             "fast_freqstep_hz": "50000.0",
             "slow_freqstep_hz": "50000.0",
+            # Inspect the concatenated BDA spectral windows after imaging has finished.
+            "keep_temporary_files": "True",
         },
     )
 
