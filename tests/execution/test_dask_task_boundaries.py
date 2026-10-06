@@ -576,6 +576,10 @@ def test_image_flow_disambiguates_sector_task_names_for_multiple_sectors(monkeyp
     payload = representative_image_payload()
     second_sector = deepcopy(payload["sectors"][0])
     second_sector["image_name"] = "sector_2"
+    second_sector["concat_filename"] = "sector_2.concat.ms"
+    second_sector["concat_path"] = "/work/image_1/sector_2.concat.ms"
+    second_sector["mask_filename"] = "sector_2.mask.fits"
+    second_sector["mask_path"] = "/work/image_1/sector_2.mask.fits"
     payload["sectors"].append(second_sector)
     preparation_tasks = _patch_image_preparation_tasks(monkeypatch)
     prepare_task = preparation_tasks["prepare_outputs"]

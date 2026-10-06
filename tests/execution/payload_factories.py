@@ -8,7 +8,7 @@ def _work_path(work_dir: object, filename: str) -> str:
 
 
 def representative_image_payload(work_dir: object = "/work/image_1") -> dict:
-    """Return a minimal image payload that passes flow-level validation."""
+    """Return a minimal image payload for flow validation, wiring, and cleanup."""
     work_dir = str(work_dir)
     return {
         "mode": "no_dde_stokes_i",
@@ -17,6 +17,11 @@ def representative_image_payload(work_dir: object = "/work/image_1") -> dict:
         "sectors": [
             {
                 "image_name": "sector_1",
+                "apply_screens": False,
+                "concat_filename": "sector_1.concat.ms",
+                "concat_path": _work_path(work_dir, "sector_1.concat.ms"),
+                "mask_filename": "sector_1.mask.fits",
+                "mask_path": _work_path(work_dir, "sector_1.mask.fits"),
                 "prepare_tasks": [
                     {
                         "msin": "/data/obs.ms",
