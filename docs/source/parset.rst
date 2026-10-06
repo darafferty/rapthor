@@ -72,6 +72,8 @@ The available options are described below under their respective sections.
         Fraction of data to use during the generation of the initial sky model (default =
         0.2). If less than one, the input data are divided by time into chunks that sum to
         the requested fraction, spaced out evenly over the full time range.
+        Very small selections retain at least two time samples when available, as
+        required for imaging, even if this exceeds the requested fraction.
 
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one
@@ -762,6 +764,8 @@ The available options are described below under their respective sections.
         When :term:`batch_system` is ``slurm`` or ``slurm_static``, the maximum number of
         nodes of the cluster to use at once. The configuration default is 0, which is
         resolved to 1 for ``single_machine`` and 12 for Slurm batch systems.
+        When using all the data, each observation is split into up to this many balanced
+        chunks, subject to the minimum calibration duration and two samples per chunk.
 
     cpus_per_task
         When :term:`batch_system` = ``slurm``, the number of processors per task to

@@ -762,3 +762,132 @@ class Observation(object):
             delta_freq *= 1.1
 
         return delta_freq
+
+    def chunk_observation(self, mintime, prefer_high_el_periods=True, max_chunks=None):
+        """
+        Break existing observation into smaller observations (chunks).
+
+        Parameters
+        ----------
+        mintime : float
+            Minimum duration in sec for a chunk
+        prefer_high_el_periods : bool, optional
+            Prefer periods for which the elevation is in the highest 80% of values for a
+            given observation. This option is useful for removing periods of lower
+            signal-to-noise (e.g., due to being at lower elevations where ionospheric
+            activity can increase and sensitivity decrease). If the requested mintime is
+            larger than the total time of the high-elevation period for a given
+            observation, then the full observation is used instead
+        max_chunks : int, optional
+            Maximum number of chunks. The minimum chunk duration may require fewer
+            chunks
+        """
+
+        # The computations below first determine the number of samples, e.g., per chunk, and
+        # then derive the corresponding time intervals.
+        num_samples_in_chunk = int(np.ceil(mintime / self.timepersample))
+
+        # Due to a limitation in Dysco, we make sure to have at least two time slots
+        # per observation, otherwise the output MS cannot be written with compression.
+        num_samples_in_chunk = max(num_samples_in_chunk, 2)
+
+        target_starttime = self.starttime
+        target_endtime = self.endtime
+        num_samples = self.numsamples
+        # Add one interval, since starttime and endtime are mid points.
+        total_time = self.endtime - self.starttime + self.timepersample
+        total_high_el_time = self.high_el_endtime - self.high_el_starttime + self.timepersample
+        data_fraction = self.data_fraction
+
+        if prefer_high_el_periods and data_fraction < total_high_el_time / total_time:
+            # Use high-elevation period for chunking. We increase the data fraction
+            # to account for the decreased total observation time so that the
+            # amount of data used is kept the same
+            data_fraction = min(1, data_fraction * total_time / total_high_el_time)
+            target_starttime = self.high_el_starttime
+            target_endtime = self.high_el_endtime
+            num_samples = round(total_high_el_time / self.timepersample)
+
+        num_chunks = max(1, int(data_fraction * num_samples / num_samples_in_chunk))
+        if max_chunks is not None:
+            num_chunks = min(num_chunks, max_chunks)
+
+        if num_chunks == 1:
+            return list(
+                self._chunk_single(
+                    target_starttime,
+                    target_endtime,
+                    data_fraction,
+                    num_samples,
+                )
+            )
+        else:
+            return list(
+                self._chunk_multiple(
+                    target_starttime,
+                    target_endtime,
+                    data_fraction,
+                    num_samples,
+                    num_chunks,
+                    num_samples_in_chunk,
+                )
+            )
+
+    def _chunk_single(self, target_starttime, target_endtime, data_fraction, num_samples):
+        if data_fraction < 1.0:
+            # Center the chunk at the midpoint (which is generally the most
+            # sensitive, near transit)
+            # Keep enough samples for Dysco, without extending beyond the observation.
+            num_samples_in_chunk = min(num_samples, max(2, round(data_fraction * num_samples)))
+            num_samples_from_start = (num_samples - num_samples_in_chunk) // 2
+            num_samples_from_end = num_samples - num_samples_from_start - num_samples_in_chunk
+            yield Observation(
+                self.ms_filename,
+                starttime=target_starttime + num_samples_from_start * self.timepersample,
+                endtime=target_endtime - num_samples_from_end * self.timepersample,
+                name=f"{os.path.basename(self.ms_filename)}_chunk1",
+            )
+        else:
+            yield self
+
+    def _chunk_multiple(
+        self,
+        target_starttime,
+        target_endtime,
+        data_fraction,
+        num_samples,
+        num_chunks,
+        num_samples_in_chunk,
+    ):
+        if data_fraction == 1.0:
+            # Divide all samples into contiguous chunks differing in size by at most one.
+            sample_boundaries = np.arange(num_chunks + 1) * num_samples // num_chunks
+            chunk_start_times = target_starttime + sample_boundaries[:-1] * self.timepersample
+            chunk_end_times = (
+                target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample
+            )
+        else:
+            # Spread equal-sized chunks across the observation:
+            # |chunk1|---gap---|chunk2|---gap---|chunk3|
+            num_samples_selected = num_chunks * num_samples_in_chunk
+            num_samples_skipped = num_samples - num_samples_selected
+            num_gaps_between_chunks = num_chunks - 1
+            # Divide the skipped samples equally between the gaps; leave leftovers at the end.
+            num_samples_per_gap = int(num_samples_skipped / num_gaps_between_chunks)
+            num_samples_in_step = num_samples_per_gap + num_samples_in_chunk
+
+            # Count the samples before and after each chunk.
+            samples_before_chunk = np.arange(num_chunks) * num_samples_in_step
+            samples_after_chunk = num_samples - samples_before_chunk - num_samples_in_chunk
+
+            # Start and end times refer to the chunk's first and last samples.
+            chunk_start_times = target_starttime + samples_before_chunk * self.timepersample
+            chunk_end_times = target_endtime - samples_after_chunk * self.timepersample
+
+        for index, (starttime, endtime) in enumerate(zip(chunk_start_times, chunk_end_times)):
+            yield Observation(
+                self.ms_filename,
+                starttime=starttime,
+                endtime=endtime,
+                name=f"{os.path.basename(self.ms_filename)}_chunk{index + 1}",
+            )
