@@ -141,20 +141,13 @@ class Sector(object):
         self.mgain = imaging_parameters["mgain"]
         self.idg_mode = imaging_parameters["idg_mode"]
         self.mem_limit_gb = imaging_parameters["mem_gb"]
-        slurm_limit_gb = self.field.parset["cluster_specific"]["mem_per_node_gb"]
-        if slurm_limit_gb > 0:
-            # Obey the Slurm limit if it's set and is more restrictive than the
-            # WSClean-specific limit
-            if self.mem_limit_gb > 0:
-                # WSClean-specific limit set, so take the lower limit
-                self.mem_limit_gb = min(self.mem_limit_gb, slurm_limit_gb)
-            else:
-                # WSClean-specific limit not set (i.e., use all available memory), so
-                # take Slurm limit
-                self.mem_limit_gb = slurm_limit_gb
-        if self.mem_limit_gb == 0:
-            # If no limit is set at this point, use the memory of the current machine
-            self.mem_limit_gb = cluster.get_available_memory()
+        resources = self.field.parset["cluster_specific"]
+        slots = resources.get("workers_per_node", 1)
+        node_memory = resources["mem_per_node_gb"] or cluster.get_available_memory()
+        task_memory = node_memory / slots
+        self.mem_limit_gb = (
+            min(self.mem_limit_gb, task_memory) if self.mem_limit_gb else task_memory
+        )
         self.reweight = imaging_parameters["reweight"]
         self.apply_screens = self.field.apply_screens
 

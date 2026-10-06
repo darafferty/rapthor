@@ -174,7 +174,7 @@ def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
 
     with pytest.raises(
         ValueError,
-        match="filter_skymodel_ncores.*greater than 0",
+        match="filter_skymodel_ncores.*non-negative integer",
     ):
         parset_read(str(parset_scenario.parset))
 
@@ -182,7 +182,9 @@ def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
 def test_filter_skymodel_ncores_default_is_proposed_production_value(parset_scenario):
     parset = parset_read(str(parset_scenario.parset))
 
-    assert parset["cluster_specific"]["filter_skymodel_ncores"] == 15
+    assert parset["cluster_specific"]["filter_skymodel_ncores"] == min(
+        15, parset["cluster_specific"]["max_threads"]
+    )
 
 
 def test_calibration_oom_risk_policy_is_boolean(parset_scenario):
@@ -202,7 +204,9 @@ def test_default_imaging_frequency_bda_uses_production_value(parset_scenario):
     assert parset["imaging_specific"]["bda_frequencybase"] == 20000.0
 
 
-def test_filter_skymodel_ncores_zero_uses_max_threads(parset_scenario):
+def test_filter_skymodel_ncores_zero_uses_max_threads(parset_scenario, monkeypatch):
+    monkeypatch.setattr("rapthor.lib.parset.misc.nproc", lambda: 192)
+    monkeypatch.setattr("rapthor.lib.resource_options.available_cpu_count", lambda: 192)
     _append_to_parset(
         parset_scenario.parset,
         "\n[cluster]\nmax_threads = 12\nfilter_skymodel_ncores = 0\n",
@@ -475,7 +479,9 @@ def test_tool_thread_limits_reject_invalid_values(parset_scenario, option, value
         parset_read(str(parset_scenario.parset))
 
 
-def test_tool_thread_limits_inherit_max_threads(parset_scenario):
+def test_tool_thread_limits_inherit_max_threads(parset_scenario, monkeypatch):
+    monkeypatch.setattr("rapthor.lib.parset.misc.nproc", lambda: 192)
+    monkeypatch.setattr("rapthor.lib.resource_options.available_cpu_count", lambda: 192)
     _append_to_parset(parset_scenario.parset, "\n[cluster]\nmax_threads = 24\n")
     cluster = parset_read(str(parset_scenario.parset))["cluster_specific"]
     config = ExecutionConfig.from_parset({"cluster_specific": cluster})
@@ -483,7 +489,11 @@ def test_tool_thread_limits_inherit_max_threads(parset_scenario):
     assert config.wsclean_max_threads == 24
 
 
-def test_tool_thread_limits_override_independently_and_set_wsclean_defaults(parset_scenario):
+def test_tool_thread_limits_override_independently_and_set_wsclean_defaults(
+    parset_scenario, monkeypatch
+):
+    monkeypatch.setattr("rapthor.lib.parset.misc.nproc", lambda: 192)
+    monkeypatch.setattr("rapthor.lib.resource_options.available_cpu_count", lambda: 192)
     _append_to_parset(
         parset_scenario.parset,
         "\n[cluster]\nmax_threads = 8\ndp3_max_threads = 64\nwsclean_max_threads = 192\n",

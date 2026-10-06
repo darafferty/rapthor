@@ -1018,3 +1018,50 @@ def test_concatenate_flow_submits_plain_payloads_with_epoch_names(monkeypatch):
     ]
     assert concatenate_task.submissions[0]["options"]["tags"] == ["casacore"]
     _assert_worker_submission_is_serializable(concatenate_task.submissions[0], config)
+
+
+@pytest.mark.parametrize("use_mpi", [True, False])
+def test_mpi_imaging_drains_preparation_and_finishes_before_postprocessing(monkeypatch, use_mpi):
+    events = []
+
+    class Future:
+        def __init__(self, name):
+            self.name = name
+
+        def result(self):
+            events.append(("finish", self.name))
+
+    class Task:
+        def with_options(self, **options):
+            self.name = options["task_run_name"]
+            return self
+
+        def submit(self, *args, **kwargs):
+            events.append(("submit", self.name))
+            return Future(self.name)
+
+    for name in vars(image_module):
+        if name.startswith("image_sector_") and name.endswith("_task"):
+            monkeypatch.setattr(image_module, name, Task())
+    payload = {
+        "pipeline_working_dir": "/work/image",
+        "sectors": [
+            {"image_name": f"sector_{i}", "use_mpi": use_mpi, "prepare_tasks": [{}]}
+            for i in range(2)
+        ],
+    }
+    image_module._submit_split_image_sector_tasks(payload, ExecutionConfig(task_runner="sync"))
+    if use_mpi:
+        first_imaging = events.index(("submit", "sector_0_wsclean_image"))
+        assert all(
+            events.index(("finish", f"sector_{i}_concatenate_visibilities")) < first_imaging
+            for i in range(2)
+        )
+        assert events.index(("finish", "sector_0_wsclean_image")) < events.index(
+            ("submit", "sector_1_wsclean_image")
+        )
+        assert events.index(("finish", "sector_1_wsclean_image")) < events.index(
+            ("submit", "sector_0_finish_wsclean_images")
+        )
+    else:
+        assert not any(kind == "finish" for kind, _ in events)

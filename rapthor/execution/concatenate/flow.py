@@ -99,7 +99,10 @@ def run_concatenate_epoch(
     input_filenames = epoch["input_filenames"]
     output_path = epoch["output_path"]
     command = select_concatenation_command(
-        input_filenames, output_path, data_colname, num_threads=config.dp3_max_threads or None
+        input_filenames,
+        output_path,
+        data_colname,
+        num_threads=config.dp3_max_threads or config.command_threads_per_task,
     )
     run_external_command(
         command,

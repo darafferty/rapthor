@@ -153,14 +153,22 @@ def preflight_runtime(
                 "prefect_task_runner = external_dask requires cluster.dask_scheduler "
                 "or DASK_SCHEDULER."
             )
-        worker_count = int(dask_scheduler_checker(scheduler))
+        worker_count = int(
+            dask_scheduler_checker(scheduler, execution_config=execution_config)
+            if dask_scheduler_checker is check_dask_scheduler
+            else dask_scheduler_checker(scheduler)
+        )
         log.info("Using external Dask scheduler %s with %s worker(s).", scheduler, worker_count)
     elif execution_config.task_runner == "local_dask":
         log.info(
             "Using local Dask with %s single-threaded worker(s); "
-            "external commands may use up to %s thread(s) per task.",
+            "CPU budget %s per task; DP3 %s threads, WSClean %s threads; "
+            "configured memory budget %.3g GB per task (0 means automatic).",
             execution_config.local_dask_worker_count,
             execution_config.command_threads_per_task,
+            execution_config.dp3_max_threads or execution_config.command_threads_per_task,
+            execution_config.wsclean_max_threads or execution_config.command_threads_per_task,
+            execution_config.memory_per_task_gb,
         )
     else:
         log.info("Using synchronous Prefect task execution.")
@@ -221,6 +229,8 @@ def bootstrapped_runtime(
             effective_config = replace(
                 execution_config,
                 task_runner="external_dask",
+                workers_per_node=execution_config.worker_slots_per_node,
+                cpus_per_task=execution_config.command_threads_per_task,
                 dask_scheduler=local_scheduler,
             )
             plan = replace(

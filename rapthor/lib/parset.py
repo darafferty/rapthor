@@ -16,6 +16,7 @@ import astropy.coordinates
 import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
 from rapthor._version import __version__
+from rapthor.lib.resource_options import resolve_cluster_resources
 
 log = logging.getLogger("rapthor:parset")
 
@@ -422,33 +423,7 @@ class Parset:
                     f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
-        cpu_count = misc.nproc()
-        if not options["cpus_per_task"]:
-            options["cpus_per_task"] = cpu_count
-
-        single_machine = options["batch_system"] == "single_machine"
-        cpus_per_task = options["cpus_per_task"]
-        if not options["max_nodes"]:
-            options["max_nodes"] = 1 if single_machine else 12
-        if not options["max_cores"]:
-            options["max_cores"] = cpu_count if single_machine else cpus_per_task
-        if not options["max_threads"]:
-            options["max_threads"] = cpu_count
-
-        max_threads = options["max_threads"]
-        for name in ("dp3_max_threads", "wsclean_max_threads"):
-            value = options[name]
-            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-                raise ValueError(f"The option '{name}' must be a non-negative integer")
-        wsclean_threads = options["wsclean_max_threads"] or max_threads
-        if not options["filter_skymodel_ncores"]:
-            options["filter_skymodel_ncores"] = max_threads
-        if options["filter_skymodel_ncores"] < 1:
-            raise ValueError("The option 'filter_skymodel_ncores' must be greater than 0")
-        if not options["deconvolution_threads"]:
-            options["deconvolution_threads"] = max(1, min(14, wsclean_threads * 2 // 5))
-        if not options["parallel_gridding_tasks"]:
-            options["parallel_gridding_tasks"] = max(1, wsclean_threads // 8)
+        options.update(resolve_cluster_resources(options, available_cpus=misc.nproc()))
 
     def read_file(self, parset_file):
         """

@@ -6,6 +6,7 @@ from typing import Mapping, Optional
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.workspace import shared_scratch_workspace
+from rapthor.lib.resource_options import available_cpu_count
 
 
 class MissingPrefectDaskError(RuntimeError):
@@ -89,7 +90,9 @@ def build_task_runner(
         scheduler = execution_config.resolved_dask_scheduler()
         if not scheduler:
             raise ValueError("external_dask requires a dask_scheduler value")
-        check_dask_scheduler(scheduler, client_cls=dask_client_cls)
+        check_dask_scheduler(
+            scheduler, client_cls=dask_client_cls, execution_config=execution_config
+        )
         return runner_cls(address=scheduler)
     return runner_cls(
         cluster_class="dask.distributed.LocalCluster",
@@ -104,13 +107,17 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     inside one worker process. Keep that single-threaded; external command
     parallelism is controlled separately by the external tools' thread budgets.
     """
+    demand = execution_config.local_dask_worker_count * execution_config.command_threads_per_task
+    available = available_cpu_count()
+    if demand > available:
+        raise ValueError(f"Local workers request {demand} CPUs but only {available} are available")
     kwargs = {
         "n_workers": execution_config.local_dask_worker_count,
         "threads_per_worker": execution_config.local_dask_threads_per_worker,
         "processes": True,
     }
     if execution_config.mem_per_node_gb:
-        kwargs["memory_limit"] = f"{execution_config.mem_per_node_gb}GB"
+        kwargs["memory_limit"] = f"{execution_config.memory_per_task_gb:g}GB"
     if execution_config.dask_dashboard_address:
         kwargs["dashboard_address"] = execution_config.dask_dashboard_address
     local_directory = execution_config.resolved_local_scratch_dir()
@@ -163,6 +170,7 @@ def check_dask_scheduler(
     address: str,
     client_cls=None,
     timeout: str = DASK_SCHEDULER_CHECK_TIMEOUT,
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> int:
     """Check that an external Dask scheduler is reachable and has workers."""
     runner_client_cls = client_cls or _load_dask_client_cls()
@@ -170,6 +178,19 @@ def check_dask_scheduler(
     try:
         client = runner_client_cls(address, timeout=timeout)
         scheduler_info = client.scheduler_info()
+        workers = scheduler_info.get("workers", {})
+        validate_worker_layout(workers, execution_config)
+        if execution_config is not None and workers:
+            capacities = client.run(available_cpu_count)
+            for address, count in capacities.items():
+                required = (
+                    execution_config.command_threads_per_task
+                    * execution_config.worker_slots_per_node
+                )
+                if required > count:
+                    raise ValueError(
+                        f"Dask worker {address} has {count} available CPUs but its host budget requires {required}"
+                    )
     except Exception as err:
         raise DaskSchedulerConnectionError(
             f"Could not connect to Dask scheduler at {address!r}: {err}"
@@ -186,6 +207,29 @@ def check_dask_scheduler(
             f"Dask scheduler at {address!r} has no connected workers"
         )
     return len(workers)
+
+
+def validate_worker_layout(
+    workers: dict, execution_config: Optional[ExecutionConfig] = None
+) -> None:
+    """Require fixed worker slots, without overselling a host to Dask."""
+    config = execution_config or ExecutionConfig(task_runner="external_dask")
+    hosts = {}
+    for address, worker in workers.items():
+        if worker.get("nthreads") != 1:
+            raise ValueError(
+                f"Dask worker {address} must have exactly one task thread (--nthreads 1)"
+            )
+        host = worker.get("host")
+        if not host:
+            raise ValueError(f"Dask worker {address} did not report its host")
+        hosts[host] = hosts.get(host, 0) + 1
+    for host, count in hosts.items():
+        if count > config.worker_slots_per_node:
+            raise ValueError(
+                f"Dask host {host} has {count} workers, but the CPU/memory budget "
+                f"allows {config.worker_slots_per_node}; use one worker per host for external Dask"
+            )
 
 
 def _load_dask_task_runner_cls():

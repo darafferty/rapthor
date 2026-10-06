@@ -129,8 +129,16 @@ def _submit_split_image_sector_tasks(
         )
         for index, sector in enumerate(sectors)
     ]
-    wsclean_sector_futures = [
-        image_sector_wsclean_task.with_options(
+    # MPI uses CPUs on hosts other than the submitting worker. Drain preparation
+    # on every host, then run MPI sectors serially before submitting any image
+    # post-processing. This reserves the dedicated Rapthor cluster as one phase.
+    use_mpi = any(sector.get("use_mpi", False) for sector in sectors)
+    if use_mpi:
+        for future in concat_sector_futures:
+            future.result()
+    wsclean_sector_futures = []
+    for index, sector in enumerate(sectors):
+        future = image_sector_wsclean_task.with_options(
             **task_run_options(sector_step_name(index, "wsclean_image"), tags=["wsclean"])
         ).submit(
             sector,
@@ -138,8 +146,9 @@ def _submit_split_image_sector_tasks(
             payload["pipeline_working_dir"],
             execution_config=config,
         )
-        for index, sector in enumerate(sectors)
-    ]
+        wsclean_sector_futures.append(future)
+        if use_mpi:
+            future.result()
     finished_wsclean_sector_futures = [
         image_sector_finish_wsclean_task.with_options(
             **task_run_options(
@@ -269,6 +278,7 @@ def _submit_split_image_sector_tasks(
                 prepared_sector_futures[index],
                 filtered_sector_futures[index],
                 payload["pipeline_working_dir"],
+                execution_config=config,
             )
             if bool(sector.get("save_filtered_model_image", False))
             else None
@@ -678,6 +688,7 @@ def image_sector_restore_skymodel_task(
     prepared: Mapping[str, object],
     filtered: Mapping[str, object],
     pipeline_working_dir: str,
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     """Prefect task wrapper for one sector filtered-skymodel restoration step."""
     assert_serializable_payload(prepared)
@@ -687,6 +698,7 @@ def image_sector_restore_skymodel_task(
             sector,
             prepared,
             filtered,
+            execution_config=execution_config,
         )
     assert_serializable_payload(restored_model)
     return restored_model

@@ -341,6 +341,7 @@ def make_filtered_model_image(
     sector: ImageSectorPayload,
     filtered_apparent_sky: Mapping[str, str],
     pb_image: Mapping[str, str],
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> Optional[dict]:
     """Build a FITS model image from the filtered apparent skymodel when requested."""
     if not sector["save_filtered_model_image"]:
@@ -349,7 +350,8 @@ def make_filtered_model_image(
         Path(filtered_apparent_sky["path"]),
         Path(pb_image["path"]),
         Path(str(sector["filtered_model_image_path"])),
-        num_threads=int(sector.get("wsclean_max_threads") or sector["max_threads"]),
+        num_threads=int(sector["wsclean_max_threads"]),
+        execution_config=execution_config,
     )
     return require_file(str(sector["filtered_model_image_path"]), "Filtered skymodel image")
 

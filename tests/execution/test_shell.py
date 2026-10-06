@@ -10,6 +10,7 @@ import pytest
 
 from rapthor.execution.commands import command_to_string
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import native_thread_environment
 from rapthor.execution.shell import (
     MissingPrefectShellError,
     ShellCommand,
@@ -71,13 +72,16 @@ def test_shell_operation_kwargs_include_env_and_working_dir():
 def test_shell_operation_kwargs_separate_environment_removals():
     kwargs = shell_operation_kwargs(
         ShellCommand(
-            ["DP3", "msin=input.ms"],
+            ["DP3", "msin=input.ms", "numthreads=1"],
             environment={"MALLOC_TRIM_THRESHOLD_": None, "OMP_NUM_THREADS": "4"},
         ),
         ExecutionConfig(stream_output=False),
     )
 
-    assert kwargs["commands"] == ["unset -- MALLOC_TRIM_THRESHOLD_", "DP3 msin=input.ms"]
+    assert kwargs["commands"] == [
+        "unset -- MALLOC_TRIM_THRESHOLD_",
+        "DP3 msin=input.ms numthreads=1",
+    ]
     assert kwargs["env"] == {"OMP_NUM_THREADS": "4"}
 
 
@@ -182,7 +186,8 @@ def test_run_external_command_builds_shell_command_metadata():
     assert result == "OK"
     assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
     assert FakeShellOperation.instances[0].kwargs["working_dir"] == "/tmp/task"
-    assert FakeShellOperation.instances[0].kwargs["env"] == {"OMP_NUM_THREADS": "4"}
+    assert FakeShellOperation.instances[0].kwargs["env"]["OMP_NUM_THREADS"] == "4"
+    assert FakeShellOperation.instances[0].kwargs["env"]["OPENBLAS_NUM_THREADS"] == "1"
 
 
 @pytest.mark.parametrize("injected_runner", [False, True])
@@ -233,7 +238,7 @@ def test_shell_command_reuses_caller_owned_mpi_scratch(tmp_path):
     temporary_directory = tmp_path / "shared-task"
     temporary_directory.mkdir()
     run_external_command(
-        ["mpirun", "wsclean-mp"],
+        ["mpirun", "wsclean-mp", "-j", "1"],
         str(tmp_path),
         ExecutionConfig(local_scratch_dir=str(tmp_path / "local")),
         environment=dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory)),
@@ -242,9 +247,10 @@ def test_shell_command_reuses_caller_owned_mpi_scratch(tmp_path):
 
     assert temporary_directory.is_dir()
     assert not (tmp_path / "local").exists()
-    assert FakeShellOperation.instances[0].kwargs["env"] == dict.fromkeys(
-        ("TMPDIR", "TMP", "TEMP"), str(temporary_directory)
-    )
+    assert FakeShellOperation.instances[0].kwargs["env"] == {
+        **native_thread_environment(),
+        **dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory)),
+    }
 
 
 @pytest.mark.parametrize("injected_runner", [False, True])
@@ -290,7 +296,7 @@ def test_run_shell_command_records_duration_metadata(tmp_path):
 
     result = run_shell_command(
         ShellCommand(
-            ["DP3", "msin=input.ms"],
+            ["DP3", "msin=input.ms", "numthreads=1"],
             working_directory=str(pipeline_working_dir),
             name="solve",
         ),
@@ -557,7 +563,7 @@ def test_command_output_log_path_uses_task_run_name(tmp_path):
 
     output_log_path = command_output_log_path(
         ShellCommand(
-            ["DP3", "msin=input.ms"],
+            ["DP3", "msin=input.ms", "numthreads=1"],
             working_directory=str(pipeline_working_dir),
             name="solve",
         ),

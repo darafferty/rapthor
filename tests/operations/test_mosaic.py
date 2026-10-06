@@ -134,7 +134,6 @@ def test_set_parset_parameters_records_runtime_inputs(tmp_path, batch_system, ex
 
     assert operation.parset_parms == {
         "pipeline_working_dir": operation.pipeline_working_dir,
-        "max_cores": expected_max_cores,
         "skip_processing": False,
         "compress_images": True,
     }

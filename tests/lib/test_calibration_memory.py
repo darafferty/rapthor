@@ -83,6 +83,15 @@ def test_preflight_uses_max_directions_and_largest_solve():
     assert estimate.memory.time_steps == 5
 
 
+def test_concurrent_workers_share_calibration_memory_limit():
+    field = _field(memory_limit_gb=0.000008, fail_on_risk=True)
+    assert check_calibration_memory(field, 1, 5, _step()) is not None
+
+    field.parset["cluster_specific"]["workers_per_node"] = 2
+    with pytest.raises(CalibrationMemoryRiskError, match="configured per-task memory"):
+        check_calibration_memory(field, 1, 5, _step())
+
+
 def test_resolved_check_uses_actual_intervals_and_largest_task():
     first = _observation("first.ms", parameters={"solint_fast_timestep": [2]})
     second = _observation(

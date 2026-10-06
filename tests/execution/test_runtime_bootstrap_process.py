@@ -45,6 +45,7 @@ def runtime_smoke_flow(execution_config=None):
 def run_smoke(scenario, prefect_home):
     use_prefect = scenario.startswith("prefect")
     use_external_dask = "external-dask" in scenario
+    local_workers = 2 if scenario == "two-local-workers" else 1
 
     with ExitStack() as stack:
         if use_prefect:
@@ -76,7 +77,7 @@ def run_smoke(scenario, prefect_home):
             prefect_api_url=prefect_api_url,
             dask_scheduler=dask_scheduler,
             dask_dashboard_address=None,
-            local_dask_workers=1,
+            local_dask_workers=local_workers,
             cpus_per_task=1,
         )
 
@@ -94,6 +95,8 @@ def run_smoke(scenario, prefect_home):
                 "effective_task_runner": plan.execution_config.task_runner,
                 "effective_dask_scheduler": plan.execution_config.dask_scheduler,
                 "dask_worker_count": plan.dask_worker_count,
+                "workers_per_node": plan.execution_config.worker_slots_per_node,
+                "cpus_per_task": plan.execution_config.command_threads_per_task,
                 "flow_result": flow_result,
                 "outer_prefect_home": prefect_home,
             }
@@ -142,6 +145,7 @@ print("RESULT " + json.dumps(result, sort_keys=True))
         "prefect-no-dask",
         "no-prefect-external-dask",
         "prefect-external-dask",
+        "two-local-workers",
     ],
 )
 def test_runtime_bootstrap_process_matrix(tmp_path, scenario):
@@ -172,7 +176,10 @@ def test_runtime_bootstrap_process_matrix(tmp_path, scenario):
     assert result["flow_result"]["computed"] == 2
     assert result["flow_result"]["analytics"] == "false"
     assert result["effective_task_runner"] == "external_dask"
-    assert result["dask_worker_count"] == 1
+    expected_workers = 2 if scenario == "two-local-workers" else 1
+    assert result["dask_worker_count"] == expected_workers
+    assert result["workers_per_node"] == expected_workers
+    assert result["cpus_per_task"] == 1
 
     if scenario.startswith("prefect"):
         assert result["plan_prefect_api_url"] == result["input_prefect_api_url"]

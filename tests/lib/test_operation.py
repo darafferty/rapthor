@@ -86,20 +86,6 @@ def test_base_operation_requires_prefect_execute_workflow(tmp_path):
     assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {}
 
 
-def test_flow_max_cores_uses_cluster_hint_for_non_slurm(tmp_path):
-    operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
-
-    assert operation.flow_max_cores() == 4
-
-
-def test_flow_max_cores_omits_hint_for_slurm(tmp_path):
-    parset = _operation_parset(tmp_path)
-    parset["cluster_specific"]["batch_system"] = "slurm"
-    operation = Operation(FieldStub(parset), name="Base")
-
-    assert operation.flow_max_cores() is None
-
-
 def test_flow_parset_parameters_can_include_working_dir_and_extra_values(tmp_path):
     operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
 
@@ -108,7 +94,6 @@ def test_flow_parset_parameters_can_include_working_dir_and_extra_values(tmp_pat
         mode="dd",
     ) == {
         "pipeline_working_dir": operation.pipeline_working_dir,
-        "max_cores": 4,
         "mode": "dd",
     }
 

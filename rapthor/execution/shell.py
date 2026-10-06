@@ -20,7 +20,8 @@ from typing import Mapping, Optional
 
 from rapthor.execution.commands import CommandInput, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.environments import EnvironmentOverrides
+from rapthor.execution.environments import EnvironmentOverrides, native_thread_environment
+from rapthor.execution.resources import validate_command_threads
 from rapthor.execution.scratch import task_temporary_directory, temporary_environment
 from rapthor.execution.task_metrics import current_prefect_task_metadata
 
@@ -110,6 +111,11 @@ def run_shell_command(
     Commands that specify TMPDIR own their temporary storage, including WSClean
     and PyBDSF. Other commands receive an isolated local scratch directory.
     """
+    validate_command_threads(shell_command.command, execution_config)
+    shell_command = replace(
+        shell_command,
+        environment={**native_thread_environment(), **shell_command.environment},
+    )
     if "TMPDIR" in shell_command.environment:
         return _run_shell_command(shell_command, execution_config, shell_operation_cls)
     with task_temporary_directory(

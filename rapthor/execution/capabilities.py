@@ -122,7 +122,12 @@ def collect_preflight_issues(
                 )
             )
 
-    for code, message in collect_resource_request_issues(resource_requests or (), execution_config):
+    requests = list(resource_requests or ())
+    for name in ("max_threads", "dp3_max_threads", "wsclean_max_threads", "filter_skymodel_ncores"):
+        count = getattr(execution_config, name)
+        if count:
+            requests.append(ResourceRequest(name=name, threads=count))
+    for code, message in collect_resource_request_issues(requests, execution_config):
         issues.append(PreflightIssue(code=code, message=message, option="resources"))
 
     for code, message in collect_slurm_config_issues(execution_config):

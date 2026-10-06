@@ -343,6 +343,7 @@ class TestImage:
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = 6
         field.parset["cluster_specific"]["max_cores"] = 12
         field.parset["cluster_specific"]["max_threads"] = 12
+        field.parset["cluster_specific"]["wsclean_max_threads"] = 12
         field.parset["cluster_specific"]["cpus_per_task"] = 12
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.num_patches = num_patches

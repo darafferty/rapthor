@@ -166,7 +166,8 @@ def test_preflight_local_dask_reports_local_settings_without_scheduler_check(cap
     assert plan.dask_worker_count is None
     assert (
         "Using local Dask with 2 single-threaded worker(s); "
-        "external commands may use up to 4 thread(s) per task."
+        "CPU budget 4 per task; DP3 4 threads, WSClean 4 threads; "
+        "configured memory budget 0 GB per task (0 means automatic)."
     ) in caplog.text
 
 

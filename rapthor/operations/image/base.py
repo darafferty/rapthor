@@ -11,6 +11,7 @@ from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.flow import image_flow
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.lib.resource_options import resolve_tool_threads
 from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 from rapthor.operations.image.diagnostics import report_sector_diagnostics
 from rapthor.operations.image.plan import (
@@ -251,7 +252,7 @@ class Image(FlowOperation):
     def _wsclean_threads_for_sector(self, sector_index):
         if self.field.use_mpi:
             return int(self.input_parms["mpi_cpus_per_task"][sector_index])
-        return int(self.input_parms.get("wsclean_max_threads") or self.input_parms["max_threads"])
+        return int(resolve_tool_threads(self.input_parms, "wsclean"))
 
     def _parallel_gridding_tasks_for_sector(self, sector_index, channels_out):
         requested_tasks = self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
@@ -554,10 +555,9 @@ class Image(FlowOperation):
             "apply_time_frequency_smearing": self.field.correct_smearing_in_imaging,
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
-            "dp3_max_threads": self.field.parset["cluster_specific"].get("dp3_max_threads")
-            or self.field.parset["cluster_specific"]["max_threads"],
-            "wsclean_max_threads": self.field.parset["cluster_specific"].get(
-                "wsclean_max_threads", 0
+            "dp3_max_threads": resolve_tool_threads(self.field.parset["cluster_specific"], "dp3"),
+            "wsclean_max_threads": resolve_tool_threads(
+                self.field.parset["cluster_specific"], "wsclean"
             ),
             "filter_skymodel_ncores": self.field.parset["cluster_specific"].get(
                 "filter_skymodel_ncores",
@@ -588,11 +588,7 @@ class Image(FlowOperation):
                 build_image_mpi_resource_controls(
                     nsectors=nsectors,
                     max_nodes=self.parset["cluster_specific"]["max_nodes"],
-                    cpus_per_task=min(
-                        self.parset["cluster_specific"].get("wsclean_max_threads")
-                        or self.parset["cluster_specific"]["cpus_per_task"],
-                        self.parset["cluster_specific"]["cpus_per_task"],
-                    ),
+                    cpus_per_task=resolve_tool_threads(self.parset["cluster_specific"], "wsclean"),
                     batch_system=self.batch_system,
                 )
             )

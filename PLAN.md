@@ -107,22 +107,26 @@ selection (`63403e6b`, `1ac71a94`), configurable WSClean/DP3 thread counts
 (`ea2c08fd`) and resource allocation (`b7dfd010`). Review each against the
 current execution architecture rather than assuming it applies unchanged.
 
-Implement this work in dependency order:
+The resource development branch now includes the fixed-worker budget resolver,
+per-tool thread settings, command and worker-capacity checks, divided memory
+limits, and serialized MPI imaging phases from GEC-619. Keep this implementation
+with its focused tests; validate real multi-worker and MPI runs before treating
+the resource work as complete. Gridding/shared-facet selection remains separate.
 
-1. **Define and enforce a node-wide CPU/memory budget.** Account for every Dask
-   worker and external subprocess. Divide worker memory limits within the node
-   allocation; giving each worker the full node limit multiplies the assumed
-   capacity. Dask memory limits alone do not constrain subprocess RSS.
-2. **Apply per-tool limits and schedule heavy tasks within that budget.** Extend
-   the existing environment policies to DP3 solves, prediction, applycal and
-   Python adapters. Make command thread flags and native thread pools agree
-   with the task allocation. Preserve existing filtering caps and WSClean's
-   single OpenBLAS thread per MPI rank. Keep MPI imaging exclusive within its
-   allocation and make resource requests affect scheduling.
-3. **Choose safe local worker defaults.** Derive worker counts from available
-   cores and memory, bounded by configured allocations. Keep one Prefect
-   task-engine thread per worker process. Light tasks should be able to proceed
-   without allowing several heavy commands to claim the same resources.
+Remaining work, in dependency order:
+
+1. **Validate fixed worker budgets on target systems.** Account for every Dask
+   worker and external subprocess. Confirm that CPU affinity and Slurm limits
+   agree with the resolved shares. Dask memory limits alone do not constrain
+   subprocess RSS; measure combined peak memory and retain headroom.
+2. **Validate tool limits and MPI isolation.** Exercise DP3 solves, prediction,
+   applycal and Python adapters. Check native thread pools against the command
+   allocation and verify that MPI preparation, imaging and post-processing
+   phases remain separated across nodes, including failures and restarts.
+3. **Tune local worker defaults from measurements.** The fixed-share policy
+   retains one Prefect task-engine thread per worker process. Establish useful
+   worker counts for CPU-, memory- and I/O-bound workloads before increasing
+   default concurrency or introducing more flexible resource scheduling.
 4. **Revisit parallel gridding and shared-facet selection.** Base decisions on
    actual resources and external-tool capabilities, including MPI layouts.
 

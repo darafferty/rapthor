@@ -255,13 +255,34 @@ def test_filtered_model_restoration_passes_wsclean_threads(
 
     commands = []
 
-    def fake_run(command, check):
+    def fake_run(command, working_directory, execution_config):
         commands.append(command)
         index = command.index("-restore-list")
         shutil.copyfile(command[index + 1], command[index + 3])
 
-    monkeypatch.setattr(restoration.subprocess, "run", fake_run)
+    monkeypatch.setattr(restoration, "run_external_command", fake_run)
     output = tmp_path / "restored.fits"
     restore_skymodel(sky_model_path, reference_image, output, num_threads=8)
     assert output.is_file()
     assert commands[0][:3] == ["wsclean", "-j", "8"]
+
+
+def test_restoration_propagates_resource_errors_and_cleans_temporary_images(
+    reference_image, sky_model_path, tmp_path, monkeypatch
+):
+    from pathlib import Path
+
+    import rapthor.execution.image.restoration as restoration
+
+    temporary_images = []
+
+    def reject_command(command, working_directory, execution_config):
+        index = command.index("-restore-list")
+        temporary_images.extend([Path(command[index + 1]), Path(command[index + 3])])
+        raise ValueError("Command exceeds worker CPU budget")
+
+    monkeypatch.setattr(restoration, "run_external_command", reject_command)
+    with pytest.raises(ValueError, match="worker CPU budget"):
+        restore_skymodel(sky_model_path, reference_image, tmp_path / "restored.fits")
+
+    assert all(not path.exists() for path in temporary_images)

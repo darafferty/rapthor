@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
 from rapthor.execution.run_names import task_tags
+from rapthor.lib.resource_options import available_cpu_count, resolve_cluster_resources
 
 TASK_RUNNERS = ("local_dask", "external_dask", "sync")
 COMMAND_PROFILE_MODES = ("auto", "time", "off")
@@ -36,6 +37,9 @@ class ExecutionConfig:
     max_nodes: int = 1
     local_dask_workers: int = 0
     cpus_per_task: int = 0
+    workers_per_node: int = 0
+    max_threads: int = 0
+    filter_skymodel_ncores: int = 0
     dp3_max_threads: int = 0
     wsclean_max_threads: int = 0
     mem_per_node_gb: int = 0
@@ -53,7 +57,7 @@ class ExecutionConfig:
         Rapthor does not expose a public backend selector. These settings
         describe how the Prefect/Dask execution path should run.
         """
-        cluster = _cluster_settings(parset)
+        cluster = resolve_cluster_resources(_cluster_settings(parset))
         scheduler = (
             _optional_str(cluster.get("dask_scheduler")) or dask_scheduler_from_environment()
         )
@@ -118,14 +122,11 @@ class ExecutionConfig:
                 cluster.get("local_dask_workers", 0), "local_dask_workers"
             ),
             cpus_per_task=_as_non_negative_int(cluster.get("cpus_per_task", 0), "cpus_per_task"),
-            dp3_max_threads=_as_non_negative_int(
-                cluster.get("dp3_max_threads") or cluster.get("max_threads", 0),
-                "dp3_max_threads",
-            ),
-            wsclean_max_threads=_as_non_negative_int(
-                cluster.get("wsclean_max_threads") or cluster.get("max_threads", 0),
-                "wsclean_max_threads",
-            ),
+            workers_per_node=cluster["workers_per_node"],
+            max_threads=cluster["max_threads"],
+            filter_skymodel_ncores=cluster["filter_skymodel_ncores"],
+            dp3_max_threads=cluster["dp3_max_threads"],
+            wsclean_max_threads=cluster["wsclean_max_threads"],
             mem_per_node_gb=_as_non_negative_int(
                 cluster.get("mem_per_node_gb", 0), "mem_per_node_gb"
             ),
@@ -173,7 +174,18 @@ class ExecutionConfig:
     @property
     def command_threads_per_task(self) -> int:
         """Return the external-command thread budget for one task."""
-        return max(1, self.cpus_per_task or 1)
+        return self.cpus_per_task or max(1, available_cpu_count() // self.worker_slots_per_node)
+
+    @property
+    def worker_slots_per_node(self) -> int:
+        return self.workers_per_node or (
+            self.local_dask_worker_count if self.task_runner == "local_dask" else 1
+        )
+
+    @property
+    def memory_per_task_gb(self) -> float:
+        """Configured node memory divided between fixed worker slots."""
+        return self.mem_per_node_gb / self.worker_slots_per_node
 
 
 def dask_scheduler_from_environment(

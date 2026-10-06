@@ -61,6 +61,11 @@ def run_or_reuse_wsclean_images(
     if sector["apply_screens"]:
         _write_aterm_config(pipeline_working_dir, str(sector["h5parm"]))
 
+    if execution_config.memory_per_task_gb:
+        sector = dict(sector)
+        sector["wsclean_mem"] = min(
+            float(sector["wsclean_mem"]), execution_config.memory_per_task_gb
+        )
     environment = _wsclean_environment_for_sector(sector, execution_config)
     with task_temporary_directory(
         execution_config,
@@ -102,7 +107,7 @@ def restore_bright_source_images(
         str(sector["bright_skymodel_pb"]),
         pipeline_working_dir,
         execution_config,
-        int(sector.get("wsclean_max_threads") or sector["max_threads"]),
+        int(sector["wsclean_max_threads"]),
         "Bright-source restored PB image",
         shell_operation_cls=shell_operation_cls,
     )
@@ -111,7 +116,7 @@ def restore_bright_source_images(
         str(sector["bright_skymodel_pb"]),
         pipeline_working_dir,
         execution_config,
-        int(sector.get("wsclean_max_threads") or sector["max_threads"]),
+        int(sector["wsclean_max_threads"]),
         "Bright-source restored non-PB image",
         shell_operation_cls=shell_operation_cls,
     )
@@ -158,7 +163,7 @@ def _write_aterm_config(pipeline_working_dir: str, h5parm: str) -> str:
 def _wsclean_threads_for_sector(sector: ImageSectorPayload) -> int:
     if sector["use_mpi"]:
         return int(sector["mpi_cpus_per_task"])
-    return int(sector.get("wsclean_max_threads") or sector["max_threads"])
+    return int(sector["wsclean_max_threads"])
 
 
 def _wsclean_environment_for_sector(
@@ -173,8 +178,7 @@ def _wsclean_environment_for_sector(
         use_mpi=use_mpi,
         exclusive=use_mpi,
     )
-    if use_mpi:
-        validate_resource_request(resource_request, execution_config)
+    validate_resource_request(resource_request, execution_config)
     return wsclean_environment(resource_request)
 
 

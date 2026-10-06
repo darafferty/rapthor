@@ -133,7 +133,7 @@
         "max_threads": 0,
         "dp3_max_threads": 0,
         "wsclean_max_threads": 0,
-        "filter_skymodel_ncores": 15,
+        "filter_skymodel_ncores": 0,
         "deconvolution_threads": 0,
         "parallel_gridding_tasks": 0,
         "local_scratch_dir": null,

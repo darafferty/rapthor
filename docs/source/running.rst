@@ -211,13 +211,13 @@ example to image several sectors at once:
 
     [cluster]
     local_dask_workers = 2
-    max_threads = 16
+    max_threads = 0
 
-Each worker runs one task at a time, and each task runs one command that uses
-up to :term:`max_threads` threads. Rapthor does not limit the total, so choose
-the two values so that their product does not exceed the number of cores, and
-make sure that the memory of the machine is enough for that many commands at
-once.
+Each worker runs one task at a time. Automatic thread counts divide the
+available CPUs equally between workers, so two workers on a 32-CPU machine
+each get 16 threads. Explicit thread counts must fit each worker's CPU share.
+Configured node memory is also divided between workers; allow enough memory
+for the combined external commands.
 
 
 .. _external_dask_runtime:
@@ -450,25 +450,56 @@ All operations after the selected one will also be reset. The files that
 these operations produced (their images, solutions, sky models, plots and
 logs) are removed from the working directory.
 
-Tool thread budgets
--------------------
+CPU, memory and thread budgets
+------------------------------
 
-Set CPU thread budgets by external tool in the parset, independently of the
-Dask worker count::
+Use one single-threaded Dask worker per host as a conservative starting point.
+DP3 and WSClean use their own thread pools. With multiple local workers,
+Rapthor divides the available CPUs and configured node memory equally between
+workers. For a 32-CPU host, this configuration gives each of two workers 16 CPUs::
 
     [cluster]
-    max_threads = 192
-    cpus_per_task = 192
-    dp3_max_threads = 64
-    wsclean_max_threads = 192
+    local_dask_workers = 2
+    cpus_per_task = 0
+    max_threads = 0
+    dp3_max_threads = 0
+    wsclean_max_threads = 0
 
-Both tool options default to 0, which inherits ``max_threads``. MPI imaging
-keeps its existing ``cpus_per_task`` default; an explicit WSClean limit is
-capped by ``cpus_per_task`` for each rank. The options apply wherever the
-tool is used: DP3 imaging preparation uses ``dp3_max_threads``,
-and WSClean prediction during calibration uses ``wsclean_max_threads``.
-Other tools retain their existing thread settings. These are command thread
-budgets, not CPU reservations or Dask scheduling constraints. Keep concurrent
-commands within the node's CPU and memory capacity, and ensure Slurm CPU
-binding permits each worker to access its command's requested CPUs. Increasing
-the worker count does not automatically reduce either tool's budget.
+Set ``mem_per_node_gb`` to the total memory budget for this run on the host;
+each worker receives half in this example. Automatic WSClean memory limits and
+DP3 memory estimates use the same share. DP3 estimates remain advisory unless
+``fail_on_calibration_oom_risk = True``. Dask monitors Python-worker memory,
+not the total memory of all external child processes. Use Slurm/cgroup limits
+where a hard allocation boundary is required.
+
+An explicit thread setting must fit ``cpus_per_task``. For example, two workers
+with ``cpus_per_task = 32`` are rejected on a 32-CPU host. Lowering a tool's
+thread count does not automatically schedule more commands. Rapthor also checks
+emitted DP3/WSClean thread arguments against CPU availability on the worker.
+Native library pools default to one thread in external commands, with explicit
+WSClean policies where needed.
+
+External Dask requires a dedicated cluster with one worker process per host and
+``--nthreads 1``. Preflight checks the worker layout and CPU affinity capacity.
+Set CPU and memory budgets to the allocation available on each worker host;
+ensure Slurm binding permits each worker to access those CPUs. The locally
+managed cluster retains its divided budgets when bootstrap connects to it.
+Do not submit unrelated workloads to the same Dask cluster or MPI allocation.
+
+MPI imaging completes preparation on all hosts before launching WSClean. MPI
+sectors run serially, and image post-processing starts after all MPI imaging
+finishes. This prevents other tasks in this run from competing with MPI ranks
+on their hosts. MPI rank placement still depends on the site's launcher and
+Slurm allocation; production multi-node validation remains necessary.
+
+Migrating thread settings
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Zero now means an automatic value within the worker budget. In particular,
+``max_threads = 0`` uses the task's CPU share, and ``wsclean_max_threads = 0``
+inherits ``max_threads`` for both ordinary and MPI imaging. The former MPI
+special case and silent capping of explicit WSClean overrides have been removed.
+Automatic source filtering uses at most 15 processes, bounded by ``max_threads``.
+Explicit oversubscription is rejected instead of silently accepted. The
+``max_cores`` option retains only its gridding-group cap; it is not a CPU
+reservation. Startup logs report resolved tool counts and the per-worker budget.

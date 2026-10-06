@@ -14,6 +14,7 @@ from rapthor.lib.records import (
     file_record_path,
     optional_file_record_path,
 )
+from rapthor.lib.resource_options import resolve_tool_threads
 
 
 class PredictModelTaskPayload(TypedDict):
@@ -128,7 +129,7 @@ def predict_payload_from_inputs(
                 "sagecalpredict": bool(input_parms["sagecalpredict"]),
                 "sourcedb": file_record_path(sector_skymodels[index]),
                 "directions": [str(direction) for direction in sector_patches[index]],
-                "numthreads": int(input_parms.get("dp3_max_threads") or input_parms["max_threads"]),
+                "numthreads": int(resolve_tool_threads(input_parms, "dp3")),
                 "h5parm": h5parm,
                 "applycal_steps": dp3_applycal_steps,
                 "normalize_h5parm": normalize_h5parm,

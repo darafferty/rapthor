@@ -11,6 +11,7 @@ from rapthor.execution.predict.flow import predict_flow
 from rapthor.execution.predict.payloads import predict_payload_from_inputs
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.lib.resource_options import resolve_tool_threads
 from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 
 log = logging.getLogger("rapthor:predict")
@@ -101,8 +102,7 @@ class Predict(FlowOperation):
             "correctfreqsmearing": field.correct_smearing_in_calibration,
             "correcttimesmearing": field.correct_smearing_in_calibration,
             "max_threads": field.parset["cluster_specific"]["max_threads"],
-            "dp3_max_threads": field.parset["cluster_specific"].get("dp3_max_threads")
-            or field.parset["cluster_specific"]["max_threads"],
+            "dp3_max_threads": resolve_tool_threads(field.parset["cluster_specific"], "dp3"),
         }
 
         self.input_parms = {**common_params, **dd_params}

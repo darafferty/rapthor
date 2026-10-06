@@ -128,3 +128,44 @@ def test_collect_resource_request_issues_preserves_issue_codes():
         "mpi_not_exclusive",
         "mpi_processes_oversubscribed",
     ]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        ["DP3", "numthreads=9", "steps=[]"],
+        ["wsclean", "-j", "9", "data.ms"],
+        ["mpirun", "-np", "2", "wsclean-mp", "-j", "9", "data.ms"],
+        ["python3", "-m", "rapthor.execution.image.skymodel_filter_cli", "--ncores=9"],
+    ],
+)
+def test_emitted_commands_cannot_exceed_cpu_budget(command, monkeypatch):
+    from rapthor.execution.resources import validate_command_threads
+
+    monkeypatch.setattr("rapthor.execution.resources.available_cpu_count", lambda: 32)
+    with pytest.raises(ValueError, match="requests 9 threads.*budget is 8"):
+        validate_command_threads(command, ExecutionConfig(cpus_per_task=8))
+
+
+def test_worker_affinity_is_checked_again_before_command(monkeypatch):
+    from rapthor.execution.resources import validate_command_threads
+
+    monkeypatch.setattr("rapthor.execution.resources.available_cpu_count", lambda: 8)
+    with pytest.raises(ValueError, match="budget is 4"):
+        validate_command_threads(
+            ["DP3", "numthreads=8"], ExecutionConfig(cpus_per_task=8, workers_per_node=2)
+        )
+
+
+def test_command_arguments_are_not_treated_as_executables():
+    from rapthor.execution.resources import validate_command_threads
+
+    assert validate_command_threads(["cp", "wsclean", "backup"], ExecutionConfig()) == 1
+
+
+@pytest.mark.parametrize("command", [["DP3", "steps=[]"], ["wsclean", "data.ms"]])
+def test_tools_must_declare_their_thread_count(command):
+    from rapthor.execution.resources import validate_command_threads
+
+    with pytest.raises(ValueError, match="must declare their thread count"):
+        validate_command_threads(command, ExecutionConfig())

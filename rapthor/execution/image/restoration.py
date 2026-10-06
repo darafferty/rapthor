@@ -2,7 +2,6 @@
 
 import logging
 import shutil
-import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Optional, Tuple, Union
@@ -12,12 +11,19 @@ from astropy.io.fits import CompImageHDU, FitsHDU
 from astropy.io.fits import open as fits_open
 from astropy.io.fits import writeto as fits_write
 
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.shell import run_external_command
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def restore_with_wsclean(
-    source_catalog: Path, reference_image: Path, beam_size: float, num_threads: Optional[int] = None
+    source_catalog: Path,
+    reference_image: Path,
+    beam_size: float,
+    num_threads: Optional[int] = None,
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> Path:
     """
     Restore a skymodel into an image using WSClean.
@@ -37,6 +43,8 @@ def restore_with_wsclean(
         Restored skymodel image path.
     """
     logger.info("Restoring sky model using wsclean.")
+    source_catalog = Path(source_catalog).resolve()
+    reference_image = Path(reference_image).resolve()
     output_image = Path(NamedTemporaryFile(suffix=".fits", delete=False).name)
     command = [
         "wsclean",
@@ -47,9 +55,16 @@ def restore_with_wsclean(
         "-beam-size",
         str(beam_size),
     ]
-    if num_threads is not None:
-        command[1:1] = ["-j", str(num_threads)]
-    subprocess.run(command, check=True)
+    config = execution_config or ExecutionConfig(task_runner="sync")
+    command[1:1] = [
+        "-j",
+        str(num_threads or config.wsclean_max_threads or config.command_threads_per_task),
+    ]
+    try:
+        run_external_command(command, str(output_image.parent), config)
+    except Exception:
+        output_image.unlink(missing_ok=True)
+        raise
     logger.info("Restored image saved to %s", output_image)
     return output_image
 
@@ -130,18 +145,24 @@ def restore_skymodel(
     reference_image: Path,
     output_image: Path,
     num_threads: Optional[int] = None,
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> None:
     """Restore a skymodel into an image matching the reference image geometry."""
     temp_image, pixel_scale = make_zero_image(reference_image)
     temp_images = [temp_image]
     try:
         restored_image = restore_with_wsclean(
-            source_catalog, temp_image, pixel_scale, num_threads=num_threads
+            source_catalog,
+            temp_image,
+            pixel_scale,
+            num_threads=num_threads,
+            execution_config=execution_config,
         )
         temp_images.append(restored_image)
         compress_image_if_needed(restored_image, output_image)
     except Exception as error:
         logger.exception("An error occurred during the restoration process: %s", error)
+        raise
     finally:
         for image in temp_images:
             if image.exists():

@@ -73,22 +73,11 @@ class Operation(object):
         """Create the working directory before setup writes operation inputs."""
         os.makedirs(self.pipeline_working_dir, exist_ok=True)
 
-    def flow_max_cores(self):
-        """
-        Return the max_cores hint used by flow-backed operation payloads.
-
-        Slurm-style execution manages cores via allocation settings, so the
-        operation payload should not add a separate max_cores hint there.
-        """
-        if self.batch_system.startswith("slurm"):
-            return None
-        return self.parset["cluster_specific"]["max_cores"]
-
     def flow_parset_parameters(self, include_pipeline_working_dir=False, **extra):
         """
         Return common parset parameters used by flow-backed operation adapters.
         """
-        parameters = {"max_cores": self.flow_max_cores()}
+        parameters = {}
         if include_pipeline_working_dir:
             parameters["pipeline_working_dir"] = self.pipeline_working_dir
         parameters.update(extra)

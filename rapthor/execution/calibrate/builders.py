@@ -18,6 +18,7 @@ from rapthor.execution.payloads import (
 )
 from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
 from rapthor.lib.records import directory_record_path
+from rapthor.lib.resource_options import resolve_tool_threads
 
 DEFAULT_WSCLEAN_PREDICT_BANDWIDTH_HZ = 2.0e6
 
@@ -94,12 +95,8 @@ def calibrate_payload_from_inputs(
             "wsclean_predict": False,
             "image_predict": _image_predict_payload_from_inputs(input_parms, pipeline_dir),
             "max_threads": int(input_parms["max_threads"]),
-            "dp3_max_threads": int(
-                input_parms.get("dp3_max_threads") or input_parms["max_threads"]
-            ),
-            "wsclean_max_threads": int(
-                input_parms.get("wsclean_max_threads") or input_parms["max_threads"]
-            ),
+            "dp3_max_threads": int(resolve_tool_threads(input_parms, "dp3")),
+            "wsclean_max_threads": int(resolve_tool_threads(input_parms, "wsclean")),
             "solverlbfgs_iter": int(input_parms["solverlbfgs_iter"]),
             "idgcal_antennaconstraint": str(input_parms["idgcal_antennaconstraint"]),
             "has_slow_gain_solve": has_slow_gain_solve,
@@ -609,10 +606,8 @@ def _solve_slots_for_kind(calibration_kind: str, input_parms: Mapping[str, objec
 def _solver_payload_from_inputs(input_parms: Mapping[str, object]) -> dict:
     return {
         "max_threads": int(input_parms["max_threads"]),
-        "dp3_max_threads": int(input_parms.get("dp3_max_threads") or input_parms["max_threads"]),
-        "wsclean_max_threads": int(
-            input_parms.get("wsclean_max_threads") or input_parms["max_threads"]
-        ),
+        "dp3_max_threads": int(resolve_tool_threads(input_parms, "dp3")),
+        "wsclean_max_threads": int(resolve_tool_threads(input_parms, "wsclean")),
         "maxiter": int(input_parms["maxiter"]),
         "llssolver": str(input_parms["llssolver"]),
         "propagatesolutions": bool(input_parms["propagatesolutions"]),

@@ -58,6 +58,8 @@ normalization_reference_frequencies =
 [cluster]
 batch_system = single_machine
 max_nodes = 1
+# Each local worker needs its own CPU/memory share.
+# Leave cpus_per_task and max_threads at 0 to derive shares automatically.
 local_dask_workers = 1
 cpus_per_task = 4
 mem_per_node_gb = 0

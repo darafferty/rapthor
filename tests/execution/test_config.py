@@ -9,6 +9,12 @@ from rapthor.execution.config import (
 )
 
 
+@pytest.fixture(autouse=True)
+def available_cpus(monkeypatch):
+    monkeypatch.setattr("rapthor.lib.resource_options.available_cpu_count", lambda: 64)
+    monkeypatch.setattr("rapthor.execution.config.available_cpu_count", lambda: 64)
+
+
 def test_execution_config_defaults_from_empty_parset(monkeypatch):
     monkeypatch.delenv(DASK_SCHEDULER_ENV, raising=False)
     monkeypatch.delenv(PREFECT_API_URL_ENV, raising=False)
@@ -211,7 +217,7 @@ def test_execution_config_exposes_effective_local_dask_capacity():
 
     assert config.local_dask_worker_count == 1
     assert config.local_dask_threads_per_worker == 1
-    assert config.command_threads_per_task == 1
+    assert config.command_threads_per_task == 64
 
     config = ExecutionConfig(max_nodes=4, local_dask_workers=0, cpus_per_task=8)
 

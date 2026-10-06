@@ -115,7 +115,7 @@ class TestPredict:
         predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_parset_parameters()
 
-        assert predict.parset_parms["max_cores"] == expected_cores
+        assert "max_cores" not in predict.parset_parms
 
     @pytest.mark.parametrize(
         "mode, reweight, peel_outliers, peel_bright_sources",

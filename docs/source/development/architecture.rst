@@ -338,8 +338,9 @@ itself and stops them at the end of the run. The number of workers is set by
 By default there is one worker, so tasks run one after another and each DP3 or
 WSClean command has the whole machine. Set :term:`local_dask_workers` to run
 several tasks at the same time, for example to image several sectors at once,
-and lower :term:`max_threads` to match so that the machine is not
-oversubscribed.
+within the machine's CPU and memory budget. Automatic thread counts and
+configured node memory are divided equally between workers; explicit thread
+counts must fit each worker's share.
 
 On a cluster
 ~~~~~~~~~~~~
@@ -453,7 +454,8 @@ Environment of external commands
 Each command inherits the environment of the worker that starts it. A task
 can change variables for its own command only, using the helper functions in
 ``rapthor.execution.environments``; the worker's environment is never
-changed. The following policies apply:
+changed. The runner first limits native library thread pools to one thread;
+owner-specific policies can override that baseline. The following policies apply:
 
 * WSClean imaging is given thread limits that match the threads requested for
   its task, for both local and MPI runs.
@@ -472,3 +474,20 @@ changed. The following policies apply:
 Changes of this kind are recorded with the command in
 ``dir_working/logs/commands.jsonl``; a variable that was removed is shown
 with the value ``null``.
+
+
+Resource budgets
+~~~~~~~~~~~~~~~~
+
+``rapthor.lib.resource_options`` resolves CPU and memory settings before
+operation payloads are built. Local workers receive fixed shares of the host
+allocation. External Dask requires one single-threaded worker per host;
+bootstrap preserves the slot count when connecting to its own local cluster.
+The command runner checks declared DP3, WSClean and Python-adapter thread counts
+against both the task budget and worker CPU affinity.
+
+MPI image flows finish preparation on all hosts, run MPI sectors serially,
+and then submit post-processing. This separates MPI from other heavy work
+within a dedicated Rapthor cluster. Worker memory limits, WSClean limits and
+calibration estimates use the same per-worker memory share; only the operating
+system or cluster allocation can enforce subprocess memory limits.

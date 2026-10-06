@@ -1,9 +1,12 @@
 """Resource declarations for external commands."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Optional
 
+from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.lib.resource_options import available_cpu_count
 
 SLURM_BATCH_SYSTEMS = {"slurm", "slurm_static"}
 
@@ -34,25 +37,25 @@ def collect_resource_issues(
 ) -> list[tuple[str, str]]:
     """Collect resource validation issues for a command request."""
     issues = []
-    if execution_config.cpus_per_task and resource_request.threads > execution_config.cpus_per_task:
+    if resource_request.threads > execution_config.command_threads_per_task:
         issues.append(
             (
                 "resource_threads_oversubscribed",
                 f"{resource_request.name} requests {resource_request.threads} threads, "
-                f"but cpus_per_task is {execution_config.cpus_per_task}",
+                f"but cpus_per_task is {execution_config.command_threads_per_task}",
             )
         )
 
     if (
         resource_request.memory_gb
         and execution_config.mem_per_node_gb
-        and resource_request.memory_gb > execution_config.mem_per_node_gb
+        and resource_request.memory_gb > execution_config.memory_per_task_gb
     ):
         issues.append(
             (
                 "resource_memory_oversubscribed",
                 f"{resource_request.name} requests {resource_request.memory_gb} GB, "
-                f"but mem_per_node_gb is {execution_config.mem_per_node_gb}",
+                f"but the per-task share of mem_per_node_gb is {execution_config.memory_per_task_gb:g}",
             )
         )
 
@@ -135,3 +138,52 @@ def validate_resource_request(
     if issues:
         raise ValueError("; ".join(message for _, message in issues))
     return resource_request
+
+
+def validate_command_threads(command, execution_config: ExecutionConfig) -> int:
+    """Check emitted tool thread flags as a final guard, including direct calls.
+
+    Configuration is resolved before payload creation. Checking the actual
+    command also catches stale/reconstructed payloads and avoids trusting the
+    submitting machine's CPU visibility on a remote worker.
+    """
+    tokens = normalize_command(command)
+    if not tokens:
+        return 1
+    executable = Path(tokens[0]).name.lower()
+    names = {executable}
+    if executable in {"mpirun", "mpiexec", "srun"}:
+        names.update(Path(token).name.lower() for token in tokens[1:12])
+    wsclean = bool(names & {"wsclean", "wsclean-mp"})
+    dp3 = bool(names & {"dp3", "idgcal"})
+    adapter = any(token.startswith("rapthor.execution.") for token in tokens[:4])
+    if not (wsclean or dp3 or adapter):
+        return 1
+    threads = 1
+    declared_threads = False
+    for index, token in enumerate(tokens):
+        if (wsclean and token in {"-j", "-deconvolution-threads"}) or (
+            adapter and token in {"--threads", "--ncores"}
+        ):
+            value = int(tokens[index + 1])
+        elif dp3 and token.startswith("numthreads="):
+            value = int(token.partition("=")[2])
+        elif adapter and token.startswith(("--threads=", "--ncores=")):
+            value = int(token.partition("=")[2])
+        else:
+            continue
+        if value < 1:
+            raise ValueError("External commands require an explicit positive thread count")
+        declared_threads = True
+        threads = max(threads, value)
+    if (dp3 or wsclean) and not declared_threads:
+        raise ValueError("DP3/WSClean commands must declare their thread count")
+    budget = min(
+        execution_config.command_threads_per_task,
+        max(1, available_cpu_count() // execution_config.worker_slots_per_node),
+    )
+    if threads > budget:
+        raise ValueError(
+            f"Command requests {threads} threads but this worker's CPU budget is {budget}"
+        )
+    return threads

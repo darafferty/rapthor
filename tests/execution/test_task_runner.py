@@ -12,6 +12,11 @@ from rapthor.execution.task_runner import (
 )
 
 
+@pytest.fixture(autouse=True)
+def available_cpus(monkeypatch):
+    monkeypatch.setattr("rapthor.execution.task_runner.available_cpu_count", lambda: 64)
+
+
 class FakeDaskTaskRunner:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
@@ -29,7 +34,10 @@ class FakeDaskClient:
         self.calls.append((address, timeout))
 
     def scheduler_info(self):
-        return {"workers": {"worker-1": {}}}
+        return {"workers": {"worker-1": {"host": "host-1", "nthreads": 1}}}
+
+    def run(self, function):
+        return {"worker-1": 64}
 
     def close(self):
         self.closed = True
@@ -156,7 +164,7 @@ def test_local_cluster_kwargs_include_memory_limit():
         "n_workers": 2,
         "threads_per_worker": 1,
         "processes": True,
-        "memory_limit": "128GB",
+        "memory_limit": "64GB",
     }
 
 
@@ -356,7 +364,12 @@ def test_check_dask_scheduler_returns_worker_count():
             self.calls.append((address, timeout))
 
         def scheduler_info(self):
-            return {"workers": {"worker-1": {}, "worker-2": {}}}
+            return {
+                "workers": {
+                    "worker-1": {"host": "host-1", "nthreads": 1},
+                    "worker-2": {"host": "host-2", "nthreads": 1},
+                }
+            }
 
         def close(self):
             self.closed = True
@@ -397,3 +410,35 @@ def test_check_dask_scheduler_wraps_connection_errors():
 
     with pytest.raises(DaskSchedulerConnectionError, match="connection refused"):
         check_dask_scheduler("tcp://scheduler:8786", client_cls=FailingClient)
+
+
+def test_local_worker_budgets_cannot_exceed_host(monkeypatch):
+    monkeypatch.setattr("rapthor.execution.task_runner.available_cpu_count", lambda: 8)
+    with pytest.raises(ValueError, match="request 16 CPUs"):
+        local_cluster_kwargs(ExecutionConfig(local_dask_workers=2, cpus_per_task=8))
+
+
+@pytest.mark.parametrize(
+    "workers",
+    [
+        {"w1": {"host": "h1", "nthreads": 2}},
+        {"w1": {"host": "h1", "nthreads": 1}, "w2": {"host": "h1", "nthreads": 1}},
+    ],
+)
+def test_external_worker_layout_rejects_unbudgeted_concurrency(workers):
+    from rapthor.execution.task_runner import validate_worker_layout
+
+    with pytest.raises(ValueError):
+        validate_worker_layout(workers)
+
+
+def test_managed_local_workers_keep_their_divided_budget():
+    from rapthor.execution.task_runner import validate_worker_layout
+
+    config = ExecutionConfig(
+        task_runner="external_dask", workers_per_node=2, cpus_per_task=8, mem_per_node_gb=32
+    )
+    validate_worker_layout(
+        {"w1": {"host": "h1", "nthreads": 1}, "w2": {"host": "h1", "nthreads": 1}}, config
+    )
+    assert config.memory_per_task_gb == 16

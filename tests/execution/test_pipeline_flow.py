@@ -728,6 +728,7 @@ def test_run_pipeline_syncs_effective_execution_config_to_operation_parset():
         dask_dashboard_address=":8787",
         local_dask_workers=2,
         cpus_per_task=4,
+        max_threads=2,
         run_tags=("demo", "rich"),
         local_scratch_dir="/configured/scratch",
         keep_temporary_files=True,
@@ -746,6 +747,8 @@ def test_run_pipeline_syncs_effective_execution_config_to_operation_parset():
     assert field.parset["cluster_specific"]["prefect_run_tags"] == "demo,rich"
     assert field.parset["cluster_specific"]["local_dask_workers"] == 2
     assert field.parset["cluster_specific"]["cpus_per_task"] == 4
+    for name in ("max_threads", "dp3_max_threads", "wsclean_max_threads", "filter_skymodel_ncores"):
+        assert field.parset["cluster_specific"][name] == 2
     operation_config = ExecutionConfig.from_parset(field.parset)
     assert operation_config.local_scratch_dir == "/configured/scratch"
     assert operation_config.keep_temporary_files is True

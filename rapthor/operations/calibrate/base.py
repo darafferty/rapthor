@@ -13,6 +13,7 @@ from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.flow import calibrate_flow
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.lib.resource_options import resolve_tool_threads
 from rapthor.operations.calibrate.plan import (
     build_calibration_core_stations,
     build_calibration_dp3_steps,
@@ -250,10 +251,10 @@ class Calibrate(FlowOperation):
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
-                "dp3_max_threads": self.parset["cluster_specific"].get("dp3_max_threads")
-                or self.parset["cluster_specific"]["max_threads"],
-                "wsclean_max_threads": self.parset["cluster_specific"].get("wsclean_max_threads")
-                or self.parset["cluster_specific"]["max_threads"],
+                "dp3_max_threads": resolve_tool_threads(self.parset["cluster_specific"], "dp3"),
+                "wsclean_max_threads": resolve_tool_threads(
+                    self.parset["cluster_specific"], "wsclean"
+                ),
             }
             self._apply_solve_plan_inputs(
                 solve_plan,
@@ -388,10 +389,10 @@ class Calibrate(FlowOperation):
                 "correctfreqsmearing": field.correct_smearing_in_calibration,
                 "correcttimesmearing": field.correct_smearing_in_calibration,
                 "max_threads": self.parset["cluster_specific"]["max_threads"],
-                "dp3_max_threads": self.parset["cluster_specific"].get("dp3_max_threads")
-                or self.parset["cluster_specific"]["max_threads"],
-                "wsclean_max_threads": self.parset["cluster_specific"].get("wsclean_max_threads")
-                or self.parset["cluster_specific"]["max_threads"],
+                "dp3_max_threads": resolve_tool_threads(self.parset["cluster_specific"], "dp3"),
+                "wsclean_max_threads": resolve_tool_threads(
+                    self.parset["cluster_specific"], "wsclean"
+                ),
             }
             self._apply_solve_plan_inputs(solve_plan)
 

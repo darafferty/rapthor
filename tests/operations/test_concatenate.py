@@ -56,7 +56,6 @@ def test_set_parset_parameters_records_runtime_inputs(tmp_path):
 
     assert operation.parset_parms == {
         "pipeline_working_dir": operation.pipeline_working_dir,
-        "max_cores": 4,
     }
 
 
@@ -65,7 +64,7 @@ def test_set_parset_parameters_omits_max_cores_for_slurm(tmp_path):
 
     operation.set_parset_parameters()
 
-    assert operation.parset_parms["max_cores"] is None
+    assert "max_cores" not in operation.parset_parms
 
 
 def test_set_input_parameters_builds_multi_epoch_inputs(tmp_path):

@@ -67,6 +67,17 @@ needs to be set for a run on a single machine. The most useful are:
 * :term:`prefect_run_tags`, to label a run in the dashboard.
 
 
+CPU and memory budgets
+----------------------
+
+CWL's ``runtime.cores`` no longer supplies command thread counts. Rapthor
+resolves :term:`cpus_per_task` as a worker budget, then resolves
+:term:`max_threads` and the DP3/WSClean overrides within it. Zero selects an
+automatic value; explicit oversubscription fails early. Multiple local Dask
+workers divide automatic CPU and memory budgets equally. :term:`max_cores`
+only limits gridding groups. See :doc:`running` for the worker and MPI policy.
+
+
 Changes to the strategy
 -----------------------
 

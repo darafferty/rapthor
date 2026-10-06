@@ -345,7 +345,7 @@ class CalibrateFieldStub:
                 "keep_temporary_files": False,
                 "max_nodes": 1,
                 "batch_system": "single_machine",
-                "cpus_per_task": 1,
+                "cpus_per_task": 4,
                 "mem_per_node_gb": 0,
                 "local_scratch_dir": None,
                 "global_scratch_dir": None,
@@ -4018,7 +4018,7 @@ def test_calibration_uses_tool_specific_threads(
     tmp_path, fake_calibrate_shell_operation_cls, mode, inputs
 ):
     input_parms = _use_local_timechunk_dirs(inputs(), tmp_path)
-    input_parms.update(dp3_max_threads=2, wsclean_max_threads=8)
+    input_parms.update(dp3_max_threads=2, wsclean_max_threads=4)
     run_flow_for_test(
         calibrate_flow,
         calibrate_payload_from_inputs(mode, input_parms, tmp_path),
@@ -4033,4 +4033,4 @@ def test_calibration_uses_tool_specific_threads(
     wsclean_commands = [command for command in commands if command[0] == "wsclean"]
     assert bool(wsclean_commands) == (mode == "dd")
     for command in wsclean_commands:
-        assert command[command.index("-j") + 1] == "8"
+        assert command[command.index("-j") + 1] == "4"

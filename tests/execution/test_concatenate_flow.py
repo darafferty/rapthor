@@ -76,6 +76,7 @@ def fake_select_concatenation_command(monkeypatch):
             f"msin.datacolumn={data_colname}",
             f"msout={output_file}",
             "steps=[]",
+            f"numthreads={num_threads}",
         ]
 
     monkeypatch.setattr(concatenate_module, "select_concatenation_command", fake_command)
@@ -322,7 +323,7 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
     with prefect_test_harness(server_startup_timeout=None):
         outputs = concatenate_flow(
             payload,
-            execution_config=ExecutionConfig(task_runner="sync"),
+            execution_config=ExecutionConfig(task_runner="sync", cpus_per_task=1),
         )
 
     assert outputs == {
@@ -336,6 +337,7 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
         "msin.datacolumn=DATA",
         f"msout={tmp_path / 'epoch_0_concatenated.ms'}",
         "steps=[]",
+        "numthreads=1",
     ]
     assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 

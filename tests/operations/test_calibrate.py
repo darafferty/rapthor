@@ -309,8 +309,7 @@ class TestCalibrate:
         calibrate.set_parset_parameters()
 
         # Assert
-        expected_max_cores = None if batch_system == "slurm" else max_cores
-        assert calibrate.parset_parms["max_cores"] == expected_max_cores
+        assert "max_cores" not in calibrate.parset_parms
 
         if mode == "dd":  # CalibrateDD sets some extra parameters.
             expected_use_image_based_predict = generate_screens or use_image_based_predict

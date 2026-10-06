@@ -337,6 +337,7 @@ def restore_image_sector_skymodel(
     sector: ImageSectorPayload,
     prepared: Mapping[str, object],
     filtered: Mapping[str, object],
+    execution_config: Optional[ExecutionConfig] = None,
 ) -> dict:
     """Build the filtered skymodel image for one sector when requested."""
     return {
@@ -344,6 +345,7 @@ def restore_image_sector_skymodel(
             sector,
             filtered["filtered_apparent_sky"],
             prepared["pb_image"],
+            execution_config=execution_config,
         )
     }
 
@@ -432,7 +434,9 @@ def finalize_image_sector(
     if restored_model_result is None:
         if sector["save_filtered_model_image"]:
             raise ValueError("filtered-model finalization requires restored skymodel output")
-        restored_model_result = restore_image_sector_skymodel(sector, prepared, filtered)
+        restored_model_result = restore_image_sector_skymodel(
+            sector, prepared, filtered, execution_config=execution_config
+        )
     skymodel_image = restored_model_result["skymodel_image"]
 
     if sector["compress_images"]:

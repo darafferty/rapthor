@@ -788,9 +788,9 @@ for how these options are used.
 
     max_nodes
         When :term:`batch_system` is ``slurm`` or ``slurm_static``, the number
-        of nodes of the cluster to use. The default is 0, which results in a
-        value of 1 for ``single_machine`` and 12 for the Slurm batch systems.
-        Set this to the number of nodes in your Slurm job. When all of the data
+        of nodes of the cluster to use. Zero uses the Slurm allocation size
+        when available, otherwise 12; locally it uses one. Explicit values
+        cannot exceed the Slurm allocation. When all of the data
         are used (a data fraction of 1), each observation is split in time
         into up to this many balanced chunks, subject to the minimum calibration
         duration and two samples per chunk, so that the nodes can work on them
@@ -798,24 +798,27 @@ for how these options are used.
 
     local_dask_workers
         Number of Dask workers to start when Rapthor is run on a single machine
-        (default = 0 = one worker). Each worker runs one step of the
-        processing at a time, so this is the number of DP3 or WSClean commands
-        that can be run at the same time. See :ref:`local_dask_runtime` for
-        when it is useful to set this.
+        (default = 0, use :term:`max_nodes`, with at least one worker). Each
+        worker runs one task at a time and receives a fixed share of the host
+        CPU and memory budget. Automatic command thread counts are divided
+        between these workers. See :ref:`local_dask_runtime`.
 
     cpus_per_task
-        The number of processors that each task may use (default = 0 = all the
-        processors of the machine on which Rapthor is started). When
-        :term:`batch_system` = ``slurm``, set this value to the number of
-        processors per node, so that each task gets the entire node to itself,
-        which is the recommended way of running Rapthor.
+        CPU budget for one worker and its external command. Zero divides the
+        CPUs available to the current process between local workers. With
+        Slurm, zero uses ``SLURM_CPUS_PER_TASK`` when available. Set this
+        explicitly for external Dask if the controller and workers differ.
+        Explicit values must fit the allocation; local worker count multiplied
+        by this budget must not exceed the available CPUs. Rapthor does not
+        request a Slurm allocation.
 
     mem_per_node_gb
-        The amount of memory per node in GB that Rapthor may use (default = 0
-        = all). When set, it limits the memory of each Dask worker that Rapthor
-        starts on a single machine, the memory used by WSClean (see
-        :term:`mem_gb`), and the amount of data that the predict operation
-        holds in memory at once.
+        Total memory budget per host in decimal GB (default = 0, automatic).
+        Local workers divide this budget equally. WSClean's memory limit and
+        calibration memory checks use that per-worker share. External Dask
+        uses one single-threaded worker per host. Dask's memory limit covers
+        its Python process; it is not an OS limit on external commands.
+        Slurm/cgroups provide allocation enforcement for subprocesses.
 
         Rapthor also uses this value for DP3 calibration memory checks. A preflight
         check uses each strategy step's maximum number of directions, and a second
@@ -858,40 +861,41 @@ for how these options are used.
         estimate cannot be calculated, the check remains advisory.
 
     max_cores
-        Maximum number of cores per task to use on each node (default = 0 = all).
+        Legacy cap on the number of parallel gridding groups. Zero uses the task
+        CPU budget. This setting no longer supplies CWL scheduling hints and does
+        not allocate CPUs; use :term:`cpus_per_task` for the CPU budget.
 
     max_threads
-        Default maximum number of threads per task to use on each node
-        (default = 0 = all). DP3 and WSClean can override this independently.
+        Default thread count for external tools. Zero (the default) uses
+        :term:`cpus_per_task`. Explicit values must fit that budget.
 
     dp3_max_threads
-        Maximum threads per DP3 command (default = 0, inherit :term:`max_threads`).
-        Applies to calibration, including screen solves, prediction, imaging
-        preparation, residual visibility creation, and frequency concatenation.
-        Must be a non-negative integer.
+        Threads per DP3 command (default = 0, inherit :term:`max_threads`).
+        Applies to calibration, screen solves, prediction, imaging preparation,
+        residual visibility creation, and frequency concatenation. An explicit
+        value can differ from :term:`max_threads` but must fit :term:`cpus_per_task`.
 
     wsclean_max_threads
-        Maximum threads per WSClean command (default = 0, inherit
-        :term:`max_threads`). Applies to imaging, calibration model rendering and
-        prediction, restoration, and mosaic model rendering. MPI imaging retains
-        its :term:`cpus_per_task` default when this is 0; an explicit value is
-        capped by :term:`cpus_per_task` for each rank. Must be a non-negative
-        integer. Deconvolution threads are also capped by the imaging thread budget.
+        Threads per WSClean command (default = 0, inherit :term:`max_threads`).
+        Applies to imaging, calibration prediction/model rendering, restoration
+        and mosaic rendering. The same rule applies per MPI rank. Explicit
+        values above :term:`cpus_per_task` are rejected.
 
-        These limits select command thread counts; they do not change Dask worker
-        counts, reserve CPUs, or divide memory between concurrent tasks. Ensure
-        each worker can access its requested CPUs and account for all concurrent
-        commands, including WSClean prediction during calibration.
+        Tool overrides do not change worker count or reserve additional CPUs.
+        For example, three local workers on 192 available CPUs each have a
+        64-CPU budget. A WSClean override of 192 is rejected in that layout.
+        Use one worker if a command needs the whole node.
 
     filter_skymodel_ncores
-        Number of cores used by PyBDSF when filtering the sky model during
-        imaging (default = 15). Set to 0 to use :term:`max_threads`. This
-        value can be set separately from :term:`max_threads`, since the
-        filtering may run faster with fewer cores than DP3 or WSClean use.
+        PyBDSF/LSMTool process count for sky-model filtering. Zero (the default)
+        selects ``min(15, max_threads)``. Explicit values must fit the task CPU
+        budget. Native library thread pools within each process are limited to
+        one thread to avoid multiplying parallelism.
 
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
         the effective ``wsclean_max_threads``, but not more than 14).
+        An explicit value must not exceed the resolved WSClean thread count.
 
     parallel_gridding_tasks
         Number of task groups WSClean can use for parallel gridding. If this is
@@ -900,8 +904,7 @@ for how these options are used.
         During imaging, Rapthor caps the value by :term:`max_cores` and reduces
         it when there are fewer facet or channel work units available. It
         chooses a divisor of WSClean's actual ``-j`` thread count: the effective
-        :term:`wsclean_max_threads` locally, or :term:`cpus_per_task` with MPI
-        (capped by an explicit ``wsclean_max_threads``).
+        :term:`wsclean_max_threads`, including per MPI rank.
 
     local_scratch_dir
         Full path to a local disk on the nodes for the temporary files of each

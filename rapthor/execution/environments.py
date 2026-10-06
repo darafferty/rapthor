@@ -11,6 +11,20 @@ from rapthor.execution.resources import ResourceRequest
 EnvironmentOverrides = Mapping[str, Optional[str]]
 
 
+def native_thread_environment() -> dict[str, str]:
+    """Prevent native libraries multiplying a command's own parallelism."""
+    return dict.fromkeys(
+        (
+            "OMP_NUM_THREADS",
+            "OPENBLAS_NUM_THREADS",
+            "MKL_NUM_THREADS",
+            "BLIS_NUM_THREADS",
+            "NUMEXPR_NUM_THREADS",
+        ),
+        "1",
+    )
+
+
 def dp3_environment() -> EnvironmentOverrides:
     """Return overrides for DP3 calibration and prediction subprocesses."""
     # Dask's nanny sets this for Python workers. In glibc it also disables

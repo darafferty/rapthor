@@ -35,5 +35,5 @@ astrometry_skymodel = None
 cpus_per_task = 4
 max_nodes = 4
 batch_system = slurm
-max_threads = 40
+max_threads = 4
 deconvolution_threads = 4

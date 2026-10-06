@@ -14,6 +14,7 @@ import rapthor.execution.image.sector as image_sector_module
 import rapthor.execution.image.wsclean as image_wsclean_module
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import native_thread_environment
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
@@ -200,7 +201,9 @@ def fake_direct_image_helpers(monkeypatch):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("h5parm")
 
-    def fake_restore_skymodel(source_catalog, reference_image, output_image, num_threads=None):
+    def fake_restore_skymodel(
+        source_catalog, reference_image, output_image, num_threads=None, execution_config=None
+    ):
         calls["restore_skymodel"].append(
             {
                 "source_catalog": str(source_catalog),
@@ -251,6 +254,7 @@ def fake_direct_image_helpers(monkeypatch):
         data_colname="DATA",
         concat_property="frequency",
         overwrite=False,
+        num_threads=None,
     ):
         calls["select_concatenation_command"].append(
             {
@@ -552,7 +556,7 @@ def _operation_parset(tmp_path):
             "keep_temporary_files": False,
             "max_nodes": 1,
             "batch_system": "single_machine",
-            "cpus_per_task": 1,
+            "cpus_per_task": 4,
             "mem_per_node_gb": 0,
             "local_scratch_dir": None,
             "global_scratch_dir": None,
@@ -753,21 +757,21 @@ def _clean_disabled_image_input_parms():
 def _mpi_image_input_parms():
     input_parms = _image_input_parms()
     input_parms["mpi_nnodes"] = [2]
-    input_parms["mpi_cpus_per_task"] = [3]
+    input_parms["mpi_cpus_per_task"] = [4]
     return input_parms
 
 
 def _mpi_facet_image_input_parms():
     input_parms = _facet_image_input_parms()
     input_parms["mpi_nnodes"] = [2]
-    input_parms["mpi_cpus_per_task"] = [3]
+    input_parms["mpi_cpus_per_task"] = [4]
     return input_parms
 
 
 def _mpi_screens_image_input_parms():
     input_parms = _screens_image_input_parms()
     input_parms["mpi_nnodes"] = [2]
-    input_parms["mpi_cpus_per_task"] = [3]
+    input_parms["mpi_cpus_per_task"] = [4]
     return input_parms
 
 
@@ -1515,7 +1519,7 @@ def test_image_payload_from_inputs_builds_mpi_payload(tmp_path):
     sector = payload["sectors"][0]
     assert sector["use_mpi"] is True
     assert sector["mpi_nnodes"] == 2
-    assert sector["mpi_cpus_per_task"] == 3
+    assert sector["mpi_cpus_per_task"] == 4
 
 
 def test_image_payload_from_inputs_builds_compressed_payload(tmp_path):
@@ -1947,6 +1951,7 @@ def test_filter_skymodel_products_isolates_allocator_and_native_threads(
         "OPENBLAS_NUM_THREADS",
         "MKL_NUM_THREADS",
         "BLIS_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
     )
     for variable in thread_variables:
         monkeypatch.setenv(variable, "192")
@@ -2251,6 +2256,7 @@ def test_run_image_flow_sets_ducc0_num_threads_for_non_mpi_wsclean(
     wsclean_command = shlex.split(wsclean_instance.kwargs["commands"][-1])
     assert wsclean_command[wsclean_command.index("-j") + 1] == str(max_threads)
     assert wsclean_instance.kwargs["env"] == {
+        **native_thread_environment(),
         "DUCC0_NUM_THREADS": str(max_threads),
         **dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(tmp_path / "sector_1_wsclean_tmp")),
     }
@@ -2305,7 +2311,7 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True),
-        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=4),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
@@ -2328,9 +2334,10 @@ def test_run_image_flow_supports_mpi_no_dde(tmp_path, fake_image_shell_operation
         "2",
         "wsclean-mp",
     ]
-    assert mpi_command[mpi_command.index("-j") + 1] == "3"
+    assert mpi_command[mpi_command.index("-j") + 1] == "4"
     assert mpi_instance.kwargs["env"] == {
-        "OMP_NUM_THREADS": "3",
+        **native_thread_environment(),
+        "OMP_NUM_THREADS": "4",
         "OPENBLAS_NUM_THREADS": "1",
         **dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(tmp_path / "sector_1_wsclean_tmp")),
     }
@@ -2344,7 +2351,7 @@ def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
         run_flow_for_test(
             image_flow,
             image_payload_from_inputs(_mpi_image_input_parms(), tmp_path, use_mpi=True),
-            execution_config=ExecutionConfig(task_runner="sync", max_nodes=1, cpus_per_task=3),
+            execution_config=ExecutionConfig(task_runner="sync", max_nodes=1, cpus_per_task=4),
             shell_operation_cls=fake_image_shell_operation_cls,
         )
 
@@ -2361,7 +2368,7 @@ def test_run_image_flow_supports_mpi_facets(tmp_path, fake_image_shell_operation
         image_payload_from_inputs(
             _mpi_facet_image_input_parms(), tmp_path, use_facets=True, use_mpi=True
         ),
-        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=4),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
@@ -2385,7 +2392,7 @@ def test_run_image_flow_supports_mpi_screens(tmp_path, fake_image_shell_operatio
         image_payload_from_inputs(
             _mpi_screens_image_input_parms(), tmp_path, apply_screens=True, use_mpi=True
         ),
-        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=4),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
 
@@ -2534,7 +2541,7 @@ def test_wsclean_scratch_uses_local_for_serial_and_shared_for_mpi(
     config = ExecutionConfig(
         task_runner="sync",
         max_nodes=2,
-        cpus_per_task=3,
+        cpus_per_task=4,
         local_scratch_dir=str(tmp_path / "local") if local else None,
         global_scratch_dir=str(tmp_path / "global") if global_ else None,
     )
@@ -2564,6 +2571,30 @@ def test_wsclean_scratch_uses_local_for_serial_and_shared_for_mpi(
         assert wsclean_instance.kwargs["env"][key] == str(temporary_directory)
     assert [nonpb, pb] == _sector_i_image_records(pipeline_dir)[:2]
     assert created
+
+
+def test_wsclean_memory_is_limited_to_one_workers_share(tmp_path, fake_image_shell_operation_cls):
+    inputs = _image_input_parms()
+    inputs.update(max_threads=2, parallel_gridding_tasks=[1])
+    sector = image_payload_from_inputs(inputs, tmp_path)["sectors"][0]
+    assert sector["wsclean_mem"] == 8.0
+    config = ExecutionConfig(
+        task_runner="sync", workers_per_node=2, cpus_per_task=2, mem_per_node_gb=12
+    )
+
+    image_wsclean_module.run_or_reuse_wsclean_images(
+        sector,
+        {"path": "input.ms"},
+        {"path": "mask.fits"},
+        None,
+        str(sector["image_name"]),
+        str(tmp_path),
+        config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    command = shlex.split(fake_image_shell_operation_cls.instances[0].kwargs["commands"][-1])
+    assert float(command[command.index("-abs-mem") + 1]) == 6.0
 
 
 @pytest.mark.parametrize("fail", [False, True])
@@ -3550,7 +3581,7 @@ def test_mpi_image_operation_run_uses_prefect_flow(
     field = FieldStub(tmp_path)
     field.use_mpi = True
     field.parset["cluster_specific"]["max_nodes"] = 3
-    field.parset["cluster_specific"]["cpus_per_task"] = 2
+    field.parset["cluster_specific"]["cpus_per_task"] = 4
     operation = Image(field, index=1)
 
     with prefect_test_harness(server_startup_timeout=None):
@@ -3660,8 +3691,8 @@ def test_image_normalize_finalizer_accepts_prefect_outputs(tmp_path):
         pytest.param(False, 2, 2, 2, id="local_two_threads"),
         pytest.param(False, 10, 10, 5, id="local_ten_threads_split_into_five_groups"),
         pytest.param(True, 2, 2, 2, id="mpi_tool_limit_below_rank_allocation"),
-        pytest.param(True, 16, 6, 6, id="mpi_tool_limit_capped_at_six_rank_cpus"),
-        pytest.param(True, 0, 6, 6, id="mpi_zero_inherits_six_rank_cpus"),
+        pytest.param(True, 10, 10, 5, id="mpi_ten_threads_split_into_five_groups"),
+        pytest.param(True, 0, 12, 6, id="mpi_zero_inherits_twelve_default_threads"),
     ],
 )
 def test_image_thread_limit_keeps_gridding_and_deconvolution_within_command_budget(
@@ -3676,8 +3707,8 @@ def test_image_thread_limit_keeps_gridding_and_deconvolution_within_command_budg
     field.parset["cluster_specific"].update(
         max_nodes=2,
         max_cores=192,
-        max_threads=192,
-        cpus_per_task=6,
+        max_threads=12,
+        cpus_per_task=16,
         wsclean_max_threads=tool_limit,
         parallel_gridding_tasks=6,
         deconvolution_threads=14,
@@ -3711,7 +3742,7 @@ def test_image_uses_tool_specific_threads_for_preparation_imaging_and_restoratio
     fake_direct_image_helpers,
 ):
     input_parms = _bright_peeling_image_input_parms()
-    input_parms.update(dp3_max_threads=2, wsclean_max_threads=8, save_filtered_model_image=True)
+    input_parms.update(dp3_max_threads=2, wsclean_max_threads=4, save_filtered_model_image=True)
     input_parms["residual_filename"] = ["sector_1_residual.ms"]
     run_flow_for_test(
         image_flow,
@@ -3730,11 +3761,11 @@ def test_image_uses_tool_specific_threads_for_preparation_imaging_and_restoratio
     wsclean_commands = [command for command in commands if command[0] == "wsclean"]
     assert len(wsclean_commands) == 3  # Imaging and two bright-source restorations.
     for command in wsclean_commands:
-        assert command[command.index("-j") + 1] == "8"
-    assert fake_direct_image_helpers["restore_skymodel"][0]["num_threads"] == 8
+        assert command[command.index("-j") + 1] == "4"
+    assert fake_direct_image_helpers["restore_skymodel"][0]["num_threads"] == 4
 
 
-@pytest.mark.parametrize("requested, expected", [(2, 2), (8, 3)])
+@pytest.mark.parametrize("requested, expected", [(2, 2), (4, 4)])
 @pytest.mark.prefect
 def test_mpi_wsclean_tool_threads_respect_rank_allocation(
     tmp_path, fake_image_shell_operation_cls, requested, expected
@@ -3744,7 +3775,7 @@ def test_mpi_wsclean_tool_threads_respect_rank_allocation(
     run_flow_for_test(
         image_flow,
         image_payload_from_inputs(input_parms, tmp_path, use_mpi=True),
-        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=4),
         shell_operation_cls=fake_image_shell_operation_cls,
     )
     instance = next(

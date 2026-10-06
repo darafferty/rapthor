@@ -393,6 +393,7 @@ def _prepare_calibration_cycle(field: object, cycle_number: int, final: bool) ->
 def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionConfig) -> None:
     """Write effective runtime settings back into the operation parset."""
     cluster = parset.setdefault("cluster_specific", {})
+    max_threads = execution_config.max_threads or execution_config.command_threads_per_task
     cluster.update(
         {
             "prefect_task_runner": execution_config.task_runner,
@@ -419,7 +420,13 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "batch_system": execution_config.batch_system,
             "max_nodes": execution_config.max_nodes,
             "local_dask_workers": execution_config.local_dask_workers,
-            "cpus_per_task": execution_config.cpus_per_task,
+            "cpus_per_task": execution_config.command_threads_per_task,
+            "workers_per_node": execution_config.worker_slots_per_node,
+            "max_threads": max_threads,
+            "dp3_max_threads": execution_config.dp3_max_threads or max_threads,
+            "wsclean_max_threads": execution_config.wsclean_max_threads or max_threads,
+            "filter_skymodel_ncores": execution_config.filter_skymodel_ncores
+            or min(15, max_threads),
             "mem_per_node_gb": execution_config.mem_per_node_gb,
             "fail_on_calibration_oom_risk": execution_config.fail_on_calibration_oom_risk,
             "use_container": execution_config.use_container,

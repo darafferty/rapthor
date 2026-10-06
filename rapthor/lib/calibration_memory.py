@@ -277,12 +277,22 @@ def _estimate_calibration_task(
 
 def _memory_limit(field):
     """Return the applicable memory limit and its user-facing source."""
-    configured_limit = field.parset["cluster_specific"]["mem_per_node_gb"]
+    cluster = field.parset["cluster_specific"]
+    slots = cluster.get("workers_per_node", 1)
+    configured_limit = cluster["mem_per_node_gb"]
     if configured_limit > 0:
-        return configured_limit, "configured per-node memory"
+        return (
+            configured_limit / slots,
+            "configured per-task memory" if slots > 1 else "configured per-node memory",
+        )
 
     try:
-        return get_available_memory(), "memory available on current machine"
+        return (
+            get_available_memory() / slots,
+            "memory available per worker on current machine"
+            if slots > 1
+            else "memory available on current machine",
+        )
     except Exception:
         return None, "memory available on current machine could not be determined"
 
