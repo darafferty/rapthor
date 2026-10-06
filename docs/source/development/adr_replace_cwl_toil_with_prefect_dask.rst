@@ -229,12 +229,16 @@ Documentation Impact
 
 The following documentation should stay aligned with this ADR:
 
-* ``docs/source/development/architecture.rst``
-* ``docs/source/development/architecture_views.rst``
-* ``docs/source/migrating_from_cwl.rst``
-* ``docs/source/development/science_equivalence_contract.rst``
-* ``docs/source/development/performance_equivalence_contract.rst``
+* ``docs/source/development/architecture.rst`` (which now also holds the
+  architecture diagrams that were in ``architecture_views.rst``)
+* ``docs/source/upgrading.rst`` (formerly ``migrating_from_cwl.rst``)
 * ``EQUIVALENCE_REPORT.md``
+
+The science and performance equivalence contracts
+(``docs/source/development/science_equivalence_contract.rst`` and
+``performance_equivalence_contract.rst``) were removed from the published
+documentation once the migration was complete; they were last present in
+commit ``90135fe0``.
 
 Follow-Up Decisions
 -------------------

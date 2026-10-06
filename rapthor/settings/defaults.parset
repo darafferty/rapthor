@@ -94,7 +94,7 @@ facet_layout = None
 # completed successfully), IDGCal is used during calibration to generate smooth 2-D
 # screens that are then applied by WSClean in the final imaging step.
 #
-# Note: the hybrid mode is not yet available; it will be enabled in a future update.
+# Note: the hybrid mode should be considered experimental.
 dde_mode = faceting
 
 
@@ -374,20 +374,30 @@ normalization_skymodels = None
 normalization_reference_frequencies = None
 
 [cluster]
-# Cluster batch system (default = single_machine).
-# Use batch_system = slurm to use a Slurm-based cluster with dynamic node
-# allocation. (Nodes allocated using salloc during run)
-# Use batch_system = slurm_static to use a Slurm-based cluster with static
-# node allocation. (Nodes reserved by your sbatch call prior to run)
+# Cluster batch system (default = single_machine). Use single_machine when
+# running on a single machine; Rapthor then starts the Dask scheduler and
+# workers that it needs itself. Use slurm or slurm_static to use multiple nodes
+# of a Slurm-based cluster; Rapthor then uses a Dask scheduler and workers that
+# you have started inside your Slurm job, and the address of the scheduler must
+# be given with the dask_scheduler option below or the DASK_SCHEDULER
+# environment variable. Rapthor does not submit Slurm jobs itself. The two
+# Slurm systems differ only when use_mpi is set: with slurm_static, all of the
+# nodes set by max_nodes are used for imaging with MPI, whereas with slurm one
+# node fewer is used for each imaging sector
 batch_system = single_machine
 
-# For batch_system = slurm or slurm_static, the maximum number of nodes of the
-# cluster to use at once can be specified with the max_nodes option
-# (default = 12), the number of processors and amount of memory per node to
-# request from SLURM can be specified with the cpus_per_task (default = 0 = all)
-# and mem_per_node_gb options (default = 0 = all). By setting the cpus_per_task
+# For the slurm and slurm_static batch systems, the number of nodes of the
+# cluster to use can be specified with the max_nodes option (default = 0, which
+# results in 1 for single_machine and 12 for the Slurm batch systems). The
+# number of processors that each task may use and the amount of memory per node
+# in GB can be specified with the cpus_per_task (default = 0 = all) and
+# mem_per_node_gb options (default = 0 = all). By setting the cpus_per_task
 # value to the number of processors per node, one can ensure that each task gets
-# the entire node to itself, which is the recommended way of running Rapthor
+# the entire node to itself, which is the recommended way of running Rapthor.
+#
+# For the single_machine batch system, the number of Dask workers to start can
+# be specified with the local_dask_workers option (default = 0 = one worker).
+# Each worker runs one step of the processing at a time
 max_nodes = 0
 local_dask_workers = 0
 cpus_per_task = 0
@@ -415,37 +425,49 @@ deconvolution_threads = 0
 # max_threads // 8)
 parallel_gridding_tasks = 0
 
-# Full path to a fast local disk for command temporaries and WSClean's
-# -temp-dir (default = None). Rapthor creates isolated children on the executing
-# worker; the path need not exist on the head node. MPI commands use
-# global_scratch_dir, or the shared operation workspace when it is unset.
-# Local Dask workers also use this path for spill storage; external workers
-# configure their own --local-directory. Without local_scratch_dir,
-# commands inherit their temp environment, while WSClean imaging uses the
-# operation workspace. keep_temporary_files or debug_workflow retains command
-# temporaries.
-# PyBDSF helper commands use /tmp to keep multiprocessing socket paths short.
+# Full path to a local disk on the nodes for the temporary files of each
+# command, including those written by WSClean (default = None). This parameter
+# is useful if you have a fast local disk (e.g., an SSD). The path does not have
+# to exist on the machine on which Rapthor is started: Rapthor creates a
+# directory for each command on the node that runs it and removes it when the
+# command has finished (unless keep_temporary_files is set). If this parameter
+# is not set, WSClean writes its temporary files to dir_working and the other
+# commands use the default temporary directory of the node.
+#
+# Dask workers started by Rapthor also use this directory for their own
+# temporary data. If you start the Dask workers yourself, use the
+# --local-directory option of "dask worker". PyBDSF always writes its temporary
+# files to /tmp, and WSClean jobs that use MPI use global_scratch_dir instead
 local_scratch_dir = None
 
-# Full path to shared scratch readable and writable by all compute nodes and
-# the head node (default = None). Workflow intermediates and MPI temporaries
-# use isolated children here, through a stable operation-directory symlink.
-# On workflow exit, including command failure, products are promoted back to
-# dir_working/pipelines/<operation>. If promotion fails, the link and scratch
-# products remain available for recovery. Restart records, final products and
-# logs retain their dir_working paths.
-# Without global_scratch_dir, shared intermediates use dir_working directly.
+# Full path to a directory on a shared disk that is readable and writable by all
+# the compute nodes and the head node (default = None). If set, the intermediate
+# files of each operation are written to this directory instead of to
+# dir_working. While an operation runs, dir_working/pipelines/<operation> is a
+# link to a directory inside the global scratch directory; when the operation
+# ends, whether it succeeded or failed, its files are moved back to
+# dir_working/pipelines/<operation>. The final products and the logs are always
+# written to dir_working
 global_scratch_dir = None
 
-# Legacy container settings retained for compatibility with older parsets.
+# Running the operations inside a container is not supported: use_container
+# must be left at False and container_type is not used. To use a container, run
+# Rapthor itself inside it
 use_container = False
 container_type = docker
 
-# Prefect task runner to use for the Python execution path. Supported values
-# are local_dask, external_dask, and sync. If unset, Rapthor uses external_dask
-# when a Dask scheduler is configured and local_dask otherwise. For local_dask,
-# local_dask_workers sets the number of local Dask workers. If left at 0, Rapthor
-# falls back to max_nodes for compatibility, with at least one worker.
+# Prefect and Dask settings. None of these needs to be set for a run on a single
+# machine. See the documentation for a description of each option.
+#
+# To keep the history of your runs and follow them in the Prefect dashboard,
+# start a Prefect server and set prefect_api_url to its API URL (e.g.,
+# http://127.0.0.1:4200/api). The prefect_api_mode option can be auto (use the
+# server given by prefect_api_url if there is one and a temporary server
+# otherwise), external (a server must be given), or ephemeral (always use a
+# temporary server).
+#
+# To use a Dask scheduler and workers that you have started yourself, set
+# dask_scheduler to the address of the scheduler (e.g., tcp://127.0.0.1:8786)
 prefect_api_mode = auto
 prefect_api_url = None
 prefect_task_runner = None
@@ -462,16 +484,13 @@ prefect_postage_stamp_preview_count = 5
 prefect_postage_stamp_preview_size_px = 96
 prefect_fits_preview_clip_percentile = 99.9
 
-# Debug workflow related issues (default = False). Enabling this option implies
-# that temporary files produced during the workflow run will be kept (i.e. the
-# option keep_temporary_files is implicitly set to True). This will require
-# significantly more disk space. Use this option with care!
+# Has the same effect as keep_temporary_files (default = False)
 debug_workflow = False
 
-# Keep temporary files created during the workflow execution. If True,
-# temporary files and directories created during the workflow execution will
-# not be deleted at the end of the run. This will require significantly more
-# disk space. This option is useful for debugging purposes.
+# Keep the temporary and intermediate files of each operation (default =
+# False). If True, these files will not be deleted when the operation has
+# finished. This will require significantly more disk space. This option is
+# useful for debugging purposes
 keep_temporary_files = False
 
 # Allow sky models to be downloaded from sky surveys.

@@ -22,10 +22,10 @@ compatibility shims or broad cosmetic reshuffling.
 | Docs/examples | `docs/source/`, `examples/` | User-facing behavior and runnable strategy/parset examples | Production pipeline code |
 | Tests | `tests/lib`, `tests/operations`, `tests/execution`, `tests/architecture`, `tests/integration` | Contract, behavior, architecture, and end-to-end coverage | Large generated data |
 
-`docs/source/development/architecture.rst` is the more detailed architecture
-reference. It also describes a possible future `rapthor.application` or
-`rapthor.use_cases` layer; that package is not present today, so do not invent
-it for small changes.
+`docs/source/development/architecture.rst` is the published architecture
+reference. It holds the C4 diagrams (system context, containers, components,
+and deployment) and the list of flow and task names. Update it when owner
+packages, flow or task names, or the Prefect/Dask runtime change.
 
 ## Change Placement
 

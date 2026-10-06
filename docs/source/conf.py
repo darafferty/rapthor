@@ -60,6 +60,10 @@ html_theme_options = {"description": release}
 
 # -- Additional settings -----------------------------------------------------
 
+# Let each Mermaid diagram take the height it needs, instead of the fixed
+# height that sphinxcontrib-mermaid uses by default.
+mermaid_height = "auto"
+
 # Suppress sphinx warning: "autosummary: stub file not found for the methods
 # of the class. check your autosummary_generate settings", which seems to be
 # triggered by numpydoc (ref: https://stackoverflow.com/a/66139873/16350552).

@@ -13,16 +13,6 @@ Starting a Rapthor run
     to run everything within a container (see :ref:`using_containers` for
     details).
 
-.. note::
-    By default, Rapthor lets Prefect use its temporary local API/server and
-    starts one local Dask scheduler for the run. The temporary Prefect server
-    and local Dask scheduler stop when Rapthor exits. For how to set up
-    a persistent Prefect dashboard, see :ref:`persistent_prefect_dashboard`.
-
-.. note::
-    For tips on how to migrate from the CWL version of Rapthor see
-    :ref:`migrating_from_cwl`.
-
 Rapthor can be run from the command line as follows:
 
 .. code-block:: console
@@ -34,24 +24,56 @@ number of options are available and are described below:
 
 .. code-block:: console
 
-    Usage: rapthor parset
+    Usage: rapthor <parset>
 
     Options:
-      --version             show program's version number and exit
-      -h, --help            show this help message and exit
-      -q                    enable quiet mode
-      -r RESET, --reset=RESET
-                            reset one or more operations so that
-                            they will be rerun
-      -v                    enable verbose mode
+      --version   show program's version number and exit
+      -h, --help  show this help message and exit
+      -q          enable quiet mode
+      -v          enable verbose mode
+      -r          reset one or more operations
 
 Rapthor begins a run by checking the input measurement sets. Next, Rapthor
 will determine the DD calibrators from the input sky model and begin self
-calibration and imaging. Rapthor uses Prefect/Dask to handle operation
-execution, task orchestration, logging, artifacts, and restart state. Each
-Rapthor operation is done in a separate flow. See :ref:`structure` for an overview of the various
+calibration and imaging. See :ref:`structure` for an overview of the various
 operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
+
+Rapthor uses `Prefect <https://docs.prefect.io/>`_ to keep track of the
+processing and `Dask <https://docs.dask.org/>`_ to run it. Nothing needs to be
+set up for this: by default, Rapthor starts what it needs on the machine it is
+run on and stops it again when the run ends. See :ref:`architecture` for a
+description of the parts involved.
+
+
+.. _monitoring_rapthor:
+
+Following a run
+---------------
+
+Progress is reported in the terminal and in the main log,
+``dir_working/logs/rapthor.log``. The start and end of every operation are
+logged, as are the image diagnostics of every cycle (see :ref:`image`).
+
+More detail is available in the ``dir_working/logs`` directory while the run
+is in progress:
+
+``logs/<operation>/<task>.log``
+    The full output of each DP3, WSClean or other command that was run, for
+    example ``logs/image_1/wsclean_image.log``. The output of a command that
+    failed is kept as well.
+
+``logs/commands.jsonl``
+    One line for each command that was run, with the full command line, the
+    operation and task it belongs to, its start and end times, its exit status
+    and the CPU time and memory it used.
+
+``logs/diagnostics.txt``
+    A summary of the selfcal, calibration and image diagnostics, written when
+    the run finishes.
+
+These files do not depend on the dashboards described below. They are written
+when :term:`prefect_log_commands` is set, which is the default.
 
 
 .. _persistent_prefect_dashboard:
@@ -59,22 +81,30 @@ operations that Rapthor performs and their relation to one another, and see
 Persistent Prefect dashboard
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To keep a persistent Prefect dashboard, start a server in one terminal and
-explicitly export its API URL before running Rapthor, or set the
-:term:`prefect_api_url` in the parset:
+The Prefect dashboard shows every operation of a run as a *flow* and every
+step within it as a *task*, with their state, run time and logs (see
+:ref:`architecture_tasks` for the names used). Calibration solution plots and
+image diagnostics are attached to the run as artifacts.
+
+By default, Prefect uses a temporary server that exists only for the duration
+of the run, and nothing is kept afterwards. To use the dashboard, start a
+Prefect server in one terminal:
 
 .. code-block:: console
 
     $ prefect server start
+
+and, in another terminal, tell Rapthor where it is before starting the run,
+either by exporting its API URL:
 
 .. code-block:: console
 
     $ export PREFECT_API_URL=http://127.0.0.1:4200/api
     $ rapthor rapthor.parset
 
-The dashboard is then available at ``http://127.0.0.1:4200``. The Dask dashboard
-is available at the address specified by the Dask scheduler, typically
-``http://127.0.0.1:8787``.
+or by setting :term:`prefect_api_url` in the parset. The dashboard is then
+available at ``http://127.0.0.1:4200``. The server keeps the history of all
+runs that reported to it until it is stopped and its database is removed.
 
 To make related runs easier to find in the Prefect dashboard, add optional
 run tags in the parset:
@@ -82,149 +112,193 @@ run tags in the parset:
 .. code-block:: ini
 
     [cluster]
-    prefect_run_tags = demo, multi-sector
+    prefect_run_tags = ngc891, test-robust
 
-Rapthor attaches these tags to the pipeline, operation, and task runs launched
-with the shared Prefect runner.
+Rapthor attaches these tags to all the flows and tasks of the run.
+
+Previews of the images can also be shown in the dashboard. These are switched
+off by default, as they add to the run time and to the disk space used:
+
+.. code-block:: ini
+
+    [cluster]
+    prefect_publish_fits_previews = True
+    prefect_publish_postage_stamp_previews = True
+
+.. note::
+
+    The Prefect server started with ``prefect server start`` stores its data in
+    a small local database that is not designed for heavy use. Do not let many
+    large runs report to the same server at the same time. Runs that use the
+    default temporary server are independent of one another, so any number of
+    them can be run side by side.
+
+
+Dask dashboard
+~~~~~~~~~~~~~~
+
+The Dask dashboard shows which tasks are running on which worker, and the
+memory and CPU use of each worker. When Rapthor starts its own Dask scheduler,
+it reports the address of the dashboard in the terminal at the start of the
+run, for example:
+
+.. code-block:: console
+
+    INFO - rapthor:runtime - Dask dashboard: http://127.0.0.1:8787/status
+
+The port can be set with :term:`dask_dashboard_address`.
+
+
+.. _remote_dashboards:
+
+Viewing the dashboards of a remote run
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When Rapthor runs on a remote machine or a compute node, forward the
+dashboard ports to your own machine with SSH. Note the name of the machine
+that Rapthor runs on:
+
+.. code-block:: console
+
+    $ hostname
+
+and then, on your own machine, forward the Prefect and Dask ports through the
+login node of the cluster:
+
+.. code-block:: console
+
+    $ ssh -N \
+        -L 127.0.0.1:4200:compute-node:4200 \
+        -L 127.0.0.1:8787:compute-node:8787 \
+        user@login.cluster.example
+
+Open ``http://127.0.0.1:4200`` for Prefect and
+``http://127.0.0.1:8787/status`` for Dask. Replace the host names and ports
+with the values used by the run. If Rapthor runs directly on the machine you
+log in to, use ``127.0.0.1`` in place of ``compute-node``.
+
+
+.. _local_dask_runtime:
+
+Running several tasks at once on a single machine
+-------------------------------------------------
+
+By default, Rapthor starts one Dask worker, so that the tasks of an operation
+are run one after another and each DP3 or WSClean command can use all the
+cores of the machine. On a machine with many cores and enough memory, several
+tasks can be run at the same time by setting the number of workers, for
+example to image several sectors at once:
+
+.. code-block:: ini
+
+    [cluster]
+    local_dask_workers = 2
+    max_threads = 16
+
+Each worker runs one task at a time, and each task runs one command that uses
+up to :term:`max_threads` threads. Rapthor does not limit the total, so choose
+the two values so that their product does not exceed the number of cores, and
+make sure that the memory of the machine is enough for that many commands at
+once.
 
 
 .. _external_dask_runtime:
 
 Using an existing Dask cluster
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
-To use an existing Dask cluster, either set ``dask_scheduler`` in the parset or
-export ``DASK_SCHEDULER``:
+Rapthor can use a Dask scheduler and workers that you have started yourself,
+instead of starting its own. Start the scheduler and the workers:
 
 .. code-block:: console
 
     $ dask scheduler
-    $ dask worker tcp://127.0.0.1:8786
+    $ dask worker tcp://127.0.0.1:8786 --nthreads 1
+
+and give the address of the scheduler to Rapthor, either by setting
+:term:`dask_scheduler` in the parset or by exporting ``DASK_SCHEDULER``:
 
 .. code-block:: console
 
     $ export DASK_SCHEDULER=tcp://127.0.0.1:8786
-    $ rapthor input.parset
+    $ rapthor rapthor.parset
+
+Rapthor checks that the scheduler can be reached and that it has at least one
+worker before the run starts. Each worker should run one task at a time, so
+start the workers with ``--nthreads 1``.
 
 
-DP3 calibration and prediction subprocesses remove the inherited
-``MALLOC_TRIM_THRESHOLD_`` variable. Dask's nanny normally sets this for Python
-workers, but it also disables glibc's adaptive allocation thresholds and can
-penalize FastPredict's temporary allocations. This also affects standalone
-prediction: DP3's ordinary ``predict`` and ``h5parmpredict`` steps can use
-FastPredict. Rapthor applies the removal to calibration and prediction commands;
-the worker, WSClean, Python tasks and other DP3 commands retain their existing
-environments. CPU/thread settings are unchanged. The removal is recorded as
-``"MALLOC_TRIM_THRESHOLD_": null`` in ``logs/commands.jsonl``. When comparing
-performance, check peak memory use as well as prediction time, since allocator
-reuse can retain more memory in the DP3 process.
+.. _running_on_cluster:
 
+Running on multiple nodes of a cluster
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. _prefect_demo_helper:
+To use multiple nodes of a Slurm cluster, start a Dask scheduler and one Dask
+worker on each node inside your Slurm job, and then start Rapthor in the same
+job. Rapthor does not submit Slurm jobs itself. Rapthor, DP3, WSClean and the
+other tools must be available on every node, and :term:`dir_working` and the
+input data must be on a disk that all the nodes can see.
 
-Quickstart demos
-----------------
+Set the following in the parset:
 
-Run the basic demo script to launch Rapthor with a local Prefect server and Dask cluster:
+.. code-block:: ini
 
-.. code-block:: console
+    [cluster]
+    batch_system = slurm
+    max_nodes = 4
+    cpus_per_task = 32
+    mem_per_node_gb = 190
+    local_scratch_dir = /local/scratch
+    global_scratch_dir = /shared/scratch
 
-    $ scripts/dev/run-rapthor-prefect-demo.py examples/prefect_demo.parset
+where :term:`max_nodes` is the number of nodes in the job, and
+:term:`cpus_per_task` and :term:`mem_per_node_gb` are the cores and memory of
+each node. The scratch directories are optional (see :term:`local_scratch_dir`
+and :term:`global_scratch_dir`).
 
-The ``examples/prefect_demo.parset`` parset uses the small local test Measurement Set
-and ``examples/prefect_demo_strategy.py``. 
+The job script below is an example of how the scheduler, the workers and
+Rapthor can be started. It will need to be adapted to your cluster, for
+example to load the software or to start the commands inside a container:
 
-For a more representative local demo with five bright point-source groups,
-48 time slots, multiple frequency bins, and two calibration chunks, generate
-the data and parsets:
+.. code-block:: bash
 
-.. code-block:: console
+    #!/bin/bash
+    #SBATCH --nodes=4
+    #SBATCH --ntasks-per-node=1
+    #SBATCH --cpus-per-task=32
+    #SBATCH --mem=0
+    #SBATCH --exclusive
 
-    $ scripts/dev/generate-prefect-demo-data.py --force
+    # Run this job from a directory on a disk that all the nodes can see.
 
-This writes the following files under
-``examples/generated/prefect_demo_rich/``:
+    # Start the Dask scheduler on the first node of the job
+    first_node=$(scontrol show hostnames "$SLURM_NODELIST" | head -n 1)
+    srun --nodes=1 --ntasks=1 --nodelist="$first_node" \
+        dask scheduler --port 8786 --scheduler-file scheduler.json &
 
-- ``prefect_demo_rich.ms`` and matching apparent/true sky models
-- ``prefect_demo_benchmark_strategy.py``
-- ``prefect_demo_rich.parset`` for local dashboard demos
-- ``prefect_demo_benchmark.parset`` for the benchmark harness and CI
+    # Wait for the scheduler, then start one worker on each node
+    while [ ! -s scheduler.json ]; do sleep 2; done
+    srun --nodes="$SLURM_NNODES" --ntasks="$SLURM_NNODES" --ntasks-per-node=1 \
+        dask worker --scheduler-file scheduler.json --nthreads 1 \
+        --local-directory /local/scratch &
 
-The generator uses DP3 prediction to populate the visibilities, then adds
-synthetic time/frequency antenna phases and thermal noise so calibration
-solution plots have visible structure.
+    # Run Rapthor, using the scheduler started above
+    export DASK_SCHEDULER=tcp://$first_node:8786
+    rapthor rapthor.parset
 
-Both generated parsets use the same benchmark strategy: DI phase, DD
-phase/faceting, the legacy DD default solve order
-``["fast_phase", "medium_phase", "slow_gains", "medium_phase"]``, full-Jones
-calibration, imaging, mosaicking, and source filtering. The local demo parset
-keeps workstation-friendly resource defaults, while the benchmark parset leaves
-thread counts to be derived from benchmark runtime overrides.
+The ``--local-directory`` option sets where a worker keeps its own temporary
+data; it should be a disk local to the node.
 
-Pass ``--strategy /path/to/strategy.py`` to
-``generate-prefect-demo-data.py`` when the local demo parset should reference a
-different strategy.
+When Rapthor uses all of the data (a data fraction of 1), each observation is
+split in time into about one chunk per node, so that calibration and
+prediction can run on all the nodes at once. WSClean can also spread the imaging of a sector
+over several nodes if :term:`use_mpi` is set.
 
-To run the generated local demo in the Prefect and Dask dashboards, use the
-local demo parset:
+.. note::
 
-.. code-block:: console
-
-    $ scripts/dev/run-rapthor-prefect-demo.py \
-      examples/generated/prefect_demo_rich/prefect_demo_rich.parset
-
-You can also override the runtime resources:
-
-.. code-block:: console
-
-    $ scripts/dev/run-rapthor-prefect-demo.py \
-      --task-runner local_dask \
-      --local-dask-workers 2 \
-      --cpus-per-task 4 \
-      --max-threads 4 \
-      examples/generated/prefect_demo_rich/prefect_demo_rich.parset
-
-To exercise the multiple-sector imaging and mosaicking path, generate the
-additional quadrant-balanced benchmark dataset:
-
-.. code-block:: console
-
-    $ scripts/dev/generate-prefect-demo-data.py --force --include-multi-sector
-
-This also writes ``prefect_demo_multisector.ms``, matching apparent/true sky
-models, and ``prefect_demo_multisector_benchmark.parset``. The multi-sector sky
-model places bright source groups well inside the four quadrants of a
-``2 x 2`` sector grid, so the run exercises sectorized imaging and mosaic
-assembly without relying on sources that sit close to sector boundaries. The
-multi-sector parset uses ``dde_method = single`` so each sector applies the
-nearest DD solution during imaging; the single-sector benchmark remains the
-full-DD facet-imaging coverage.
-
-.. code-block:: console
-
-    $ MULTISECTOR_RUN_DIR="runs/prefect-demo-multisector-$(date +%Y%m%d-%H%M%S)"
-    $ scripts/dev/run-rapthor-prefect-demo.py \
-      examples/generated/prefect_demo_rich/prefect_demo_multisector_benchmark.parset \
-      --run-dir "$MULTISECTOR_RUN_DIR" \
-      --local-dask-workers 2 \
-      --cpus-per-task 4 \
-      --max-threads 4 \
-      --filter-skymodel-ncores 4 \
-      --dask-performance-report
-
-
-To run a benchmark harness use ``--scenario ci-benchmark``:
-
-.. code-block:: console
-
-    $ scripts/dev/run_benchmark_baseline.py \
-      --scenario ci-benchmark \
-      --prepare-inputs \
-      --repetitions 1 \
-      --local-dask-workers 1 \
-      --cpus-per-task 4 \
-      --max-threads 4
-
+    Runs on multiple nodes, and in particular imaging with MPI, depend on how
+    Slurm and MPI are set up on the cluster. Check that a short run works on
+    your cluster before starting a long one.
 
 
 .. _using_containers:
@@ -232,10 +306,10 @@ To run a benchmark harness use ``--scenario ci-benchmark``:
 Using a (u)Docker/Singularity image
 -----------------------------------
 
-Rapthor can use containers in two ways: by running Rapthor completely within a
-container (for use on a single machine) or by installing Rapthor locally and running
-only the operations within the container (for use with multiple nodes of a
-compute cluster).
+A Docker image with the latest release of Rapthor and all its dependencies is
+available on `Docker Hub <https://hub.docker.com/r/astronrd/rapthor>`_. Using
+it means that no local installation of Rapthor, DP3, WSClean or any of the
+other dependencies is needed.
 
 
 Running everything in a container (single-machine mode)
@@ -279,21 +353,21 @@ inside the container, e.g.,:
 
     $ singularity exec --bind <mount_points>:<mount_points> <rapthor.sif> rapthor rapthor.parset
 
-In this mode, since Rapthor is running fully inside a container, the
-:term:`use_container` parameter should *not* be set, as activating this option
-instructs Rapthor to run the operations inside another, additional container
-(resulting in it running a container inside a container).
 
-
-Running only the operations in a container (multinode mode)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using a container on multiple nodes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For runs that use multiple nodes of a compute cluster (i.e., when
-:term:`batch_system` = ``slurm``), run Rapthor in an environment that already
-contains the required Python and external radio-astronomy tools. The legacy
-mode that launched operation-level CWL containers is no longer the production
-runtime. Slurm/external-Dask validation is deferred until after the Prefect/Dask
-migration cutover.
+:term:`batch_system` = ``slurm``), every process must be able to find Rapthor
+and its dependencies. If they are not installed on the cluster, start each of
+the commands of the job script in :ref:`running_on_cluster` (the Dask
+scheduler, the Dask workers and Rapthor itself) inside the container, e.g.,
+by putting ``singularity exec --bind <mount_points>:<mount_points>
+<rapthor.sif>`` in front of each of them.
+
+Rapthor cannot start containers itself: the :term:`use_container` option of
+earlier versions is no longer supported, and a run in which it is set to
+``True`` stops with an error.
 
 
 .. _troubleshooting:
@@ -310,12 +384,16 @@ Resuming an interrupted run
 
 Due to the potentially long run times and the consequent non-negligible chance
 of some unforeseen failure occurring, Rapthor has been designed to allow easy
-resumption of a reduction from a saved state and will skip over any steps that
-were successfully completed previously. In this way, one can quickly resume a
+resumption of a reduction from a saved state and will skip over any operations
+that were successfully completed previously. In this way, one can quickly resume a
 reduction that was halted (either by the user or due to some problem) by simply
-re-running Rapthor with the same parset. If a step within an operation has failed,
-the output of the previous steps are cached and the execution will resume from
-that point going forward.
+re-running Rapthor with the same parset.
+
+An operation that had not finished is run again from its start, with one
+exception: if WSClean had already finished making the images of a sector,
+those images are used again and WSClean is not rerun. The intermediate files
+of an operation that failed are kept in ``dir_working/pipelines`` so that they
+can be inspected.
 
 
 .. _resetting_rapthor:
@@ -350,4 +428,6 @@ operation to reset:
         9) image_3
     Enter number of operation to reset or "q" to quit:
 
-All operations after the selected one will also be reset.
+All operations after the selected one will also be reset. The files that
+these operations produced (their images, solutions, sky models, plots and
+logs) are removed from the working directory.

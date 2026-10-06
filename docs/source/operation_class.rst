@@ -1,11 +1,9 @@
 The Operation class
 ===================
 
-The Operation class is used to define, set up, run, and finalize one Rapthor
-operation. Production operations execute Prefect/Dask flows and then publish
-output records back to the field state. A subclass of the Operation class is
-defined for each operation. See :ref:`operation_subclasses` for details of each
-Operation subclass.
+The Operation class is used to define, set up, and run one of Rapthor's
+operations. A subclass of the Operation class is defined for each operation.
+See :ref:`operation_subclasses` for details of each Operation subclass.
 
 .. autoclass:: rapthor.lib.operation.Operation
    :members:
@@ -16,7 +14,12 @@ Operation subclass.
 Subclasses of the Operation class
 ---------------------------------
 
-A subclass of the Operation class is defined for each of Rapthor's operations (see :ref:`operations`): calibrate, predict, image, and mosaic. These subclasses are described in detail below.
+A subclass of the Operation class is defined for each of Rapthor's operations (see :ref:`operations`): concatenate, calibrate, predict, image, and mosaic. These subclasses are described in detail below.
+
+The Concatenate class
+^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: rapthor.operations.concatenate.Concatenate
+   :members:
 
 The Calibrate class
 ^^^^^^^^^^^^^^^^^^^
@@ -36,6 +39,11 @@ The Image class
 The ImageInitial class
 ^^^^^^^^^^^^^^^^^^^^^^
 .. autoclass:: rapthor.operations.image.initial.ImageInitial
+   :members:
+
+The ImageNormalize class
+^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: rapthor.operations.image.normalize.ImageNormalize
    :members:
 
 The Mosaic class

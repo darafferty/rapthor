@@ -1,6 +1,6 @@
 # Rapthor: LOFAR DDE Pipeline
 
-Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It is also being developed for use on SKA-Low data. It uses DP3 and WSClean to derive and apply the corrections in facets or as smooth 2-D screens. Production execution is handled through Prefect/Dask; the CWL-to-Prefect migration evidence is recorded in `EQUIVALENCE_REPORT.md`.
+Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It is also being developed for use on SKA-Low data. It uses DP3 and WSClean to derive and apply the corrections in facets or as smooth 2-D screens. The processing is run with Prefect and Dask, on a single machine or on multiple nodes of a compute cluster.
 
 ## Documentation
 

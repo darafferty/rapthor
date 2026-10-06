@@ -6,44 +6,46 @@ Changelog
 Version 3.0 (unreleased)
 ------------------------
 
-This release changes Rapthor's production execution path from CWL/Toil to
-Prefect/Dask.
+This release changes the way in which Rapthor runs the processing. The CWL
+workflows and the Toil runner of earlier versions have been replaced by Python
+code that uses Prefect to keep track of the processing and Dask to run it. The
+processing itself is unchanged. See :ref:`upgrading` for what to check in
+existing parsets and strategy files.
 
-    - The public ``rapthor`` command now runs the Prefect/Dask process flow.
-      Operation-level CWL execution has been removed from the production
-      runtime.
-    - The legacy CWL workflow files, CWL validation tests, and ``cwltool`` test
-      dependency have been removed after the equivalence evidence was recorded.
-    - Prefect logs now include Rapthor Python logging and streamed external-tool
-      output without the noisy Prefect Shell ``PID ... stream output`` prefixes.
-    - The Prefect dashboard can show run logs, command timing summaries,
-      calibration plots, image diagnostics, and optional FITS whole-field or
-      source-centred postage-stamp PNG previews as artifacts. Postage-stamp
-      previews are also saved as files, include catalog source coordinates in
-      the FITS WCS units, and use full-image clipped colour-scale limits that
-      match whole-field FITS previews.
-    - The demo helper can start or reuse a Prefect server, keep it running after
-      a demo, create a unique working directory for each run, expose a local
-      Dask dashboard, and write a Dask performance report.
-    - CWL-to-Prefect parity is documented in ``EQUIVALENCE_REPORT.md`` for the
-      supported non-deferred scenario matrix. Focused dev-container integration
-      coverage has also been refreshed for DI/DD calibration, DI full-Jones,
-      WSClean imaging, PyBDSF diagnostics, and mosaic hand-off.
-    - Slurm/external-Dask and MPI WSClean validation are deferred
-      post-migration target-environment checks.
-    - ``hybrid_screens`` and ``shared_facet_rw`` remain deferred until they are
-      needed and reliable in the intended tool environment.
-    - Frequency BDA during imaging now uses WSClean's required reordering path.
-      EveryBeam 0.8.3 or later is required so primary-beam products can be
-      generated from the resulting multi-spectral-window Measurement Set.
-    - Frequency BDA during imaging is now enabled by default with a 20 km
-      baseline limit, matching the current production default on ``master``.
-    - Rapthor now estimates DP3 calibration memory before the run and again
-      after each cycle's facets and solve intervals are resolved. Estimates are
-      advisory by default; ``fail_on_calibration_oom_risk`` enables strict
-      pre-operation failure for known high-risk configurations.
-    - Per-facet RMS diagnostics now skip facets that do not overlap the RMS
-      image instead of failing the whole diagnostics step.
+    - CWL, Toil, and cwltool are no longer used. Prefect and Dask are
+      installed together with Rapthor, and nothing needs to be set up to use
+      them on a single machine.
+    - A run can be followed in the Prefect and Dask dashboards, which show the
+      state, run time, and log of every step of every operation. Plots of the
+      calibration solutions and the image diagnostics are shown in the Prefect
+      dashboard as well, as are (optionally) previews of the images.
+    - The output of every DP3, WSClean, or other command is written to its own
+      log file in ``dir_working/logs``, and every command that was run is
+      listed, with its run time and resource use, in
+      ``dir_working/logs/commands.jsonl``.
+    - Several steps of an operation can be run at the same time on a single
+      machine (see :term:`local_dask_workers`).
+    - For runs on multiple nodes of a cluster, Rapthor uses a Dask scheduler
+      and workers that are started by the user inside a Slurm job. Rapthor no
+      longer submits Slurm jobs itself.
+    - The :term:`use_container` option is no longer supported. To use a
+      container, run Rapthor itself inside it.
+    - The ``cwl_runner`` and ``dir_local`` options have been removed. Use
+      :term:`local_scratch_dir` instead of ``dir_local``.
+    - The ``plotrapthor`` command has been removed. Solution tables can be
+      plotted with ``python -m rapthor.execution.calibrate.plotting_cli``.
+    - The solves done during calibration, and their order, are set with
+      :term:`calibration_strategy`. The ``do_slowgain_solve`` and
+      ``do_fulljones_solve`` strategy parameters are deprecated.
+    - Frequency BDA during imaging is now enabled by default, with a baseline
+      limit of 20 km. EveryBeam 0.8.3 or later is required to make the
+      primary-beam images in this case.
+    - Rapthor now estimates the memory needed by DP3 for calibration before
+      the run starts and again before each calibration, and logs a warning if
+      it is more than the memory that is available. Setting
+      :term:`fail_on_calibration_oom_risk` stops the run instead.
+    - The calculation of the RMS noise of each facet no longer fails if a
+      facet lies outside of the image.
 
 
 Version 2.1 (2025/12/04)

@@ -31,7 +31,7 @@ The branch is ready to recommend over `master` when all of these are true:
    record outcomes, adaptations needed, runtime experience, output sanity, and
    dashboard/log usability.
 3. **Parset migration is documented.**
-   `docs/source/migrating_from_cwl.rst` lets users adapt a `master` parset
+   `docs/source/upgrading.rst` lets users adapt a `master` parset
    quickly: calibration strategy changes, runtime options, existing
    h5parm/image-only workflows, local versus external Dask, and Prefect
    dashboard setup.
@@ -463,9 +463,11 @@ Do not start speculative optimisation until manual testers can run the branch.
 ## Evidence Locations
 
 - Stakeholder summary: `EQUIVALENCE_REPORT.md`
-- Science contract: `docs/source/development/science_equivalence_contract.rst`
-- Performance contract:
-  `docs/source/development/performance_equivalence_contract.rst`
+- Science and performance contracts: no longer part of the published
+  documentation. `docs/source/development/science_equivalence_contract.rst` and
+  `docs/source/development/performance_equivalence_contract.rst` were last
+  present in commit `90135fe0` and remain retrievable from git history, for
+  example with `git show 90135fe0:<path>`.
 - Archived science, performance, and benchmark reports (the
   `science_equivalence_runs/`, `performance_equivalence_runs/`, and
   `benchmark_baselines/` trees under `docs/source/development/`) were removed

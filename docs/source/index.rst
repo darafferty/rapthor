@@ -23,6 +23,7 @@ Obtaining Rapthor
 
    installation
    changelog
+   upgrading
    future
 
 
@@ -36,7 +37,6 @@ Setting Up and Running Rapthor
    parset
    strategy
    running
-   migrating_from_cwl
    products
    tips
    help
@@ -49,18 +49,6 @@ Rapthor Details
 
    structure
    operations
-   code
-
-
-Development
------------
-
-.. toctree::
-   :maxdepth: 2
-
    development/architecture
-   development/architecture_views
    development/adr_replace_cwl_toil_with_prefect_dask
-   development/science_equivalence_contract
-   development/performance_equivalence_contract
-   development/scientific_glossary
+   code

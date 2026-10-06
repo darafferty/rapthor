@@ -170,6 +170,6 @@ semantics, command-line behavior, or installation/runtime requirements. The main
 documentation source is under `docs/source/`, with README-level overview in
 `README.md`.
 
-Architecture notes and the current Prefect/Dask orchestration diagram live under
-`docs/source/development/`. Keep them aligned with owner-package, task-runner,
-runtime-bootstrap, and roadmap changes.
+The architecture page and its C4 diagrams live in
+`docs/source/development/architecture.rst`. Keep them aligned with
+owner-package, flow and task naming, task-runner, and runtime-bootstrap changes.

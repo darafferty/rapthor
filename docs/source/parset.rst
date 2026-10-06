@@ -189,6 +189,10 @@ The available options are described below under their respective sections.
         completed successfully), IDGCal is used during calibration to generate smooth 2-D
         screens that are then applied by WSClean in the final imaging step.
 
+        .. note::
+
+            The ``hybrid`` mode should be considered experimental.
+
 
 .. _parset_calibration_options:
 
@@ -196,6 +200,10 @@ The available options are described below under their respective sections.
 -----------------
 
 .. glossary::
+
+    use_included_skymodels
+        Include a packaged sky model in calibration when it is within twice the primary
+        beam FWHM of the field center (default = ``False``).
 
     use_image_based_predict
         Use image-based prediction (default = ``False``)? Image-based prediction can be
@@ -334,7 +342,7 @@ The available options are described below under their respective sections.
 
     medium_smoothnessconstraint
         Smoothness constraint bandwidth used during the medium-fast calibration, in
-        Hz (default = 3e6).
+        Hz (default = 6e6).
 
     medium_smoothnessreffrequency
         Smoothness constraint reference frequency used during the medium-fast calibration, in
@@ -402,17 +410,6 @@ The available options are described below under their respective sections.
     solverlbfgs_iter
         Number of iterations per minibatch in the LBFGS solver (only used when
         :term:`solveralgorithm` = ``lbfgs``; default = 4).
-    
-    average_visibilities
-        Perform averaging of the input visibilities for imaging (default = ``True``), 
-        determined by the maximum allowed before smearing effects become important (see
-        :term:`max_peak_smearing`). 
-         
-        .. note:: 
-
-            This works in conjuntion with :term:`save_visibilities`, so that 
-            visibilities used in each imaging cycle can be saved without averaging 
-            (unless other averaging such as bda is requested).
 
     bda_timebase (calibration)
         Maximum baseline used in baseline-dependent time averaging (BDA) during the
@@ -518,6 +515,9 @@ The available options are described below under their respective sections.
             set, as the sky model without filtering can be very large (resulting in
             runtimes becoming very long unless image-based predict is used).
 
+    source_finder
+        Source finder used when filtering the sky model (default = ``bdsf``).
+
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging
         MS files will be saved, with the the direction-independent full-Jones solutions,
@@ -530,6 +530,17 @@ The available options are described below under their respective sections.
         If ``True``, WSClean keeps the model data required for the final image, and Rapthor
         writes residual Measurement Sets as DATA minus MODEL_DATA in
         ``visibilities/image_X/sector_Y``.
+
+    average_visibilities
+        Perform averaging of the input visibilities for imaging (default = ``True``),
+        determined by the maximum allowed before smearing effects become important (see
+        :term:`max_peak_smearing`).
+
+        .. note::
+
+            This works in conjunction with :term:`save_visibilities`, so that
+            visibilities used in each imaging cycle can be saved without averaging
+            (unless other averaging such as BDA is requested).
 
     save_image_cube
         Save frequency cube(s) for the given Stokes parameters (default = ``False``).
@@ -554,11 +565,10 @@ The available options are described below under their respective sections.
 
     model_mosaic_method
         Method used to generate model mosaics from multiple imaging sectors
-        (default = ``wsclean``). ``wsclean`` renders the model from sector
-        sky-model component lists onto the mosaic grid, which is preferred for
-        sparse clean-component model products. ``sparse_fits`` regrids sparse
-        model FITS pixels and is mainly intended for benchmarking and debugging
-        the fallback path.
+        (default = ``wsclean``). With ``wsclean``, the model mosaic is drawn by
+        WSClean from the sky models of the sectors. With ``sparse_fits``, the
+        model images of the sectors are regridded instead; this method is
+        intended mainly for testing.
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
@@ -627,18 +637,20 @@ The available options are described below under their respective sections.
         Use MPI to distribute WSClean jobs over multiple nodes (default = ``False``)? If
         ``True`` and more than one node can be allocated to each WSClean job (i.e.,
         ``max_nodes`` / ``num_images`` >= 2), then distributed imaging will be used (only
-        available if :term:`batch_system` = ``slurm``).
+        available if :term:`batch_system` = ``slurm`` or ``slurm_static``). WSClean is
+        started with ``mpirun``, with one process on each node.
 
         .. note::
 
-            MPI temporaries use :term:`global_scratch_dir` when configured,
-            otherwise the shared operation workspace under :term:`dir_working`.
+            When MPI is used, WSClean's temporary files are placed in
+            :term:`global_scratch_dir` if it is set, and otherwise in
+            :term:`dir_working`, because all the nodes must be able to see them.
 
         .. note::
 
-            MPI WSClean validation is deferred until after the Prefect/Dask
-            migration cutover. Validate this mode in the intended deployment
-            environment before using it for production reductions.
+            Whether MPI works depends on how MPI and Slurm are set up on the
+            cluster. Check this mode with a short run before using it for a
+            full reduction.
 
     shared_facet_rw
         When using facet-based imaging runs WSClean with the options
@@ -735,53 +747,80 @@ The available options are described below under their respective sections.
         image diagnostics. If this is not set, a sky model will be downloaded from 
         Pan-STARRS. Default = ``None`` (sky model will be downloaded by default).
 
+    normalization_skymodels
+        List of at least two sky model paths used for flux normalization when enabled
+        by the strategy (see :term:`do_normalize`). The default is ``None``, which allows
+        Rapthor to download suitable sky models when internet access is available.
+
+    normalization_reference_frequencies
+        Reference frequencies, in Hz, corresponding to ``normalization_skymodels``
+        (default = ``None``).
+
 .. _parset_cluster_options:
 
 ``[cluster]``
 -------------
 
+The options in this section set where and how the processing is run. For a run
+on a single machine, the defaults are usually sufficient. See :ref:`running`
+for how these options are used.
+
 .. glossary::
 
     batch_system
         Cluster batch system (default = ``single_machine``). Use
-        ``single_machine`` when running on a single machine and ``slurm`` to use
-        multiple nodes of a Slurm-based cluster.
+        ``single_machine`` when running on a single machine, and ``slurm`` or
+        ``slurm_static`` to use multiple nodes of a Slurm-based cluster.
+
+        With ``single_machine``, Rapthor starts the Dask scheduler and workers
+        that it needs itself. With ``slurm`` or ``slurm_static``, Rapthor uses a
+        Dask scheduler and workers that you have started inside your Slurm job
+        (see :ref:`running_on_cluster`), and the address of the scheduler must
+        be given (see :term:`dask_scheduler`). Rapthor does not submit Slurm
+        jobs itself.
+
+        The ``slurm`` and ``slurm_static`` systems differ only when
+        :term:`use_mpi` is set: with ``slurm_static``, all of the nodes set by
+        :term:`max_nodes` are used for imaging with MPI, whereas with
+        ``slurm`` one node fewer is used for each imaging sector.
 
     max_nodes
-        When :term:`batch_system` = ``slurm``, the maximum number of nodes of the cluster
-        to use at once (default = 12).
+        When :term:`batch_system` is ``slurm`` or ``slurm_static``, the number
+        of nodes of the cluster to use. The default is 0, which results in a
+        value of 1 for ``single_machine`` and 12 for the Slurm batch systems.
+        Set this to the number of nodes in your Slurm job. When all of the data
+        are used (a data fraction of 1), each observation is split in time
+        into this many chunks so that the nodes can work on them at the same
+        time.
 
     local_dask_workers
-        Number of workers for a local Dask cluster when
-        ``prefect_task_runner = local_dask`` (default = 0). When left at 0,
-        Rapthor falls back to :term:`max_nodes` for compatibility, with at
-        least one worker. Set this explicitly for single-machine runs that
-        should use several local Dask workers without treating them as separate
-        cluster nodes.
-
-    prefect_run_tags
-        Optional comma-separated Prefect tags to attach to this Rapthor run and
-        the operation/task runs launched from it (default = ``None``). Use this
-        to group dashboard runs by scenario, demo, benchmark, or manual test
-        purpose, for example ``prefect_run_tags = demo, multi-sector``.
+        Number of Dask workers to start when Rapthor is run on a single machine
+        (default = 0 = one worker). Each worker runs one step of the
+        processing at a time, so this is the number of DP3 or WSClean commands
+        that can be run at the same time. See :ref:`local_dask_runtime` for
+        when it is useful to set this.
 
     cpus_per_task
-        When :term:`batch_system` = ``slurm``, the number of processors per task to
-        request (default = 0 = all). By setting this value to the number of processors per
-        node, one can ensure that each task gets the entire node to itself, which is the
-        recommended way of running Rapthor.
+        The number of processors that each task may use (default = 0 = all the
+        processors of the machine on which Rapthor is started). When
+        :term:`batch_system` = ``slurm``, set this value to the number of
+        processors per node, so that each task gets the entire node to itself,
+        which is the recommended way of running Rapthor.
 
     mem_per_node_gb
-        When :term:`batch_system` = ``slurm``, the amount of memory per node in GB to
-        request (default = 0 = all).
+        The amount of memory per node in GB that Rapthor may use (default = 0
+        = all). When set, it limits the memory of each Dask worker that Rapthor
+        starts on a single machine, the memory used by WSClean (see
+        :term:`mem_gb`), and the amount of data that the predict operation
+        holds in memory at once.
 
         Rapthor also uses this value for DP3 calibration memory checks. A preflight
         check uses each strategy step's maximum number of directions, and a second
         check before each calibration cycle uses the resolved facet count and DP3
         solve intervals. If ``mem_per_node_gb`` is zero, the checks compare against
-        memory available on the machine running Rapthor. Slurm and external-Dask users
-        should set ``mem_per_node_gb`` because local available memory may not represent
-        memory on a worker node.
+        memory available on the machine running Rapthor. When running on multiple
+        nodes, set ``mem_per_node_gb``, because the memory of the machine on which
+        Rapthor is started may not be the same as that of the other nodes.
 
         The estimate uses decimal GB and a conservative current DP3 peak-memory model
         of 80 bytes per visibility sample. It includes the original data buffer,
@@ -822,10 +861,10 @@ The available options are described below under their respective sections.
         Maximum number of threads per task to use on each node (default = 0 = all).
 
     filter_skymodel_ncores
-        Number of cores to pass to the PyBDSF/LSMTool sky-model filtering step
-        during imaging (default = 0). Set to 0 to use :term:`max_threads`.
-        This can be reduced independently when filtering benefits from fewer
-        cores than WSClean or DP3 on the same node.
+        Number of cores used by PyBDSF when filtering the sky model during
+        imaging (default = 15). Set to 0 to use :term:`max_threads`. This
+        value can be set separately from :term:`max_threads`, since the
+        filtering may run faster with fewer cores than DP3 or WSClean use.
 
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
@@ -839,163 +878,164 @@ The available options are described below under their respective sections.
         :term:`max_cores` so gridding threads are distributed evenly.
 
     local_scratch_dir
-        Full path to a fast local disk for command temporaries, including
-        WSClean's ``-temp-dir`` (default = ``None``). Rapthor creates isolated
-        child directories on the executing worker, so the path need not exist
-        on the head node. Each worker must be able to create and write its
-        scratch directory. Environment variables and ``~`` in this path are
-        expanded on the executing host.
+        Full path to a local disk on the nodes for the temporary files of each
+        command, including those written by WSClean (default = ``None``). This
+        parameter is useful if you have a fast local disk (e.g., an SSD). The
+        path does not have to be on a shared filesystem, and does not have to
+        exist on the machine on which Rapthor is started: Rapthor creates a
+        directory for each command on the node that runs it and removes it
+        when the command has finished. The path may contain environment
+        variables (e.g., ``$TMPDIR``) and ``~``; these are expanded on the node
+        that runs the command.
 
-        Non-MPI commands use this directory. When it is unset, commands inherit
-        their temporary environment and WSClean imaging uses an explicit
-        temporary directory in the operation workspace. Separate directories
-        isolate sectors, tasks and independent workflows. Rapthor removes its
-        temporary directories after commands finish or fail, unless
-        :term:`keep_temporary_files` or :term:`debug_workflow` is enabled.
-        If removal fails, Rapthor logs a warning with the remaining directory
-        and the filesystem error, without hiding a command failure.
+        If this parameter is not set, WSClean writes its temporary files to
+        :term:`dir_working`, and the other commands use the default temporary
+        directory of the node.
 
-        PyBDSF helper commands continue to use ``/tmp`` for temporary files to
-        keep multiprocessing socket paths short, matching the CWL behavior.
-
-        Local Dask workers also use this path for spill storage. For an external
-        Dask cluster, configure worker spill storage in the worker launcher's
-        ``--local-directory`` option.
-
-        MPI commands use :term:`global_scratch_dir`, or the shared operation
-        workspace when it is unset, because all ranks must see the same files.
-
-    global_scratch_dir
-        Full path to a directory on a shared disk that is readable and writable
-        by all the compute nodes and the head node (default = ``None``),
-        used for workflow intermediates that pass between tasks and for MPI
-        command temporaries. Rapthor creates a separate workspace for each
-        workflow, and only cleans its own child directories.
-
-        The stable ``dir_working/pipelines/<operation>`` path temporarily links
-        to the scratch workspace, so task inputs and output records keep the
-        same paths. When a workflow exits, including after a command failure,
-        its products are promoted back to the operation directory for restart
-        and finalization, using a rename on the same filesystem or a copy
-        between filesystems. If promotion fails, the scratch products and their
-        recovery record remain available. A small sibling directory named
-        ``.<operation>.scratch`` records the workspace before any directory
-        moves. Restart repairs interrupted moves before operation setup, even
-        if global scratch is then disabled. It removes the recovery directory
-        after promotion completes. Links within the workspace remain valid
-        after promotion. Restart records, final outputs and
-        logs retain their paths under :term:`dir_working`. When this option is
-        unset, shared intermediates use the operation directory under
-        :term:`dir_working` directly.
-
-    use_container
-        Legacy container setting retained for compatibility with older parsets.
-        Prefect/Dask is the production runtime and does not use this option to
-        launch operation-level CWL containers.
+        When Rapthor is run on a single machine, the Dask workers that it
+        starts also use this directory for their own temporary data. If you
+        start the Dask workers yourself, set this with the
+        ``--local-directory`` option of ``dask worker``.
 
         .. note::
 
-            This option should not be used when Rapthor itself is being run inside a
-            container. See :ref:`using_containers` for details.
+            The temporary files are kept if :term:`keep_temporary_files` is
+            set. If a directory cannot be removed, Rapthor logs a warning that
+            names it and continues.
+
+        .. note::
+
+            PyBDSF always writes its temporary files to ``/tmp``. WSClean jobs
+            that use MPI (see :term:`use_mpi`) use :term:`global_scratch_dir`
+            instead of this directory, since all the nodes must be able to see
+            their temporary files.
+
+    global_scratch_dir
+        Full path to a directory on a shared disk that is readable and writable
+        by all the compute nodes and the head node (default = ``None``). If
+        set, the intermediate files of each operation (the files that are
+        passed from one step to the next) are written to this directory
+        instead of to :term:`dir_working`.
+
+        While an operation runs, ``dir_working/pipelines/<operation>`` is a
+        link to a directory that Rapthor creates inside the global scratch
+        directory. When the operation ends, whether it succeeded or failed,
+        its files are moved back to ``dir_working/pipelines/<operation>``, so
+        that the run can be resumed whether or not the scratch directory still
+        exists. If Rapthor is interrupted before the files have been moved
+        back, the move is completed the next time the run is resumed. The
+        final products and the logs are always written to :term:`dir_working`.
+
+    use_container
+        Not supported, and must be left at its default of ``False``: a run in
+        which this option is ``True`` stops with an error. To use a container,
+        run Rapthor itself inside it. See :ref:`using_containers` for details.
 
     container_type
-        The type of container to use when :term:`use_container` = ``True``. The supported
-        types are: ``docker`` (the default), ``udocker``, or ``singularity``.
-
-    prefect_api_mode
-        Prefect API selection mode for the production Python execution path.
-        Supported values are ``auto``, ``external``, and ``ephemeral``.
-        ``auto`` uses ``prefect_api_url`` or ``PREFECT_API_URL`` when one is
-        configured and healthy, otherwise Prefect may use its temporary local
-        API/server with an isolated temporary Prefect home. Prefect profile API
-        settings are not used implicitly. ``external`` requires a reachable API
-        URL. ``ephemeral`` ignores ``PREFECT_API_URL`` for the run and lets
-        Prefect use its temporary local API/server with an isolated temporary
-        Prefect home.
-
-    prefect_api_url
-        URL of an existing Prefect API, for example
-        ``http://127.0.0.1:4200/api``. If unset, ``PREFECT_API_URL`` is used
-        when present.
-
-    prefect_task_runner
-        Prefect task runner to use for the production Python execution path.
-        Supported values are ``local_dask``, ``external_dask``, and ``sync``.
-        If unset, Rapthor uses ``external_dask`` when a Dask scheduler is
-        configured and ``local_dask`` otherwise.
+        Not used (see :term:`use_container`).
 
     dask_scheduler
-        Address of an existing Dask scheduler to use with
-        ``prefect_task_runner = external_dask``.
+        Address of a Dask scheduler that you have started yourself, for
+        example ``tcp://127.0.0.1:8786`` (default = ``None``). If this is not
+        set, the ``DASK_SCHEDULER`` environment variable is used when present.
+        If neither is set, Rapthor starts its own scheduler and workers on the
+        machine on which it is run. See :ref:`external_dask_runtime` for
+        details.
 
     dask_dashboard_address
-        Dashboard bind address for a local Dask cluster, for example ``:8787``.
+        Address at which the dashboard of the Dask scheduler started by Rapthor
+        is made available, for example ``:8787`` (default = ``None``, which
+        lets Dask choose).
 
-    prefect_stream_output
-        Stream external command output, such as DP3 and WSClean logs, into the
-        Prefect task logs (default = ``True``). This controls forwarding to
-        Prefect only; durable output remains available when
-        :term:`prefect_log_commands` is enabled.
+    prefect_task_runner
+        How the steps of each operation are run (default = ``None``). The
+        default results in ``external_dask`` when a Dask scheduler is given
+        with :term:`dask_scheduler` and ``local_dask`` otherwise, and does not
+        normally need to be changed. With ``local_dask``, Rapthor starts its
+        own Dask scheduler and workers. With ``external_dask``, Rapthor uses
+        the scheduler given by :term:`dask_scheduler`. With ``sync``, the
+        steps are run one at a time without Dask; this is intended for testing
+        only.
+
+    prefect_api_url
+        URL of a Prefect server that you have started yourself, for example
+        ``http://127.0.0.1:4200/api`` (default = ``None``). If this is not set,
+        the ``PREFECT_API_URL`` environment variable is used when present. See
+        :ref:`persistent_prefect_dashboard` for details.
+
+    prefect_api_mode
+        Sets which Prefect server is used: ``auto``, ``external``, or
+        ``ephemeral`` (default = ``auto``). If ``auto``, the server given by
+        :term:`prefect_api_url` is used if there is one, and otherwise a
+        temporary server is used that exists only for the duration of the run.
+        If ``external``, a server must be given with :term:`prefect_api_url`.
+        If ``ephemeral``, a temporary server is always used, even if a server
+        is given. In the ``auto`` and ``external`` modes, the run stops with an
+        error if the server that was given cannot be reached.
+
+        .. note::
+
+            Any server set in your own Prefect configuration (a Prefect
+            profile) is ignored. Each run that uses a temporary server keeps
+            its Prefect data in its own temporary directory, so several runs
+            can be done at the same time without affecting one another.
+
+    prefect_run_tags
+        Optional comma-separated list of labels to attach to the run in the
+        Prefect dashboard, for example ``prefect_run_tags = ngc891,
+        test-robust`` (default = ``None``). The labels can be used in the
+        dashboard to find the run and everything that belongs to it.
 
     prefect_retries
-        Number of Prefect task retries for operation tasks (default = ``0``).
+        Number of times that a step that failed is tried again before the
+        operation is stopped (default = ``0``).
 
     prefect_log_commands
-        Record external command metadata in
-        ``dir_working/logs/commands.jsonl``, write combined stdout/stderr to
-        ``dir_working/logs/<operation>/<task-run-name>.log``, and publish a
-        Prefect command metrics artifact (default = ``True``). These files are
-        independent of Prefect server or dashboard availability and include
-        output from failed commands.
+        Record every command that is run in ``dir_working/logs/commands.jsonl``
+        and write its output to ``dir_working/logs/<operation>/<task>.log``
+        (default = ``True``). These files are written whether or not a Prefect
+        dashboard is in use, and include the output of commands that failed.
+
+    prefect_stream_output
+        Show the output of DP3, WSClean, and the other commands in the logs of
+        the Prefect dashboard as well (default = ``True``). This does not
+        affect the log files written when :term:`prefect_log_commands` is
+        set.
 
     prefect_command_profile
-        External command profiling mode (default = ``auto``). Supported values
-        are ``auto``, ``time``, ``perf``, and ``off``. ``auto`` records
-        lightweight CPU, memory, and filesystem I/O metrics with GNU
-        ``/usr/bin/time -v`` when available and otherwise falls back to Python's
-        process resource counters. ``time`` requests GNU time profiling
-        explicitly, with the same fallback if GNU time is unavailable. Use this
-        mode for the standard rootless development container. ``perf``
-        additionally attempts to run Linux ``perf record`` for native profiling
-        data, but this is an advanced opt-in mode intended for a disposable or
-        rootful profiling container. It requires host support, suitable
-        ``perf_event`` settings, and container permissions that allow
-        ``perf_event_open``. When successful, Rapthor converts the resulting
-        ``perf.script`` files into collapsed stacks and SVG flamegraphs under
-        ``dir_working/logs/profiles/`` and publishes the flamegraphs as Prefect
-        image artifacts. ``off`` disables command resource profiling while
-        leaving normal command timing controlled by :term:`prefect_log_commands`.
+        Sets how the resource use of each command is measured: ``auto``,
+        ``time``, ``perf``, or ``off`` (default = ``auto``). If ``auto`` or
+        ``time``, the CPU time, memory use, and disk I/O of each command are
+        recorded in ``dir_working/logs/commands.jsonl``, using
+        ``/usr/bin/time`` when it is available. If ``perf``, each command is
+        also run under the Linux ``perf`` profiler and flame graphs are
+        written to ``dir_working/logs/profiles``; this mode is intended for
+        developers and requires that the system allows the use of ``perf``. If
+        ``off``, only the run time of each command is recorded.
 
     prefect_publish_fits_previews
-        Render FITS image products to PNG previews and publish those previews as
-        Prefect image artifacts (default = ``False``). Set this to ``True`` for
-        dashboard-oriented demo or debugging runs where quick visual inspection
-        is worth the extra runtime and disk usage. Leave it disabled for
-        benchmarks and large batch runs. This does not disable creation of the
-        FITS products themselves, files under ``dir_working/plots``, or numeric
-        image diagnostics.
+        Make PNG previews of the images and show them in the Prefect dashboard
+        (default = ``False``). The previews take extra time and disk space to
+        make. The images themselves, the plots, and the image diagnostics are
+        made whether or not this option is set.
 
     prefect_publish_postage_stamp_previews
-        Render small PNG previews around the brightest PyBDSF catalog sources
-        and publish those previews as Prefect image artifacts (default =
-        ``False``). This is separate from ``prefect_publish_fits_previews``:
-        whole-field previews can stay disabled while source-centred postage
-        stamps are enabled for targeted visual inspection. When enabled,
-        Rapthor writes the PNG files under
-        ``dir_working/.rapthor-artifacts/postage-stamps`` and publishes them as
-        Prefect image artifacts when running inside a Prefect context. Stamps
-        are rendered from the ``image-pb`` product and include the catalog
-        source coordinates in the title using the FITS WCS coordinate units.
+        Make small PNG previews of the area around the brightest sources found
+        by PyBDSF and show them in the Prefect dashboard (default =
+        ``False``). The previews are made from the primary-beam-corrected
+        image, are also saved in ``dir_working/.rapthor-artifacts/postage-stamps``,
+        and are independent of the previews made with
+        :term:`prefect_publish_fits_previews`.
 
     prefect_postage_stamp_preview_count
-        Maximum number of brightest catalog sources to render when
-        ``prefect_publish_postage_stamp_previews`` is enabled (default = ``5``).
-        Set this to ``0`` to keep the option enabled but publish no source
-        stamps.
+        Maximum number of sources for which a preview is made when
+        :term:`prefect_publish_postage_stamp_previews` is set (default =
+        ``5``).
 
     prefect_postage_stamp_preview_size_px
-        Width and height, in image pixels, of each postage-stamp crop before
-        plotting (default = ``96``).
+        Width and height, in image pixels, of each preview made when
+        :term:`prefect_publish_postage_stamp_previews` is set (default =
+        ``96``).
 
     prefect_fits_preview_clip_percentile
         Upper percentile used for FITS preview display limits (default =
@@ -1007,16 +1047,14 @@ The available options are described below under their respective sections.
         ``100`` to use the finite minimum and maximum values.
 
     debug_workflow
-        Debug workflow related issues (default = ``False``). Enabling this option
-        implies that temporary files, produced during the workflow run, will be kept
-        (i.e. the option ``keep_temporary_files`` is implicitly set to ``True``). This
-        will require significantly more disk space. Use this option with care!
+        Has the same effect as :term:`keep_temporary_files` (default =
+        ``False``).
 
     keep_temporary_files
-        Keep temporary files created during the workflow execution (default =
-        ``False``). If ``True``, temporary files and directories created during the
-        workflow execution will not be deleted at the end of the run. This will require
-        significantly more disk space. This option is useful for debugging purposes.
+        Keep the temporary and intermediate files of each operation (default =
+        ``False``). If ``True``, these files will not be deleted when the
+        operation has finished. This will require significantly more disk
+        space. This option is useful for debugging purposes.
 
         .. note::
 

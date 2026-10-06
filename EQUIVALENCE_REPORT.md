@@ -13,6 +13,10 @@ Science contract:
 Performance contract:
 `docs/source/development/performance_equivalence_contract.rst`
 
+> **Note on the contracts.** The two contract pages are no longer part of the
+> published documentation. They were last present in commit `90135fe0` and can
+> be retrieved with `git show 90135fe0:<path>`.
+
 Detailed science evidence:
 `docs/source/development/science_equivalence_runs/`
 

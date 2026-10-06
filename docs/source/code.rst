@@ -1,47 +1,41 @@
 .. _code:
 
-Python and execution code
-=========================
+Python code
+===========
 
-Rapthor is mainly written in Python. The production execution path uses
-Prefect/Dask flows. The Rapthor code tree is organized as follows::
+Rapthor is written in Python. The Rapthor code tree is organized as follows::
 
-   rapthor-master
+   rapthor
    ├── docs
    ├── examples
    ├── rapthor
    │   ├── cli.py
+   │   ├── execution
    │   ├── lib
    │   ├── operations
-   │   └── execution
+   │   ├── settings
+   │   └── skymodels
    ├── scripts
-   │   ├── dev
-   │   └── prod
    └── tests
 
 In the folder structure above:
 
-- ``rapthor-master/docs`` contains this Sphinx documentation.
-- ``rapthor-master/examples`` contains example parsets and strategy files.
-- ``rapthor-master/rapthor`` contains the main Rapthor Python package.
-- ``rapthor-master/rapthor/cli.py`` contains the command-line entry point used
-  by the installed ``rapthor`` command and by ``python -m rapthor.cli``.
-- ``rapthor-master/rapthor/lib`` contains the main Rapthor classes and modules
-  (see :ref:`classes_modules`).
-- ``rapthor-master/rapthor/operations`` contains operation adapters and
-  operation planning helpers (see :ref:`operation_subclasses`).
-- ``rapthor-master/rapthor/execution`` contains Prefect/Dask execution flows,
-  command builders, payload contracts, output discovery, and importable helper
-  modules.
-- ``rapthor-master/scripts`` contains development and deployment launch helpers.
-  These are not part of the production pipeline layer.
-- ``rapthor-master/tests`` contains unit, execution, operation, and integration
-  tests.
+- ``docs`` contains this Sphinx documentation.
+- ``examples`` contains example parsets and strategy files.
+- ``rapthor`` contains the main Rapthor Python package.
+- ``rapthor/cli.py`` contains the ``rapthor`` command used to run Rapthor (see :ref:`running`).
+- ``rapthor/execution`` contains the code that runs each operation: the steps of the operation, the DP3 and WSClean commands that they run, and the Python processing code (see :ref:`execution_code`).
+- ``rapthor/lib`` contains the main Rapthor classes and modules (see :ref:`classes_modules`).
+- ``rapthor/operations`` contains the operation subclasses (see :ref:`operation_subclasses`).
+- ``rapthor/settings`` contains the default values of the parset options.
+- ``rapthor/skymodels`` contains sky models of bright calibrator sources (see :term:`use_included_skymodels`).
+- ``scripts`` contains scripts used by the developers for testing; they are not needed to run Rapthor.
+- ``tests`` contains files used for testing.
 
-Installed Python commands are declared in ``pyproject.toml`` as package entry
-points. The main ``rapthor`` command uses ``rapthor.cli:main`` and the
-``concat_linc_files`` utility uses
-``rapthor.execution.concatenate.linc_cli:main``.
+The package also installs the ``concat_linc_files`` command for preparing LINC
+measurement sets.
+
+An overview of how these parts work together is given in :ref:`architecture`.
 
 
 .. _classes_modules:
@@ -64,16 +58,23 @@ The following Python classes and modules are the principal ones used in Rapthor.
    parset_module
 
 
-Execution helpers and module adapters
--------------------------------------
+.. _execution_code:
 
-Production pipeline helpers should live under the execution package that owns
-the work. For example, image helper code belongs under
-``rapthor.execution.image`` and calibration helper code belongs under
-``rapthor.execution.calibrate``.
+Python processing code
+----------------------
 
-Most helpers are called directly as Python functions from Prefect/Dask task
-bodies. When a separate process remains useful for dependency isolation, the
-pipeline uses a thin ``python -m`` module adapter under ``rapthor.execution``
-rather than a legacy ``rapthor/scripts`` wrapper. The development architecture
-guide describes this pattern in more detail.
+The code that does the processing of each operation is located in the ``rapthor/execution/`` directory of the code tree, with one subdirectory for each operation: ``calibrate``, ``predict``, ``image``, ``mosaic``, and ``concatenate``. A subdirectory contains:
+
+- ``flow.py``, which defines the steps of the operation and the order in which they are run;
+- ``commands.py``, which builds the DP3 and WSClean command lines (for the operations that run these tools);
+- further modules with the Python code that processes the solutions, images, sky models, etc. (for example, ``rapthor/execution/image/skymodel_filter.py`` filters the sky model and ``rapthor/execution/calibrate/plotting.py`` plots the calibration solutions).
+
+For details of each function, see the inline documentation in the code. An overview of each operation is given in :ref:`operations`.
+
+A few of the processing modules can also be run from the command line. For example, the following command plots the phase solutions in a solution table:
+
+.. code-block:: console
+
+    $ python -m rapthor.execution.calibrate.plotting_cli field-solutions.h5 phase
+
+A description of the inputs can be obtained by running the module with the ``-h`` flag.

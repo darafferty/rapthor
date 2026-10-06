@@ -315,10 +315,38 @@ sky-model products:
 python scripts/dev/run_saved_cwl_equivalence.py --run-root /tmp/rapthor-equivalence --stop-on-failure
 ```
 
-Use the generated demo for end-to-end runtime bootstrapping or orchestration:
+Use the demo scripts for end-to-end checks of runtime bootstrapping or
+orchestration. The basic demo uses the small test Measurement Set in
+`tests/resources` and starts a local Prefect server and Dask cluster:
 
 ```bash
+python scripts/dev/run-rapthor-prefect-demo.py examples/prefect_demo.parset
+```
+
+For a more representative demo, generate a larger synthetic dataset first. It
+has five bright point-source groups, 48 time slots, several frequency bins,
+and two calibration chunks; the visibilities are predicted with DP3 and then
+given synthetic antenna phases and thermal noise so that the solution plots
+show structure:
+
+```bash
+python scripts/dev/generate-prefect-demo-data.py --force
 python scripts/dev/run-rapthor-prefect-demo.py examples/generated/prefect_demo_rich/prefect_demo_rich.parset --run-dir /tmp/rapthor-prefect-demo --no-keep-server
+```
+
+The generator writes the Measurement Set, the apparent and true sky models, a
+strategy, and two parsets (`prefect_demo_rich.parset` for local runs and
+`prefect_demo_benchmark.parset` for the benchmark harness and CI) under
+`examples/generated/prefect_demo_rich/`. Add `--include-multi-sector` to also
+write a dataset and parset that exercise imaging of a 2 x 2 grid of sectors
+and mosaicking. Both scripts list their options with `--help`, including the
+resource overrides `--local-dask-workers`, `--cpus-per-task`, and
+`--max-threads`.
+
+Run the benchmark harness on the generated data with:
+
+```bash
+python scripts/dev/run_benchmark_baseline.py --scenario ci-benchmark --prepare-inputs --repetitions 1 --local-dask-workers 1 --cpus-per-task 4 --max-threads 4
 ```
 
 For benchmark work, follow `PLAN.md`. Benchmarks should report median plus
