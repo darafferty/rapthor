@@ -1,495 +1,263 @@
-# Rapthor Switch-Readiness Plan
+# Post-Merge Development Plan
 
-Status snapshot: 2026-09-18. Manual testing is in progress and is the main
-remaining switch blocker.
+Updated: 2026-10-06.
 
-## Goal
+## Scope and Priorities
 
-Make the current Prefect/Dask branch the branch developers and users want to
-run: scientifically trustworthy, faster or no worse than `master` on the tested
-paths, easier to observe, easier to debug, and pleasant to develop. The
-user-facing workflow stays:
+This roadmap starts after `gec-468-ai-migrate-to-prefect` is merged into master.
+Manual testing of the migration is nearing completion; the work below develops
+and improves the resulting Prefect/Dask pipeline.
 
-```bash
-rapthor input.parset
-```
+Base each change on the merged master and keep it in a focused branch and merge
+request. The normal command remains `rapthor input.parset`. Keep temporary
+`rapthor3` comparison-test changes outside production branches.
 
-This branch should replace `master` only when the decision is evidence-driven:
-science equivalence, performance equivalence, manual testing, documentation,
-and known limitations must all be visible to reviewers.
+The suggested order is:
 
-## Switch Criteria
+1. Record the merged baseline and carry forward outstanding issues.
+2. Enforce resource budgets before increasing concurrency.
+3. Validate and improve cluster deployment and monitoring.
+4. Profile real workloads and implement measured performance improvements.
+5. Extend coverage and simplify maintenance.
 
-The branch is ready to recommend over `master` when all of these are true:
+Independent work, such as catalog caching, CI improvements and a persistent
+Prefect service, can proceed alongside resource allocation. Resource budgets
+and tool thread limits must precede changes that run more heavy tasks at once.
 
-1. **Evidence package is complete and reviewer-friendly.**
-   `EQUIVALENCE_REPORT.md` summarizes the latest science and performance gate
-   results, links to compact archived reports, explains accepted differences,
-   and lists caveats plainly.
-2. **Representative manual tests pass.**
-   Developers outside the refactor run the current branch with real parsets and
-   record outcomes, adaptations needed, runtime experience, output sanity, and
-   dashboard/log usability.
-3. **Parset migration is documented.**
-   `docs/source/upgrading.rst` lets users adapt a `master` parset
-   quickly: calibration strategy changes, runtime options, existing
-   h5parm/image-only workflows, local versus external Dask, and Prefect
-   dashboard setup.
-4. **Runtime UX is low-friction.**
-   `rapthor input.parset` works with no existing Prefect server or Dask
-   cluster, and users can opt into persistent dashboards or external Dask with
-   copy/paste commands. Production users can also run multiple independent
-   Rapthor jobs without a shared Prefect server until a Postgres-backed Prefect
-   service is available.
-5. **Quality gates are green.**
-   Non-integration tests, representative integration tests, science
-   equivalence, and performance equivalence all pass or have documented,
-   accepted caveats.
-6. **Known limitations are explicit.**
-   Multi-sector mosaic, screens/IDGCal, and any site-specific tool issues are
-   documented as either accepted caveats or required follow-up. Slurm with
-   external Dask and MPI WSClean must have at least one representative
-   production/staging validation before recommending this branch for
-   multi-node imaging.
-7. **Deployment packaging is available.**
-   Developers can test without Spack using the dev container or an existing
-   Python/tool environment plus editable install. Production-like deployments
-   use the `py-rapthor-prefect-dask` recipe in `../ska-sdp-spack/packages/`,
-   leaving the legacy `py-rapthor` recipe in place until the switch decision is
-   made.
+## 1. Establish the Baseline and Carry Forward Issues
 
-## Decision Status
+Record the merge revision, dependency versions and final manual-test findings
+in [EQUIVALENCE_REPORT.md](EQUIVALENCE_REPORT.md) or a linked compact report.
+Use that revision and its products as the reference for subsequent changes.
+Turn outstanding findings into focused follow-up issues with a reproducer and
+expected behavior. Keep large run products in ignored directories or artifacts.
 
-**Science: in progress** — automated gates pass, but final acceptance is part
-of manual testing. For the covered LOFAR HBA self-calibration contract, the
-August sync is verified at current commit `59be6d94` against exact `master`
-commit `b307e769`; the default frequency-BDA and generated-initial-sky-model
-paths are verified against `043c15d4` with three repetitions per branch. Two
-classified differences remain, neither an unexplained current-branch
-regression: an EveryBeam baseline shift in old-reference normalization, and an
-intentional WSClean channel-coverage fix where `master` leaves two of eight
-channels unpredicted by using inclusive endpoints with WSClean's end-exclusive
-`-channel-range`. Science is accepted once testers running their own parsets on
-real data confirm that the products hold up.
+Consolidate the existing branches:
 
-**Performance: accepted** for the current optimisation phase.
+- Retain `gec-618-resource-allocation` as a source for the resource work below.
+  Extract its relevant changes onto the merged master rather than merging its
+  older migration snapshot.
+- Retire temporary CLI overlays once comparison testing no longer needs them.
+  `gec-535-rapthor3-cli` also contains resource changes, so preserve useful work
+  before retiring it; do not merge the whole branch for its CLI change.
+- The filtering and WSClean environment fixes from `gec-629-fix-chunking` have
+  already been ported. Its chunking fix is covered by the newer development
+  implementation. Check the merged tree before carrying over any old patch.
 
-- Phase-only core gate: `303.160 s` current versus `429.557 s` `master`
-  (`-29.425%`).
-- DD phase plus DI full-Jones gate: `94.004 s` versus `151.183 s` (`-37.821%`).
-- Frequency-BDA gate: 9/9 cross-branch pairs pass; `125.944 s` versus
-  `298.744 s` in that environment.
+Port audit, 2026-10-06: remote master was confirmed at `a998d5f7` (2026-10-02)
+and compared with migration revision `b5bd0d83`. The entries below describe
+remaining behavior or explicit review decisions, rather than unmatched commits
+alone. Recheck them after the merge and retain only outstanding work. Remove
+completed items and document deliberate differences with a reason.
 
-**Manual testing: in progress.** This is the main remaining switch blocker.
-Interactive testing on developer machines is a first-class path: many testers
-run `rapthor` directly without Slurm, using local/no-server Prefect and local
-Dask. Slurm, external Dask, and MPI WSClean are a separate
-production-readiness track.
+| Area | Follow-up if still applicable |
+| --- | --- |
+| Scientific defaults | Reconcile calibration/imaging `bda_frequencybase` (`5000` on the reference master, `20000` on the migration branch; `a998d5f7`). Check scientific and runtime effects before changing the default. Add `normalization_reference_frequencies` to `defaults.json` where needed (`6d4df857`) and test consistency with parset defaults. |
+| Normalization catalogs | Preserve known-survey correction/error metadata for supplied catalogs where appropriate (`dfa7f11a`); the migration branch currently uses correction `1` and error `0`. Cover flux-scale behavior with supplied and downloaded references. |
+| Prediction | Review array-beam application (`23ed80e9`) and rendering/reordered-data reuse (`d587eec5`). Port required behavior into the Prefect execution owners with command, product and scientific comparisons. Verify named multi-facet DS9 regions with DP3 and WSClean (`d90786e8`): master supplies separate point-label and polygon-label formats, while the migration shares one region. Adapt formats only if the supported tool stack requires it. |
+| Observation layout | Restore support for mixed station sets from `4c00305d` where required. Cover concatenation and residual-MS behavior as well as station selection. |
+| Logging and failures | Port the duplicate-handler and uncolored file-log fixes (`fda65c8a`) if still needed. Improve access to the relevant task log and failure cause; command exceptions already carry command and exit information. |
+| Packaging and builds | Apply the specific metadata, container and test-environment follow-ups below. Keep source-tool compatibility and NumPy's compiled-extension ABI consistent across supported images. |
+| CI and tests | Adapt the Astron/SKA CI and integration-sharding changes below. Add the missing real facet-RMS and gridding integration checks listed in Coverage and Maintenance; these have unit/command coverage already. Preserve existing image-only and calibration-memory integration coverage. |
 
-**Multi-sector mosaic: low priority for the switch decision.** Keep targeted
-smoke/equivalence coverage, but it should not block switching unless it exposes
-a broader single-sector, imaging, or product-contract regression.
+Preserve behavior through the current execution owners. Retired CWL templates,
+Toil/StreamFlow runners and their staging mechanics do not need to be restored.
 
-## Remaining Work
+### Build, Packaging and CI Ports
 
-- [ ] **Demonstrate multi-node dashboards locally.**
-  Run Rapthor through Slurm on multiple nodes and view both dashboards in a
-  local browser: Prefect for flow/task state and Dask for worker/task
-  occupancy. The Slurm launcher should print or write copy/paste SSH tunnel
-  commands for both.
-- [ ] **Benchmark the WSClean multi-band and frequency-BDA scenarios** if
-  performance claims will be made for them. The existing core performance gates
-  remain applicable to the unchanged default paths and need only be refreshed
-  at the final switch gate.
-- [ ] **Update the decision evidence.**
-  Summarize manual-test outcomes, the install method used by each tester,
-  Spack/module smoke checks, and Slurm staging status in
-  `EQUIVALENCE_REPORT.md` or a linked switch-readiness report.
-- [ ] **Run final gates** after the final switch-readiness edits:
+- **Ubuntu APT sources (`a39e517b`, `d1fd7249`):** update the mirror rewrite in
+  `Docker/Dockerfile` and `ci/ubuntu_24_04-base` to use
+  `/etc/apt/sources.list.d/ubuntu.sources`, including the runtime stages. Retain
+  Ubuntu 24.04 as the default; the useful build fixes are separate from the
+  reverted Ubuntu 26.04 default change.
+- **NumPy build/runtime consistency (`7eb0b03f`):** reconcile the standalone
+  Dockerfile's `numpy<2` build with the CI images' NumPy 2 policy. Preserve the
+  migration's Boost.NumPy/PyBDSF compatibility work and import checks. Verify
+  compiled extensions in the final image, not just the builder.
+- **SageCal/libdirac compatibility:** master resolves SageCal to
+  `33d21c45000bf13e5e29077ba3413405c42c503f` for its GLib-free build; the
+  migration resolver uses upstream `HEAD`. Choose a verified compatible source
+  tuple and reflect it in the resolver, image labels and build-cache key.
+- **Package metadata and releases (`a39e517b`, `583dc808`, `70b561e5`):** align
+  the supported/tested Python range with master's Python 3.10–3.14 policy;
+  adopt the SPDX expression, license-file metadata and `setuptools>=77`.
+  Evaluate `lsmtool>=1.9.0` in place of the old Git pin, verifying the APIs and
+  scientific products used by the execution owners.
+- **Compiled test dependencies and beam data (`a39e517b`):** pass
+  `EVERYBEAM_DATADIR` through integration tox. Review master's
+  `sitepackages = true` change so tests use the intended container-installed
+  astronomy libraries without rebuilding an incompatible extension stack.
+  Preserve the migration's isolated Prefect state and test run roots.
+- **Astron/SKA CI (`be6642f8`):** port common/site-specific jobs, runner and
+  finalizer setup. Bound unit-test workers to the runner's allocation; master
+  uses eight rather than `-n auto` to avoid excessive workers and OOM failures.
+  Keep field tests and Prefect-server tests serial. Reproduce the mirror's
+  multiprocessing socket-path fix with a tested Python >=3.13.7 integration
+  environment; master uses `tox-uv` with managed Python 3.13. Retain short
+  temporary paths and verify the actual Prefect runs on the mirror.
+- **Integration balancing (`3e352b73`, `c3fac822`):** regenerate duration data
+  for the current Prefect tests and use `--durations-path` with
+  `--splitting-algorithm least_duration`. Review four versus eight shards using
+  measured job times and runner resources. Keep each shard's state separate.
 
-  ```bash
-  python3 -m ruff check --fix --select I <touched-python-files>
-  python3 -m ruff format <touched-python-files>
-  python3 -m pytest -m "not integration" tests
-  RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
-    python3 -m pytest -m integration -vv -ra --durations=0 \
-    tests/integration tests/operations/integration
-  ```
+## 2. Resource Allocation and Safe Concurrency
 
-  Then rerun or refresh the saved-reference science gate if scientific products
-  changed, branch repeatability/equivalence for the main decision scenarios,
-  the current CI benchmark scenario set, and at least one real-user manual
-  parset.
+Use the GEC-618/GEC-619 changes as starting material: gridding/shared-facet
+selection (`63403e6b`, `1ac71a94`), configurable WSClean/DP3 thread counts
+(`ea2c08fd`) and resource allocation (`b7dfd010`). Review each against the
+current execution architecture rather than assuming it applies unchanged.
 
-## Master Catch-Up Tasks
+Implement this work in dependency order:
 
-Audit snapshot: 2026-09-18. Branch point is `2e21be62` (GEC-428, 2026-05-11);
-the branch is 605 ahead and 54 behind `master`. The last hand-sync rounds were
-2026-08-14 and 2026-09-14 (`be9c552f`).
+1. **Define and enforce a node-wide CPU/memory budget.** Account for every Dask
+   worker and external subprocess. Divide worker memory limits within the node
+   allocation; giving each worker the full node limit multiplies the assumed
+   capacity. Dask memory limits alone do not constrain subprocess RSS.
+2. **Apply per-tool limits and schedule heavy tasks within that budget.** Extend
+   the existing environment policies to DP3 solves, prediction, applycal and
+   Python adapters. Make command thread flags and native thread pools agree
+   with the task allocation. Preserve existing filtering caps and WSClean's
+   single OpenBLAS thread per MPI rank. Keep MPI imaging exclusive within its
+   allocation and make resource requests affect scheduling.
+3. **Choose safe local worker defaults.** Derive worker counts from available
+   cores and memory, bounded by configured allocations. Keep one Prefect
+   task-engine thread per worker process. Light tasks should be able to proceed
+   without allowing several heavy commands to claim the same resources.
+4. **Revisit parallel gridding and shared-facet selection.** Base decisions on
+   actual resources and external-tool capabilities, including MPI layouts.
 
-Nothing here is cherry-pickable: `git cherry` matches zero commits by patch-id
-because this branch removed `rapthor/pipeline/` (CWL) and `rapthor/scripts/`
-entirely. Every item below is a re-implementation against
-`rapthor/execution/<owner>/`. Of the 54 commits `master` has and this branch
-does not, 21 are already ported, 6 are superseded by the migration, and the
-rest are listed here in priority order.
+Verify one-worker, multiple-worker and MPI configurations with real command
+execution. Record total CPU usage, peak memory and elapsed time, and confirm
+that products and failure/restart behavior remain consistent. Increase default
+concurrency only when the combined workload stays within its allocation.
 
-### Priority 1 — quick, low-risk, do first
+## 3. Cluster Deployment and Monitoring
 
-- [ ] **Port the double-logging fix** (`fda65c8a`, GEC-610).
-  `rapthor/_logging.py` still applies `fh.emit = add_coloring_to_emit_ansi(fh.emit)`
-  and never calls `logging.root.handlers.clear()`. The file is otherwise close
-  to `master`, so this is close to a straight port. Add a test asserting a
-  single handler and no duplicated records; `master` has none.
-- [ ] **Fix the `normalization_reference_frequencies` default.**
-  The option is in `rapthor/settings/defaults.parset:374` and is read in
-  `rapthor/lib/parset.py`, `rapthor/lib/field.py` and `rapthor/execution/`, but
-  it is missing from `rapthor/settings/defaults.json`. `master` has it in both.
-  Also work out why `tests/lib/test_parset_option_coverage.py` does not catch
-  this, since the same test must catch task 5 below.
-- [ ] **Adopt the SPDX license expression** (`583dc808`).
-  `pyproject.toml` still uses `license = {file = "LICENSE"}` plus the deprecated
-  classifier, and `setuptools>=64` instead of `>=77`.
-- [ ] **Reconcile toolchain drift in `pyproject.toml`.**
-  `requires-python = ">=3.9"` vs `master`'s `">=3.10"`; tox envlist `py39-313`
-  vs `py310-314`; missing `pandas` test dependency and `EVERYBEAM_DATADIR`
-  passenv; missing ruff `exclude = ["debug/**"]` although `debug/scan_ms` exists
-  here. Also decide whether to keep the `lsmtool` pin at `3b27105b`, which is
-  stale relative to GEC-115 and the astrometry work, or move back to `@master`.
-  Internal inconsistency to settle at the same time: `Docker/Dockerfile` pins
-  `numpy<2` while `ci/ubuntu_24_04-base` pins `numpy>=2,<3`.
+- **Slurm, external Dask and MPI:** run a representative multi-node imaging
+  workload. Exercise worker-local scratch, shared scratch, product promotion,
+  interrupted runs and restart. Existing opt-in Slurm smoke tests check
+  allocation/scheduler access; extend coverage to the actual imaging path.
+- **Dashboard access:** demonstrate Prefect and Dask dashboards from a local
+  browser while the run executes on a cluster. Have the launcher print or write
+  usable SSH tunnel commands and document the scheduler/worker setup.
+- **Persistent Prefect service:** provide a managed Postgres-backed service for
+  users who need one dashboard and durable history for independent jobs.
+  Document startup, configuration and recovery. Keep isolated ephemeral state
+  available for standalone runs; shared SQLite is unsuitable for the intended
+  concurrent production service.
+- **Installation:** verify the supported container and site/Spack/module paths
+  on representative production systems and update their instructions.
 
-### Priority 2 — CI and build
+Document the tested allocation, tool versions, storage layout and recovery
+results in [running](docs/source/running.rst) and
+[architecture](docs/source/development/architecture.rst). Keep Ubuntu 24.04 as
+the supported container baseline while Ubuntu 26.04's reported memory problems
+are investigated separately.
 
-- [ ] **Port the pre-26.04 container fixes, but stay on Ubuntu 24.04**
-  (`7eb0b03f`, `b27ba6e6`). `master` upgraded to 26.04 in `a39e517b` and then
-  reverted to 24.04 by default in `d1fd7249` (RAP-1469, 2026-09-18) because of
-  unresolved memory issues running Rapthor under 26.04, so do **not** port
-  `a39e517b` as a default change; this branch is already on `ci/ubuntu_24_04-*`
-  and therefore already matches `master`'s current default. Still unported from
-  that window: `Docker/Dockerfile` pins `numpy<2` where `master` unpinned it.
+## 4. Measured Performance Improvements
 
-  As of 2026-10-06, `Docker/fetch_commit_hashes.sh` resolves all eight source
-  dependencies from upstream `HEAD`. The temporary EveryBeam v0.8.5 and
-  pre-0.9 WSClean pins have been removed together now that DP3 and WSClean both
-  require EveryBeam 0.9.x. Both Dockerfiles use matching `master` defaults in
-  their builder and runtime stages; CI overrides these with the resolved commit
-  hashes and includes them in the base-image cache key.
+Profile representative real-data runs before choosing changes. Re-measure
+`filter_skymodel` after its environment fixes, then inspect WSClean imaging,
+command resource use, I/O and task wait times. Optimize calibration plotting
+only if it remains a meaningful cost on larger runs.
 
-  The ~25-line build-Boost-from-source workaround in `ci/ubuntu_24_04-base`
-  cannot be deleted yet: it depended on 26.04 shipping Boost.NumPy built
-  against NumPy 2. `master` retains `ci/ubuntu_26_04-*` as non-default build
-  files for further investigation; decide whether to mirror them here or wait
-  until the memory issue is understood.
-- [ ] **Restore duration-based integration test splitting** (`3e352b73`,
-  `c3fac822`). `tests/integration/.test_durations` is absent, tox lacks
-  `--durations-path` and `--splitting-algorithm least_duration`, and
-  `.gitlab-ci.yml` runs `parallel: 4` against `master`'s `parallel: 8`.
+Cache reference catalogs per run to avoid repeated survey queries across
+sectors and cycles. Key cached data by the query and sky coverage, reuse
+supplied catalogs, and preserve offline, empty-result and fallback behavior.
+Avoid unnecessary temporary-FITS round trips where profiling shows a benefit.
 
-### Priority 3 — feature gaps
+Benchmark WSClean multi-band and frequency-BDA workloads before extending
+performance claims to them. For each optimization, record input/configuration,
+revision, dependency versions, elapsed time, peak memory and product comparisons.
+Use repeated runs when normal scatter could obscure the result.
 
-- [ ] **Port array-beam application in prediction** (`23ed80e9`, Rap1461).
-  Nothing ported. Needs the `wsclean_predict_beam_interval` option in both
-  defaults files, `-apply-facet-beam` and `-facet-beam-update` on the WSClean
-  predict command, the `-fpb` model naming (`predict-…-model-fpb.fits`), and the
-  `ddecal_solve` array-beam change. This branch currently hardcodes
-  `beam_interval=120` for DP3 only, in `rapthor/execution/predict/commands.py:61`
-  and `rapthor/execution/calibrate/commands.py:39`. Target:
-  `rapthor/execution/calibrate/prediction.py`.
-- [ ] **Port predict reuse-ordering** (`d587eec5`, Rap1418).
-  Nothing ported: no `-parallel-reordering`, `-reuse-reordered` or
-  `-save-reordered`, no full-band model-image combining, no
-  `optimal_rendering_parameters()`. Same target file as the task above.
+### Parallelization Investigations
 
-  Do these two together: both touch `prediction.py` and both invalidate
-  `tests/execution/fixtures/command_reference.json`, which encodes the current
-  command lines in roughly seven places and must be regenerated once.
-- [ ] **Re-implement failure error extraction** (`aabe35f2`, GEC-603).
-  `rapthor/lib/operation.py:249` still raises a bare
-  `RuntimeError(f"Operation {self.name} failed due to an error")` with no
-  extracted cause. `master`'s `extract_log_errors` / `handle_failure` /
-  `format_cli_command` parse CWL logs, so this needs real design work against
-  Prefect task logs rather than a port. A Prefect-flavoured equivalent of
-  `tests/resources/failed_workflow_sample.log` is needed as a fixture.
+These opportunities are investigations, not promised speedups. Establish the
+resource controls above before increasing concurrency. Start with prediction/
+solve overlap and residual/image overlap; investigate the remaining work where
+profiling shows a useful benefit.
 
-### Priority 4 — test coverage holes for already-ported features
+| Priority | Opportunity | Required boundary and comparison |
+| --- | --- | --- |
+| High | Overlap chunk prediction and calibration solving | Submit each solve against its own prepared-chunk dependency and shared prerequisites. Preserve solve order within a chunk and collect only after all chunks finish. Compare multi-chunk WSClean-prediction runs. |
+| High | Overlap residual-MS creation and image post-processing | Start independent image products after WSClean completes, join residual and image records at finalization, and wait for all MS readers before cleanup. Compare residual-enabled runs. |
+| Medium | Build requested Stokes cubes independently | Bound simultaneous dense allocations and reads, preserve specification order, and attach catalog dependencies only to the required cube. Compare I/Q/U/V products. |
+| Medium | Run independent diagnostic checks concurrently | Give substantial photometry, astrometry and RMS work distinct outputs and plotting processes, followed by one JSON writer. Preserve offline, empty-catalog and survey-fallback behavior. |
+| Medium | Compare astrometry facets concurrently | Return plain offset/statistics records and retain ordered reduction, query limits, skipped-facet handling and averaging semantics. Cache catalogs where their footprint permits. |
+| Conditional | Render prediction bands concurrently | Keep a single writer per MS. Concurrent predictions require isolated outputs and a deterministic merge; measure the additional memory and scratch costs. |
+| Low | Regrid mosaic sectors concurrently | Use distinct product/sector paths and bound memory and filesystem traffic. Compare multi-sector mosaic products. |
+| Low | Compress independent images or batches | Keep outputs disjoint, preserve compression semantics and measure storage throughput. |
+| Low | Plot slow-gain phase and amplitude concurrently | Establish per-task PNG ownership, use independent plotting processes and preserve safe read access. Compare plots and h5parm products. |
 
-These cover work that is already on the branch but untested here.
+Keep worker payloads plain and serializable. Preserve ordered self-calibration
+cycles, strategy solves and writes to shared MS/h5parm products. Cleanup must
+wait for every consumer. Compare products, memory, I/O and elapsed time with one
+and multiple workers before adopting a concurrency change.
 
-- [ ] **Add `tests/lib/test_calibration.py`.**
-  `rapthor/lib/calibration.py` was ported in `4fd75842` but nothing under
-  `tests/` imports it. Its sibling `test_calibration_memory.py` exists.
-- [ ] **Port the per-facet RMS diagnostics test** (GEC-441):
-  `tests/integration/test_sector_diagnostics.py`, plus the
-  `test_image_from_reg.fits` and `test_image_regions_rendered.fits` resources.
-- [ ] **Port the parallel-gridding integration test** (GEC-487):
-  `tests/integration/test_wsclean_parallel_gridding.py`.
-- [ ] **Rewrite the GEC-444 calibration-strategy tests.**
-  `master`'s `tests/integration/test_image_only_applycal.py` and
-  `test_legacy_calibration_strategy.py` have no equivalent here, although the
-  logic is present in `rapthor/operations/image/base.py:137-164`. `master`'s
-  `image_only` naming does not transfer, so these need rewriting against this
-  branch's refactor rather than copying. Fixtures needed:
-  `integration_field_solutions.h5`, `manual_testing.parset`,
-  `manual_testing_strategy.py`.
+## 5. Coverage and Maintenance
 
-### Decision needed before the next `master` merge
+- **Facet-RMS integration (`eb1b6f2f`):** adapt master's
+  `test_sector_diagnostics.py` scenario to verify actual `facets_rms` JSON from
+  a pipeline run. Assert flat-noise and beam-corrected statistics, including
+  mean, median, standard deviation, minimum and maximum. The calculation and
+  focused unit tests are present; this checks the full product path.
+- **Parallel-gridding integration (`38abdb92`):** adapt the matrix of task
+  counts 1/2, full/single DDE modes and serial/MPI-wrapper routing. Check the
+  executed WSClean commands and products rather than CWL log filenames.
+  Master's MPI wrapper invokes serial WSClean; real MPI validation remains
+  part of the cluster workstream.
+- **Synthetic Measurement Sets (`da442dfc`):** port flag/weight initialization
+  into `tests/integration/conftest.py:ms_for_normalisation`. After replacing
+  UVW and DATA to describe a new synthetic observation, reset `FLAG` and
+  `FLAG_ROW` to false and `WEIGHT`/`WEIGHT_SPECTRUM` to one. Verify the fixture
+  starts with the intended signal and weighting rather than seed-MS state.
+- **Integration CPU limits (`c3fac822`):** cap smoke-fixture CPU requests by
+  available CPUs, as master's `min(cpu_limit, misc.nproc())` does, instead of
+  always requesting six. Keep gridding/thread settings within that allocation.
+- **Shared-facet I/O:** resolve the tool failure behind the
+  `shared_facet_rw = True` case's `xfail(run=False)` and execute that path in a
+  supported environment. Its `False` control already runs.
+- **Broader scientific paths:** add representative SKA-Low and screens/IDGCal
+  coverage as their target environments become available. Historical
+  equivalence evidence covers selected LOFAR HBA paths.
+- **Multi-sector mosaic:** maintain targeted smoke/product coverage. Give it
+  lower priority than common imaging unless a failure affects shared contracts.
+- **Legacy strategies:** document the transition to `calibration_strategy` and
+  schedule removal of the `do_slowgain_solve`/`do_fulljones_solve` translation.
+  Replace deprecated flags with an actionable error after the documented
+  deprecation period, and retire the compatibility-only strategy helper.
+- **Supported strategy combinations (`0ebc0690`):** review any required
+  master workflows excluded by the migration's explicit solve-combination
+  validation, such as DI `medium_phase` alone or DD `full_jones`. Treat this
+  as a support decision; expand combinations only with execution and scientific
+  product coverage, preserving explicit solve order.
+- **Module and test cleanup:** simplify large diagnostics, normalization,
+  h5parm-combination and operation modules when maintenance or behavior changes
+  justify it. Consolidate shared test helpers where useful. Preserve guards for
+  serializable payloads, thin operation adapters, calibration semantics,
+  image-only application, restart and scientific products.
+  Use the GEC-486 helper work (`5f59fe87`, `6c58212b`, `14377a61`, `4cc0b732`)
+  where it removes duplication; scope integration-only fixtures to integration
+  tests. Current pytest conversions and repository-wide formatting already
+  cover the corresponding master changes.
 
-- [ ] **Decide on `rapthor/testing.py`** (GEC-486: `5f59fe87`, `0c422261`,
-  `4cc0b732`, `14377a61`, `6c58212b`).
-  `master` moved shared test helpers into an importable `rapthor/testing.py`;
-  this branch never adopted it and grew `tests/conftest.py` to 738 lines against
-  `master`'s 490. `assert_logged`, `make_source_catalog` and
-  `generate_parset_from_template` are undefined anywhere in `tests/` here; only
-  `generate_parset` exists, at `tests/conftest.py:420`. Every later `master`
-  test commit builds on the module, so settling this before the next merge is
-  cheaper than settling it during one.
+For each follow-up, run focused tests and the relevant tool/integration case.
+Scientific, default or scheduling changes need product comparisons against the
+recorded baseline. Update defaults, user documentation, examples and command
+contracts together when behavior changes. Keep the architecture diagrams
+aligned with new flow/task boundaries.
 
-### Superseded by the migration — do not port
+## Tracking and Evidence
 
-- `e8873f19` (GEC-571, flat-noise symlink) and `b457f49c` (duplicate CWL
-  fields) are CWL-only. `rapthor/execution/image/skymodel_filter.py:66` passes
-  explicit output paths, so the PyBDSF `export_image` problem cannot occur.
-- `18cf2d72` (image input generation) fixes a bug that is structurally absent:
-  `rapthor/operations/image/base.py:583` already builds `parallel_gridding_tasks`
-  as a genuine per-sector list.
-- `c853f707` (GEC-513) and `37f6fc06` (Ubuntu 24.04) are superseded by the
-  26.04 upgrade above.
-- `0ebc0690` (GEC-444) originated on this branch and landed on `master` later;
-  this branch is further along, having replaced `do_slowgain_solve` and
-  `do_fulljones_solve` with `calibration_strategy` dicts and added
-  `supported_combinations` validation. Port only the tests. Expect conflicts in
-  `rapthor/lib/strategy.py` and the strategy docs.
-- The GEC-349 formatting commits (`f826c262`, `13e3bd8e`, `6c74e20d`,
-  `f379cf15`) are satisfied in outcome, since this branch formats all
-  discovered files rather than `master`'s explicit `format_targets` list. The
-  tox `[tool.tox.env.format]` sections have diverged textually and will conflict
-  on merge.
+Create separate issues/merge requests for the workstreams and record their
+priority, dependencies, scope and verification results. Update this roadmap as
+work lands; remove completed tasks rather than accumulating another migration
+status report.
 
-## Completed
-
-- **Execution architecture.** Owner-package execution for image, calibrate,
-  concatenate, predict, mosaic, and pipeline flows. Operation adapters are
-  thin; command builders, payload validation, output discovery, migrated helper
-  logic, and flow wiring live under `rapthor/execution/<owner>/`.
-- **Runtime bootstrap.** No-server local runs, explicit Prefect API runs, local
-  Dask, external Dask, and run tags. No-server runs blank `PREFECT_API_URL`,
-  disable Prefect analytics, and use an isolated temporary Prefect home per
-  process — the right interim production mode until a shared Prefect server has
-  a Postgres backend. Resource validation understands MPI command requests and
-  checks that MPI WSClean is exclusive and stays within the configured Slurm
-  node allocation.
-- **Scratch-directory wiring (2026-10-02).** `local_scratch_dir` now routes
-  command temporaries and WSClean's `-temp-dir` to worker-local storage and
-  supplies local Dask worker spill storage, with paths expanded on the executing
-  host. External workers retain their launcher's spill configuration. The
-  obsolete `dir_local` option has been removed.
-  `global_scratch_dir` hosts isolated workflow workspaces and MPI temporaries;
-  a temporary operation-directory symlink preserves recorded paths. Products
-  are promoted back to `dir_working/pipelines/<operation>` when the workflow
-  exits, including after command failure, using rename or cross-filesystem
-  copy. A sibling recovery record survives interrupted directory moves and is
-  checked before operation setup. Failed promotion preserves products for
-  recovery; internal symlinks remain portable when the workspace moves.
-  Successful owner flows now discard task-only image, prediction, calibration
-  and mosaic products, matching master's CWL output staging. Declared outputs,
-  their backing files, inputs, restart metadata and dashboard previews remain
-  available at their durable paths. Failed flows retain intermediates.
-  `keep_temporary_files` or `debug_workflow` retains both intermediates and
-  command temporaries.
-  Command scratch removal failures report the path and filesystem error.
-  Cleanup shares product names with their execution owners.
-  Focused checks and a real local-Dask failure/restart run pass with separate
-  local and global scratch roots and unchanged WSClean product timestamps.
-  Recovery tests cover forced process exits at eight staging/promotion
-  boundaries, portable internal links, and cross-filesystem promotion.
-  Representative multi-node Slurm/MPI staging remains pending.
-- **Calibration semantics.** Solve order is strategy-driven through
-  `calibration_strategy`, replacing legacy implicit solve slots with explicit
-  types and order. DI scalar phase, DI diagonal slow-gain, and DI full-Jones
-  products are pre-applied for image-only workflows; DD products are applied on
-  the fly when directions match.
-- **Observability.** Readable flow/task names, tool tags, task timing JSONL,
-  command timing artifacts, persistent postage-stamp previews, and durable
-  per-command logs at `dir_working/logs/<operation>/<task-run-name>.log` linked
-  from `commands.jsonl`. `prefect_stream_output` controls forwarding to Prefect
-  only; `prefect_log_commands` controls the durable logs, so no-dashboard and
-  failed runs keep their output.
-- **Master syncs (July and August).** Ported: calibration-aware imaging/BDA
-  frequency limits, the production imaging frequency-BDA default, the official
-  `https://iers.astron.nl/WSRT_Measures.ztar` measures URL, robust RMS
-  diagnostics for facets outside an image, advisory/strict DP3 calibration
-  memory checks, and removal of DP3's unsupported `writefullresflag`. Legacy
-  solve toggles and retired CWL mechanics were deliberately not reintroduced;
-  the `e8873f19` flat-noise symlink was CWL-specific and the migrated helper
-  supplies explicit RMS output paths with a regression test. Focused suites
-  pass (354 ownership-boundary, 29 field/facet, and 71 equivalence-harness
-  tests), as does the strict OOM preflight case, which confirms that no
-  calibration command starts.
-- **Generated-initial-sky-model equivalence.** Paired
-  `initial-skymodel-regroup` and `initial-skymodel-bda-regroup` scenarios
-  compare source identities, patch membership, positions, fluxes, spectral
-  terms, and shapes rather than counts alone. Both three-repetition gates pass:
-  9/9 cross-branch pairs are repeatability-bounded in the no-imaging-BDA
-  control; the production-BDA case has two strict passes and 7/9
-  repeatability-bounded pairs.
-- **Frequency-only imaging BDA.** Resolved after DP3 preparation while
-  preserving master's intended BDA and primary-beam semantics: pass WSClean's
-  required `-reorder`, retain the calibration-derived `image_bda_minchannels`
-  safeguard, and require EveryBeam 0.8.3 or later, since earlier releases build
-  a single-band telescope model and reject DP3's multi-SPW layout. Validated on
-  2026-07-16 with a two-SPW imaging MS (`NUM_CHAN = [4, 8]`), facet-beam
-  application, and a fully finite primary-beam FITS product. The
-  branch-vs-master row stays skipped because `master` fails this path, which is
-  a documented reference-branch bug rather than an equivalence reference.
-- **Testing and deployment paths.** The interactive-testing guide, the
-  `py-rapthor-prefect-dask` and `py-prefect-dask` Spack recipes with
-  module-load smoke checks, the first interactive tester wave, the two-job
-  no-server concurrency check (isolated Prefect state, no collisions on local
-  SQLite state or output paths), and one representative Slurm allocation with
-  external Dask and `imaging.use_mpi = True` without oversubscription.
-
-## Current Caveats
-
-- Screens/IDGCal remain target-environment dependent.
-- Ubuntu 26.04 is not a supported container runtime. `master` reverted to
-  Ubuntu 24.04 by default after unresolved memory issues under 26.04
-  (RAP-1469), so keep this branch on 24.04 until that is understood.
-- MPI WSClean and Slurm/external-Dask are production readiness checks. They are
-  not local science-gate blockers, but they must pass in a representative
-  cluster allocation before recommending this branch for multi-node production
-  imaging.
-- Do not run many production jobs against a shared local Prefect server backed
-  by SQLite. Use no-server/ephemeral mode per job, or a properly managed
-  Prefect service with a Postgres backend when persistent history is required.
-- Multi-sector mosaic is low-priority and should not block the switch unless a
-  regression also affects common single-sector paths.
-- Historical `master` behavior around some slow-gain/full-Jones combinations is
-  not always a desirable scientific target; accepted differences are recorded
-  in the equivalence reports.
-- Raw run products are intentionally not tracked in git. Keep compact reports
-  under `docs/source/development/` and raw products under ignored run roots or
-  CI artifacts.
-
-## Deferred Improvement Backlog
-
-These are intentionally not switch blockers unless manual testing exposes them
-as everyday-user problems. They are kept here so they are not lost while the
-main plan stays focused on the branch-switch decision.
-
-- **Image-side performance:** target `filter_skymodel` first, then WSClean
-  image resource/concurrency policy. Calibration plotting is worth optimizing
-  only if larger real runs keep showing it as a meaningful post-processing
-  cost.
-- **WSClean prediction parallelism:** investigate splitting the internal
-  frequency/facet loop inside WSClean prediction tasks only with a targeted
-  benchmark and explicit resource limits.
-- **Single-machine task concurrency:** `local_dask_workers` falls back to
-  `max_nodes`, which `rapthor/lib/parset.py:431` sets to 1 for
-  `batch_system = single_machine`, so a default single-machine run gets one
-  single-threaded Dask worker and executes the per-sector futures in the image
-  and calibrate flows one at a time. Derive the default from available cores
-  and memory, bounded by `cpus_per_task` and `mem_per_node_gb`, so the
-  parallelism the flows already express is actually used.
-- **Per-task resource gating:** `ResourceRequest` in
-  `rapthor/execution/resources.py` is validated but never converted into Dask
-  scheduling constraints; there are no worker-resource annotations anywhere in
-  the flows. Without them, raising the worker count lets several WSClean or DP3
-  tasks each claim `cpus_per_task` threads at once and oversubscribe the node.
-  Annotate heavy tasks with CPU/memory resources so the scheduler serialises
-  them while light Python tasks keep running. This is a prerequisite for
-  raising single-machine concurrency.
-- **Uniform thread capping for external commands:** environment policies and
-  `thread_environment()` now live in `rapthor/execution/environments.py`.
-  WSClean imaging explicitly selects its local or MPI thread policy. DP3
-  solves, predicts, applycals, and the `python -m` adapters still inherit ambient
-  `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`, so each concurrent task can spawn
-  one thread per core. Extend the explicit policy helpers when implementing
-  thread capping, using each task's resource budget and preserving tool-specific
-  limits such as WSClean's single OpenBLAS thread per MPI rank.
-- **Cache reference catalogues per run:** `_download_survey_data` in
-  `rapthor/execution/image/flux_normalization.py:622` repeats the 5-degree VO
-  query for every normalization call, once per sector per cycle, and
-  `_get_data_from_skymodel` round-trips each result through a temporary FITS
-  file. The phase centre is fixed for a run, so a run-scoped cache removes the
-  repeated network round-trips and makes runs resilient to VO outages.
-- **Parallelise the per-facet astrometry check:** `check_astrometry` in
-  `rapthor/execution/image/diagnostic_calculation.py:777` loops over facets
-  serially, copies the full PyBDSF sky model for each one, and, when no
-  comparison sky model is supplied, fetches a Pan-STARRS cone per facet. With
-  many facets that is tens of sequential network queries per imaging cycle.
-  Fetch once per field where the 0.5-degree cone limit allows, or run the
-  per-facet comparisons concurrently.
-- **Multi-sector mosaic:** keep smoke/stored-reference coverage available, but
-  treat this as lower priority than common single-sector paths.
-- **Remove the legacy solve-flag translation:** `do_slowgain_solve` and
-  `do_fulljones_solve` are currently translated into an explicit
-  `calibration_strategy` with a deprecation warning
-  (`rapthor/lib/strategy.py`), which keeps legacy strategy files runnable and
-  identical on both branches during the migration. After the switch, turn the
-  translation into an error. That also retires
-  `legacy_flag_calibration_strategy`, whose trailing `medium_phase` reproduces
-  a subtle CWL-side expansion rule.
-- **Persistent Prefect service:** set up a shared Prefect server backed by
-  Postgres so production users can monitor multiple parallel Rapthor jobs from
-  one Prefect UI without relying on local SQLite state.
-- **Deferred code tidying:** split or simplify modules such as
-  `rapthor.execution.image.diagnostic_calculation`,
-  `rapthor.execution.image.flux_normalization`,
-  `rapthor.execution.calibrate.h5parm_combination`,
-  `rapthor.operations.calibrate.base`, and `rapthor.operations.image.base` only
-  when changing behavior or when profiling/maintenance pressure justifies the
-  edit.
-- **Testing suite polish:** keep architecture and regression guards focused on
-  payload serializability, thin operation adapters, task-boundary visibility,
-  calibration strategy semantics, image-only apply behavior, and branch
-  equivalence reporting.
-
-## Benchmark Scenario Rule
-
-The benchmark harness (`scripts/dev/`, `rapthor/execution/benchmarking.py`,
-the CI `run_benchmark_comparison` job) and the branch-equivalence inputs under
-`tests/resources/equivalence/` were removed on 2026-10-06; they were last
-present in commit `90135fe0`. The rule below is kept for reference.
-
-- keep the default automatic `ci-benchmark`
-- use `ci-benchmark-image-products` when changing image products,
-  `filter_skymodel`, WSClean image behavior, or image post-processing
-- use `ci-benchmark-predict-chunks` only for prediction scheduling changes
-- use `ci-benchmark-wsclean-predict` only for calibration prediction setup or
-  WSClean-predict paths
-- leave many-sector mosaic benchmarks out of automatic CI unless changing that
-  path
-
-Do not start speculative optimisation until manual testers can run the branch.
-
-## Evidence Locations
-
-- Stakeholder summary: `EQUIVALENCE_REPORT.md`
-- Science and performance contracts: no longer part of the published
-  documentation. `docs/source/development/science_equivalence_contract.rst` and
-  `docs/source/development/performance_equivalence_contract.rst` were last
-  present in commit `90135fe0` and remain retrievable from git history, for
-  example with `git show 90135fe0:<path>`.
-- Archived science, performance, and benchmark reports (the
-  `science_equivalence_runs/`, `performance_equivalence_runs/`, and
-  `benchmark_baselines/` trees under `docs/source/development/`) were removed
-  in commit `fa4259a8` (2026-08-06) and remain retrievable from git history,
-  for example with `git show fa4259a8^:<path>`.
-- Run products are local-only: `runs/` is gitignored, so compact reports such
-  as `runs/equivalence-gate-20260820-august-sync/` exist only on the machine
-  that produced them. The rerunnable inputs that were under
-  `tests/resources/equivalence/` were removed on 2026-10-06 (last present in
-  commit `90135fe0`).
-
-## Development Rules Going Forward
-
-- Prefer user/developer joy over cleverness: clear names, explicit errors,
-  easy reports, and copy/paste commands.
-- Keep payloads serializable and task boundaries benchmarkable.
-- Keep operation adapters thin.
-- Do not add compatibility shims for unreleased behavior unless they reduce
-  manual-testing friction.
-- Keep memory efficiency explicit in FITS/MS/image-heavy paths.
-- Do not split tiny helpers into Prefect tasks; split large work units when it
-  improves observability, failure isolation, or measured scalability.
+[EQUIVALENCE_REPORT.md](EQUIVALENCE_REPORT.md) retains the historical science and
+performance summary. Archived contracts, comparison scripts and inputs are
+available from `90135fe0`; older tracked reports are available from
+`fa4259a8^`. The former benchmark/equivalence harness is not an active CI job.
+Reuse useful historical material for a specific comparison, and keep new compact
+reports accessible without committing large Measurement Sets or raw products.
