@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
 
 RESOURCE_DIR = Path(__file__).parents[1] / "resources"
@@ -455,6 +456,44 @@ def test_astrometry_skymodel_exists_no_internet_ok(tmp_path, caplog):
     check_and_adjust_skymodel_settings(parset_dict)
 
     assert any("The photometry check will be skipped" in message for message in caplog.messages)
+
+
+@pytest.mark.parametrize("option", ["dp3_max_threads", "wsclean_max_threads"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param(-1, id="negative"),
+        pytest.param(1.5, id="fractional"),
+        pytest.param(True, id="true"),
+        pytest.param(False, id="false"),
+        pytest.param("many", id="text"),
+    ],
+)
+def test_tool_thread_limits_reject_invalid_values(parset_scenario, option, value):
+    _append_to_parset(parset_scenario.parset, f"\n[cluster]\n{option} = {value!r}\n")
+    with pytest.raises(ValueError, match=f"{option}.*non-negative integer"):
+        parset_read(str(parset_scenario.parset))
+
+
+def test_tool_thread_limits_inherit_max_threads(parset_scenario):
+    _append_to_parset(parset_scenario.parset, "\n[cluster]\nmax_threads = 24\n")
+    cluster = parset_read(str(parset_scenario.parset))["cluster_specific"]
+    config = ExecutionConfig.from_parset({"cluster_specific": cluster})
+    assert config.dp3_max_threads == 24
+    assert config.wsclean_max_threads == 24
+
+
+def test_tool_thread_limits_override_independently_and_set_wsclean_defaults(parset_scenario):
+    _append_to_parset(
+        parset_scenario.parset,
+        "\n[cluster]\nmax_threads = 8\ndp3_max_threads = 64\nwsclean_max_threads = 192\n",
+    )
+    cluster = parset_read(str(parset_scenario.parset))["cluster_specific"]
+    assert cluster["max_threads"] == 8
+    assert cluster["dp3_max_threads"] == 64
+    assert cluster["wsclean_max_threads"] == 192
+    assert cluster["deconvolution_threads"] == 14
+    assert cluster["parallel_gridding_tasks"] == 24
 
 
 def test_photometry_skymodel_exists_no_internet_ok(tmp_path, caplog):

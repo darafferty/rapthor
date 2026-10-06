@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 from astropy.io.fits import CompImageHDU, FitsHDU
@@ -16,7 +16,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size: float) -> Path:
+def restore_with_wsclean(
+    source_catalog: Path, reference_image: Path, beam_size: float, num_threads: Optional[int] = None
+) -> Path:
     """
     Restore a skymodel into an image using WSClean.
 
@@ -45,6 +47,8 @@ def restore_with_wsclean(source_catalog: Path, reference_image: Path, beam_size:
         "-beam-size",
         str(beam_size),
     ]
+    if num_threads is not None:
+        command[1:1] = ["-j", str(num_threads)]
     subprocess.run(command, check=True)
     logger.info("Restored image saved to %s", output_image)
     return output_image
@@ -121,12 +125,19 @@ def compress_image_if_needed(input_image: Path, output_image: Path) -> Path:
     return output_image
 
 
-def restore_skymodel(source_catalog: Path, reference_image: Path, output_image: Path) -> None:
+def restore_skymodel(
+    source_catalog: Path,
+    reference_image: Path,
+    output_image: Path,
+    num_threads: Optional[int] = None,
+) -> None:
     """Restore a skymodel into an image matching the reference image geometry."""
     temp_image, pixel_scale = make_zero_image(reference_image)
     temp_images = [temp_image]
     try:
-        restored_image = restore_with_wsclean(source_catalog, temp_image, pixel_scale)
+        restored_image = restore_with_wsclean(
+            source_catalog, temp_image, pixel_scale, num_threads=num_threads
+        )
         temp_images.append(restored_image)
         compress_image_if_needed(restored_image, output_image)
     except Exception as error:

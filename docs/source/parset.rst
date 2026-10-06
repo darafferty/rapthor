@@ -861,7 +861,27 @@ for how these options are used.
         Maximum number of cores per task to use on each node (default = 0 = all).
 
     max_threads
-        Maximum number of threads per task to use on each node (default = 0 = all).
+        Default maximum number of threads per task to use on each node
+        (default = 0 = all). DP3 and WSClean can override this independently.
+
+    dp3_max_threads
+        Maximum threads per DP3 command (default = 0, inherit :term:`max_threads`).
+        Applies to calibration, including screen solves, prediction, imaging
+        preparation, residual visibility creation, and frequency concatenation.
+        Must be a non-negative integer.
+
+    wsclean_max_threads
+        Maximum threads per WSClean command (default = 0, inherit
+        :term:`max_threads`). Applies to imaging, calibration model rendering and
+        prediction, restoration, and mosaic model rendering. MPI imaging retains
+        its :term:`cpus_per_task` default when this is 0; an explicit value is
+        capped by :term:`cpus_per_task` for each rank. Must be a non-negative
+        integer. Deconvolution threads are also capped by the imaging thread budget.
+
+        These limits select command thread counts; they do not change Dask worker
+        counts, reserve CPUs, or divide memory between concurrent tasks. Ensure
+        each worker can access its requested CPUs and account for all concurrent
+        commands, including WSClean prediction during calibration.
 
     filter_skymodel_ncores
         Number of cores used by PyBDSF when filtering the sky model during
@@ -871,14 +891,17 @@ for how these options are used.
 
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
-        ``max_threads``, but not more than 14).
+        the effective ``wsclean_max_threads``, but not more than 14).
 
     parallel_gridding_tasks
         Number of task groups WSClean can use for parallel gridding. If this is
-        set to 0 (default), Rapthor uses ``max_threads // 8`` with a minimum of
-        1. During imaging, Rapthor reduces the value when there are fewer facet
-        or channel work units available, and chooses a divisor of
-        :term:`max_cores` so gridding threads are distributed evenly.
+        set to 0 (default), Rapthor uses the effective ``wsclean_max_threads // 8``
+        with a minimum of 1; a zero tool limit inherits :term:`max_threads`.
+        During imaging, Rapthor caps the value by :term:`max_cores` and reduces
+        it when there are fewer facet or channel work units available. It
+        chooses a divisor of WSClean's actual ``-j`` thread count: the effective
+        :term:`wsclean_max_threads` locally, or :term:`cpus_per_task` with MPI
+        (capped by an explicit ``wsclean_max_threads``).
 
     local_scratch_dir
         Full path to a local disk on the nodes for the temporary files of each

@@ -248,6 +248,11 @@ class Image(FlowOperation):
     def _facet_work_units(self):
         return max(0, int(getattr(self.field, "num_patches", 0) or 0))
 
+    def _wsclean_threads_for_sector(self, sector_index):
+        if self.field.use_mpi:
+            return int(self.input_parms["mpi_cpus_per_task"][sector_index])
+        return int(self.input_parms.get("wsclean_max_threads") or self.input_parms["max_threads"])
+
     def _parallel_gridding_tasks_for_sector(self, sector_index, channels_out):
         requested_tasks = self.field.parset["cluster_specific"]["parallel_gridding_tasks"]
         max_cores = self.field.parset["cluster_specific"]["max_cores"]
@@ -260,7 +265,11 @@ class Image(FlowOperation):
         max_work_units = (
             facet_work_units if self.use_facets and facet_work_units > 1 else channels_out_per_node
         )
-        return adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units)
+        return adjust_parallel_gridding_tasks(
+            self._wsclean_threads_for_sector(sector_index),
+            requested_tasks,
+            min(max_cores, max_work_units),
+        )
 
     def _build_applycal_steps(self):
         """
@@ -545,6 +554,11 @@ class Image(FlowOperation):
             "apply_time_frequency_smearing": self.field.correct_smearing_in_imaging,
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
+            "dp3_max_threads": self.field.parset["cluster_specific"].get("dp3_max_threads")
+            or self.field.parset["cluster_specific"]["max_threads"],
+            "wsclean_max_threads": self.field.parset["cluster_specific"].get(
+                "wsclean_max_threads", 0
+            ),
             "filter_skymodel_ncores": self.field.parset["cluster_specific"].get(
                 "filter_skymodel_ncores",
                 self.field.parset["cluster_specific"]["max_threads"],
@@ -574,7 +588,11 @@ class Image(FlowOperation):
                 build_image_mpi_resource_controls(
                     nsectors=nsectors,
                     max_nodes=self.parset["cluster_specific"]["max_nodes"],
-                    cpus_per_task=self.parset["cluster_specific"]["cpus_per_task"],
+                    cpus_per_task=min(
+                        self.parset["cluster_specific"].get("wsclean_max_threads")
+                        or self.parset["cluster_specific"]["cpus_per_task"],
+                        self.parset["cluster_specific"]["cpus_per_task"],
+                    ),
                     batch_system=self.batch_system,
                 )
             )

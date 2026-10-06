@@ -184,3 +184,17 @@ def test_validate_calibrate_payload_validates_image_predict_contract():
         match="image_predict.model_image_imsize must contain exactly 2 entries",
     ):
         validate_calibrate_payload(payload)
+
+
+@pytest.mark.parametrize("tool", ["dp3", "wsclean"])
+@pytest.mark.parametrize("value", [0, -1, 1.5, True])
+def test_image_and_calibrate_payloads_reject_invalid_tool_threads(tool, value):
+    key = f"{tool}_max_threads"
+    image = representative_image_payload()
+    image["sectors"][0][key] = value
+    with pytest.raises(ValueError, match=f"{key}.*positive integer"):
+        validate_image_payload(image)
+    calibrate = representative_calibrate_payload()
+    calibrate[key] = value
+    with pytest.raises(ValueError, match=f"{key}.*positive integer"):
+        validate_calibrate_payload(calibrate)

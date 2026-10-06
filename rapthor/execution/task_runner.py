@@ -102,7 +102,7 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
 
     Dask worker threads control how many Prefect task engines run concurrently
     inside one worker process. Keep that single-threaded; external command
-    parallelism is controlled separately by ``cpus_per_task``.
+    parallelism is controlled separately by the external tools' thread budgets.
     """
     kwargs = {
         "n_workers": execution_config.local_dask_worker_count,

@@ -102,7 +102,7 @@ def _calibration_options_for_chunk(
         ntimes=int(chunk["ntimes"]),
         steps=str(payload["dp3_steps"]),
         solve_slots=_solve_slots_for_chunk(payload, chunk),
-        num_threads=int(payload["max_threads"]),
+        num_threads=int(payload.get("dp3_max_threads") or payload["max_threads"]),
         modeldatacolumn=None
         if payload.get("modeldatacolumn") is None
         else str(payload["modeldatacolumn"]),
@@ -199,7 +199,7 @@ def _idgcal_screen_options_for_chunk(
         model_images=[str(path) for path in model_images],
         maxiter=int(payload["solverlbfgs_iter"]),
         antennaconstraint=str(payload["idgcal_antennaconstraint"]),
-        num_threads=int(payload["max_threads"]),
+        num_threads=int(payload.get("dp3_max_threads") or payload["max_threads"]),
     )
 
 

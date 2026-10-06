@@ -436,14 +436,19 @@ class Parset:
             options["max_threads"] = cpu_count
 
         max_threads = options["max_threads"]
+        for name in ("dp3_max_threads", "wsclean_max_threads"):
+            value = options[name]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"The option '{name}' must be a non-negative integer")
+        wsclean_threads = options["wsclean_max_threads"] or max_threads
         if not options["filter_skymodel_ncores"]:
             options["filter_skymodel_ncores"] = max_threads
         if options["filter_skymodel_ncores"] < 1:
             raise ValueError("The option 'filter_skymodel_ncores' must be greater than 0")
         if not options["deconvolution_threads"]:
-            options["deconvolution_threads"] = max(1, min(14, max_threads * 2 // 5))
+            options["deconvolution_threads"] = max(1, min(14, wsclean_threads * 2 // 5))
         if not options["parallel_gridding_tasks"]:
-            options["parallel_gridding_tasks"] = max(1, max_threads // 8)
+            options["parallel_gridding_tasks"] = max(1, wsclean_threads // 8)
 
     def read_file(self, parset_file):
         """

@@ -11,6 +11,7 @@ from rapthor.execution.image.payloads import (
 from rapthor.execution.payloads import (
     validate_basename,
     validate_int_list,
+    validate_positive_int,
     validate_string_list,
 )
 
@@ -103,6 +104,9 @@ def _validate_image_sector(sector: Mapping[str, object], index: int) -> ImageSec
             raise ValueError(f"sectors[{index}].image_cube_specs[{spec_index}] must be a mapping")
         image_cube_specs.append(_validate_image_cube_spec(spec, index, spec_index))
 
+    for name in ("dp3_max_threads", "wsclean_max_threads"):
+        if name in sector:
+            validate_positive_int(sector[name], f"sectors[{index}].{name}")
     validated_sector = dict(sector)
     validated_sector["prepare_tasks"] = prepare_tasks
     validated_sector["image_cube_specs"] = image_cube_specs

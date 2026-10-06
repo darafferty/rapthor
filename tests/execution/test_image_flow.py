@@ -200,12 +200,13 @@ def fake_direct_image_helpers(monkeypatch):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("h5parm")
 
-    def fake_restore_skymodel(source_catalog, reference_image, output_image):
+    def fake_restore_skymodel(source_catalog, reference_image, output_image, num_threads=None):
         calls["restore_skymodel"].append(
             {
                 "source_catalog": str(source_catalog),
                 "reference_image": str(reference_image),
                 "output_image": str(output_image),
+                "num_threads": num_threads,
             }
         )
         output_path = Path(output_image)
@@ -3651,3 +3652,107 @@ def test_image_normalize_finalizer_accepts_prefect_outputs(tmp_path):
     assert field.normalize_flux_scale is False
     assert field.apply_normalizations is True
     assert Path(operation.done_file).is_file()
+
+
+@pytest.mark.parametrize(
+    "use_mpi, tool_limit, expected_threads, expected_gridding_tasks",
+    [
+        pytest.param(False, 2, 2, 2, id="local_two_threads"),
+        pytest.param(False, 10, 10, 5, id="local_ten_threads_split_into_five_groups"),
+        pytest.param(True, 2, 2, 2, id="mpi_tool_limit_below_rank_allocation"),
+        pytest.param(True, 16, 6, 6, id="mpi_tool_limit_capped_at_six_rank_cpus"),
+        pytest.param(True, 0, 6, 6, id="mpi_zero_inherits_six_rank_cpus"),
+    ],
+)
+def test_image_thread_limit_keeps_gridding_and_deconvolution_within_command_budget(
+    tmp_path, use_mpi, tool_limit, expected_threads, expected_gridding_tasks
+):
+    field = FieldStub(tmp_path)
+    field.use_mpi = use_mpi
+    field.dde_method = "full"
+    field.dd_h5parm_filename = "/data/facet-solutions.h5"
+    field.calibration_strategy = {"dd": ["fast_phase"]}
+    field.num_patches = 12
+    field.parset["cluster_specific"].update(
+        max_nodes=2,
+        max_cores=192,
+        max_threads=192,
+        cpus_per_task=6,
+        wsclean_max_threads=tool_limit,
+        parallel_gridding_tasks=6,
+        deconvolution_threads=14,
+    )
+    operation = Image(field, index=1)
+    operation.set_parset_parameters()
+    operation.set_input_parameters()
+    sector = image_payload_from_inputs(
+        operation.input_parms,
+        operation.pipeline_working_dir,
+        use_facets=True,
+        use_mpi=use_mpi,
+    )["sectors"][0]
+    command = image_wsclean_module._select_wsclean_command_for_sector(
+        sector,
+        directory_record(tmp_path / "concat.ms"),
+        file_record(tmp_path / "mask.fits"),
+        file_record(tmp_path / "facets.reg"),
+        str(tmp_path / "wsclean_tmp"),
+    )
+
+    assert command[command.index("-j") + 1] == str(expected_threads)
+    assert command[command.index("-parallel-gridding") + 1] == str(expected_gridding_tasks)
+    assert command[command.index("-deconvolution-threads") + 1] == str(expected_threads)
+
+
+@pytest.mark.prefect
+def test_image_uses_tool_specific_threads_for_preparation_imaging_and_restoration(
+    tmp_path,
+    fake_image_shell_operation_cls,
+    fake_direct_image_helpers,
+):
+    input_parms = _bright_peeling_image_input_parms()
+    input_parms.update(dp3_max_threads=2, wsclean_max_threads=8, save_filtered_model_image=True)
+    input_parms["residual_filename"] = ["sector_1_residual.ms"]
+    run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(input_parms, tmp_path, make_residual_visibilities=True),
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    commands = [
+        shlex.split(instance.kwargs["commands"][-1])
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    dp3_commands = [command for command in commands if command[0] == "DP3"]
+    assert len(dp3_commands) == 3  # Two preparation chunks and residual visibility creation.
+    for command in dp3_commands:
+        assert "numthreads=2" in command
+    wsclean_commands = [command for command in commands if command[0] == "wsclean"]
+    assert len(wsclean_commands) == 3  # Imaging and two bright-source restorations.
+    for command in wsclean_commands:
+        assert command[command.index("-j") + 1] == "8"
+    assert fake_direct_image_helpers["restore_skymodel"][0]["num_threads"] == 8
+
+
+@pytest.mark.parametrize("requested, expected", [(2, 2), (8, 3)])
+@pytest.mark.prefect
+def test_mpi_wsclean_tool_threads_respect_rank_allocation(
+    tmp_path, fake_image_shell_operation_cls, requested, expected
+):
+    input_parms = _mpi_image_input_parms()
+    input_parms["wsclean_max_threads"] = requested
+    run_flow_for_test(
+        image_flow,
+        image_payload_from_inputs(input_parms, tmp_path, use_mpi=True),
+        execution_config=ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    instance = next(
+        instance
+        for instance in fake_image_shell_operation_cls.instances
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "mpirun"
+    )
+    command = shlex.split(instance.kwargs["commands"][-1])
+    assert command[command.index("-j") + 1] == str(expected)
+    assert instance.kwargs["env"]["OMP_NUM_THREADS"] == str(expected)
+    assert int(command[command.index("-deconvolution-threads") + 1]) <= expected

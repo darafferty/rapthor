@@ -449,3 +449,26 @@ operation to reset:
 All operations after the selected one will also be reset. The files that
 these operations produced (their images, solutions, sky models, plots and
 logs) are removed from the working directory.
+
+Tool thread budgets
+-------------------
+
+Set CPU thread budgets by external tool in the parset, independently of the
+Dask worker count::
+
+    [cluster]
+    max_threads = 192
+    cpus_per_task = 192
+    dp3_max_threads = 64
+    wsclean_max_threads = 192
+
+Both tool options default to 0, which inherits ``max_threads``. MPI imaging
+keeps its existing ``cpus_per_task`` default; an explicit WSClean limit is
+capped by ``cpus_per_task`` for each rank. The options apply wherever the
+tool is used: DP3 imaging preparation uses ``dp3_max_threads``,
+and WSClean prediction during calibration uses ``wsclean_max_threads``.
+Other tools retain their existing thread settings. These are command thread
+budgets, not CPU reservations or Dask scheduling constraints. Keep concurrent
+commands within the node's CPU and memory capacity, and ensure Slurm CPU
+binding permits each worker to access its command's requested CPUs. Increasing
+the worker count does not automatically reduce either tool's budget.

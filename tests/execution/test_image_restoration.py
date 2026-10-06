@@ -244,3 +244,24 @@ def test_compress_image_if_needed_with_compression(tmp_path):
 
     assert result == output_image, "Should return output path"
     assert output_image.exists(), "Compressed output file should exist"
+
+
+def test_filtered_model_restoration_passes_wsclean_threads(
+    reference_image, sky_model_path, tmp_path, monkeypatch
+):
+    import shutil
+
+    import rapthor.execution.image.restoration as restoration
+
+    commands = []
+
+    def fake_run(command, check):
+        commands.append(command)
+        index = command.index("-restore-list")
+        shutil.copyfile(command[index + 1], command[index + 3])
+
+    monkeypatch.setattr(restoration.subprocess, "run", fake_run)
+    output = tmp_path / "restored.fits"
+    restore_skymodel(sky_model_path, reference_image, output, num_threads=8)
+    assert output.is_file()
+    assert commands[0][:3] == ["wsclean", "-j", "8"]

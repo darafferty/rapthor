@@ -88,6 +88,8 @@ class CalibratePayload(TypedDict, total=False):
     predict_images: list[str]
     has_slow_gain_solve: bool
     max_threads: int
+    dp3_max_threads: int
+    wsclean_max_threads: int
     maxiter: int
     llssolver: str
     propagatesolutions: bool

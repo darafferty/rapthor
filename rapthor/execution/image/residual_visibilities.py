@@ -31,7 +31,7 @@ def make_residual_visibility_record(
         command = build_make_residual_visibilities_command(
             msin=concat_record["path"],
             msout=str(sector["residual_filename"]),
-            numthreads=int(sector["max_threads"]),
+            numthreads=int(sector.get("dp3_max_threads") or sector["max_threads"]),
         )
         run_external_command(
             command,

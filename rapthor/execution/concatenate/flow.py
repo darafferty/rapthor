@@ -98,7 +98,9 @@ def run_concatenate_epoch(
     config = execution_config or ExecutionConfig(task_runner="sync")
     input_filenames = epoch["input_filenames"]
     output_path = epoch["output_path"]
-    command = select_concatenation_command(input_filenames, output_path, data_colname)
+    command = select_concatenation_command(
+        input_filenames, output_path, data_colname, num_threads=config.dp3_max_threads or None
+    )
     run_external_command(
         command,
         pipeline_working_dir,

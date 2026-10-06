@@ -221,9 +221,12 @@ class TestImage:
 
     def test_set_input_parameters(self, field):
         _prepare_field_for_image(field)
+        field.parset["cluster_specific"].update(dp3_max_threads=2, wsclean_max_threads=8)
         image = Image(field=field, index=1)
         image.set_parset_parameters()
         image.set_input_parameters()
+        assert image.input_parms["dp3_max_threads"] == 2
+        assert image.input_parms["wsclean_max_threads"] == 8
         assert image.input_parms["obs_filename"] is not None
         assert image.input_parms["image_name"] is not None
         first_observation = field.observations[0]
@@ -339,6 +342,8 @@ class TestImage:
         field.parset["imaging_specific"]["shared_facet_rw"] = shared_facet_rw
         field.parset["cluster_specific"]["parallel_gridding_tasks"] = 6
         field.parset["cluster_specific"]["max_cores"] = 12
+        field.parset["cluster_specific"]["max_threads"] = 12
+        field.parset["cluster_specific"]["cpus_per_task"] = 12
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.num_patches = num_patches
         image = _initialize_operation(
@@ -365,7 +370,7 @@ class TestImage:
         )
         assert image.input_parms["parallel_gridding_tasks"] == [
             adjust_parallel_gridding_tasks(
-                max_cores=12,
+                num_threads=12,
                 parallel_gridding_tasks=6,
                 max_work_units=expected_work_units,
             )
@@ -1418,7 +1423,7 @@ def test_get_max_divisor_less_than_or_equal(number, limit, expected):
 
 
 @pytest.mark.parametrize(
-    ("max_cores", "requested_tasks", "max_work_units", "expected"),
+    ("num_threads", "requested_tasks", "max_work_units", "expected"),
     [
         (12, 8, 5, 4),
         (12, 6, 6, 6),
@@ -1427,7 +1432,7 @@ def test_get_max_divisor_less_than_or_equal(number, limit, expected):
         (0, 0, 0, 1),
     ],
 )
-def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_core_divisor(
-    max_cores, requested_tasks, max_work_units, expected
+def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_thread_divisor(
+    num_threads, requested_tasks, max_work_units, expected
 ):
-    assert adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units) == expected
+    assert adjust_parallel_gridding_tasks(num_threads, requested_tasks, max_work_units) == expected
