@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from losoto.h5parm import h5parm
 
-from .utils import get_working_dir_from_parset, update_parset_path
+from .utils import get_working_dir_from_parset, make_rapthor_command, update_parset_path
 
 
 @pytest.mark.internet
@@ -36,9 +36,8 @@ def test_rapthor_run_single_loop_with_do_normalize(
             "strategy": str(single_loop_do_normalize_strategy_path),
         },
     )
-    command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
-        command,
+        make_rapthor_command(updated_parset_path),
         capture_output=True,
         text=True,
         check=False,
@@ -78,9 +77,8 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error(
         },
     )
 
-    command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
-        command,
+        make_rapthor_command(updated_parset_path),
         capture_output=True,
         text=True,
         check=False,
@@ -123,9 +121,8 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
         },
     )
 
-    command = ["rapthor", str(updated_parset_path)]
     result = subprocess.run(
-        command,
+        make_rapthor_command(updated_parset_path),
         capture_output=True,
         text=True,
         check=False,
@@ -190,7 +187,7 @@ def test_rapthor_run_single_loop_with_do_normalize_no_matching_sources_skips_nor
         },
     )
     result = subprocess.run(
-        ["rapthor", str(updated_parset_path)], capture_output=True, text=True, check=False
+        make_rapthor_command(updated_parset_path), capture_output=True, text=True, check=False
     )
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"

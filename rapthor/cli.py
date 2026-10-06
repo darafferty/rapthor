@@ -14,7 +14,7 @@ from rapthor._version import __version__ as version
 
 def _build_parser() -> optparse.OptionParser:
     parser = optparse.OptionParser(
-        prog="rapthor",
+        prog="rapthor3",
         usage="%prog <parset>",
         version="%%prog v%s" % (version),
     )

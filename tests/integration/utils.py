@@ -207,3 +207,8 @@ def parse_command_arguments(command):
     return {
         key: value for key, _, value in (token.partition("=") for token in tokens if "=" in token)
     }
+
+
+def make_rapthor_command(parset_path, rapthor_entrypoint="rapthor3"):
+    """Build the Rapthor CLI command used by integration tests."""
+    return [rapthor_entrypoint, str(parset_path)]

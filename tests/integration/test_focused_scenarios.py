@@ -21,13 +21,14 @@ from .utils import (
     find_command_records,
     first_command_arguments,
     get_working_dir_from_parset,
+    make_rapthor_command,
     update_parset_path,
 )
 
 
 def _run_rapthor(parset_path):
     result = subprocess.run(
-        ["rapthor", str(parset_path)],
+        make_rapthor_command(parset_path),
         capture_output=True,
         text=True,
         check=False,
