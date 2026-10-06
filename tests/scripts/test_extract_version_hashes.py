@@ -12,25 +12,34 @@ class ExtractVersionHashesTest(unittest.TestCase):
         script = Path(__file__).resolve().parents[2] / "Docker/extract_version_hashes.sh"
         with tempfile.TemporaryDirectory() as directory:
             docker = Path(directory) / "docker"
-            docker.write_text(
-                '#!/bin/bash\nprintf "%s" "$MOCK_LABELS"\nexit "${MOCK_STATUS:-0}"\n'
-            )
+            docker.write_text('#!/bin/bash\nprintf "%s" "$MOCK_LABELS"\nexit "${MOCK_STATUS:-0}"\n')
             docker.chmod(0o755)
             cases = [
-                ("matching", "nl.astron.rapthor.dp3.version=abc123\n"
-                 "nl.astron.rapthor.wsclean-idg.version=release=1\n", 0,
-                 "DP3_COMMIT=abc123\nWSCLEANIDG_COMMIT=release=1\n"),
+                (
+                    "matching",
+                    "nl.astron.rapthor.dp3.version=abc123\n"
+                    "nl.astron.rapthor.wsclean-idg.version=release=1\n",
+                    0,
+                    "DP3_COMMIT=abc123\nWSCLEANIDG_COMMIT=release=1\n",
+                ),
                 ("no labels", "", 0, None),
                 ("unrelated labels", "other.version=abc\n", 0, None),
                 ("Docker failure", "", 2, None),
             ]
             for name, labels, status, output in cases:
                 with self.subTest(name=name):
-                    env = dict(os.environ, PATH=directory + os.pathsep + os.environ["PATH"],
-                               MOCK_LABELS=labels, MOCK_STATUS=str(status))
+                    env = dict(
+                        os.environ,
+                        PATH=directory + os.pathsep + os.environ["PATH"],
+                        MOCK_LABELS=labels,
+                        MOCK_STATUS=str(status),
+                    )
                     result = subprocess.run(
-                        ["bash", str(script), "test:image"], env=env,
-                        capture_output=True, text=True, check=False,
+                        ["bash", str(script), "test:image"],
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        check=False,
                     )
                     if output is None:
                         self.assertNotEqual(result.returncode, 0)
