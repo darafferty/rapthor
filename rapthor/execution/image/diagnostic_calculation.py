@@ -1,6 +1,5 @@
 """Image diagnostic calculation helpers."""
 
-import contextlib
 import json
 import logging
 import os
@@ -231,10 +230,9 @@ def calculate_image_diagnostics(
         json.dump(diagnostics_output, fp)
 
 
-@contextlib.contextmanager
 def safe_load_skymodel(skymodel, message, post, **kws):
     """
-    Context manager to catch loading errors and log an appropriate message
+    Load a sky model, logging loading errors and returning None on failure.
 
     Parameters
     ----------
@@ -245,13 +243,13 @@ def safe_load_skymodel(skymodel, message, post, **kws):
     post : str
         Message to log after the error message and error details
 
-    Yields
+    Returns
     -------
-    lsmtool.SkyModel
-        Loaded skymodel object
+    lsmtool.SkyModel or None
+        Loaded skymodel object, or None if loading failed.
     """
     try:
-        yield lsmtool.load(skymodel, **kws)
+        return lsmtool.load(skymodel, **kws)
     except OSError as error:
         logger.info(
             "%s The error was: \n%s\n%s",
@@ -259,6 +257,7 @@ def safe_load_skymodel(skymodel, message, post, **kws):
             error,
             post,
         )
+        return None
 
 
 def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_labels=False):
@@ -540,11 +539,12 @@ def load_photometry_surveys(observation, comparison_skymodel, comparison_surveys
     # Load photometry comparison model
     comparison_skymodels = {}
     if comparison_skymodel:
-        with safe_load_skymodel(
+        skymodel = safe_load_skymodel(
             comparison_skymodel,
             "Comparison sky model could not be loaded.",
             "Trying to download sky model(s) instead...",
-        ) as skymodel:
+        )
+        if skymodel is not None:
             comparison_skymodels["USER_SUPPLIED"] = skymodel
             logger.info("Using the supplied comparison sky model for the photometry check")
 
@@ -577,13 +577,14 @@ def load_photometry_surveys(observation, comparison_skymodel, comparison_surveys
 
     # Loop over the surveys and load the skymodels
     for survey in comparison_surveys:
-        with safe_load_skymodel(
+        skymodel = safe_load_skymodel(
             survey,
-            "A problem occurred when downloading the %s catalog for use in the photometry check.",
+            f"A problem occurred when downloading the {survey} catalog for use in the photometry check.",
             "Skipping this survey...",
             VOPosition=[observation.ra, observation.dec],
             VORadius=5.0,
-        ) as skymodel:
+        )
+        if skymodel is not None:
             comparison_skymodels[survey] = skymodel
 
     return comparison_skymodels
@@ -752,11 +753,12 @@ def check_astrometry(
 
     astrometry_skymodel = None
     if comparison_skymodel:
-        with safe_load_skymodel(
+        astrometry_skymodel = safe_load_skymodel(
             comparison_skymodel,
             "Comparison sky model could not be loaded.",
             "Checking for internet access...",
-        ) as astrometry_skymodel:
+        )
+        if astrometry_skymodel is not None:
             astrometry_skymodel.group("every")
             logger.info("Using the supplied comparison sky model for the astrometry check")
     if not (astrometry_skymodel or allow_internet_access):

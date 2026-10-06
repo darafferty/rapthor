@@ -101,11 +101,15 @@ Diagnostics for each image are written to the main log (``dir_working/logs/rapth
 
             If the flux ratios from both the TGSS and LoTSS surveys are unavailable (due to, e.g., lack of coverage or too few source matches), an attempt is made to estimate the ratio using the NVSS survey (at 1.4 GHz). Note, however, that this ratio is especially uncertain due to the large extrapolation required to adjust the LOFAR and NVSS flux densities to a common frequency.
 
+            If a survey catalogue cannot be loaded because of an I/O error (including an invalid catalogue format reported by LSMTool), Rapthor logs the survey name and error, then continues with the remaining surveys. If no catalogue can be loaded, flux-ratio diagnostics are omitted and the other image diagnostics continue. A user-supplied comparison catalogue that cannot be loaded falls back to survey downloads only when internet access is allowed.
+
     * Estimates of the LOFAR-to-Pan-STARRS RA and Dec offsets (calculated as the mean of the LOFAR values minus the Pan-STARRS values, after sigma clipping). These offsets give an indication of the accuracy of the astrometry.
 
         .. note::
 
             If an astrometry comparison fails because of an I/O or value error while creating or using the comparison sky model, Rapthor logs a warning and skips that facet's astrometry check. Processing continues, and the mean offsets use only facets with successful comparisons. If no facets yield offsets, the astrometry diagnostics and offset files are omitted.
+
+            If a user-supplied astrometry catalogue cannot be loaded because of an I/O error, Rapthor falls back to Pan-STARRS when internet access is allowed; otherwise, it skips the astrometry check.
 
 Primary products:
     * In ``images/image_X``, where ``X`` is the cycle number:
