@@ -15,7 +15,8 @@ Input measurement sets
 ----------------------
 
 The input data must have the direction-independent solutions applied to the 
-DATA column (this is provided already by LINC for LOFAR data). The multiple 
+column selected by :term:`data_colname` (default: ``DATA``). LINC already
+applies these solutions for LOFAR data. The multiple
 frequency bands output by LINC can be input directly to Rapthor (no 
 concatenation is needed). Data from multiple epochs, such as interleaved 
 observations or observations from multiple nights, are supported.

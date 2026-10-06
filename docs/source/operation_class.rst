@@ -1,7 +1,7 @@
 The Operation class
 ===================
 
-The Operation class is used to define, set up, and run a operation's CWL workflow. A subclass of the Operation class is defined for each operation. See :ref:`operation_subclasses` for details of each Operation subclass.
+The Operation class is used to define, set up, and run an operation's CWL workflow. A subclass of the Operation class is defined for each operation. See :ref:`operation_subclasses` for details of each Operation subclass.
 
 .. autoclass:: rapthor.lib.operation.Operation
    :members:
@@ -12,26 +12,28 @@ The Operation class is used to define, set up, and run a operation's CWL workflo
 Subclasses of the Operation class
 ---------------------------------
 
-A subclass of the Operation class is defined for each of Rapthor's operations (see :ref:`operations`): calibrate, predict, image, and mosaic. These subclasses are described in detail below.
+The operation subclasses implement calibration, prediction, concatenation, imaging,
+flux-scale normalization, and mosaicking (see :ref:`operations`).
 
-The CalibrateDD class
-^^^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.calibrate.CalibrateDD
-   :members:
-
-The CalibrateDI class
-^^^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.calibrate.CalibrateDI
-   :members:
-
-The PredictDD class
+The Calibrate class
 ^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.predict.PredictDD
+The ``mode`` argument selects direction-dependent (``"dd"``) or
+direction-independent (``"di"``) calibration.
+
+.. autoclass:: rapthor.operations.calibrate.Calibrate
    :members:
 
-The PredictDI class
-^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rapthor.operations.predict.PredictDI
+The Predict class
+^^^^^^^^^^^^^^^^^
+The ``mode`` argument selects prediction for direction-dependent (``"dd"``)
+processing or direction-independent (``"di"``) calibration.
+
+.. autoclass:: rapthor.operations.predict.Predict
+   :members:
+
+The Concatenate class
+^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: rapthor.operations.concatenate.Concatenate
    :members:
 
 The Image class
@@ -42,6 +44,11 @@ The Image class
 The ImageInitial class
 ^^^^^^^^^^^^^^^^^^^^^^
 .. autoclass:: rapthor.operations.image.ImageInitial
+   :members:
+
+The ImageNormalize class
+^^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: rapthor.operations.image.ImageNormalize
    :members:
 
 The Mosaic class
