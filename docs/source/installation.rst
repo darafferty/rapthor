@@ -48,13 +48,6 @@ How can I use containers (Docker or Singularity) with Rapthor?
     Values are the build references recorded in the image, which may be Git
     hashes, branch names, or tags.
 
-    The default Docker runtime has been restored to Ubuntu 24.04. Both
-    ``Docker/Dockerfile`` and the active CI image builds use Ubuntu 24.04.
-    Running Rapthor under Ubuntu 26.04 has shown unresolved memory issues,
-    so Ubuntu 26.04 is not currently the default or recommended container
-    runtime. The ``ci/ubuntu_26_04-base`` and ``ci/ubuntu_26_04-rapthor`` build
-    files are retained for further investigation, but are not used by the
-    default CI pipeline. The Python requirement remains Python >= 3.10.
 
 How can I troubleshoot a Rapthor problem?
     If you see a message in the terminal or the main log
