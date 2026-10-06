@@ -1,171 +1,69 @@
-# AGENTS.md
+# Agent instructions
 
-Guidance for AI coding agents working in this repository.
+Rapthor is a radio astronomy pipeline for LOFAR direction-dependent calibration,
+with ongoing SKA-Low support. Production workflows use Prefect/Dask to run DP3,
+WSClean and other astronomy tools.
 
-## First Stops
+## Working rules
 
-1. Read this file for the repository contract and hard guardrails.
-2. Use `.agents/README.md` as the index for focused decision guides.
-3. Read `.agents/scientific_glossary.md` before changing calibration,
-   prediction, imaging, sky-model, strategy, or scientific documentation logic.
-4. Read `PLAN.md` before changing architecture boundaries, task granularity,
-   benchmarking, runtime bootstrap, preflight behavior, scalability work, or
-   contributor-facing development docs.
+- Check the worktree before editing; preserve unrelated changes. Do not commit
+  unless asked.
+- Keep fixes scoped. Follow the surrounding code, use comments for non-obvious
+  reasoning, and preserve module loggers such as `rapthor:calibrate`.
+- Keep generated data, large Measurement Sets, downloaded archives and run/build
+  products out of version control. Do not modify original input Measurement Sets.
+- Format changed Python code and imports, then run checks appropriate to the
+  change as described in [TESTING.md](TESTING.md). Report checks that could not run.
+- Update user documentation when behavior, options or runtime requirements change.
+  Keep architecture diagrams aligned with ownership and execution changes.
 
-## Project Overview
+## Code ownership and contracts
 
-Rapthor is a Python package and command-line pipeline for LOFAR
-direction-dependent effect correction, with ongoing SKA-Low support. The
-production execution path uses Prefect/Dask flows to run radio astronomy tools
-such as DP3, WSClean, EveryBeam, IDG, and related utilities.
+- `rapthor/lib/` owns domain state and parset/strategy interpretation.
+- `rapthor/operations/` contains thin adapters: gather domain state, call execution
+  code, then finalize results back into the field.
+- `rapthor/execution/<owner>/` owns operation payloads, validation, command
+  builders, output discovery, helper logic and Prefect flow wiring.
+- `rapthor/cli.py` owns the CLI; dependency, entry-point and tool configuration
+  belongs in [pyproject.toml](pyproject.toml).
 
-Most changes touch one or more of these areas:
+Preserve these execution contracts:
 
-- `rapthor/lib/`: domain objects such as `Field`, `Observation`, `Sector`,
-  `Cluster`, `Operation`, strategy handling, and parset handling.
-- `rapthor/operations/`: thin operation adapters that translate domain state
-  into execution inputs and finalize outputs.
-- `rapthor/execution/`: Prefect/Dask flows, command builders, payload contracts,
-  validation, migrated helper-script logic, shell execution, artifacts, resource
-  checks, and task-runner helpers.
-- `rapthor/execution/image/`, `calibrate/`, `concatenate/`, `predict/`,
-  `mosaic/`, and `pipeline/`: execution owner packages for operation-specific
-  payloads, commands, outputs, flow wiring, and orchestration.
-- `rapthor/settings/`: package defaults in `defaults.parset` and
-  `defaults.json`.
-- `docs/source/`, `examples/`, and `tests/`: user docs, example parsets and
-  strategies, and focused test suites.
-- `.agents/`: agent-facing playbooks.
-- `PLAN.md`: current architecture stabilization, benchmarking, Dask
-  scalability, runtime UX, and deferred-refactor roadmap.
+- Worker payloads contain plain serializable values and file paths. Do not pass
+  live `Field`, `Observation`, `Sector`, operation instances, tables, file handles
+  or subprocess state across worker boundaries.
+- Keep command builders deterministic. Give tasks useful domain names and test
+  scheduling or serialization boundaries when changing them.
+- New products need output records, finalizer state and restart handling. Skipped
+  commands must still return every record field required downstream; discovery
+  must not pick up products from the wrong cycle.
+- Distinguish worker-local scratch from shared storage. Clean up only after all
+  consumers finish, and preserve recovery products on failed runs.
 
-Package console scripts are declared in `pyproject.toml`:
+## Scientific and option changes
 
-- `rapthor = rapthor.cli:main`
-- `concat_linc_files = rapthor.execution.concatenate.linc_cli:main`
+- `calibration_strategy` controls solve types and their order. Preserve supported
+  sequences and the initial-model-dependent early phase-only cycles; legacy solve
+  toggles are compatibility inputs, not the interface for new work.
+- Keep DI, DD, full-Jones, normalization and screens distinct, and retain explicit
+  apparent-sky/true-sky and generate/apply states.
+- Distinguish solutions used as optimizer seeds from applied corrections. Their
+  cycle and direction compatibility rules differ; consult the science reference.
+- For a user option, update both applicable defaults (`defaults.parset` and
+  `defaults.json`), parsing/domain state, operation inputs, execution payloads,
+  validators and commands, docs/examples, test templates and behavior tests.
 
-## Agent Playbooks
+## Read references when relevant
 
-Use the focused guides instead of growing this file with duplicated detail:
+Use the section needed for the task; routine edits do not require reading every
+reference.
 
-- `.agents/repo_architecture.md`: ownership boundaries and change placement.
-- `.agents/pipeline_contracts.md`: serializable payloads, output records,
-  h5parm products, restart behavior, and command-builder contracts.
-- `.agents/parset_strategy_guide.md`: user-facing option and strategy update
-  workflow.
-- `.agents/external_tools.md`: DP3, WSClean, EveryBeam, IDG/IDGCal, PyBDSF,
-  Casacore, Prefect/Dask, containers, MPI, and cluster runtime notes.
-- `.agents/testing_playbook.md`: focused commands and confidence checks by
-  change type.
-- `.agents/scientific_glossary.md`: scientific vocabulary, self-calibration
-  reasoning, naming guidance, and configuration recommendations.
-
-## Hard Guardrails
-
-- Check the worktree before editing. Do not overwrite unrelated local changes,
-  and do not commit unless explicitly asked.
-- Keep patches scoped to the requested behavior. Avoid broad refactors while
-  making behavioral fixes.
-- Keep operation adapters thin. Production command mechanics, payload
-  validation, output discovery, and migrated helper logic belong under the
-  appropriate `rapthor/execution/<owner>/` package.
-- Keep Prefect/Dask worker payloads plain and serializable. Do not send
-  `Field`, `Observation`, `Sector`, operation instances, open file handles,
-  table objects, or live subprocess state to workers.
-- Keep command builders deterministic and testable. Use option dataclasses when
-  they clarify stable argument groups, but do not hide scientific intent behind
-  generic abstractions.
-- Preserve module-level logging style, typically loggers named like
-  `rapthor:image` or `rapthor:calibrate`.
-- Keep generated data, large Measurement Sets, build artifacts, downloaded
-  archives, integration/equivalence/demo run products, `.tox`, `.ruff_cache`,
-  `htmlcov`, and `__pycache__` out of source decisions.
-- Prefer existing small fixtures in `tests/resources/` over adding large files.
-- After any code change, run `ruff check --fix --select I` and `ruff format`
-  before final verification. If the commands cannot be run, report that and
-  name the remaining formatting/import-order risk.
-
-## Scientific And Strategy Guardrails
-
-- `calibration_strategy` is the production interface for calibration solve type
-  and solve order. Do not reintroduce legacy solve toggles such as
-  `do_fulljones_solve` or `do_slowgain_solve`.
-- Use `slow_gains` in strategy values. In prose, "slow gain" or "slow diagonal
-  gain" is fine.
-- DD slow-gain solves are currently diagonal, and the default DD strategy should
-  remain explicit about the post-slow `medium_phase` solve rather than relying
-  on hidden slot behavior.
-- The built-in selfcal strategy runs early phase-only DD cycles when Rapthor did
-  not generate the initial sky model. Do not flatten that behavior into an
-  always-amplitude-first rule.
-- Solutions from one calibration cycle must not be silently reused in later
-  cycles unless the strategy and operation contract explicitly say so.
-- When adding a user-facing option, update defaults, docs, examples, operation
-  payloads, command builders, validators, templates, and tests together.
-- Treat apparent-sky, true-sky, DI, DD, full-Jones, normalization, and screen
-  products as distinct scientific states.
-
-## Testing And Verification
-
-Use `.agents/testing_playbook.md` for detailed test selection. Start focused,
-then broaden when behavior crosses module, payload, runtime, or scientific
-product boundaries.
-
-Common commands:
-
-```bash
-tox -e lint
-tox
-python -m pytest -m "not integration" tests
-python -m pytest tests/operations/test_image.py
-```
-
-To mirror the current tox split manually in the prepared dev-container
-environment:
-
-```bash
-python -m pytest tests/lib/test_field.py -m "not integration"
-python -m pytest -m "not integration and prefect" tests
-python -m pytest -m "not integration and not prefect" -n auto --dist worksteal --ignore=tests/lib/test_field.py tests
-```
-
-Run integration tests only when the environment has the required external tools
-and data access:
-
-```bash
-RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs python -m pytest -m integration -vv -ra --durations=0 tests/integration tests/operations/integration
-```
-
-## Development Environment
-
-- Python support is declared as `>=3.9`.
-- Build, dependency, lint, pytest, and tox metadata live in `pyproject.toml`.
-- Test and lint dependencies are available through the `test` and `dev`
-  dependency groups.
-- Documentation dependencies are available through the `docs` dependency group
-  and are installed by the dev container.
-- External radio astronomy dependencies are not fully mocked everywhere. Some
-  workflows require tools such as DP3, EveryBeam, IDG, WSClean, Casacore, and
-  Python-Casacore.
-- The prepared dev container is the preferred environment for formatting,
-  tests, integration checks, and demo runs. Isolated tox
-  environments may try to rebuild compiled packages such as `python-casacore`
-  or `everybeam`.
-
-When installing locally, prefer an editable install with development
-dependencies if your environment supports it:
-
-```bash
-python -m pip install -e ".[dev]"
-```
-
-## Documentation
-
-Update docs when changing user-facing behavior, parset options, operation
-semantics, command-line behavior, or installation/runtime requirements. The main
-documentation source is under `docs/source/`, with README-level overview in
-`README.md`.
-
-The architecture page and its C4 diagrams live in
-`docs/source/development/architecture.rst`. Keep them aligned with
-owner-package, flow and task naming, task-runner, and runtime-bootstrap changes.
+| Task | Reference |
+| --- | --- |
+| Tests, formatting or test environment | [TESTING.md](TESTING.md) |
+| Ownership, flow/task boundaries or runtime architecture | [Architecture](docs/source/development/architecture.rst) |
+| Scientific semantics: solves, corrections, beams, models or averaging | [Science reference](.agents/scientific_glossary.md) |
+| User options or strategy behavior | [Parset](docs/source/parset.rst), [strategy](docs/source/strategy.rst) |
+| CLI, task runners, containers or cluster execution | [Running](docs/source/running.rst), [installation](docs/source/installation.rst) |
+| Product names, restart behavior or migration compatibility | [Products](docs/source/products.rst), [upgrading](docs/source/upgrading.rst) |
+| Planned architecture, scalability or development workflow work | [Post-merge plan](PLAN.md) |
