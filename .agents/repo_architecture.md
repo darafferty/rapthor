@@ -39,7 +39,7 @@ packages, flow or task names, or the Prefect/Dask runtime change.
 - New operation output: update the execution owner output record, operation
   finalizer, restart behavior, and tests that assert output discovery.
 - New helper that runs external tools: place production code in the appropriate
-  `rapthor/execution/<owner>/` package, not `scripts/dev` or `scripts/prod`.
+  `rapthor/execution/<owner>/` package.
 - New scientific strategy behavior: start with `rapthor/lib/strategy.py` and
   operation consumption points, then update examples and tests.
 - New preflight or runtime-UX behavior: start in `rapthor/execution/pipeline/`,
@@ -67,8 +67,6 @@ packages, flow or task names, or the Prefect/Dask runtime change.
   objects or operation instances to workers.
 - Keep command builders deterministic. Tests should be able to compare emitted
   command tokens without relying on incidental ordering.
-- Keep scripts under `scripts/dev` and `scripts/prod` as wrappers or developer
-  utilities only.
 - Keep generated local noise such as `__pycache__`, `.tox`, `.ruff_cache`,
   `runs`, `htmlcov`, build outputs, and temporary demo or integration roots out
   of source decisions.

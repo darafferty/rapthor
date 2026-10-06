@@ -428,10 +428,9 @@ main plan stays focused on the branch-switch decision.
   `calibration_strategy` with a deprecation warning
   (`rapthor/lib/strategy.py`), which keeps legacy strategy files runnable and
   identical on both branches during the migration. After the switch, turn the
-  translation into an error and convert the equivalence inputs under
-  `tests/resources/equivalence/inputs/base/`, which still use the flags. That
-  also retires `legacy_flag_calibration_strategy`, whose trailing
-  `medium_phase` reproduces a subtle CWL-side expansion rule.
+  translation into an error. That also retires
+  `legacy_flag_calibration_strategy`, whose trailing `medium_phase` reproduces
+  a subtle CWL-side expansion rule.
 - **Persistent Prefect service:** set up a shared Prefect server backed by
   Postgres so production users can monitor multiple parallel Rapthor jobs from
   one Prefect UI without relying on local SQLite state.
@@ -448,6 +447,11 @@ main plan stays focused on the branch-switch decision.
   equivalence reporting.
 
 ## Benchmark Scenario Rule
+
+The benchmark harness (`scripts/dev/`, `rapthor/execution/benchmarking.py`,
+the CI `run_benchmark_comparison` job) and the branch-equivalence inputs under
+`tests/resources/equivalence/` were removed on 2026-10-06; they were last
+present in commit `90135fe0`. The rule below is kept for reference.
 
 - keep the default automatic `ci-benchmark`
 - use `ci-benchmark-image-products` when changing image products,
@@ -475,8 +479,9 @@ Do not start speculative optimisation until manual testers can run the branch.
   for example with `git show fa4259a8^:<path>`.
 - Run products are local-only: `runs/` is gitignored, so compact reports such
   as `runs/equivalence-gate-20260820-august-sync/` exist only on the machine
-  that produced them. Rerunnable inputs are versioned under
-  `tests/resources/equivalence/`.
+  that produced them. The rerunnable inputs that were under
+  `tests/resources/equivalence/` were removed on 2026-10-06 (last present in
+  commit `90135fe0`).
 
 ## Development Rules Going Forward
 

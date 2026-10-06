@@ -17,7 +17,6 @@ FRAMEWORK_PREFIXES = (
 DOMAIN_FORBIDDEN_PREFIXES = FRAMEWORK_PREFIXES + ("rapthor.execution",)
 
 PURE_EXECUTION_MODULES = (
-    RAPTHOR_ROOT / "execution" / "benchmark_inputs.py",
     RAPTHOR_ROOT / "execution" / "commands.py",
     RAPTHOR_ROOT / "execution" / "environments.py",
     RAPTHOR_ROOT / "execution" / "calibrate" / "collection.py",

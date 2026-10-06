@@ -136,10 +136,6 @@ and data access:
 RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs python -m pytest -m integration -vv -ra --durations=0 tests/integration tests/operations/integration
 ```
 
-Use `scripts/dev/run_saved_cwl_equivalence.py` for heavier scientific
-confidence after scientific logic changes, script-to-module migrations,
-calibration strategy changes, or changes to FITS/h5parm/skymodel products.
-
 ## Development Environment
 
 - Python support is declared as `>=3.9`.
@@ -152,7 +148,7 @@ calibration strategy changes, or changes to FITS/h5parm/skymodel products.
   workflows require tools such as DP3, EveryBeam, IDG, WSClean, Casacore, and
   Python-Casacore.
 - The prepared dev container is the preferred environment for formatting,
-  tests, integration checks, equivalence checks, and demo runs. Isolated tox
+  tests, integration checks, and demo runs. Isolated tox
   environments may try to rebuild compiled packages such as `python-casacore`
   or `everybeam`.
 

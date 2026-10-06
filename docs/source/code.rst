@@ -15,7 +15,6 @@ Rapthor is written in Python. The Rapthor code tree is organized as follows::
    │   ├── operations
    │   ├── settings
    │   └── skymodels
-   ├── scripts
    └── tests
 
 In the folder structure above:
@@ -29,7 +28,6 @@ In the folder structure above:
 - ``rapthor/operations`` contains the operation subclasses (see :ref:`operation_subclasses`).
 - ``rapthor/settings`` contains the default values of the parset options.
 - ``rapthor/skymodels`` contains sky models of bright calibrator sources (see :term:`use_included_skymodels`).
-- ``scripts`` contains scripts used by the developers for testing; they are not needed to run Rapthor.
 - ``tests`` contains files used for testing.
 
 The package also installs the ``concat_linc_files`` command for preparing LINC

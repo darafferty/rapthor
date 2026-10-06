@@ -57,9 +57,8 @@ python -m pytest -m "not integration and not prefect" -n auto --dist worksteal -
 | CLI entry points | focused CLI/adapter tests near owner package | non-integration tests |
 | Parset/default option | focused parsing/default tests plus docs/templates check | non-integration tests |
 | Runtime bootstrap, preflight, or CLI startup | `tests/test_cli.py`, `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap*.py` | user-facing `rapthor input.parset` smoke lane |
-| Scientific product behavior | focused command/payload/finalizer tests | integration or equivalence check |
-| Dask task boundaries or scalability | flow tests plus payload serialization/size guards | benchmark or rich-demo run |
-| Benchmark harness/reporting | runner/report parsing tests | manual or scheduled benchmark job |
+| Scientific product behavior | focused command/payload/finalizer tests | integration tests |
+| Dask task boundaries or scalability | flow tests plus payload serialization/size guards | demo run |
 | Docs-only or `.agents/` change | `git diff --check` and link/path inspection | no test suite unless docs build is requested |
 
 ## Heavy Checks
@@ -72,41 +71,14 @@ RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs python -m pytest -m integrat
 ```
 
 The shared integration template is intentionally smoke-sized and Dask-based so
-local dev-container and CI runs exercise the same scenarios quickly. Use
-benchmark and equivalence checks for larger, science-representative imaging
-workloads.
+local dev-container and CI runs exercise the same scenarios quickly.
 
-Run equivalence after scientific logic changes, script-to-module migrations,
-calibration strategy changes, or changes to FITS, h5parm, or sky-model products:
+For an end-to-end check of runtime bootstrapping or orchestration, run the
+demo parset from the repository root:
 
 ```bash
-python scripts/dev/run_saved_cwl_equivalence.py --run-root /tmp/rapthor-equivalence --stop-on-failure
+rapthor examples/prefect_demo.parset
 ```
-
-After an equivalence gate finishes, archive the compact evidence by default.
-Science reports belong under `docs/source/development/science_equivalence_runs/`,
-and performance reports belong under
-`docs/source/development/performance_equivalence_runs/`. Saved-reference report
-pairs, branch/option-matrix summaries, per-scenario compact reports, manifests,
-and only the short command logs needed to explain the result may be tracked.
-For repeatability gates, `scripts/dev/run_branch_equivalence.py` writes
-`science-equivalence-report.*`, `performance-equivalence-report.*`, and
-`repeatability-summary.*` from the same branch executions. Update the relevant
-README/history and `EQUIVALENCE_REPORT.md` in the same change. Keep raw run
-products, FITS/MS/h5parm files, full logs, visual-comparison PNGs, and Dask
-reports in ignored run roots or CI artifacts.
-
-Use the demo when checking end-to-end runtime bootstrapping or orchestration:
-
-```bash
-python scripts/dev/run-rapthor-prefect-demo.py examples/generated/prefect_demo_rich/prefect_demo_rich.parset --run-dir /tmp/rapthor-prefect-demo --no-keep-server
-```
-
-For benchmark work, follow `PLAN.md`: define scenarios, run from clean working
-directories, repeat at least three times on the same machine/container image,
-report median plus min/max, and include command timings, Prefect task timings,
-Dask scheduler gaps, memory/disk footprint, and output equivalence or checksum
-status.
 
 ## Test Hygiene
 

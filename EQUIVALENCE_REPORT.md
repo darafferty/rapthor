@@ -113,7 +113,9 @@ Confidence: **high for the tested LOFAR HBA self-calibration paths**.
 Latest tracked science evidence:
 
 - `runs/equivalence-gate-20260820-august-sync/` (local compact report archive;
-  rerunnable inputs are committed under `tests/resources/equivalence/`)
+  the rerunnable inputs under `tests/resources/equivalence/` and the comparison
+  scripts under `scripts/dev/` were removed on 2026-10-06 and were last present
+  in commit `90135fe0`)
 
 - `docs/source/development/science_equivalence_runs/2026-08-04-august-master-sync/`
 - `docs/source/development/science_equivalence_runs/2026-07-16-post-master-sync-saved-reference/`

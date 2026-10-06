@@ -68,7 +68,7 @@ designed for the next person who needs to understand Rapthor's behaviour.
 ## Environment
 
 The prepared dev container is the preferred environment for formatting, linting,
-unit tests, Prefect tests, integration tests, equivalence checks, and demo runs.
+unit tests, Prefect tests, integration tests, and demo runs.
 It includes compiled astronomy dependencies that are often not available in a
 fresh local Python environment.
 
@@ -194,9 +194,8 @@ automatic source check is not enough.
 | Payload validators or command builders | Focused `tests/execution/` file | Owner-package tests and command/reference tests |
 | Prefect/Dask scheduling or task-runner behavior | Prefect-marked execution tests | Non-integration Prefect suite |
 | Runtime bootstrap, preflight, or CLI startup | `tests/test_cli.py`, `tests/execution/test_config.py`, `tests/execution/test_runtime_bootstrap*.py` | User-facing `rapthor input.parset` smoke lane |
-| Scientific product behavior | Focused command/payload/finalizer tests | Integration or equivalence check |
-| Dask task boundaries or scalability | Flow tests plus payload serialization/size guards | Benchmark or rich-demo run |
-| Benchmark harness/reporting | `tests/execution/test_benchmarking.py` and demo-data generator tests | Manual or scheduled benchmark job |
+| Scientific product behavior | Focused command/payload/finalizer tests | Integration tests |
+| Dask task boundaries or scalability | Flow tests plus payload serialization/size guards | Demo run |
 | Documentation only | `git diff --check` and link/path inspection | Docs build only when requested or risky |
 
 ## Parset Option Coverage
@@ -305,54 +304,20 @@ Integration-test guidelines:
 CI may split integration tests with `pytest-split` using `CI_NODE_TOTAL` and
 `CI_NODE_INDEX`.
 
-## Equivalence, Demo, And Benchmark Checks
+## Demo Run
 
-Use saved CWL equivalence after scientific logic changes, script-to-module
-migrations, calibration strategy changes, or changes to FITS, h5parm, or
-sky-model products:
-
-```bash
-python scripts/dev/run_saved_cwl_equivalence.py --run-root /tmp/rapthor-equivalence --stop-on-failure
-```
-
-Use the demo scripts for end-to-end checks of runtime bootstrapping or
-orchestration. The basic demo uses the small test Measurement Set in
-`tests/resources` and starts a local Prefect server and Dask cluster:
+For an end-to-end check of a real run, including runtime bootstrapping and
+orchestration, run Rapthor on the small test Measurement Set with the demo
+parset. Run it from the repository root so that the relative paths resolve:
 
 ```bash
-python scripts/dev/run-rapthor-prefect-demo.py examples/prefect_demo.parset
+rapthor examples/prefect_demo.parset
 ```
 
-For a more representative demo, generate a larger synthetic dataset first. It
-has five bright point-source groups, 48 time slots, several frequency bins,
-and two calibration chunks; the visibilities are predicted with DP3 and then
-given synthetic antenna phases and thermal noise so that the solution plots
-show structure:
-
-```bash
-python scripts/dev/generate-prefect-demo-data.py --force
-python scripts/dev/run-rapthor-prefect-demo.py examples/generated/prefect_demo_rich/prefect_demo_rich.parset --run-dir /tmp/rapthor-prefect-demo --no-keep-server
-```
-
-The generator writes the Measurement Set, the apparent and true sky models, a
-strategy, and two parsets (`prefect_demo_rich.parset` for local runs and
-`prefect_demo_benchmark.parset` for the benchmark harness and CI) under
-`examples/generated/prefect_demo_rich/`. Add `--include-multi-sector` to also
-write a dataset and parset that exercise imaging of a 2 x 2 grid of sectors
-and mosaicking. Both scripts list their options with `--help`, including the
-resource overrides `--local-dask-workers`, `--cpus-per-task`, and
-`--max-threads`.
-
-Run the benchmark harness on the generated data with:
-
-```bash
-python scripts/dev/run_benchmark_baseline.py --scenario ci-benchmark --prepare-inputs --repetitions 1 --local-dask-workers 1 --cpus-per-task 4 --max-threads 4
-```
-
-For benchmark work, follow `PLAN.md`. Benchmarks should report median plus
-min/max across repetitions, command timings, Prefect task timings, Dask
-scheduler gaps, memory/disk footprint, and output equivalence or checksum
-status. Do not commit raw benchmark run directories or bulky artifacts.
+The demo parset writes its working directory into the repository root
+(`prefect-demo-work*` directories are gitignored). To watch the run in the
+Prefect dashboard, start `prefect server start` first and export
+`PREFECT_API_URL=http://127.0.0.1:4200/api`; see `docs/source/running.rst`.
 
 ## Tests As Living Documentation
 
