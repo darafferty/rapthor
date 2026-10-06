@@ -1,10 +1,10 @@
 """Exercise Docker label extraction without requiring Docker."""
 
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 
 class ExtractVersionHashesTest(unittest.TestCase):
