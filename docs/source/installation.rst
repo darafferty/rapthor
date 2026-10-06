@@ -47,6 +47,8 @@ How can I use containers (Docker or Singularity) with Rapthor?
     The helper prints one ``NAME_COMMIT=value`` assignment per version label.
     Values are the build references recorded in the image, which may be Git
     hashes, branch names, or tags.
+    If no matching version labels are present, the helper reports an error and
+    exits with a nonzero status.
 
 
 How can I troubleshoot a Rapthor problem?

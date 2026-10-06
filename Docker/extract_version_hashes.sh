@@ -16,5 +16,12 @@ docker image inspect --format '{{range $key, $value := .Config.Labels}}{{printf 
       sub(/\.version$/, "", name)
       gsub(/-/, "", name)
       print toupper(name) "_COMMIT=" substr($0, index($0, "=") + 1)
+      found = 1
+    }
+    END {
+      if (!found) {
+        print "Error: no Rapthor version labels found in image." > "/dev/stderr"
+        exit 1
+      }
     }
   '
