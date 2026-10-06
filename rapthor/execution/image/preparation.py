@@ -83,33 +83,6 @@ def concatenate_prepared_visibilities(
     return require_directory(str(sector["concat_path"]), "Concatenated imaging MS")
 
 
-def prepare_and_concatenate_visibilities(
-    sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> tuple[list[dict], dict]:
-    """Prepare per-observation imaging MSs and concatenate them for imaging."""
-    prepared_records = [
-        prepare_visibility_ms(
-            sector,
-            prepare_task,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        for prepare_task in sector["prepare_tasks"]
-    ]
-    concat_record = concatenate_prepared_visibilities(
-        sector,
-        prepared_records,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return prepared_records, concat_record
-
-
 def ensure_imaging_mask(
     sector: ImageSectorPayload,
 ) -> dict:

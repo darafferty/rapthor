@@ -47,49 +47,6 @@ def prediction_intermediate_paths(original_payload: Mapping, payload: Mapping) -
     return paths
 
 
-def prepare_image_based_predict(
-    payload: CalibratePayload,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> CalibratePayload:
-    """Prepare model-image inputs when calibration uses image-based prediction."""
-    if not (payload.get("image_based_predict") or payload.get("wsclean_predict")):
-        return payload
-
-    region_file = make_predict_region_file(payload)
-    prepared_payload = dict(payload)
-    prepared_payload["predict_regions"] = region_file["path"]
-
-    if payload.get("image_based_predict"):
-        model_images = draw_predict_model_images(
-            payload,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        prepared_payload["predict_images"] = [record["path"] for record in model_images]
-
-    if payload.get("wsclean_predict"):
-        facet_info = wsclean_predict_facet_info(region_file)
-        prepared_chunks = []
-        for chunk_index, chunk in enumerate(payload["chunks"]):
-            prepared_chunks.append(
-                prepare_wsclean_predict_chunk(
-                    payload,
-                    chunk,
-                    chunk_index,
-                    facet_info,
-                    execution_config,
-                    shell_operation_cls=shell_operation_cls,
-                )
-            )
-        prepared_payload["chunks"] = prepared_chunks
-        prepared_payload["modeldatacolumn"] = facet_info["modeldatacolumn"]
-
-    if payload.get("normalize_h5parm"):
-        prepared_payload["normalize_h5parm"] = adjust_prediction_normalization_h5parm(payload)
-    return prepared_payload
-
-
 def make_predict_region_file(payload: CalibratePayload) -> dict:
     """Create the facet region file used by image-based calibration prediction."""
     return _run_make_region_file(_image_predict_payload(payload))

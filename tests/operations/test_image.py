@@ -217,7 +217,6 @@ class TestImage:
         image = Image(field=field, index=1)
         image.set_parset_parameters()
         assert image.parset_parms["use_mpi"] == field.parset["imaging_specific"]["use_mpi"]
-        assert image.parset_parms["rapthor_pipeline_dir"] is not None
         assert image.parset_parms["pipeline_working_dir"] is not None
 
     def test_set_input_parameters(self, field):
@@ -1288,7 +1287,6 @@ class TestImageNormalize:
         assert (
             image_normalize.parset_parms["use_mpi"] == field.parset["imaging_specific"]["use_mpi"]
         )
-        assert image_normalize.parset_parms["rapthor_pipeline_dir"] is not None
         assert image_normalize.parset_parms["pipeline_working_dir"] is not None
         assert image_normalize.parset_parms["normalize_flux_scale"] is True
         assert image_normalize.parset_parms["image_cube_stokes_list"] == ["I"]

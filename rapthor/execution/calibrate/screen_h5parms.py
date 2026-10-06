@@ -30,16 +30,6 @@ def collect_screen_h5parms(
                 input_file.visititems(_copy_or_append_item(output_file))
 
 
-def parse_h5parm_file_list(h5parm_files: Sequence[str]) -> list[str]:
-    """Parse positional h5parm arguments, including a single comma-separated value."""
-    h5parm_files = list(h5parm_files)
-    if len(h5parm_files) == 1 and (
-        "," in h5parm_files[0] or ("[" in h5parm_files[0] and "]" in h5parm_files[0])
-    ):
-        return [filename.strip() for filename in h5parm_files[0].strip("[]").split(",")]
-    return h5parm_files
-
-
 def _copy_or_append_item(output_file):
     """Return an h5py visitor that copies new items and appends repeated datasets."""
 

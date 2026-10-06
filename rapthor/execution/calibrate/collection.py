@@ -21,52 +21,6 @@ from rapthor.lib.records import file_record, validate_output_record
 PHASE_SOLVE_TYPES = {"fast_phase", "medium_phase"}
 
 
-def process_plot_and_combine_collected_products(
-    payload: Mapping[str, object],
-    collected_products: list[Mapping[str, object]],
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    """Process, plot, combine, and validate already collected solve h5parms."""
-    processed_products = [
-        process_collected_solve_product(payload, product) for product in collected_products
-    ]
-    plot_products = [
-        plot_processed_solve_product(
-            payload,
-            product,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        for product in processed_products
-    ]
-    if needs_solution_combination(payload):
-        active_solution = combine_processed_solution_products(payload, processed_products)
-    else:
-        active_solution = processed_products[active_solution_product_index(payload)]
-    return finalize_processed_solution_products(
-        payload,
-        processed_products,
-        plot_products,
-        active_solution,
-    )
-
-
-def collect_plot_and_combine(
-    payload: Mapping[str, object],
-    solve_records: list[dict],
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    """Collect, plot, process, and combine calibration solution products."""
-    return _collect_strategy_solve_products(
-        payload,
-        solve_records,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-
-
 def collect_screen_solutions(
     payload: Mapping[str, object],
     screen_records: list[dict],
@@ -494,31 +448,6 @@ def _combine_phase_outputs(
     if len(outputs) < required:
         raise ValueError("Calibration phase combination outputs are incomplete")
     return outputs[:required]
-
-
-def _collect_strategy_solve_products(
-    payload: Mapping[str, object],
-    solve_records: list[dict],
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    solve_slots = list(payload["chunks"][0]["solve_slots"])
-    collected_products = [
-        collect_strategy_solve_h5parm(
-            payload,
-            solve_records,
-            solve_slot,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-        for solve_slot in solve_slots
-    ]
-    return process_plot_and_combine_collected_products(
-        payload,
-        collected_products,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
 
 
 def _active_solution_record(active_solution: Mapping[str, object]) -> dict:

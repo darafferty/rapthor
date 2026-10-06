@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-import rapthor
 from rapthor.lib.field import Field as RapthorField
 from rapthor.operations.predict import Predict
 
@@ -115,8 +114,6 @@ class TestPredict:
         predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_parset_parameters()
 
-        rapthor_pipeline_path = Path(rapthor.__file__).parent / "pipeline"
-        assert predict.parset_parms["rapthor_pipeline_dir"] == str(rapthor_pipeline_path)
         assert predict.parset_parms["max_cores"] == expected_cores
 
     @pytest.mark.parametrize(

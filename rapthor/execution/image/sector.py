@@ -24,7 +24,6 @@ from rapthor.execution.image.preparation import (
     concatenate_prepared_visibilities,
     ensure_facet_region,
     ensure_imaging_mask,
-    prepare_and_concatenate_visibilities,
     prepare_visibility_ms,
 )
 from rapthor.execution.image.residual_visibilities import make_residual_visibility_record
@@ -34,114 +33,6 @@ from rapthor.execution.image.wsclean import (
     run_or_reuse_wsclean_images,
 )
 from rapthor.execution.outputs import file_records_for_patterns
-
-
-def run_image_sector(
-    sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run one imaging sector sequentially."""
-    prepared = prepare_image_sector(
-        sector,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    filtered = filter_image_sector_skymodel(
-        sector,
-        prepared,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    diagnostics_result = calculate_image_sector_diagnostics(
-        sector,
-        prepared,
-        filtered,
-        pipeline_working_dir,
-    )
-    image_cube_result = make_image_sector_cubes(sector, pipeline_working_dir)
-    catalog_result = make_image_sector_cube_catalog(
-        sector,
-        image_cube_result,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    normalization_result = normalize_image_sector_flux_scale(
-        sector,
-        prepared,
-        catalog_result,
-    )
-    restored_model_result = restore_image_sector_skymodel(sector, prepared, filtered)
-    compression_result = compress_image_sector_products(
-        sector,
-        prepared,
-        diagnostics_result,
-        pipeline_working_dir,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return finalize_image_sector(
-        sector,
-        prepared,
-        filtered,
-        diagnostics_result,
-        pipeline_working_dir,
-        image_cube_result=image_cube_result,
-        catalog_result=catalog_result,
-        normalization_result=normalization_result,
-        restored_model_result=restored_model_result,
-        compression_result=compression_result,
-        execution_config=execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-
-
-def prepare_image_sector(
-    sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Run data preparation and WSClean for one imaging sector."""
-    config = execution_config or ExecutionConfig(task_runner="sync")
-
-    prepared_records, concat_record = prepare_and_concatenate_visibilities(
-        sector,
-        pipeline_working_dir,
-        config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    image_products = make_image_sector_wsclean_products(
-        sector,
-        concat_record,
-        pipeline_working_dir,
-        execution_config=config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    image_products = finish_image_sector_wsclean_products(
-        sector,
-        image_products,
-        pipeline_working_dir,
-        execution_config=config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    residual_result = make_image_sector_residual_visibility_product(
-        sector,
-        concat_record,
-        image_products,
-        pipeline_working_dir,
-        execution_config=config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return assemble_image_sector_preparation(
-        prepared_records,
-        concat_record,
-        image_products,
-        residual_result,
-    )
 
 
 def prepare_image_sector_visibility(

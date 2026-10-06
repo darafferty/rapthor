@@ -55,7 +55,6 @@ def test_set_parset_parameters_records_runtime_inputs(tmp_path):
     operation.set_parset_parameters()
 
     assert operation.parset_parms == {
-        "rapthor_pipeline_dir": operation.rapthor_pipeline_dir,
         "pipeline_working_dir": operation.pipeline_working_dir,
         "max_cores": 4,
     }

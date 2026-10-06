@@ -14,31 +14,6 @@ def solution_interval_for_solve_type(solve_type: str) -> str:
     return CALIBRATION_SOLVE_METADATA[solve_type].solution_interval_family
 
 
-SUPERTERP_STATIONS_BY_ANTENNA = {
-    "HBA": (
-        "CS002HBA0",
-        "CS003HBA0",
-        "CS004HBA0",
-        "CS005HBA0",
-        "CS006HBA0",
-        "CS007HBA0",
-        "CS002HBA1",
-        "CS003HBA1",
-        "CS004HBA1",
-        "CS005HBA1",
-        "CS006HBA1",
-        "CS007HBA1",
-    ),
-    "LBA": (
-        "CS002LBA",
-        "CS003LBA",
-        "CS004LBA",
-        "CS005LBA",
-        "CS006LBA",
-        "CS007LBA",
-    ),
-}
-
 CORE_STATIONS_BY_ANTENNA = {
     "HBA": (
         "CS001HBA0",
@@ -343,12 +318,6 @@ def build_calibration_solve_slot_inputs(
     return inputs
 
 
-def build_calibration_superterp_stations(antenna: str, stations: list[str]) -> list[str]:
-    """Return superterp station names present in the observation station list."""
-    superterp_stations = SUPERTERP_STATIONS_BY_ANTENNA.get(antenna, ())
-    return [station for station in superterp_stations if station in stations]
-
-
 def build_calibration_core_stations(
     antenna: str,
     stations: list[str],
@@ -360,13 +329,6 @@ def build_calibration_core_stations(
     if include_nearest_remote:
         core_stations.extend(NEAREST_REMOTE_STATIONS_BY_ANTENNA.get(antenna, ()))
     return [station for station in core_stations if station in stations]
-
-
-def build_calibration_core_baseline_selection(antenna: str, stations: list[str]) -> str:
-    """Return the DP3 baseline-selection string for core-station calibration."""
-    core_stations = build_calibration_core_stations(antenna, stations)
-    non_core_stations = [station for station in stations if station not in core_stations]
-    return f"[CR]*&&;!{';!'.join(non_core_stations)}"
 
 
 def solve_solution_label(solve_type: str, medium_count: int = 0) -> str:

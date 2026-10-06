@@ -9,8 +9,6 @@ import os
 from rapthor.lib.context import Timer
 from rapthor.lib.records import NpEncoder, clean_if_file_or_directory_record, copy_record_recursive
 
-DIR = os.path.dirname(os.path.abspath(__file__))
-
 
 class Operation(object):
     """
@@ -57,10 +55,6 @@ class Operation(object):
         log_dir = os.path.join(working_dir, "logs", self.name)
         os.makedirs(log_dir, exist_ok=True)
 
-        # Path to preserved pipeline templates and static reference material.
-        rapthor_root_dir = os.path.split(DIR)[0]
-        self.rapthor_pipeline_dir = os.path.join(rapthor_root_dir, "pipeline")
-
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir, "pipeline_inputs.json")
         self.pipeline_outputs_file = os.path.join(
             self.pipeline_working_dir, "pipeline_outputs.json"
@@ -94,12 +88,9 @@ class Operation(object):
         """
         Return common parset parameters used by flow-backed operation adapters.
         """
-        parameters = {
-            "rapthor_pipeline_dir": self.rapthor_pipeline_dir,
-        }
+        parameters = {"max_cores": self.flow_max_cores()}
         if include_pipeline_working_dir:
             parameters["pipeline_working_dir"] = self.pipeline_working_dir
-        parameters["max_cores"] = self.flow_max_cores()
         parameters.update(extra)
         return parameters
 

@@ -38,7 +38,6 @@ dependencies = [
     "dask[distributed]",
     "fastapi<0.137",
     "h5py",
-    "jinja2",
     "losoto>=2.4.3",
     "lsmtool>=1.9.0",
     "matplotlib",
@@ -50,7 +49,6 @@ dependencies = [
     "psutil",
     "python-casacore",
     "python-dateutil",
-    "pyyaml",
     "reproject",
     "requests",
     "Rtree",
@@ -92,7 +90,6 @@ docs = [
     "sphinxcontrib-mermaid",
 ]
 dev =  [
-    "coloredlogs",
     "numpydoc",
     "ruff",
     "snowballstemmer!=3.0.0",

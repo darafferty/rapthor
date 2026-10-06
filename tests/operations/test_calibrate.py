@@ -2,24 +2,18 @@
 Test cases for the calibration operation modules.
 """
 
-from pathlib import Path
-
 import pytest
 
-import rapthor
 from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.solves import build_calibrate_chunk_command
 from rapthor.lib.field import Field as RapthorField
-from rapthor.lib.operation import DIR as OPERATION_DIR
 from rapthor.operations.calibrate.base import Calibrate
 from rapthor.operations.calibrate.plan import (
-    build_calibration_core_baseline_selection,
     build_calibration_core_stations,
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,
     build_calibration_solve_plan,
     build_calibration_solve_slot_inputs,
-    build_calibration_superterp_stations,
     requested_calibration_solves,
 )
 
@@ -313,9 +307,6 @@ class TestCalibrate:
         calibrate.set_parset_parameters()
 
         # Assert
-        rapthor_pipeline_path = Path(rapthor.__file__).parent / "pipeline"
-        assert calibrate.parset_parms["rapthor_pipeline_dir"] == str(rapthor_pipeline_path)
-
         expected_max_cores = None if batch_system == "slurm" else max_cores
         assert calibrate.parset_parms["max_cores"] == expected_max_cores
 
@@ -328,47 +319,6 @@ class TestCalibrate:
             )
             assert calibrate.parset_parms["generate_screens"] is generate_screens
             assert calibrate.parset_parms["use_wsclean_predict"] is False
-
-    @pytest.mark.parametrize(
-        "antenna, stations, expected",
-        [
-            (
-                "LBA",
-                ["CS001LBA", "CS002LBA", "RS106LBA", "DE601LBA", "UK608LBA"],
-                "[CR]*&&;!DE601LBA;!UK608LBA",
-            ),
-            (
-                "HBA",
-                ["CS003HBA0", "RS106HBA0", "DE601HBA", "UK902HBA"],
-                "[CR]*&&;!DE601HBA;!UK902HBA",
-            ),
-        ],
-    )
-    def test_build_calibration_core_baseline_selection(self, antenna, stations, expected):
-        assert build_calibration_core_baseline_selection(antenna, stations) == expected
-
-    @pytest.mark.parametrize(
-        "antenna,stations,expected",
-        [
-            (
-                "HBA",
-                ["RS106HBA0", "DE601HBA"],
-                [],
-            ),
-            (
-                "HBA",
-                ["CS003HBA0", "RS106HBA0", "CS007HBA1", "DE601HBA"],
-                ["CS003HBA0", "CS007HBA1"],
-            ),
-            (
-                "LBA",
-                ["RS205LBA", "CS004LBA", "CS007LBA", "DE601LBA"],
-                ["CS004LBA", "CS007LBA"],
-            ),
-        ],
-    )
-    def test_build_calibration_superterp_stations(self, antenna, stations, expected):
-        assert build_calibration_superterp_stations(antenna, stations) == expected
 
     @pytest.mark.parametrize(
         "antenna,include_remote,stations,expected",

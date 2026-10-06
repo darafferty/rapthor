@@ -435,23 +435,6 @@ def _result_from_sector_records(sector_outputs: list[dict]) -> dict:
     return result
 
 
-@task(name="sector")
-def image_sector_task(
-    sector: ImageSectorPayload,
-    pipeline_working_dir: str,
-    execution_config: Optional[ExecutionConfig] = None,
-    shell_operation_cls=None,
-) -> dict:
-    """Prefect task wrapper for one imaging sector."""
-    with publish_python_logs_to_prefect(), record_task_runtime(pipeline_working_dir):
-        return image_sector.run_image_sector(
-            sector,
-            pipeline_working_dir,
-            execution_config=execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-
-
 @task(name="prepare_chunk")
 def image_sector_prepare_visibility_task(
     sector: ImageSectorPayload,

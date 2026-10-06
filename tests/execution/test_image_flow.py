@@ -46,7 +46,6 @@ from rapthor.execution.image.flow import (
     image_sector_finish_wsclean_task,
     image_sector_prepare_outputs_task,
     image_sector_prepare_visibility_task,
-    image_sector_task,
     image_sector_wsclean_task,
 )
 from rapthor.lib.field import Field as RapthorField
@@ -2807,20 +2806,6 @@ def test_run_image_flow_returns_normalization_outputs(
         FILTER_SKYMODEL_COMMAND_NAME,
         CUBE_CATALOG_COMMAND_NAME,
     ]
-
-
-def test_image_sector_task_wraps_runner(tmp_path, fake_image_shell_operation_cls):
-    payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
-
-    task_fn = getattr(image_sector_task, "fn", image_sector_task)
-    output = task_fn(
-        payload["sectors"][0],
-        str(tmp_path),
-        execution_config=ExecutionConfig(task_runner="sync"),
-        shell_operation_cls=fake_image_shell_operation_cls,
-    )
-
-    assert output["sector_I_images"] == _sector_i_image_records(tmp_path)
 
 
 def test_image_sector_tasks_split_preparation_and_post_wsclean_work(

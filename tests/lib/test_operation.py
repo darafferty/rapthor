@@ -107,7 +107,6 @@ def test_flow_parset_parameters_can_include_working_dir_and_extra_values(tmp_pat
         include_pipeline_working_dir=True,
         mode="dd",
     ) == {
-        "rapthor_pipeline_dir": operation.rapthor_pipeline_dir,
         "pipeline_working_dir": operation.pipeline_working_dir,
         "max_cores": 4,
         "mode": "dd",
