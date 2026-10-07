@@ -35,6 +35,21 @@ How can I use containers (Docker or Singularity) with Rapthor?
     A Docker image with the latest release of Rapthor and all its dependencies
     is available on `Docker Hub <https://hub.docker.com/r/astronrd/rapthor>`_.
 
+    To print the dependency versions stored in a locally available image's
+    labels, run the helper from the Rapthor source checkout:
+
+    .. code-block:: console
+
+        $ Docker/extract_version_hashes.sh astronrd/rapthor:latest
+        AOFLAGGER_COMMIT=2c22cfee2595473bcf7ecb2e886bea9ba3f62964
+        ...
+
+    The helper prints one ``NAME_COMMIT=value`` assignment per version label.
+    Values are the build references recorded in the image, which may be Git
+    hashes, branch names, or tags.
+    If no matching version labels are present, the helper reports an error and
+    exits with a nonzero status.
+
 How can I troubleshoot a Rapthor problem?
     If you see a message in the terminal or the main log
     (``dir_working/logs/rapthor.log``) like:
