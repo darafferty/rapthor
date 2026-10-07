@@ -12,7 +12,12 @@ class ExtractVersionHashesTest(unittest.TestCase):
         script = Path(__file__).resolve().parents[2] / "Docker/extract_version_hashes.sh"
         with tempfile.TemporaryDirectory() as directory:
             docker = Path(directory) / "docker"
-            docker.write_text('#!/bin/bash\nprintf "%s" "$MOCK_LABELS"\nexit "${MOCK_STATUS:-0}"\n')
+            docker.write_text(
+                '#!/bin/bash\nprintf "%s" "$MOCK_LABELS"\n'
+                'if [ "$MOCK_STATUS" -ne 0 ]; then\n'
+                '  echo "Error: Docker inspection failed" >&2\n'
+                'fi\nexit "$MOCK_STATUS"\n'
+            )
             docker.chmod(0o755)
             cases = [
                 (
@@ -25,6 +30,12 @@ class ExtractVersionHashesTest(unittest.TestCase):
                 ("no labels", "", 0, None),
                 ("unrelated labels", "other.version=abc\n", 0, None),
                 ("Docker failure", "", 2, None),
+                (
+                    "Docker failure with partial output",
+                    "nl.astron.rapthor.dp3.version=abc123\n",
+                    2,
+                    None,
+                ),
             ]
             for name, labels, status, output in cases:
                 with self.subTest(name=name):
@@ -41,7 +52,11 @@ class ExtractVersionHashesTest(unittest.TestCase):
                         text=True,
                         check=False,
                     )
-                    if output is None:
+                    if status != 0:
+                        self.assertEqual(result.returncode, status)
+                        self.assertEqual(result.stdout, "")
+                        self.assertEqual(result.stderr, "Error: Docker inspection failed\n")
+                    elif output is None:
                         self.assertNotEqual(result.returncode, 0)
                         self.assertEqual(result.stdout, "")
                         self.assertIn("no Rapthor version labels found", result.stderr)

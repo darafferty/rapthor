@@ -8,7 +8,9 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-docker image inspect --format '{{range $key, $value := .Config.Labels}}{{printf "%s=%s\n" $key $value}}{{end}}' "$1" |
+labels=$(docker image inspect --format '{{range $key, $value := .Config.Labels}}{{printf "%s=%s\n" $key $value}}{{end}}' "$1")
+
+printf '%s\n' "$labels" |
   LC_ALL=C awk -F= '
     /^nl\.astron\.rapthor\.[[:alnum:]-]+\.version=/ {
       name = $1
