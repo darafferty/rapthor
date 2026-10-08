@@ -51,4 +51,5 @@ Rapthor Details
    operations
    development/architecture
    development/adr_replace_cwl_toil_with_prefect_dask
+   development/cwl_to_prefect_comparison
    code

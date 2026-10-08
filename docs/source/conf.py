@@ -55,7 +55,10 @@ html_theme_options = {"description": release}
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_static_path = ["_static"]
+
+# Extra CSS: lets inline code wrap inside tables marked with the "wrap-code" class.
+html_css_files = ["tables.css"]
 
 
 # -- Additional settings -----------------------------------------------------

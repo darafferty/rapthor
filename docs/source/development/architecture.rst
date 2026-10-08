@@ -28,7 +28,9 @@ deployment diagrams each dashed outline is a machine or a group of machines.
 See :ref:`structure` for the order in which the operations are run and
 :ref:`operations` for what each operation produces. The decision to run the
 processing with Prefect and Dask instead of CWL and Toil, and the reasons for
-it, are recorded in :doc:`adr_replace_cwl_toil_with_prefect_dask`.
+it, are recorded in :doc:`adr_replace_cwl_toil_with_prefect_dask`. The
+corresponding diagrams of the CWL version, and a map from its code to the
+code described here, are in :doc:`cwl_to_prefect_comparison`.
 
 
 System context
