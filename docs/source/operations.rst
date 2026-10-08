@@ -16,7 +16,7 @@ in ``pipelines/concatenate_1`` as ``epoch_<starttime>_concatenated.ms``.
 Normalize
 ---------
 
-When :term:`do_normalize` is enabled, this operation images the field to derive
+When :term:`do_normalize` is enabled for a given cycle, this operation images the field to derive
 frequency-dependent flux-scale corrections from reference sky models. It runs
 before the main imaging operation. Its image cubes and flux-scale solutions are
 stored in ``images/normalize_X`` and ``solutions/normalize_X``, where ``X`` is
@@ -27,7 +27,7 @@ the cycle number.
 Calibrate
 ---------
 
-This operation calibrates the data using the current sky model. It uses a calibration strategy based on that of the `Facet-Selfcal package
+When :term:`do_calibrate` is enabled for a given cycle, this operation calibrates the data using the current sky model. It uses a calibration strategy based on that of the `Facet-Selfcal package
 <https://github.com/rvweeren/lofar_facet_selfcal>`_. The exact steps depend on :term:`calibration_strategy`. The default DD strategy has up to four main parts:
 
     1. A phase-only (scalar) solve on short timescales (the "fast" solve, which corrects for ionospheric errors on the longer baselines). A core constraint is used to force all the core stations to have the same solutions.
@@ -89,7 +89,7 @@ If a full-Jones solve was done for a given cycle, then a number of further produ
 Image (+ mosaic)
 ----------------
 
-This operation images the data. If multiple imaging sectors are used, a mosaic operation is also run to mosaic the sector images together into a single image. If bright sources were subtracted in the preceding :ref:`predict` operation, they are restored during this operation once imaging has finished.
+When :term:`do_image` is enabled for a given cycle, this operation images the data. If multiple imaging sectors are used, a mosaic operation is also run to mosaic the sector images together into a single image. If bright sources were subtracted in the preceding :ref:`predict` operation, they are restored during this operation once imaging has finished.
 
 Diagnostics for each image are written to the main log (``dir_working/logs/rapthor.log``). The diagnostics can be useful for judging how self calibration is proceeding. They include the following:
 

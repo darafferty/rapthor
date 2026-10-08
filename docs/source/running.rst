@@ -35,9 +35,10 @@ number of options are available and are described below:
 
 Rapthor begins a run by checking the input measurement sets. Next, Rapthor
 will determine the DDE calibrators from the input sky model and begin self
-calibration and imaging. Rapthor uses the selected :term:`cwl_runner` (Toil by default, or StreamFlow)
-to handle the distribution of jobs and to keep track of the state of a reduction. Each Rapthor operation is
-done in a separate workflow. See :ref:`structure` for an overview of the various
+calibration and imaging. Rapthor uses the selected :term:`cwl_runner`
+to handle the distribution of jobs and to keep track of the state of a reduction.
+By default Rapthor uses Toil as CWL runner; other supported runners are CWLTool and StreamFlow.
+Each Rapthor operation is done in a separate workflow. See :ref:`structure` for an overview of the various
 operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
