@@ -49,7 +49,7 @@ Primary products:
         * ``field-solutions-medium1-phase.h5`` - the calibration solution table containing the first medium-fast solutions (saved for the default strategy when the slow solve is done).
         * ``field-solutions-medium2-phase.h5`` - the calibration solution table containing the second medium-fast solutions (created if the slow solve was done).
         * ``field-solutions-slow-gain.h5`` - the calibration solution table containing the slow solutions  (created if the slow solve was done).
-        * ``field-solutions.h5`` - the active calibration solution table. For the default phase-only strategy this contains the fast-phase solutions; when the slow solve is done it contains the combined solutions.
+        * ``field-solutions.h5`` - the active calibration solution table. This contains the combined solutions when screens are generated or when ``slow_gains`` is the third solve. Otherwise it contains the first solve's solutions, which are the fast-phase solutions for the default phase-only strategy.
     * In ``plots/calibrate_X``, where ``X`` is the cycle number:
         * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the files ``fast_scalarphase_dir[Patch_127].png`` and ``medium1_scalarphase_dir[Patch_127].png`` contain the scalar phase solutions (from the fast and first medium-fast solves) for patch 127. If the slow solve was done, additional files should be present with the names ``slow_phase_dir[Patch_127]_polXX.png`` and ``slow_amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization) from the slow solve and ``medium2_scalarphase_dir[Patch_127].png`` from the second medium-fast solve.
 
@@ -78,7 +78,7 @@ Primary products:
         * Temporary measurement sets used for subsequent operations.
 
 If a full-Jones solve was done for a given cycle, then a number of further products are created:
-    * In ``skymodels/predict_di_X``, where ``X`` is the cycle number:
+    * In ``skymodels/predict_X``, where ``X`` is the cycle number:
         * ``predict_*_predict_skymodel.txt`` - sky models used for the prediction needed for the full-Jones solve
     * In ``pipelines/predict_di_X``, where ``X`` is the cycle number:
         * Temporary measurement sets used for the full-Jones solve.
