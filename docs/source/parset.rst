@@ -472,12 +472,12 @@ The available options are described below under their respective sections.
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
 
-    bda_timebase
+    bda_timebase (imaging)
         Maximum baseline used in baseline-dependent averaging (BDA) in time direction
         during imaging, in m (default = 20000). A value of 0 will disable the averaging.
         Activating this option may improve the speed of imaging.
 
-    bda_frequencybase
+    bda_frequencybase (imaging)
         Maximum baseline used in baseline-dependent averaging (BDA) in frequency
         direction during imaging, in m (default = 5000). A value of 0 will disable the
         averaging. Activating this option should improve the speed of imaging.
@@ -554,7 +554,7 @@ The available options are described below under their respective sections.
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
-        ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_ 
+        ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_
         for details on precision. Some tools may be unable to read compressed fits files and will
         require decompression to be run first. This can be done with the ``funpack`` tool .
 
@@ -640,7 +640,7 @@ The available options are described below under their respective sections.
         .. warning:: 
             This option is currently experimental and should be used with caution.
         
-        .. notes::
+        .. note::
             If the number of facets is only one the option will be disabled 
 
     reweight
@@ -690,7 +690,7 @@ The available options are described below under their respective sections.
         smearing away from the image centers. Note this option is not considered if 
         :term:`average_visibilities` = ``False``.
 
-    correct_time_frequency_smearing
+    correct_time_frequency_smearing (imaging)
         Correct for time and frequency smearing during imaging (default =
         ``False``). Generally, if enabled and calibration is to be done, the
         identical parameter in the ``[calibration]`` section should also be
@@ -814,8 +814,8 @@ The available options are described below under their respective sections.
 
         An interactive notebook exploring how estimated peak memory varies with  
         number of baselines, channels, solution interval and directions is available 
-        `here <https://gitlab.com/ska-telescope/sdp/science-pipeline-workflows/ska-sdp-ical/-/blob/main/notebooks/dp3_calibrate_memory.py>`_.
-        (instructions for running it `here <https://developer.skao.int/projects/ska-sdp-ical/en/latest/dp3_memory_explorer.html>`_).
+        `here <https://gitlab.com/ska-telescope/sdp/science-pipeline-workflows/ska-sdp-ical/-/blob/main/notebooks/dp3_calibrate_memory.py>`__.
+        (instructions for running it `here <https://developer.skao.int/projects/ska-sdp-ical/en/latest/dp3_memory_explorer.html>`__).
 
 
         A DI solve always uses one direction. A DD pre-flight estimate uses the strategy

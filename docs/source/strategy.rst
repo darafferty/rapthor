@@ -77,16 +77,16 @@ cycle.
 .. note::
 
     Examples of custom strategy files are available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.py>`__
     (for self calibration), `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`__
     (for imaging only) and `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/flexible_calibration_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/flexible_calibration_strategy.py>`__
     (for more control over the calibration strategy). Files that duplicate the default strategies are available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`__
     (for self calibration; note that, in contrast to the built-in self calibration strategy,
     phase-only cycles are never done) and `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`__
     (for imaging only).
 
 .. note::
@@ -196,7 +196,14 @@ The following processing parameters can be set for each cycle:
 
         - "fast_phase": run the fast (scalarphase) solve.
         - "medium_phase": run the medium-fast (scalarphase) solve.
-        - "slow_gain": run the slow (diagonal) solve.
+        - "slow_gains": run the slow (diagonal) solve.
         - "full_jones": run the full-Jones solve.
 
-        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles.
+        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the execution order. Each mode supports at most four solves. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles.
+
+        If omitted, ``None``, or an empty dictionary, the legacy flags
+        ``do_slowgain_solve`` and ``do_fulljones_solve`` determine the default
+        strategy: DD fast and medium phase solves, with a slow gain and second
+        medium phase solve when requested, followed by an optional DI full-Jones
+        solve. An explicit nonempty dictionary overrides these flags; include
+        the second ``"medium_phase"`` entry explicitly if desired.

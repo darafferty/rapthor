@@ -6,13 +6,29 @@ Operations
 Most of the processing performed by Rapthor is done in "operations," which are sets of steps that are grouped together into CWL workflows. The available operations and the primary data products of each are described in detail below.
 
 
+Concatenate
+-----------
+
+When an epoch contains multiple input measurement sets, this operation concatenates
+its frequency bands before processing. The temporary measurement sets are stored
+in ``pipelines/concatenate_1`` as ``epoch_<starttime>_concatenated.ms``.
+
+Normalize
+---------
+
+When :term:`do_normalize` is enabled for a given cycle, this operation images the field to derive
+frequency-dependent flux-scale corrections from reference sky models. It runs
+before the main imaging operation. Its image cubes and flux-scale solutions are
+stored in ``images/normalize_X`` and ``solutions/normalize_X``, where ``X`` is
+the cycle number.
+
 .. _calibrate:
 
 Calibrate
 ---------
 
-This operation calibrates the data using the current sky model. It uses a calibration strategy based on that of the `Facet-Selfcal package
-<https://github.com/rvweeren/lofar_facet_selfcal>`_). The exact steps done during calibration depend on the strategy, but essentially there are four main parts:
+When :term:`do_calibrate` is enabled for a given cycle, this operation calibrates the data using the current sky model. It uses a calibration strategy based on that of the `Facet-Selfcal package
+<https://github.com/rvweeren/lofar_facet_selfcal>`_. The exact steps depend on :term:`calibration_strategy`. The default DD strategy has up to four main parts:
 
     1. A phase-only (scalar) solve on short timescales (the "fast" solve, which corrects for ionospheric errors on the longer baselines). A core constraint is used to force all the core stations to have the same solutions.
     2. A phase-only (scalar) solve on medium timescales (the first "medium-fast" solve, which corrects mostly for ionospheric errors on the shorter baselines). Each station is solved for independently.
@@ -30,16 +46,17 @@ Primary products:
         * ``calibration_skymodel.txt`` - the sky model used for calibration, grouped into calibration patches (one per facet/direction). If a sky model was supplied by the user, this model will be identical (but potentially with a different grouping of the sources). If the sky model results from the previous cycle of self calibration, this model will be the sum of models from the imaging sectors (see :ref:`image` for details).
     * In ``solutions/calibrate_X``, where ``X`` is the cycle number:
         * ``field-solutions-fast-phase.h5`` - the calibration solution table containing the fast solutions.
-        * ``field-solutions-medium1-phase.h5`` - the calibration solution table containing the first medium-fast solutions.
+        * ``field-solutions-medium1-phase.h5`` - the calibration solution table containing the first medium-fast solutions (saved for the default strategy when the slow solve is done).
         * ``field-solutions-medium2-phase.h5`` - the calibration solution table containing the second medium-fast solutions (created if the slow solve was done).
         * ``field-solutions-slow-gain.h5`` - the calibration solution table containing the slow solutions  (created if the slow solve was done).
-        * ``field-solutions.h5`` - the calibration solution table containing all the fast-, medium-, and slow-solve solutions combined together.
+        * ``field-solutions.h5`` - the active calibration solution table. This contains the combined solutions when screens are generated or when ``slow_gains`` is the third solve. Otherwise it contains the first solve's solutions, which are the fast-phase solutions for the default phase-only strategy.
     * In ``plots/calibrate_X``, where ``X`` is the cycle number:
         * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the files ``fast_scalarphase_dir[Patch_127].png`` and ``medium1_scalarphase_dir[Patch_127].png`` contain the scalar phase solutions (from the fast and first medium-fast solves) for patch 127. If the slow solve was done, additional files should be present with the names ``slow_phase_dir[Patch_127]_polXX.png`` and ``slow_amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization) from the slow solve and ``medium2_scalarphase_dir[Patch_127].png`` from the second medium-fast solve.
 
-If a full-Jones solve was done for a given cycle, then a number of further products are created:
+Direction-independent calibration creates additional products according to the requested solves:
     * In ``solutions/calibrate_di_X``, where ``X`` is the cycle number:
-        * ``fulljones-solutions.h5`` - the calibration solution table containing full-Jones gain solutions.
+        * ``di-solutions.h5`` - the active solution table for DI phase/gain solves, when requested. Individual tables use the ``di-solutions-fast-phase.h5``, ``di-solutions-medium1-phase.h5``, ``di-solutions-medium2-phase.h5``, and ``di-solutions-slow-gain.h5`` names as applicable.
+        * ``fulljones-solutions.h5`` - the calibration solution table containing full-Jones gain solutions, when requested.
     * In ``plots/calibrate_di_X``, where ``X`` is the cycle number:
         * ``*.png`` files - plots of the full-Jones calibration solutions. Since the full-Jones solve is a direction-independent one, there will be two sets of four plots: the four amplitude plots (for the XX, XY, YX, and YY polarizations) and the four phase plots (again for each polarization).
 
@@ -72,11 +89,11 @@ If a full-Jones solve was done for a given cycle, then a number of further produ
 Image (+ mosaic)
 ----------------
 
-This operation images the data. If multiple imaging sectors are used, a mosaic operation is also run to mosaic the sector images together into a single image. If bright sources were subtracted in the preceding :ref:`predict` operation, they are restored during this operation once imaging has finished.
+When :term:`do_image` is enabled for a given cycle, this operation images the data. If multiple imaging sectors are used, a mosaic operation is also run to mosaic the sector images together into a single image. If bright sources were subtracted in the preceding :ref:`predict` operation, they are restored during this operation once imaging has finished.
 
 Diagnostics for each image are written to the main log (``dir_working/logs/rapthor.log``). The diagnostics can be useful for judging how self calibration is proceeding. They include the following:
 
-    * The minimum and expected RMS noise. The minimum noise is derived from 2-D RMS maps generated by PyBDSF using the non-primary beam corrected image. The expected noise is calculated following the relation found for the LoTSS survey (see `Figure 15 <https://www.aanda.org/articles/aa/full_html/2022/03/aa42484-21/aa42484-21.html#F15>`_ of Shimwell et. al 2022[#f1]_) and includes the effects of elevation. The calculation also takes into account the amount of flagged data.
+    * The minimum and expected RMS noise. The minimum noise is derived from 2-D RMS maps generated by PyBDSF using the non-primary beam corrected image. The expected noise is calculated following the relation found for the LoTSS survey (see `Figure 15 <https://www.aanda.org/articles/aa/full_html/2022/03/aa42484-21/aa42484-21.html#F15>`_ of Shimwell et. al 2022 [#f1]_) and includes the effects of elevation. The calculation also takes into account the amount of flagged data.
     * The median RMS noise. The median noise is derived from 2-D RMS maps generated by PyBDSF using the non-primary beam corrected image. This median noise, along with the dynamic range (see below) is used to determine whether selfcal has converged (using the :term:`convergence_ratio` and :term:`divergence_ratio` defined by the processing strategy).
     * The dynamic range, calculated as the maximum value in the image divided by the minimum RMS noise, using the non-primary beam corrected image. This quantity gives an estimate of how well focused the brightest source in the image is and is used, along with the median noise (see above) and the number of sources found in the image (see below) to determine whether selfcal has converged.
     * The number of sources found by PyBDSF. As with the noise and dynamic range estimates, the number of sources is used to determine whether selfcal has converged.
@@ -106,7 +123,7 @@ Primary products:
 
         .. note::
 
-            If the filtered model image or other supplementart files are saved (see :term:`save_filtered_model_image` and :term:`save_supplementary_images`), then they will also be placed here. The filtered model image will be named ``field-MFS-apparent_sky.txt.fits``, and the filtering mask will be named ``field-MFS-image-pb.fits.mask.fits``.
+            If the filtered model image or other supplementary files are saved (see :term:`save_filtered_model_image` and :term:`save_supplementary_images`), then they will also be placed here. The filtered model image will be named ``field-MFS-apparent_sky.txt.fits``, and the filtering mask will be named ``field-MFS-image-pb.fits.mask.fits``.
 
         .. note::
 
@@ -114,7 +131,7 @@ Primary products:
 
         .. note::
 
-            If image cubes are also made (see :term:`save_image_cube`), then there will be an output cube, one for each imaging sector and Stokes parameter, named as ``sector_1_I_freq_cube.fits``, ``sector_2_I_freq_cube.fits``, etc. For each image cube, two auxilary files are also saved that list the frequencies (e.g., ``sector_1_I_freq_cube.fits_frequencies.txt``) and beam shapes (e.g., ``sector_1_I_freq_cube.fits_beams.txt``) of each image channel in the cube. These files can be useful for, e.g., processing the cube with source finders such as PyBDSF.
+            If image cubes are also made (see :term:`save_image_cube`), then there will be an output cube, one for each imaging sector and Stokes parameter, named as ``sector_1_I_freq_cube.fits``, ``sector_2_I_freq_cube.fits``, etc. For each image cube, two auxiliary files are also saved that list the frequencies (e.g., ``sector_1_I_freq_cube.fits_frequencies.txt``) and beam shapes (e.g., ``sector_1_I_freq_cube.fits_beams.txt``) of each image channel in the cube. These files can be useful for, e.g., processing the cube with source finders such as PyBDSF.
 
         .. note::
 

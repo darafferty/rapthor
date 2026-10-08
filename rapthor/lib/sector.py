@@ -107,7 +107,8 @@ class Sector(object):
             If True, the image size is recalculated based on the current sector region
         imaging_parameters : dict, optional
             Dict of imaging parameters to use instead of those defined by the field's
-            parset. If supplied, the following keys are expected to be present:
+            parset. If supplied, the following keys are expected to be present::
+
                 'cellsize_arcsec': cell (pixel) size in arcsec
                 'robust': Briggs robust value
                 'taper_arcsec': taper in arcsec
