@@ -2,28 +2,267 @@
 Test cases for the `rapthor.lib.operation` module.
 """
 
+import json
+from pathlib import Path
+
+import pytest
+
 from rapthor.lib.operation import Operation
 
 
-class TestOperation:
-    """
-    Test cases for the `Operation` class in the `rapthor.lib.operation` module.
-    """
+def _operation_parset(tmp_path):
+    return {
+        "dir_working": str(tmp_path / "working"),
+        "cluster_specific": {
+            "debug_workflow": False,
+            "keep_temporary_files": False,
+            "max_cores": 4,
+            "batch_system": "single_machine",
+        },
+    }
 
-    def test_set_parset_parameters(self):
-        pass
 
-    def test_set_input_parameters(self):
-        pass
+class FieldStub:
+    def __init__(self, parset):
+        self.parset = parset
 
-    def test_setup(self):
-        pass
 
-    def test_finalize(self):
-        pass
+class RecordingOperation(Operation):
+    def __init__(
+        self,
+        field,
+        *,
+        index=1,
+        workflow_success=True,
+        workflow_outputs=None,
+        fail_finalize=False,
+    ):
+        super().__init__(field, index=index, name="Recording")
+        self.workflow_success = workflow_success
+        self.workflow_outputs = workflow_outputs or {
+            "result": {"class": "File", "path": str(Path(self.pipeline_working_dir) / "result.txt")}
+        }
+        self.fail_finalize = fail_finalize
+        self.calls = []
 
-    def test_is_done(self):
-        pass
+    def set_parset_parameters(self):
+        self.calls.append("set_parset_parameters")
+        self.parset_parms = {"unused": "value"}
 
-    def test_run(self):
-        pass
+    def set_input_parameters(self):
+        self.calls.append("set_input_parameters")
+        self.input_parms = {"input": "value"}
+
+    def execute_workflow(self):
+        self.calls.append("execute_workflow")
+        return self.workflow_success, self.workflow_outputs
+
+    def finalize(self):
+        self.calls.append("finalize")
+        if self.fail_finalize:
+            raise RuntimeError("finalizer failed")
+        super().finalize()
+
+
+def _operation(tmp_path, **kwargs):
+    return RecordingOperation(FieldStub(_operation_parset(tmp_path)), **kwargs)
+
+
+def test_setup_writes_python_flow_inputs(tmp_path):
+    operation = _operation(tmp_path)
+
+    operation.setup()
+
+    assert operation.calls == ["set_parset_parameters", "set_input_parameters"]
+    assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {"input": "value"}
+
+
+def test_base_operation_requires_prefect_execute_workflow(tmp_path):
+    operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
+
+    with pytest.raises(NotImplementedError, match="Legacy workflow execution has been retired"):
+        operation.run()
+
+    assert json.loads(Path(operation.pipeline_inputs_file).read_text()) == {}
+
+
+def test_flow_max_cores_uses_cluster_hint_for_non_slurm(tmp_path):
+    operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
+
+    assert operation.flow_max_cores() == 4
+
+
+def test_flow_max_cores_omits_hint_for_slurm(tmp_path):
+    parset = _operation_parset(tmp_path)
+    parset["cluster_specific"]["batch_system"] = "slurm"
+    operation = Operation(FieldStub(parset), name="Base")
+
+    assert operation.flow_max_cores() is None
+
+
+def test_flow_parset_parameters_can_include_working_dir_and_extra_values(tmp_path):
+    operation = Operation(FieldStub(_operation_parset(tmp_path)), name="Base")
+
+    assert operation.flow_parset_parameters(
+        include_pipeline_working_dir=True,
+        mode="dd",
+    ) == {
+        "pipeline_working_dir": operation.pipeline_working_dir,
+        "max_cores": 4,
+        "mode": "dd",
+    }
+
+
+def test_finalize_marks_operation_done(tmp_path):
+    operation = _operation(tmp_path)
+
+    operation.finalize()
+
+    assert Path(operation.done_file).is_file()
+
+
+def test_run_executes_workflow_stores_outputs_and_marks_done(tmp_path):
+    operation = _operation(tmp_path)
+
+    operation.run()
+
+    assert operation.calls == [
+        "set_parset_parameters",
+        "set_input_parameters",
+        "execute_workflow",
+        "finalize",
+    ]
+    assert Path(operation.done_file).is_file()
+    assert Path(operation.pipeline_outputs_file) == (
+        Path(operation.pipeline_working_dir) / "pipeline_outputs.json"
+    )
+    assert Path(operation.outputs_file) == Path(operation.pipeline_working_dir) / ".outputs.json"
+    assert (
+        json.loads(Path(operation.pipeline_outputs_file).read_text()) == operation.workflow_outputs
+    )
+    assert json.loads(Path(operation.outputs_file).read_text()) == operation.workflow_outputs
+    assert operation.outputs == operation.workflow_outputs
+
+
+def test_run_preserves_workflow_outputs_before_finalization(tmp_path, monkeypatch):
+    operation = _operation(tmp_path)
+    workflow_path = operation.workflow_outputs["result"]["path"]
+    finalized_path = str(tmp_path / "products" / "result.txt")
+    finalize = operation.finalize
+
+    def update_output_path():
+        assert json.loads(Path(operation.pipeline_outputs_file).read_text()) == {
+            "result": {"class": "File", "path": workflow_path}
+        }
+        operation.outputs["result"]["path"] = finalized_path
+        finalize()
+
+    monkeypatch.setattr(operation, "finalize", update_output_path)
+
+    operation.run()
+
+    assert json.loads(Path(operation.pipeline_outputs_file).read_text()) == {
+        "result": {"class": "File", "path": workflow_path}
+    }
+    assert json.loads(Path(operation.outputs_file).read_text()) == {
+        "result": {"class": "File", "path": finalized_path}
+    }
+
+
+@pytest.mark.parametrize("has_pipeline_outputs", [False, True])
+def test_run_reuses_outputs_when_done(tmp_path, has_pipeline_outputs):
+    operation = _operation(tmp_path)
+    persisted_outputs = {"persisted": {"class": "Directory", "path": "already-done.ms"}}
+    pipeline_outputs = {"original": {"class": "Directory", "path": "workflow.ms"}}
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text(json.dumps(persisted_outputs))
+    if has_pipeline_outputs:
+        Path(operation.pipeline_outputs_file).write_text(json.dumps(pipeline_outputs))
+
+    operation.run()
+
+    assert operation.calls == [
+        "set_parset_parameters",
+        "set_input_parameters",
+        "finalize",
+    ]
+    assert operation.outputs == persisted_outputs
+    assert json.loads(Path(operation.outputs_file).read_text()) == persisted_outputs
+    if has_pipeline_outputs:
+        assert json.loads(Path(operation.pipeline_outputs_file).read_text()) == pipeline_outputs
+    else:
+        assert not Path(operation.pipeline_outputs_file).exists()
+    assert Path(operation.done_file).is_file()
+
+
+def test_run_reruns_workflow_after_done_marker_is_deleted(tmp_path):
+    operation = _operation(tmp_path)
+    stale_outputs = {"persisted": {"class": "Directory", "path": "old.ms"}}
+    Path(operation.outputs_file).write_text(json.dumps(stale_outputs))
+    Path(operation.pipeline_outputs_file).write_text(json.dumps(stale_outputs))
+
+    operation.run()
+
+    assert "execute_workflow" in operation.calls
+    assert operation.outputs == operation.workflow_outputs
+    assert (
+        json.loads(Path(operation.pipeline_outputs_file).read_text()) == operation.workflow_outputs
+    )
+    assert json.loads(Path(operation.outputs_file).read_text()) == operation.workflow_outputs
+    assert Path(operation.done_file).is_file()
+
+
+def test_run_with_done_marker_fails_when_outputs_file_is_missing(tmp_path):
+    operation = _operation(tmp_path)
+    Path(operation.done_file).touch()
+
+    with pytest.raises(RuntimeError, match="marked done but outputs file .* is missing"):
+        operation.run()
+
+    assert operation.calls == ["set_parset_parameters", "set_input_parameters"]
+
+
+def test_run_with_done_marker_fails_when_outputs_file_is_corrupt(tmp_path):
+    operation = _operation(tmp_path)
+    Path(operation.done_file).touch()
+    Path(operation.outputs_file).write_text("{")
+
+    with pytest.raises(RuntimeError, match="outputs file .* is not valid JSON"):
+        operation.run()
+
+    assert operation.calls == ["set_parset_parameters", "set_input_parameters"]
+
+
+def test_failed_workflow_does_not_mark_operation_done_or_store_outputs(tmp_path):
+    operation = _operation(tmp_path, workflow_success=False)
+
+    with pytest.raises(RuntimeError, match="Operation recording_1 failed due to an error"):
+        operation.run()
+
+    assert operation.calls == [
+        "set_parset_parameters",
+        "set_input_parameters",
+        "execute_workflow",
+    ]
+    assert not Path(operation.done_file).exists()
+    assert not Path(operation.pipeline_outputs_file).exists()
+    assert not Path(operation.outputs_file).exists()
+
+
+def test_finalizer_failure_does_not_mark_operation_done_or_store_outputs(tmp_path):
+    operation = _operation(tmp_path, fail_finalize=True)
+
+    with pytest.raises(RuntimeError, match="finalizer failed"):
+        operation.run()
+
+    assert operation.calls == [
+        "set_parset_parameters",
+        "set_input_parameters",
+        "execute_workflow",
+        "finalize",
+    ]
+    assert not Path(operation.done_file).exists()
+    assert (
+        json.loads(Path(operation.pipeline_outputs_file).read_text()) == operation.workflow_outputs
+    )
+    assert not Path(operation.outputs_file).exists()

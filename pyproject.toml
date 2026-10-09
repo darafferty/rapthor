@@ -34,29 +34,44 @@ classifiers=[
 dependencies = [
     "astropy",
     "bdsf",
-    "jinja2",
+    "bokeh>=3.1.0",
+    "dask[distributed]",
+    "fastapi<0.137",
+    "h5py",
     "losoto>=2.4.3",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@master",
+    "lsmtool>=1.9.0",
     "matplotlib",
     "mocpy",
     "numpy",
+    "prefect[dask,shell]>=3.4.11,<4.0.0",
+    "prefect-dask",
+    "prefect-shell",
+    "psutil",
     "python-casacore",
     "python-dateutil",
-    "pyyaml",
     "reproject",
     "requests",
     "Rtree",
     "scipy",
     "shapely",
-    "cwltool==3.1.20260108082145", # Latest version breaks CWL validation checks in tests.
-    "toil[cwl]>=9.0",
-    "streamflow>=0.2.0.dev13"
 ]
 dynamic = ["version"]
 
+[project.scripts]
+rapthor = "rapthor.cli:main"
+concat_linc_files = "rapthor.execution.concatenate.linc_cli:main"
+
 [project.optional-dependencies]
-test = ["tox"]
-dev =  ["ruff", "rapthor[test]" ]
+test = [
+    "tox",
+]
+docs = [
+    "numpydoc",
+    "snowballstemmer!=3.0.0",
+    "sphinx",
+    "sphinxcontrib-mermaid",
+]
+dev =  ["ruff", "rapthor[test]", "rapthor[docs]" ]
 
 [dependency-groups]
 test =  [
@@ -66,58 +81,48 @@ test =  [
     "pytest-cov",
     "pytest-xdist",
     "pytest-mock",
-    "pytest-socket"
+    "pytest-socket",
 ]
-dev = ["ruff", {include-group = "test"} ]
+docs = [
+    "numpydoc",
+    "snowballstemmer!=3.0.0",
+    "sphinx",
+    "sphinxcontrib-mermaid",
+]
+dev =  [
+    "numpydoc",
+    "ruff",
+    "snowballstemmer!=3.0.0",
+    "sphinx",
+    "sphinxcontrib-mermaid",
+    "tox",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket",
+]
 
 
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks test as integration tests",
-    "internet: marks tests that require internet access"
+    "internet: marks tests that require internet access",
+    "prefect: marks tests that start a Prefect test server and must run serially"
 ]
 
 
 [tool.setuptools]
 # package-data is specified below in section [tool.setuptools.package-data]
 include-package-data = false
-packages = [
-    "rapthor",
-    "rapthor.lib",
-    "rapthor.lib.toil_batch_systems",
-    "rapthor.operations",
-]
-script-files = [
-    "bin/concat_linc_files",
-    "bin/plotrapthor",
-    "bin/rapthor",
-    "rapthor/scripts/add_sector_models.py",
-    "rapthor/scripts/adjust_h5parm_sources.py",
-    "rapthor/scripts/blank_image.py",
-    "rapthor/scripts/calculate_image_diagnostics.py",
-    "rapthor/scripts/check_image_beam.py",
-    "rapthor/scripts/collect_screen_h5parms.py",
-    "rapthor/scripts/combine_h5parms.py",
-    "rapthor/scripts/concat_ms.py",
-    "rapthor/scripts/filter_skymodel.py",
-    "rapthor/scripts/make_catalog_from_image_cube.py",
-    "rapthor/scripts/make_image_cube.py",
-    "rapthor/scripts/make_mosaic.py",
-    "rapthor/scripts/make_mosaic_template.py",
-    "rapthor/scripts/make_region_file.py",
-    "rapthor/scripts/mpi_runner.sh",
-    "rapthor/scripts/normalize_flux_scale.py",
-    "rapthor/scripts/process_gains.py",
-    "rapthor/scripts/regrid_image.py",
-    "rapthor/scripts/restore_skymodel.py",
-    "rapthor/scripts/subtract_sector_models.py",
-]
+
+[tool.setuptools.packages.find]
+include = ["rapthor*"]
 
 [tool.setuptools.package-data]
 rapthor = [
-    "pipeline/**",
-    "scripts/*",
     "settings/*",
     "skymodels/*"
 ]
@@ -138,7 +143,6 @@ line-length = 100
 # and so on. The `select` below is from our ASTRON Python project template.
 # select = ["N", "A", "E", "F", "B", "W", "Q", "PL", "ASYNC", "S", "G", "RET", "ARG", "I"]
 # The default behavior of ruff is to use "E" and "F", omitting stylistic rules.
-exclude = ["debug/**"]
 select = ["E", "F"]  # pycodestyle and pyflakes
 ignore = ["E501"]  # line-too-long
 
@@ -158,7 +162,15 @@ envlist = ["lint", "format", "py3{9,10,11,12,13}", "test_integration"]
 
 [tool.tox.env_run_base]
 description = "Run all tests"
-deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
+deps = [
+    "tox",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-mock",
+    "pytest-socket",
+]
 commands = [
     # test_field.py does not support parallel runs, so run sequentially.
     [
@@ -168,12 +180,23 @@ commands = [
         "--cov=rapthor",
         "tests/{posargs}",
     ],
-    # Run all other tests with 4 parallel processes.
+    # Tests that start a Prefect test server are sensitive to high process fan-out,
+    # so run them serially before the rest of the suite.
+    [
+        "python", "-m", "pytest",
+        "-m", "not integration and prefect",
+        "-k", "not test_field.py",
+        "--cov=rapthor",
+        "--cov-append",
+        "tests/{posargs}",
+    ],
+    # Run all other tests with the worker count selected by pytest-xdist.
     # Add to the existing coverage report from the run above.
     [
         "python", "-m", "pytest",
-        "-m", "not integration",
+        "-m", "not integration and not prefect",
         "-n", "auto",
+        "--dist", "worksteal",
         "-k", "not test_field.py",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
@@ -186,80 +209,68 @@ commands = [
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"
-deps = [{ replace = "ref", of = ["dependency-groups", "test"], extend = true }]
-pass_env = ["CI_PROJECT_DIR", "NUMEXPR_MAX_THREADS"]
+deps = [
+    { replace = "ref", of = ["dependency-groups", "test"], extend = true },
+    "pytest-split<0.11",
+]
+pass_env = [
+    "CI_PROJECT_DIR",
+    "CI_NODE_INDEX",
+    "CI_NODE_TOTAL",
+    "BLIS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_MAX_THREADS",
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "PREFECT_HOME",
+    "RAPTHOR_TEST_RUN_ROOT",
+]
 commands = [
     [
         "python", "-m", "pytest",
         "-m", "integration",
         "-vv", "-ra",
-        "tests/{posargs}",
+        "--durations=0",
+        "--splits", "{env:CI_NODE_TOTAL:1}",
+        "--group", "{env:CI_NODE_INDEX:1}",
+        "tests/integration",
+        "tests/operations/integration",
     ]
 ]
 
 [tool.tox.env.lint]
 skip_install = true
-deps = "ruff"
+deps = "ruff==0.15.20"
+# Keep the command targets explicit instead of using tox TOML ref inline tables
+# because Prefect reads pyproject.toml at import time on Python 3.10 with a
+# TOML parser that cannot handle those nested inline tables.
 commands = [
     [
         # check all files for selected rules (configured in [tool.ruff.lint])
         "python", "-m", "ruff", "check",
     ],
-    # check formatting on specific files: format_targets in [tool.tox.env.format]
     [
-        # Check imports sorted
-        "python", "-m", "ruff", "check", "--select", "I",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        # Check imports are sorted in all discovered Python files.
+        "python", "-m", "ruff", "check", "--select", "I"
     ],
     [
-        # Check general formatting
-        "python", "-m", "ruff", "format", "--check", "-v",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        # Check formatting in all discovered Python files.
+        "python", "-m", "ruff", "format", "--check", "-v"
     ]
 ]
 
 [tool.tox.env.format]
 skip_install = true
-deps = "ruff"
-format_targets = [
-    "rapthor/lib/cwl.py",
-    "rapthor/lib/cwlrunner.py",
-    "rapthor/lib/parset.py",
-    "rapthor/lib/strategy.py",
-    "rapthor/operations/calibrate.py",
-    "rapthor/operations/image.py",
-    "rapthor/process.py",
-    "rapthor/scripts/calculate_image_diagnostics.py",
-    "rapthor/scripts/normalize_flux_scale.py",
-    "tests/__init__.py",
-    "tests/conftest.py",
-    "tests/cwl/__init__.py",
-    "tests/cwl/cwl_cmdline.py",
-    "tests/cwl/cwl_mock.py",
-    "tests/cwl/tests/test_cwl_cmdline.py",
-    "tests/cwl/tests/test_cwl_mock.py",
-    "tests/cwl/tests/test_cwl_real_execution.py",
-    "tests/cwl/tests/test_cwl_scatter.py",
-    "tests/integration",
-    "tests/lib/test_cwl.py",
-    "tests/lib/test_cwlrunner.py",
-    "tests/lib/test_field.py",
-    "tests/lib/test_parset.py",
-    "tests/lib/test_strategy.py",
-    "tests/operations/test_calibrate.py",
-    "tests/scripts/test_calculate_image_diagnostics.py",
-    "tests/scripts/test_normalize_flux_scale.py"
-]
+deps = "ruff==0.15.20"
 commands = [
     [
-        # sort imports
-        "python", "-m", "ruff", "check", "--select", "I", "--fix",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        # sort imports in all discovered Python files
+        "python", "-m", "ruff", "check", "--select", "I", "--fix"
     ],
     [
-        # format code
-        "python", "-m", "ruff", "format",
-        { replace = "ref", of = ["tool", "tox", "env", "format", "format_targets"], extend=true },
+        # format all discovered Python files
+        "python", "-m", "ruff", "format"
     ],
 
 ]

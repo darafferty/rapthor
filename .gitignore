@@ -2,9 +2,14 @@
 
 # Project specific
 rapthor/_version.py
+prefect-demo-work*/
+examples/generated/
+runs/
 test/resources/
 tests/resources/test.ms
+tests/resources/test_integration.ms
 tests/test.ms_di.ms
+test.ms_di.ms/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

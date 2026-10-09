@@ -8,6 +8,41 @@ import runpy
 
 log = logging.getLogger("rapthor:strategy")
 
+DEFAULT_CALIBRATION_STRATEGY = {
+    "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+    "di": [],
+}
+
+
+def default_calibration_strategy():
+    """Return the default explicit calibration strategy for one cycle."""
+    return {mode: list(solves) for mode, solves in DEFAULT_CALIBRATION_STRATEGY.items()}
+
+
+def legacy_flag_calibration_strategy(*, do_slowgain_solve, do_fulljones_solve):
+    """
+    Return the explicit calibration strategy meant by the removed legacy flags.
+
+    The legacy ``do_slowgain_solve`` and ``do_fulljones_solve`` flags build the
+    solve chain implicitly. This reproduces that mapping, including the second
+    medium-phase solve that the CWL branch appends automatically after a
+    slow-gain solve, so that a legacy strategy runs the same solves here as it
+    does there.
+    """
+    dd_solves = ["fast_phase", "medium_phase"]
+    if do_slowgain_solve:
+        dd_solves.extend(["slow_gains", "medium_phase"])
+    di_solves = ["full_jones"] if do_fulljones_solve else []
+    return {"dd": dd_solves, "di": di_solves}
+
+
+def dd_calibration_strategy(*, include_slow_gains: bool) -> dict[str, list[str]]:
+    """Return the standard DD strategy for a self-calibration cycle."""
+    solves = ["fast_phase", "medium_phase"]
+    if include_slow_gains:
+        solves.extend(["slow_gains", "medium_phase"])
+    return {"dd": solves, "di": []}
+
 
 def set_strategy(field):
     """
@@ -104,19 +139,21 @@ def set_selfcal_strategy(field):
 
         strategy_steps[i]["do_calibrate"] = True
         if i == 0:
-            strategy_steps[i]["do_slowgain_solve"] = not do_phase_only_solves
+            include_slow_gains = not do_phase_only_solves
             strategy_steps[i]["peel_outliers"] = True
         elif i == 1:
-            strategy_steps[i]["do_slowgain_solve"] = not do_phase_only_solves
+            include_slow_gains = not do_phase_only_solves
             strategy_steps[i]["peel_outliers"] = False
         else:
-            strategy_steps[i]["do_slowgain_solve"] = True
+            include_slow_gains = True
             strategy_steps[i]["peel_outliers"] = False
+        strategy_steps[i]["calibration_strategy"] = dd_calibration_strategy(
+            include_slow_gains=include_slow_gains
+        )
         if i == 2 and field.antenna == "HBA" and do_phase_only_solves:
             strategy_steps[i]["solve_min_uv_lambda"] = 2000
         else:
             strategy_steps[i]["solve_min_uv_lambda"] = 750
-        strategy_steps[i]["do_fulljones_solve"] = False
         strategy_steps[i]["peel_bright_sources"] = False
         strategy_steps[i]["max_normalization_delta"] = 0.3
         strategy_steps[i]["scale_normalization_delta"] = True
@@ -293,6 +330,10 @@ def check_and_adjust_parameters(field, strategy_steps):
         If a required parameter is not defined and no suitable default
         is available for it
     """
+    # Define the legacy calibration flags that are translated into an explicit
+    # "calibration_strategy" below, rather than being silently ignored.
+    legacy_calibration_flags = ("do_slowgain_solve", "do_fulljones_solve")
+
     # Define the deprecated parameters and their replacements (if any)
     deprecated_parameters = {
         "slow_timestep_joint_sec": None,
@@ -302,8 +343,6 @@ def check_and_adjust_parameters(field, strategy_steps):
     # Define the required parameters for each of the main strategy parts
     required_parameters = {
         "do_calibrate": [
-            "do_slowgain_solve",
-            "do_fulljones_solve",
             "target_flux",
             "max_directions",
             "regroup_model",
@@ -314,6 +353,7 @@ def check_and_adjust_parameters(field, strategy_steps):
             "fulljones_timestep_sec",
             "scale_normalization_delta",
             "max_directions",
+            "calibration_strategy",
         ],
         "do_normalize": [],
         "do_image": [
@@ -328,6 +368,40 @@ def check_and_adjust_parameters(field, strategy_steps):
         ],
         "do_check": ["convergence_ratio", "divergence_ratio", "failure_ratio"],
     }
+
+    # Check for the legacy calibration flags. These are translated into the
+    # equivalent explicit "calibration_strategy" rather than being dropped,
+    # which keeps legacy strategy files runnable and behaving identically on
+    # this branch and on the CWL branch. Dropping them silently would run a
+    # different calibration than the strategy asks for.
+    for i in range(len(strategy_steps)):
+        used_flags = [flag for flag in legacy_calibration_flags if flag in strategy_steps[i]]
+        if not used_flags:
+            continue
+        flag_list = " and ".join(repr(flag) for flag in used_flags)
+        if strategy_steps[i].get("calibration_strategy"):
+            raise ValueError(
+                f"The strategy for cycle {i + 1} defines both {flag_list} and "
+                '"calibration_strategy", so the requested solves are ambiguous. '
+                f'Please remove {flag_list} and keep only "calibration_strategy".'
+            )
+        translated = legacy_flag_calibration_strategy(
+            do_slowgain_solve=strategy_steps[i].get("do_slowgain_solve", False),
+            do_fulljones_solve=strategy_steps[i].get("do_fulljones_solve", False),
+        )
+        log.warning(
+            "%s %s defined in the strategy for cycle %i but %s deprecated. "
+            "The solves have been translated to calibration_strategy = %r. "
+            'Please set "calibration_strategy" explicitly instead.',
+            "Parameter" if len(used_flags) == 1 else "Parameters",
+            flag_list + (" is" if len(used_flags) == 1 else " are"),
+            i + 1,
+            "is" if len(used_flags) == 1 else "are",
+            translated,
+        )
+        strategy_steps[i]["calibration_strategy"] = translated
+        for flag in used_flags:
+            strategy_steps[i].pop(flag)
 
     # Check for deprectaed parameters, updating the steps to use the new
     # names when defined
@@ -377,8 +451,74 @@ def check_and_adjust_parameters(field, strategy_steps):
                                 f'Required parameter "{secondary}" is not '
                                 f"defined in the strategy for cycle {i + 1}."
                             )
+    for i in range(len(strategy_steps)):
+        _validate_calibrate_strategy(strategy_steps[i].get("calibration_strategy", {}))
 
     return strategy_steps
+
+
+def _validate_calibrate_strategy(calibration_strategy):
+    """
+    Validates the calibration strategy for internal consistency.
+
+    Checks that the calibration strategy contains only recognized modes, solve
+    names, and solve combinations supported by the Python execution path.
+
+    Parameters
+    ----------
+    calibration_strategy : dict
+        Dictionary defining the calibration strategy for a given cycle, with keys
+        corresponding to the calibration modes (e.g., "di", "dd") and values being
+        lists of the specific calibration types to be done for each mode (e.g.,
+        ["fast_phase", "full_jones"])
+
+    Raises
+    ------
+    ValueError
+        If any inconsistencies are found in the calibration strategy
+    """
+    if not calibration_strategy:
+        return
+    recognized_modes = ["di", "dd"]
+    recognised_solves = ["fast_phase", "medium_phase", "slow_gains", "full_jones"]
+    supported_combinations = {
+        "di": {
+            ("fast_phase",),
+            ("slow_gains",),
+            ("full_jones",),
+            ("fast_phase", "medium_phase"),
+            ("fast_phase", "medium_phase", "slow_gains"),
+        },
+        "dd": {
+            ("fast_phase",),
+            ("slow_gains",),
+            ("slow_gains", "medium_phase"),
+            ("fast_phase", "medium_phase"),
+            ("fast_phase", "medium_phase", "slow_gains"),
+            ("fast_phase", "medium_phase", "slow_gains", "medium_phase"),
+        },
+    }
+    for mode, solves in calibration_strategy.items():
+        if mode not in recognized_modes:
+            raise ValueError(
+                f'Calibration strategy contains unrecognized calibration mode "{mode}". '
+                f"Recognized modes are {recognized_modes}."
+            )
+        for solve in solves:
+            if solve not in recognised_solves:
+                raise ValueError(
+                    f'Calibration strategy for mode "{mode}" contains unrecognized solve type "{solve}". '
+                    f"Recognized solve types are {recognised_solves}."
+                )
+        if solves and tuple(solves) not in supported_combinations[mode]:
+            supported = ", ".join(
+                "[" + ", ".join(repr(solve) for solve in combination) + "]"
+                for combination in sorted(supported_combinations[mode])
+            )
+            raise ValueError(
+                f'Calibration strategy for mode "{mode}" contains unsupported solve combination '
+                f"{solves!r}. Supported combinations are: {supported}."
+            )
 
 
 def validate_strategy(strategy_steps, parset):
@@ -406,8 +546,8 @@ def validate_strategy(strategy_steps, parset):
     # Check do_normalize in all cycles except the first one.
     for i in range(1, len(strategy_steps)):
         if strategy_steps[i].get("do_normalize", False):
-            raise ValueError(
-                f"do_normalize is True in cycle {i + 1} but it may only be True in the first cycle."
+            log.warning(
+                f"do_normalize is True in cycle {i + 1} but it is usually True only in the first cycle."
             )
 
     # Check that the strategy is consistent with the parset setttings for

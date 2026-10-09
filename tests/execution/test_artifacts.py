@@ -1,0 +1,572 @@
+from pathlib import Path
+
+from rapthor.execution.artifacts import (
+    ArtifactWriters,
+    _local_file_path,
+    publish_command_metrics_artifact,
+    publish_fits_image_artifacts,
+    publish_fits_image_artifacts_for_field,
+    publish_fits_postage_stamp_artifacts,
+    publish_plot_artifacts,
+    publish_plot_file_records,
+    render_command_profile_chart,
+    render_fits_png,
+    render_fits_postage_stamp_pngs,
+)
+from rapthor.execution.workspace import shared_scratch_workspace
+
+
+class RecordingArtifactWriters:
+    def __init__(self):
+        self.calls = []
+
+    @property
+    def writers(self):
+        return ArtifactWriters(
+            image=self.image,
+            link=self.link,
+            markdown=self.markdown,
+        )
+
+    def image(self, **kwargs):
+        self.calls.append(("image", kwargs))
+        return f"image-{len(self.calls)}"
+
+    def link(self, **kwargs):
+        self.calls.append(("link", kwargs))
+        return f"link-{len(self.calls)}"
+
+    def markdown(self, **kwargs):
+        self.calls.append(("markdown", kwargs))
+        return f"markdown-{len(self.calls)}"
+
+
+def test_plot_links_keep_durable_paths_while_workspace_uses_scratch(tmp_path, monkeypatch):
+    container_root = tmp_path / "container"
+    host_root = tmp_path / "host"
+    workdir = container_root / "working" / "pipelines" / "calibrate_1"
+    monkeypatch.setenv("RAPTHOR_CONTAINER_WORKSPACE", str(container_root))
+    monkeypatch.setenv("RAPTHOR_HOST_WORKSPACE", str(host_root))
+    recorder = RecordingArtifactWriters()
+
+    with shared_scratch_workspace(str(workdir), str(tmp_path / "scratch")):
+        plot_file = workdir / "solutions.png"
+        plot_file.write_bytes(b"plot")
+        records = publish_plot_file_records(
+            [{"class": "File", "path": str(plot_file)}],
+            workdir,
+            artifact_writers=recorder.writers,
+            in_run_context=lambda: True,
+        )
+
+    expected_path = host_root / "working" / "pipelines" / "calibrate_1" / "solutions.png"
+    assert records[0]["file_url"] == expected_path.as_uri()
+    assert plot_file.is_file()
+
+
+def test_artifact_path_outside_container_is_not_mapped_to_host(tmp_path, monkeypatch):
+    container_root = tmp_path / "container"
+    monkeypatch.setenv("RAPTHOR_CONTAINER_WORKSPACE", str(container_root))
+    monkeypatch.setenv("RAPTHOR_HOST_WORKSPACE", str(tmp_path / "host"))
+
+    assert _local_file_path(container_root / ".." / "output.fits") == tmp_path / "output.fits"
+
+
+def test_publish_plot_artifacts_embeds_images_and_links_other_files(tmp_path):
+    plots_dir = tmp_path / "plots"
+    calibrate_dir = plots_dir / "calibrate_1"
+    image_dir = plots_dir / "image_1"
+    calibrate_dir.mkdir(parents=True)
+    image_dir.mkdir(parents=True)
+    (calibrate_dir / "phase_solutions.png").write_bytes(b"png-data")
+    (image_dir / "sector_1.image_diagnostics.json").write_text(
+        '{"dynamic_range": 42, "rms": 0.001}'
+    )
+    (image_dir / "sector_1.photometry.pdf").write_bytes(b"pdf-data")
+
+    recorder = RecordingArtifactWriters()
+    records = publish_plot_artifacts(
+        plots_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert [record["relative_path"] for record in records] == [
+        "calibrate_1/phase_solutions.png",
+        "image_1/sector_1.image_diagnostics.json",
+        "image_1/sector_1.photometry.pdf",
+    ]
+    assert [record["artifact_type"] for record in records] == ["image", "markdown", "link"]
+    assert [call[0] for call in recorder.calls] == ["image", "markdown", "link", "markdown"]
+
+    image_call = recorder.calls[0][1]
+    assert image_call["image_url"].startswith("data:image/png;base64,")
+    assert image_call["key"].startswith("rapthor-plot-calibrate-1-phase-solutions-png-")
+    assert image_call["description"] == "Rapthor plot output: calibrate_1/phase_solutions.png"
+
+    json_call = recorder.calls[1][1]
+    assert json_call["key"].startswith("rapthor-plot-image-1-sector-1-image-diagnostics-json-")
+    assert json_call["description"] == (
+        "Rapthor plot output: image_1/sector_1.image_diagnostics.json"
+    )
+    assert "```json" in json_call["markdown"]
+    assert '"dynamic_range": 42' in json_call["markdown"]
+    assert '"rms": 0.001' in json_call["markdown"]
+
+    link_call = recorder.calls[2][1]
+    assert link_call["link"].startswith("data:application/pdf;base64,")
+    assert link_call["link_text"] == "image_1/sector_1.photometry.pdf"
+
+    markdown_call = recorder.calls[3][1]
+    assert markdown_call["key"] == "rapthor-plot-index"
+    assert "calibrate_1/phase_solutions.png" in markdown_call["markdown"]
+    assert "image_1/sector_1.image_diagnostics.json" in markdown_call["markdown"]
+    assert "image_1/sector_1.photometry.pdf" in markdown_call["markdown"]
+
+
+def test_publish_plot_index_keeps_square_brackets_in_file_urls(tmp_path, monkeypatch):
+    container_workspace = tmp_path / "container" / "app"
+    host_workspace = tmp_path / "host" / "rapthor"
+    monkeypatch.setenv("RAPTHOR_CONTAINER_WORKSPACE", str(container_workspace))
+    monkeypatch.setenv("RAPTHOR_HOST_WORKSPACE", str(host_workspace))
+    plots_dir = container_workspace / "runs" / "demo" / "rapthor-work" / "plots"
+    calibrate_dir = plots_dir / "calibrate_4"
+    calibrate_dir.mkdir(parents=True)
+    plot_file = calibrate_dir / "medium1_phase_dir[Patch_0].png"
+    plot_file.write_bytes(b"png-data")
+    recorder = RecordingArtifactWriters()
+
+    records = publish_plot_artifacts(
+        plots_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    expected_url = (
+        (host_workspace / "runs/demo/rapthor-work/plots/calibrate_4/medium1_phase_dir[Patch_0].png")
+        .resolve()
+        .as_uri()
+    )
+    assert records[0]["file_url"] == expected_url.replace("%5B", "[").replace("%5D", "]")
+    markdown_call = recorder.calls[-1][1]
+    assert "medium1_phase_dir[Patch_0].png" in markdown_call["markdown"]
+    assert "%5BPatch_0%5D" not in markdown_call["markdown"]
+
+
+def test_publish_plot_artifacts_is_noop_without_prefect_context(tmp_path):
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    (plots_dir / "plot.png").write_bytes(b"png-data")
+    recorder = RecordingArtifactWriters()
+
+    records = publish_plot_artifacts(
+        plots_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: False,
+    )
+
+    assert records == []
+    assert recorder.calls == []
+
+
+def test_publish_plot_file_records_uses_operation_directory_in_artifact_key(tmp_path):
+    pipeline_dir = tmp_path / "pipelines" / "calibrate_1"
+    pipeline_dir.mkdir(parents=True)
+    plot_file = pipeline_dir / "phase_solutions.png"
+    plot_file.write_bytes(b"png-data")
+    recorder = RecordingArtifactWriters()
+
+    records = publish_plot_file_records(
+        [{"class": "File", "path": str(plot_file)}],
+        pipeline_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert [record["relative_path"] for record in records] == ["calibrate_1/phase_solutions.png"]
+    assert records[0]["artifact_key"].startswith("rapthor-plot-calibrate-1-phase-solutions-png-")
+    assert [call[0] for call in recorder.calls] == ["image"]
+
+
+def test_publish_plot_file_records_renders_json_as_markdown(tmp_path):
+    pipeline_dir = tmp_path / "pipelines" / "image_1"
+    pipeline_dir.mkdir(parents=True)
+    diagnostics = pipeline_dir / "sector_1.image_diagnostics.json"
+    diagnostics.write_text('{"noise": 0.2, "sources": 12}')
+    recorder = RecordingArtifactWriters()
+
+    records = publish_plot_file_records(
+        [{"class": "File", "path": str(diagnostics)}],
+        pipeline_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert [record["relative_path"] for record in records] == [
+        "image_1/sector_1.image_diagnostics.json"
+    ]
+    assert records[0]["artifact_type"] == "markdown"
+    assert [call[0] for call in recorder.calls] == ["markdown"]
+    markdown_call = recorder.calls[0][1]
+    assert markdown_call["key"].startswith("rapthor-plot-image-1-sector-1-image-diagnostics-json-")
+    assert "# `image_1/sector_1.image_diagnostics.json`" in markdown_call["markdown"]
+    assert '"noise": 0.2' in markdown_call["markdown"]
+    assert '"sources": 12' in markdown_call["markdown"]
+
+
+def test_render_fits_png_handles_wsclean_like_axes(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+
+    fits_path = tmp_path / "sector_1-MFS-I-image.fits"
+    fits.writeto(fits_path, np.arange(25, dtype=float).reshape(1, 1, 5, 5), overwrite=True)
+
+    png_path = render_fits_png(
+        fits_path,
+        tmp_path / "previews",
+        root_dir=tmp_path,
+    )
+
+    assert png_path is not None
+    assert png_path.is_file()
+    assert png_path.name == "sector-1-mfs-i-image-fits.png"
+    assert png_path.read_bytes().startswith(b"\x89PNG")
+
+
+def test_publish_fits_image_artifacts_renders_png_preview(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+
+    pipeline_dir = tmp_path / "pipelines" / "image_1"
+    pipeline_dir.mkdir(parents=True)
+    fits_path = pipeline_dir / "sector_1-MFS-I-image.fits"
+    fits.writeto(fits_path, np.arange(16, dtype=float).reshape(4, 4), overwrite=True)
+    recorder = RecordingArtifactWriters()
+
+    records = publish_fits_image_artifacts(
+        [{"class": "File", "path": str(fits_path)}],
+        pipeline_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert [record["relative_path"] for record in records] == ["image_1/sector_1-MFS-I-image.fits"]
+    assert records[0]["artifact_type"] == "fits-preview"
+    assert records[0]["clip_percentile"] == 99.9
+    assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
+    assert [call[0] for call in recorder.calls] == ["image"]
+    image_call = recorder.calls[0][1]
+    assert image_call["image_url"].startswith("data:image/png;base64,")
+    assert image_call["key"].startswith("rapthor-fits-preview-image-1-sector-1-mfs-i-image-fits-")
+    assert image_call["description"] == "Rapthor FITS preview: image_1/sector_1-MFS-I-image.fits"
+
+
+def test_publish_fits_image_artifacts_skips_fits_tables(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+
+    pipeline_dir = tmp_path / "pipelines" / "image_1"
+    pipeline_dir.mkdir(parents=True)
+    catalog_path = pipeline_dir / "sector_1.source_catalog.fits"
+    table = fits.BinTableHDU.from_columns(
+        [fits.Column(name="flux", array=np.array([1.0, 2.0]), format="E")]
+    )
+    table.writeto(catalog_path)
+    recorder = RecordingArtifactWriters()
+
+    records = publish_fits_image_artifacts(
+        [{"class": "File", "path": str(catalog_path)}],
+        pipeline_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert records == []
+    assert recorder.calls == []
+
+
+def test_publish_fits_postage_stamp_artifacts_renders_brightest_catalog_sources(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+    from astropy.table import Table
+
+    pipeline_dir = tmp_path / "pipelines" / "image_1"
+    pipeline_dir.mkdir(parents=True)
+    fits_path = pipeline_dir / "sector_1-MFS-I-image-pb.fits"
+    header = fits.Header()
+    header["NAXIS"] = 2
+    header["NAXIS1"] = 20
+    header["NAXIS2"] = 20
+    header["CTYPE1"] = "RA---TAN"
+    header["CTYPE2"] = "DEC--TAN"
+    header["CRVAL1"] = 15.0
+    header["CRVAL2"] = 30.0
+    header["CRPIX1"] = 10.0
+    header["CRPIX2"] = 10.0
+    header["CDELT1"] = -0.001
+    header["CDELT2"] = 0.001
+    fits.writeto(fits_path, np.arange(400, dtype=float).reshape(20, 20), header, overwrite=True)
+    catalog_path = pipeline_dir / "sector_1.source_catalog.fits"
+    Table(
+        {
+            "RA": [15.0, 14.997],
+            "DEC": [30.0, 30.002],
+            "Total_flux": [2.0, 5.0],
+        }
+    ).write(catalog_path, format="fits")
+    recorder = RecordingArtifactWriters()
+
+    records = publish_fits_postage_stamp_artifacts(
+        {"class": "File", "path": str(fits_path)},
+        {"class": "File", "path": str(catalog_path)},
+        pipeline_dir,
+        max_sources=2,
+        stamp_size_px=5,
+        clip_percentile=99.8,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert [record["source_rank"] for record in records] == [1, 2]
+    assert [record["source_flux"] for record in records] == [5.0, 2.0]
+    assert records[0]["artifact_type"] == "fits-postage-stamp-preview"
+    assert records[0]["relative_path"] == "image_1/sector_1-MFS-I-image-pb.fits:source-01"
+    assert records[0]["fits_paths"] == [str(fits_path)]
+    assert records[0]["clip_percentile"] == 99.8
+    assert records[0]["display_vmin"] < records[0]["display_vmax"]
+    assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
+    assert Path(records[0]["path"]).parent == tmp_path / "images" / "image_1" / "postage-stamps"
+    assert [call[0] for call in recorder.calls] == ["image", "image"]
+    assert recorder.calls[0][1]["key"].startswith(
+        "rapthor-postage-stamp-preview-image-1-sector-1-mfs-i-image-pb-fits-source-01-"
+    )
+    assert recorder.calls[0][1]["description"] == (
+        "Rapthor FITS postage-stamp preview: image_1/sector_1-MFS-I-image-pb.fits:source-01"
+    )
+
+
+def test_render_fits_postage_stamp_pngs_uses_configurable_clip_limits(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+    from astropy.table import Table
+
+    header = fits.Header()
+    header["NAXIS"] = 2
+    header["NAXIS1"] = 11
+    header["NAXIS2"] = 11
+    header["CTYPE1"] = "RA---TAN"
+    header["CTYPE2"] = "DEC--TAN"
+    header["CUNIT1"] = "arcmin"
+    header["CUNIT2"] = "arcmin"
+    header["CRVAL1"] = 900.0
+    header["CRVAL2"] = 1800.0
+    header["CRPIX1"] = 6.0
+    header["CRPIX2"] = 6.0
+    header["CDELT1"] = -0.06
+    header["CDELT2"] = 0.06
+    image_pb_path = tmp_path / "sector_1-MFS-I-image-pb.fits"
+    image_pb_data = np.arange(121, dtype=float).reshape(11, 11)
+    fits.writeto(image_pb_path, image_pb_data, header, overwrite=True)
+    catalog_path = tmp_path / "sector_1.source_catalog.fits"
+    Table({"RA": [15.0], "DEC": [30.0], "Total_flux": [10.0]}).write(
+        catalog_path,
+        format="fits",
+    )
+
+    records = render_fits_postage_stamp_pngs(
+        image_pb_path,
+        catalog_path,
+        tmp_path / "previews",
+        root_dir=tmp_path,
+        max_sources=1,
+        stamp_size_px=5,
+        clip_percentile=90.0,
+    )
+
+    assert len(records) == 1
+    assert records[0]["fits_paths"] == [str(image_pb_path)]
+    assert records[0]["source_ra_deg"] == 15.0
+    assert records[0]["source_dec_deg"] == 30.0
+    assert records[0]["source_coordinate_text"] == "RA 900.000000 arcmin, Dec +1800.000000 arcmin"
+    assert records[0]["display_vmin"] == np.nanpercentile(image_pb_data, 10.0)
+    assert records[0]["display_vmax"] == np.nanpercentile(image_pb_data, 90.0)
+    assert Path(records[0]["path"]).read_bytes().startswith(b"\x89PNG")
+
+
+def test_publish_fits_postage_stamp_artifacts_saves_files_without_prefect_context(tmp_path):
+    import numpy as np
+    from astropy.io import fits
+    from astropy.table import Table
+
+    header = fits.Header()
+    header["NAXIS"] = 2
+    header["NAXIS1"] = 9
+    header["NAXIS2"] = 9
+    header["CTYPE1"] = "RA---TAN"
+    header["CTYPE2"] = "DEC--TAN"
+    header["CRVAL1"] = 15.0
+    header["CRVAL2"] = 30.0
+    header["CRPIX1"] = 5.0
+    header["CRPIX2"] = 5.0
+    header["CDELT1"] = -0.001
+    header["CDELT2"] = 0.001
+    fits_path = tmp_path / "sector_1-MFS-I-image-pb.fits"
+    fits.writeto(fits_path, np.arange(81, dtype=float).reshape(9, 9), header, overwrite=True)
+    catalog_path = tmp_path / "sector_1.source_catalog.fits"
+    Table({"RA": [15.0], "DEC": [30.0], "Total_flux": [1.0]}).write(
+        catalog_path,
+        format="fits",
+    )
+    recorder = RecordingArtifactWriters()
+
+    records = publish_fits_postage_stamp_artifacts(
+        {"class": "File", "path": str(fits_path)},
+        {"class": "File", "path": str(catalog_path)},
+        tmp_path,
+        max_sources=1,
+        stamp_size_px=5,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: False,
+    )
+
+    assert len(records) == 1
+    assert "artifact_id" not in records[0]
+    assert Path(records[0]["path"]).is_file()
+    assert recorder.calls == []
+
+
+def test_publish_fits_image_artifacts_for_field_requires_explicit_opt_in(tmp_path, monkeypatch):
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    image_path = images_dir / "field-image.fits"
+    image_path.write_bytes(b"fits-data")
+    calls = []
+
+    def fake_publish_fits_image_artifacts(records, root_dir, *, clip_percentile):
+        calls.append((records, root_dir, clip_percentile))
+        return [{"path": str(image_path)}]
+
+    monkeypatch.setattr(
+        "rapthor.execution.artifacts.publish_fits_image_artifacts",
+        fake_publish_fits_image_artifacts,
+    )
+
+    field = type("Field", (), {"parset": {"dir_working": str(tmp_path)}})()
+    assert publish_fits_image_artifacts_for_field(field) == []
+    assert calls == []
+
+    field.parset["cluster_specific"] = {
+        "prefect_publish_fits_previews": "True",
+        "prefect_fits_preview_clip_percentile": "99.8",
+    }
+    assert publish_fits_image_artifacts_for_field(field) == [{"path": str(image_path)}]
+    assert calls == [([{"class": "File", "path": str(image_path)}], images_dir, 99.8)]
+
+
+def test_publish_plot_artifacts_is_noop_without_plots_directory(tmp_path):
+    recorder = RecordingArtifactWriters()
+
+    records = publish_plot_artifacts(
+        Path(tmp_path / "missing"),
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert records == []
+    assert recorder.calls == []
+
+
+def test_publish_command_metrics_artifact_renders_timing_table(tmp_path):
+    working_dir = tmp_path / "work"
+    log_dir = working_dir / "logs"
+    log_dir.mkdir(parents=True)
+    (log_dir / "commands.jsonl").write_text(
+        "\n".join(
+            [
+                (
+                    '{"operation": "calibrate_1", "name": "solve", '
+                    '"status": "completed", "duration_seconds": 12.5, '
+                    '"task_run_name": "solve_chunk_1", '
+                    '"profile": {"resource_metrics": {"cpu_percent": 150.0, '
+                    '"max_rss_kb": 1048576, "file_system_inputs": 8, '
+                    '"file_system_outputs": 16}}, '
+                    '"command_string": "DP3 msin=input.ms"}'
+                ),
+                (
+                    '{"operation": "image_1", '
+                    '"status": "failed", "duration_seconds": 61.0, '
+                    '"profile": {"resource_metrics": {"cpu_percent": 95.0, '
+                    '"max_rss_kb": 2097152, "file_system_inputs": 128, '
+                    '"file_system_outputs": 256}}, '
+                    '"command": ["wsclean", "-name", "sector"]}'
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (log_dir / "tasks.jsonl").write_text(
+        (
+            '{"operation": "calibrate_1", "task_name": "chunk", '
+            '"task_run_name": "solve_chunk_1", "task_tags": ["dp3"], '
+            '"status": "completed", "duration_seconds": 13.0}\n'
+        ),
+        encoding="utf-8",
+    )
+    recorder = RecordingArtifactWriters()
+
+    artifact_id = publish_command_metrics_artifact(
+        working_dir,
+        artifact_writers=recorder.writers,
+        in_run_context=lambda: True,
+    )
+
+    assert artifact_id == "markdown-1"
+    assert [call[0] for call in recorder.calls] == ["markdown", "image"]
+    markdown_call = recorder.calls[0][1]
+    assert markdown_call["key"] == "rapthor-command-metrics"
+    assert "# Rapthor command timings" in markdown_call["markdown"]
+    assert "Total recorded external-command time: `1.23 min`" in markdown_call["markdown"]
+    assert "Total recorded Prefect task time: `13.00 s`" in markdown_call["markdown"]
+    assert "## Bottleneck summary" in markdown_call["markdown"]
+    assert "## Prefect task runtimes" in markdown_call["markdown"]
+    assert "- Highest peak memory: `image_1/wsclean` at `2.00 GB`" in markdown_call["markdown"]
+    assert (
+        "| calibrate_1 | solve_chunk_1 | chunk | dp3 | completed | 13.00 s |"
+        in markdown_call["markdown"]
+    )
+    assert (
+        "| calibrate_1 | solve_chunk_1 | solve | completed | 12.50 s | 150% | 1.00 GB | 8 | 16 | "
+        "`DP3 msin=input.ms` |" in markdown_call["markdown"]
+    )
+    assert (
+        "| image_1 |  | wsclean | failed | 1.02 min | 95% | 2.00 GB | 128 | 256 | "
+        "`wsclean -name sector` |" in markdown_call["markdown"]
+    )
+    image_call = recorder.calls[1][1]
+    assert image_call["key"] == "rapthor-command-profile-summary"
+    assert image_call["image_url"].startswith("data:image/png;base64,")
+
+
+def test_render_command_profile_chart_writes_png(tmp_path):
+    chart = render_command_profile_chart(
+        tmp_path / "work",
+        [
+            {
+                "operation": "calibrate_1",
+                "name": "solve",
+                "duration_seconds": 3.0,
+                "profile": {
+                    "resource_metrics": {
+                        "cpu_percent": 125.0,
+                        "max_rss_kb": 1024,
+                        "file_system_inputs": 4,
+                        "file_system_outputs": 8,
+                    }
+                },
+            }
+        ],
+    )
+
+    assert chart == tmp_path / "work" / "logs" / "command-profile-summary.png"
+    assert chart.read_bytes().startswith(b"\x89PNG")

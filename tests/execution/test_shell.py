@@ -1,0 +1,580 @@
+import json
+import logging
+import os
+import pickle
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pytest
+
+from rapthor.execution.commands import command_to_string
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.shell import (
+    MissingPrefectShellError,
+    ShellCommand,
+    ShellCommandError,
+    command_log_path,
+    command_output_log_path,
+    parse_gnu_time_metrics,
+    run_external_command,
+    run_shell_command,
+    shell_operation_kwargs,
+    write_command_log_record,
+)
+
+
+class FakeShellOperation:
+    instances = []
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.instances.append(self)
+
+    def run(self):
+        return "OK"
+
+
+def test_shell_command_formats_tokens():
+    command = ShellCommand(["echo", "hello world"])
+
+    assert command.command_string == "echo 'hello world'"
+
+
+def test_shell_command_error_round_trips_through_pickle():
+    error = ShellCommandError("Command failed", 125)
+
+    restored = pickle.loads(pickle.dumps(error))
+
+    assert str(restored) == "Command failed"
+    assert restored.returncode == 125
+
+
+def test_shell_operation_kwargs_include_env_and_working_dir():
+    kwargs = shell_operation_kwargs(
+        ShellCommand(
+            "echo hello",
+            environment={"OPENBLAS_NUM_THREADS": "1"},
+            working_directory="/tmp/task",
+        ),
+        ExecutionConfig(stream_output=False),
+    )
+
+    assert kwargs == {
+        "commands": ["echo hello"],
+        "stream_output": False,
+        "env": {"OPENBLAS_NUM_THREADS": "1"},
+        "working_dir": "/tmp/task",
+    }
+
+
+def test_shell_operation_kwargs_separate_environment_removals():
+    kwargs = shell_operation_kwargs(
+        ShellCommand(
+            ["DP3", "msin=input.ms"],
+            environment={"MALLOC_TRIM_THRESHOLD_": None, "OMP_NUM_THREADS": "4"},
+        ),
+        ExecutionConfig(stream_output=False),
+    )
+
+    assert kwargs["commands"] == ["unset -- MALLOC_TRIM_THRESHOLD_", "DP3 msin=input.ms"]
+    assert kwargs["env"] == {"OMP_NUM_THREADS": "4"}
+
+
+@pytest.mark.parametrize("injected_runner", [False, True])
+@pytest.mark.parametrize("inherited_trim", [None, "65536"])
+@pytest.mark.parametrize("command_string", [False, True])
+def test_command_environment_is_isolated_from_worker_and_later_commands(
+    tmp_path, monkeypatch, injected_runner, inherited_trim, command_string
+):
+    from prefect_shell import ShellOperation
+
+    if inherited_trim is None:
+        monkeypatch.delenv("MALLOC_TRIM_THRESHOLD_", raising=False)
+    else:
+        monkeypatch.setenv("MALLOC_TRIM_THRESHOLD_", inherited_trim)
+    monkeypatch.setenv("OMP_NUM_THREADS", "1")
+    monkeypatch.setenv("RAPTHOR_TEST_KEEP", "inherited")
+    monkeypatch.delenv("RAPTHOR_TEST_VALUE", raising=False)
+    monkeypatch.delenv("RAPTHOR_TEST_EMPTY", raising=False)
+    original_environment = dict(os.environ)
+    keys = [
+        "MALLOC_TRIM_THRESHOLD_",
+        "OMP_NUM_THREADS",
+        "RAPTHOR_TEST_KEEP",
+        "RAPTHOR_TEST_VALUE",
+        "RAPTHOR_TEST_EMPTY",
+    ]
+    command = [
+        sys.executable,
+        "-c",
+        f"import json, os; print(json.dumps({{key: os.environ.get(key) for key in {keys!r}}}))",
+    ]
+    if command_string:
+        command = command_to_string(command)
+    overrides = {
+        "MALLOC_TRIM_THRESHOLD_": None,
+        "OMP_NUM_THREADS": "4",
+        "RAPTHOR_TEST_VALUE": "literal spaces ' $HOME ;",
+        "RAPTHOR_TEST_EMPTY": "",
+    }
+    config = ExecutionConfig(log_commands=False, stream_output=False, command_profile="off")
+    runner = ShellOperation if injected_runner else None
+
+    output = run_external_command(
+        command, str(tmp_path), config, environment=overrides, shell_operation_cls=runner
+    )
+
+    expected = {
+        "MALLOC_TRIM_THRESHOLD_": None,
+        "OMP_NUM_THREADS": "4",
+        "RAPTHOR_TEST_KEEP": "inherited",
+        "RAPTHOR_TEST_VALUE": overrides["RAPTHOR_TEST_VALUE"],
+        "RAPTHOR_TEST_EMPTY": "",
+    }
+    assert [json.loads(line) for line in output] == [expected]
+    for key in keys:
+        assert os.environ.get(key) == original_environment.get(key)
+    assert overrides["MALLOC_TRIM_THRESHOLD_"] is None
+
+    # A subsequent command, such as WSClean, still inherits the worker's allocator setting.
+    output = run_external_command(
+        command,
+        str(tmp_path),
+        config,
+        environment={"OMP_NUM_THREADS": "2"},
+        shell_operation_cls=runner,
+    )
+    assert json.loads(output[-1]) == {
+        "MALLOC_TRIM_THRESHOLD_": inherited_trim,
+        "OMP_NUM_THREADS": "2",
+        "RAPTHOR_TEST_KEEP": "inherited",
+        "RAPTHOR_TEST_VALUE": None,
+        "RAPTHOR_TEST_EMPTY": None,
+    }
+
+
+def test_run_shell_command_uses_injected_operation_class():
+    FakeShellOperation.instances = []
+
+    result = run_shell_command(
+        ShellCommand(["echo", "hello"]),
+        ExecutionConfig(),
+        shell_operation_cls=FakeShellOperation,
+    )
+
+    assert result == "OK"
+    assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
+
+
+def test_run_external_command_builds_shell_command_metadata():
+    FakeShellOperation.instances = []
+
+    result = run_external_command(
+        ["echo", "hello"],
+        "/tmp/task",
+        ExecutionConfig(),
+        environment={"OMP_NUM_THREADS": "4"},
+        name="metadata",
+        shell_operation_cls=FakeShellOperation,
+    )
+
+    assert result == "OK"
+    assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
+    assert FakeShellOperation.instances[0].kwargs["working_dir"] == "/tmp/task"
+    assert FakeShellOperation.instances[0].kwargs["env"] == {"OMP_NUM_THREADS": "4"}
+
+
+@pytest.mark.parametrize("injected_runner", [False, True])
+@pytest.mark.parametrize("direct_shell", [False, True])
+def test_command_scratch_environment_is_child_only_and_cleaned(
+    tmp_path, monkeypatch, injected_runner, direct_shell
+):
+    from prefect_shell import ShellOperation
+
+    for key in ("TMPDIR", "TMP", "TEMP"):
+        monkeypatch.setenv(key, str(tmp_path / "inherited"))
+    original_environment = dict(os.environ)
+    scratch_root = tmp_path / "scratch"
+    command = [
+        sys.executable,
+        "-c",
+        "import json, os, pathlib, tempfile; "
+        "root = pathlib.Path(tempfile.gettempdir()); "
+        "(root / 'temporary').write_text('data'); "
+        "print(json.dumps({key: os.environ[key] for key in ('TMPDIR', 'TMP', 'TEMP')}))",
+    ]
+    config = ExecutionConfig(
+        local_scratch_dir=str(scratch_root),
+        log_commands=False,
+        stream_output=False,
+        command_profile="off",
+    )
+    runner = ShellOperation if injected_runner else None
+    if direct_shell:
+        output = run_shell_command(
+            ShellCommand(command, working_directory=str(tmp_path)),
+            config,
+            shell_operation_cls=runner,
+        )
+    else:
+        output = run_external_command(command, str(tmp_path), config, shell_operation_cls=runner)
+
+    environment = json.loads(output[-1])
+    temporary_directory = Path(environment["TMPDIR"])
+    assert temporary_directory.parent == scratch_root
+    assert environment == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory))
+    assert not temporary_directory.exists()
+    assert dict(os.environ) == original_environment
+
+
+def test_shell_command_reuses_caller_owned_mpi_scratch(tmp_path):
+    FakeShellOperation.instances = []
+    temporary_directory = tmp_path / "shared-task"
+    temporary_directory.mkdir()
+    run_external_command(
+        ["mpirun", "wsclean-mp"],
+        str(tmp_path),
+        ExecutionConfig(local_scratch_dir=str(tmp_path / "local")),
+        environment=dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory)),
+        shell_operation_cls=FakeShellOperation,
+    )
+
+    assert temporary_directory.is_dir()
+    assert not (tmp_path / "local").exists()
+    assert FakeShellOperation.instances[0].kwargs["env"] == dict.fromkeys(
+        ("TMPDIR", "TMP", "TEMP"), str(temporary_directory)
+    )
+
+
+@pytest.mark.parametrize("injected_runner", [False, True])
+def test_explicit_short_temp_environment_overrides_configured_scratch(
+    tmp_path, monkeypatch, injected_runner
+):
+    from prefect_shell import ShellOperation
+
+    for key in ("TMPDIR", "TMP", "TEMP"):
+        monkeypatch.setenv(key, str(tmp_path / "inherited"))
+    original_environment = dict(os.environ)
+    command = [
+        sys.executable,
+        "-c",
+        "import json, os, socket, tempfile\n"
+        "with tempfile.TemporaryDirectory() as root:\n"
+        "    with socket.socket(socket.AF_UNIX) as worker:\n"
+        "        worker.bind(os.path.join(root, 'worker.sock'))\n"
+        "        print(json.dumps({key: os.environ[key] for key in ('TMPDIR', 'TMP', 'TEMP')}))\n",
+    ]
+    config = ExecutionConfig(
+        local_scratch_dir="/dev/null/scratch",
+        log_commands=False,
+        stream_output=False,
+        command_profile="off",
+    )
+    output = run_external_command(
+        command,
+        str(tmp_path),
+        config,
+        environment=dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp"),
+        shell_operation_cls=ShellOperation if injected_runner else None,
+    )
+
+    assert json.loads(output[-1]) == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp")
+    assert dict(os.environ) == original_environment
+
+
+def test_run_shell_command_records_duration_metadata(tmp_path):
+    FakeShellOperation.instances = []
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    result = run_shell_command(
+        ShellCommand(
+            ["DP3", "msin=input.ms"],
+            working_directory=str(pipeline_working_dir),
+            name="solve",
+        ),
+        ExecutionConfig(),
+        shell_operation_cls=FakeShellOperation,
+    )
+
+    assert result == "OK"
+    log_path = tmp_path / "work" / "logs" / "commands.jsonl"
+    record = json.loads(log_path.read_text())
+    assert record["operation"] == "calibrate_1"
+    assert record["name"] == "solve"
+    assert record["status"] == "completed"
+    assert record["returncode"] == 0
+    assert record["duration_seconds"] >= 0
+    assert record["started_at"]
+    assert record["finished_at"]
+
+
+def test_parse_gnu_time_metrics_handles_resource_fields(tmp_path):
+    time_output = tmp_path / "time.txt"
+    time_output.write_text(
+        "\n".join(
+            [
+                'Command being timed: "bash script.sh"',
+                "User time (seconds): 1.25",
+                "System time (seconds): 0.50",
+                "Percent of CPU this job got: 175%",
+                "Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.00",
+                "Maximum resident set size (kbytes): 204800",
+                "Major (requiring I/O) page faults: 2",
+                "Minor (reclaiming a frame) page faults: 100",
+                "File system inputs: 16",
+                "File system outputs: 32",
+                "Voluntary context switches: 4",
+                "Involuntary context switches: 5",
+                "Exit status: 0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    metrics = parse_gnu_time_metrics(time_output)
+
+    assert metrics == {
+        "user_seconds": 1.25,
+        "system_seconds": 0.5,
+        "cpu_percent": 175.0,
+        "elapsed_seconds": 1.0,
+        "max_rss_kb": 204800,
+        "major_page_faults": 2,
+        "minor_page_faults": 100,
+        "file_system_inputs": 16,
+        "file_system_outputs": 32,
+        "voluntary_context_switches": 4,
+        "involuntary_context_switches": 5,
+        "exit_status": 0,
+    }
+
+
+@pytest.mark.parametrize("profile_mode", ["auto", "time"])
+def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_path, profile_mode):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "profile_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('profiled')"],
+            working_directory=str(pipeline_working_dir),
+            name="profiled-step",
+        ),
+        ExecutionConfig(stream_output=True, command_profile=profile_mode),
+    )
+
+    assert result == ["profiled"]
+    record = json.loads((tmp_path / "work" / "logs" / "commands.jsonl").read_text())
+    profile = record["profile"]
+    assert profile["mode"] == profile_mode
+    assert profile["status"] in {"resource", "time"}
+    assert profile["resource_source"] in {"python_resource", "gnu_time"}
+    if "artifacts" in profile:
+        assert Path(profile["artifacts"]["gnu_time"]).is_file()
+    assert profile["resource_metrics"]["max_rss_kb"] > 0
+    assert profile["resource_metrics"]["elapsed_seconds"] >= 0
+    output_log_path = tmp_path / "work" / "logs" / "profile_1" / "profiled-step.log"
+    assert record["output_log"] == str(output_log_path)
+    output_log = output_log_path.read_text(encoding="utf-8")
+    assert "Command:" in output_log
+    assert "profiled" in output_log
+    assert "Exit status: 0" in output_log
+
+
+def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('clean line')"],
+            working_directory=str(tmp_path),
+        ),
+        ExecutionConfig(stream_output=True),
+    )
+
+    assert result == ["clean line"]
+    assert "clean line" in caplog.text
+    assert "PID" not in caplog.text
+    assert "stream output" not in caplog.text
+
+
+def test_run_shell_command_batches_nearby_output_lines(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('first'); print('second'); print('third')"],
+            working_directory=str(tmp_path),
+        ),
+        ExecutionConfig(stream_output=True),
+    )
+
+    messages = [record.getMessage() for record in caplog.records if record.name == "rapthor:shell"]
+    assert result == ["first", "second", "third"]
+    assert len(messages) == 1
+    assert "first\nsecond\nthird" in messages[0]
+    assert "first" not in messages
+    assert "second" not in messages
+    assert "third" not in messages
+
+
+def test_run_shell_command_writes_output_without_streaming(tmp_path, caplog, monkeypatch):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+    monkeypatch.setattr(
+        "rapthor.execution.shell.current_prefect_task_metadata",
+        lambda: {
+            "task_run_name": "quiet-step",
+            "task_run_id": "task-id",
+            "task_tags": ["python", "test"],
+        },
+    )
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('durable output')"],
+            working_directory=str(pipeline_working_dir),
+            name="quiet-step",
+        ),
+        ExecutionConfig(stream_output=False, command_profile="off"),
+    )
+
+    assert result == ["durable output"]
+    assert "durable output" not in caplog.text
+    output_log_path = tmp_path / "work" / "logs" / "image_1" / "quiet-step.log"
+    output_log = output_log_path.read_text(encoding="utf-8")
+    assert "Task: quiet-step" in output_log
+    assert "Task run ID: task-id" in output_log
+    assert "Tags: python, test" in output_log
+    assert "durable output" in output_log
+    assert "Exit status: 0" in output_log
+    record = json.loads((tmp_path / "work" / "logs" / "commands.jsonl").read_text())
+    assert record["output_log"] == str(output_log_path)
+
+
+def test_run_shell_command_does_not_write_output_when_command_logging_is_disabled(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    result = run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", "print('unrecorded output')"],
+            working_directory=str(pipeline_working_dir),
+            name="unrecorded-step",
+        ),
+        ExecutionConfig(
+            stream_output=False,
+            log_commands=False,
+            command_profile="off",
+        ),
+    )
+
+    assert result == ["unrecorded output"]
+    assert not (tmp_path / "work" / "logs").exists()
+
+
+def test_run_shell_command_streaming_raises_on_failure(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    with pytest.raises(RuntimeError, match="return code 7"):
+        run_shell_command(
+            ShellCommand(
+                [
+                    sys.executable,
+                    "-c",
+                    "import sys; print('failure line', file=sys.stderr); sys.exit(7)",
+                ],
+                working_directory=str(pipeline_working_dir),
+                name="failing-step",
+            ),
+            ExecutionConfig(stream_output=True),
+        )
+
+    assert "failure line" in caplog.text
+    assert "PID" not in caplog.text
+    log_path = tmp_path / "work" / "logs" / "commands.jsonl"
+    record = json.loads(log_path.read_text())
+    assert record["operation"] == "calibrate_1"
+    assert record["name"] == "failing-step"
+    assert record["status"] == "failed"
+    assert record["returncode"] == 7
+    assert "return code 7" in record["error"]
+    output_log = (tmp_path / "work" / "logs" / "calibrate_1" / "failing-step.log").read_text(
+        encoding="utf-8"
+    )
+    assert "failure line" in output_log
+    assert "Exit status: 7" in output_log
+
+
+def test_write_command_log_record_appends_backend_neutral_jsonl(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    log_path = write_command_log_record(
+        ShellCommand(
+            ["DP3", "msin=input.ms", "steps=[solve]"],
+            environment={"OMP_NUM_THREADS": "4", "MALLOC_TRIM_THRESHOLD_": None},
+            working_directory=str(pipeline_working_dir),
+            name="solve",
+        ),
+        ExecutionConfig(),
+    )
+
+    assert log_path == tmp_path / "work" / "logs" / "commands.jsonl"
+    record = json.loads(log_path.read_text().strip())
+    assert record["backend"] == "prefect"
+    assert record["operation"] == "image_1"
+    assert record["name"] == "solve"
+    assert record["command"] == ["DP3", "msin=input.ms", "steps=[solve]"]
+    assert record["command_string"] == "DP3 msin=input.ms 'steps=[solve]'"
+    assert record["environment"] == {"OMP_NUM_THREADS": "4", "MALLOC_TRIM_THRESHOLD_": None}
+
+
+def test_write_command_log_record_honors_log_commands_false(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
+    pipeline_working_dir.mkdir(parents=True)
+
+    log_path = write_command_log_record(
+        ShellCommand(["echo", "quiet"], working_directory=str(pipeline_working_dir)),
+        ExecutionConfig(log_commands=False),
+    )
+
+    assert log_path is None
+    assert not (tmp_path / "work" / "logs" / "commands.jsonl").exists()
+
+
+def test_command_log_path_ignores_non_operation_workdir(tmp_path):
+    assert command_log_path(str(tmp_path / "not-an-operation")) is None
+
+
+def test_command_output_log_path_uses_task_run_name(tmp_path):
+    pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
+
+    output_log_path = command_output_log_path(
+        ShellCommand(
+            ["DP3", "msin=input.ms"],
+            working_directory=str(pipeline_working_dir),
+            name="solve",
+        ),
+        task_metadata={"task_run_name": "solve_chunk_2"},
+    )
+
+    assert output_log_path == (tmp_path / "work" / "logs" / "calibrate_1" / "solve_chunk_2.log")
+
+
+def test_run_shell_command_requires_prefect_shell_without_injection(monkeypatch):
+    def missing_shell_operation():
+        raise MissingPrefectShellError("prefect-shell is required")
+
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        missing_shell_operation,
+    )
+
+    with pytest.raises(MissingPrefectShellError, match="prefect-shell"):
+        run_shell_command(ShellCommand(["echo", "hello"]), ExecutionConfig())

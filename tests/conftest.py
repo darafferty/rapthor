@@ -4,6 +4,8 @@ for this directory.
 """
 
 import configparser
+import inspect
+import logging
 import os
 import shutil
 import tarfile
@@ -29,27 +31,10 @@ RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
-TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
-TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
-TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
-TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
 
 
-def _get_test_run_root():
-    """Keep CI integration runs inside the project so GitLab can upload logs."""
-    if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
-        # Keep the path short enough for multiprocessing AF_UNIX socket names.
-        run_root = Path(ci_project_dir) / "ci" / "i"
-        run_root.mkdir(parents=True, exist_ok=True)
-        return run_root
-    return Path("/tmp")
-
-
-def pytest_configure(config):
-    config.resource_dir = RESOURCE_DIR
-
-
-def _download_test_ms(destination):
+def download_test_ms(destination: Path) -> None:
+    """Download the shared small Measurement Set used by the tests."""
     response = requests.get(TEST_MS_ARCHIVE_URL, timeout=300)
     response.raise_for_status()
 
@@ -72,6 +57,173 @@ def _download_test_ms(destination):
                 raise
 
 
+def ensure_test_ms(resource_dir: Path) -> Path:
+    """Return the shared test Measurement Set, downloading it if needed."""
+    destination = Path(resource_dir) / TEST_MS_DIRNAME
+    if destination.exists():
+        return destination
+
+    download_test_ms(destination)
+    return destination
+
+
+TEST_TRUE_SKYMODEL = (RESOURCE_DIR / "test_true_sky.txt").as_posix()
+TEST_APPARENT_SKYMODEL = (RESOURCE_DIR / "test_apparent_sky.txt").as_posix()
+TEST_INTEGRATION_TRUE_SKYMODEL = (RESOURCE_DIR / "integration_true_sky.txt").as_posix()
+TEST_INTEGRATION_APPARENT_SKYMODEL = (RESOURCE_DIR / "integration_apparent_sky.txt").as_posix()
+TEST_RUN_ROOT_ENV = "RAPTHOR_TEST_RUN_ROOT"
+PREFECT_HOME_ENV = "PREFECT_HOME"
+PREFECT_EPHEMERAL_STARTUP_TIMEOUT_ENV = "PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS"
+PREFECT_LOGGING_TO_API_ENABLED_ENV = "PREFECT_LOGGING_TO_API_ENABLED"
+
+os.environ.setdefault(PREFECT_EPHEMERAL_STARTUP_TIMEOUT_ENV, "180")
+os.environ.setdefault(PREFECT_LOGGING_TO_API_ENABLED_ENV, "false")
+
+NOISY_ASYNC_LOGGERS = (
+    "prefect",
+    "prefect.events",
+    "prefect.server",
+    "prefect._internal",
+    "httpcore",
+    "httpx",
+    "websockets",
+)
+
+
+def _quiet_async_runtime_loggers():
+    """Keep async runtime shutdown logs from obscuring pytest failures."""
+    for logger_name in NOISY_ASYNC_LOGGERS:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+
+def _close_rapthor_file_handlers():
+    """Remove Rapthor run log handlers left by parset reads in temporary dirs."""
+    for handler in list(logging.root.handlers):
+        if not isinstance(handler, logging.FileHandler):
+            continue
+        if not str(getattr(handler, "baseFilename", "")).endswith("rapthor.log"):
+            continue
+        logging.root.removeHandler(handler)
+        handler.close()
+
+
+def _local_test_run_root():
+    return REPO_ROOT_DIR / ".pytest_cache" / "rapthor-runs"
+
+
+def _local_prefect_home_root():
+    return REPO_ROOT_DIR / ".pytest_cache" / "rapthor-prefect-home"
+
+
+def _prepare_local_test_run_root(config):
+    if getattr(config, "workerinput", None):
+        return
+    if os.environ.get("CI_PROJECT_DIR") or os.environ.get(TEST_RUN_ROOT_ENV):
+        return
+
+    run_root = _local_test_run_root()
+    if run_root.exists():
+        shutil.rmtree(run_root)
+    run_root.mkdir(parents=True, exist_ok=True)
+
+
+def _get_test_run_root():
+    """Keep CI integration runs inside the project so GitLab can upload logs."""
+    if run_root := os.environ.get(TEST_RUN_ROOT_ENV):
+        run_root = Path(run_root)
+        run_root.mkdir(parents=True, exist_ok=True)
+        return run_root
+    if ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
+        # Keep the path short enough for multiprocessing AF_UNIX socket names.
+        run_root = Path(ci_project_dir) / "ci" / "i"
+        run_root.mkdir(parents=True, exist_ok=True)
+        return run_root
+    run_root = _local_test_run_root()
+    run_root.mkdir(parents=True, exist_ok=True)
+    return run_root
+
+
+def _get_prefect_home_root():
+    """Keep Prefect's state separate from test products that local runs clean up."""
+    if run_root := os.environ.get(TEST_RUN_ROOT_ENV):
+        prefect_home_root = Path(run_root) / "prefect-home"
+    elif ci_project_dir := os.environ.get("CI_PROJECT_DIR"):
+        prefect_home_root = Path(ci_project_dir) / "ci" / "prefect-home"
+    else:
+        prefect_home_root = _local_prefect_home_root()
+
+    prefect_home_root.mkdir(parents=True, exist_ok=True)
+    return prefect_home_root
+
+
+def _set_prefect_home(worker_id, force=False):
+    if not force and os.environ.get(PREFECT_HOME_ENV):
+        return
+
+    prefect_home = _get_prefect_home_root() / worker_id
+    prefect_home.mkdir(parents=True, exist_ok=True)
+    os.environ[PREFECT_HOME_ENV] = prefect_home.as_posix()
+
+
+_set_prefect_home("main")
+
+
+def _xdist_worker_id(config):
+    worker_input = getattr(config, "workerinput", None)
+    if worker_input:
+        return worker_input.get("workerid", "worker")
+    return "main"
+
+
+def _is_xdist_controller(config):
+    if getattr(config, "workerinput", None):
+        return False
+    numprocesses = getattr(config.option, "numprocesses", None)
+    return numprocesses not in (None, 0, "0")
+
+
+def _prepare_prefect_home(config):
+    """Keep Prefect's local state isolated when integration tests use xdist."""
+    if _is_xdist_controller(config):
+        return
+
+    worker_id = _xdist_worker_id(config)
+    _set_prefect_home(worker_id, force=worker_id != "main")
+
+
+def pytest_configure(config):
+    config.resource_dir = RESOURCE_DIR
+    _quiet_async_runtime_loggers()
+    _prepare_local_test_run_root(config)
+    _prepare_prefect_home(config)
+
+
+@pytest.fixture(autouse=True)
+def quiet_async_runtime_loggers():
+    _quiet_async_runtime_loggers()
+    yield
+    _quiet_async_runtime_loggers()
+
+
+@pytest.fixture(autouse=True)
+def close_rapthor_file_handlers():
+    _close_rapthor_file_handlers()
+    yield
+    _close_rapthor_file_handlers()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(items):
+    for item in items:
+        try:
+            source = inspect.getsource(item.obj)
+        except (OSError, TypeError):
+            continue
+
+        if "prefect_test_harness" in source:
+            item.add_marker(pytest.mark.prefect)
+
+
 def _copy_from_resource_folder_to_test_path(filename, tmp_path):
     """
     Copy test resource file to temporary test folder.
@@ -92,15 +244,6 @@ def _copy_from_resource_folder_to_test_path(filename, tmp_path):
     target = tmp_path / filename
     shutil.copy(source, target)
     return target
-
-
-def ensure_test_ms(resource_dir):
-    destination = Path(resource_dir) / TEST_MS_DIRNAME
-    if destination.exists():
-        return destination
-
-    _download_test_ms(destination)
-    return destination
 
 
 @pytest.fixture(scope="session")
@@ -477,19 +620,10 @@ def generated_parset_path(request, tmp_path, test_ms):
     return output_parset_path
 
 
-@pytest.fixture(
-    params=[
-        None,
-        [
-            TEST_INTEGRATION_APPARENT_SKYMODEL,
-            TEST_INTEGRATION_TRUE_SKYMODEL,
-        ],
-    ],
-    ids=["downloaded_surveys", "reference_skymodels"],
-)
+@pytest.fixture
 def normalization_skymodel_paths(request):
     """Return optional normalization sky model paths for integration tests."""
-    return request.param
+    return getattr(request, "param", None)
 
 
 @pytest.fixture

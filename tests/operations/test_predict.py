@@ -1,16 +1,53 @@
 """
 Test cases for the `rapthor.operations.predict` module.
 """
+
 from pathlib import Path
+
 import pytest
-import rapthor
+
+from rapthor.lib.field import Field as RapthorField
 from rapthor.operations.predict import Predict
-from tests.operations.conftest import get_cwl_input_ids
+
+PREDICT_COMMON_INPUT_KEYS = {
+    "sector_filename",
+    "data_colname",
+    "sector_starttime",
+    "sector_ntimes",
+    "sector_model_filename",
+    "sector_skymodel",
+    "sector_patches",
+    "h5parm",
+    "normalize_h5parm",
+    "dp3_applycal_steps",
+    "onebeamperpatch",
+    "sagecalpredict",
+    "obs_filename",
+    "obs_starttime",
+    "obs_infix",
+    "correctfreqsmearing",
+    "correcttimesmearing",
+    "max_threads",
+}
+
+PREDICT_DD_INPUT_KEYS = {
+    "obs_solint_sec",
+    "obs_solint_hz",
+    "min_uv_lambda",
+    "max_uv_lambda",
+    "nr_outliers",
+    "peel_outliers",
+    "nr_bright",
+    "peel_bright",
+    "reweight",
+}
 
 
 @pytest.fixture
 def predict_field(operation_parset):
     class Field:
+        solution_cycle_number = RapthorField.solution_cycle_number
+
         def __init__(self, parset):
             self.parset = parset
             self.sectors = []
@@ -21,6 +58,7 @@ def predict_field(operation_parset):
             self.observations = []
             self.data_colname = "DATA"
             self.h5parm_filename = "h5.parm"
+            self.dd_h5parm_filename = None
             self.normalize_h5parm = "norm.h5"
             self.reweight = False
             self.apply_amplitudes = False
@@ -47,7 +85,10 @@ class TestPredict:
         assert predict.mode == mode
         assert predict.name == f"{expected_name}_{index}"
 
-    def test_init_raises_on_invalid_mode(self, predict_field,):
+    def test_init_raises_on_invalid_mode(
+        self,
+        predict_field,
+    ):
         with pytest.raises(ValueError, match="Only di and dd mode are supported"):
             Predict(mode="invalid", field=predict_field, index=1)
 
@@ -73,8 +114,6 @@ class TestPredict:
         predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_parset_parameters()
 
-        rapthor_pipeline_path = Path(rapthor.__file__).parent / "pipeline"
-        assert predict.parset_parms["rapthor_pipeline_dir"] == str(rapthor_pipeline_path)
         assert predict.parset_parms["max_cores"] == expected_cores
 
     @pytest.mark.parametrize(
@@ -100,20 +139,18 @@ class TestPredict:
         predict = Predict(mode=mode, field=predict_field, index=1)
         predict.set_input_parameters()
 
-        rapthor_pipeline_dir = str(Path(rapthor.__file__).parent / "pipeline")
-        template_parset_parms = {
-            "reweight": reweight,
-            "peel_outliers": peel_outliers,
-            "peel_bright_sources": peel_bright_sources,
-            "max_cores": None,
-            "rapthor_pipeline_dir": rapthor_pipeline_dir,
-        }
-        cwl_file = "predict_pipeline.cwl" if mode == "dd" else "predict_di_pipeline.cwl"
-        expected_cwl_ids = get_cwl_input_ids(cwl_file, template_parset_parms)
         input_parms_keys = set(predict.input_parms.keys())
-        assert expected_cwl_ids.issubset(input_parms_keys), (
-            f"input_parms is missing CWL inputs: {expected_cwl_ids - input_parms_keys}"
-        )
+        expected_keys = set(PREDICT_COMMON_INPUT_KEYS)
+        if mode == "dd":
+            expected_keys.update(PREDICT_DD_INPUT_KEYS)
+        assert input_parms_keys == expected_keys
+
+        if mode == "dd":
+            assert predict.input_parms["reweight"] is reweight
+            assert predict.input_parms["peel_outliers"] is peel_outliers
+            assert predict.input_parms["peel_bright"] is peel_bright_sources
+        else:
+            assert PREDICT_DD_INPUT_KEYS.isdisjoint(input_parms_keys)
 
     @pytest.mark.parametrize(
         "apply_amplitudes, apply_normalizations, expected_steps, expect_normalize_h5parm",
@@ -136,21 +173,158 @@ class TestPredict:
         predict_field.apply_normalizations = apply_normalizations
 
         predict = Predict("dd", predict_field, index=1)
-        steps, normalize_h5parm = predict._get_dp3_applycal_steps()
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps()
 
         assert steps == expected_steps
+        assert h5parm_filename == "h5.parm"
         if expect_normalize_h5parm:
             assert normalize_h5parm is not None
         else:
             assert normalize_h5parm is None
 
+    def test_get_dp3_applycal_steps_prefers_current_cycle_dd_h5parm_for_di_predict(
+        self, predict_field
+    ):
+        predict_field.h5parm_filename = "generic.h5"
+        predict_field.dd_h5parm_filename = "dd-solutions.h5"
+        predict_field.dd_h5parm_cycle_number = 1
+
+        predict = Predict("di", predict_field, index=1)
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps()
+
+        assert steps == ["fastphase"]
+        assert normalize_h5parm is None
+        assert h5parm_filename == "dd-solutions.h5"
+
+    def test_get_dp3_applycal_steps_keeps_matching_dd_h5parm_for_di_predict(
+        self, predict_field, tmp_path, monkeypatch
+    ):
+        h5parm_file = tmp_path / "dd-solutions.h5"
+        h5parm_file.touch()
+        predict_field.dd_h5parm_filename = str(h5parm_file)
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.apply_amplitudes = True
+
+        predict = Predict("di", predict_field, index=1)
+        monkeypatch.setattr(
+            predict,
+            "_read_h5parm_directions",
+            lambda filename: {"[Patch_1]", "[Patch_2]"},
+        )
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps(
+            [["[Patch_1]"], ["[Patch_2]"]]
+        )
+
+        assert steps == ["fastphase", "slowgain"]
+        assert normalize_h5parm is None
+        assert h5parm_filename == str(h5parm_file)
+
+    def test_get_dp3_applycal_steps_skips_mismatched_dd_h5parm_for_di_predict(
+        self, predict_field, tmp_path, monkeypatch, caplog
+    ):
+        h5parm_file = tmp_path / "dd-solutions.h5"
+        h5parm_file.touch()
+        predict_field.dd_h5parm_filename = str(h5parm_file)
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.apply_amplitudes = True
+
+        predict = Predict("di", predict_field, index=1)
+        monkeypatch.setattr(
+            predict,
+            "_read_h5parm_directions",
+            lambda filename: {"[Patch_0]", "[Patch_1]"},
+        )
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps(
+            [["[Patch_patch_10_sector_1]"]]
+        )
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "Skipping DD h5parm" in caplog.text
+        assert "[Patch_patch_10_sector_1]" in caplog.text
+
+    def test_get_dp3_applycal_steps_skips_previous_cycle_dd_h5parm_for_di_predict(
+        self, predict_field, caplog
+    ):
+        predict_field.h5parm_filename = "generic.h5"
+        predict_field.dd_h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+
+        predict = Predict("di", predict_field, index=3)
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps([["[Patch_0]"]])
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "produced in cycle 2" in caplog.text
+
+    def test_get_dp3_applycal_steps_skips_mismatched_dd_h5parm_for_dd_predict(
+        self, predict_field, tmp_path, monkeypatch, caplog
+    ):
+        h5parm_file = tmp_path / "dd-solutions.h5"
+        h5parm_file.touch()
+        predict_field.dd_h5parm_filename = str(h5parm_file)
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.apply_amplitudes = True
+
+        predict = Predict("dd", predict_field, index=1)
+        monkeypatch.setattr(
+            predict,
+            "_read_h5parm_directions",
+            lambda filename: {"[Patch_0]", "[Patch_1]"},
+        )
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps(
+            [["[Patch_patch_10_sector_1]"]]
+        )
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "Skipping DD h5parm" in caplog.text
+        assert "[Patch_patch_10_sector_1]" in caplog.text
+
+    def test_get_dp3_applycal_steps_skips_previous_cycle_dd_h5parm_for_dd_predict(
+        self, predict_field, caplog
+    ):
+        predict_field.h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        predict_field.dd_h5parm_filename = "/work/solutions/calibrate_2/field-solutions.h5"
+        predict_field.dd_h5parm_cycle_number = 2
+
+        predict = Predict("dd", predict_field, index=3)
+        caplog.set_level("WARNING", logger="rapthor:predict")
+
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps([["[Patch_0]"]])
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+        assert "produced in cycle 2" in caplog.text
+
+    def test_get_dp3_applycal_steps_ignores_di_h5parm_for_dd_predict(self, predict_field):
+        predict_field.h5parm_filename = "di-solutions.h5"
+        predict_field.di_h5parm_filename = "di-solutions.h5"
+
+        predict = Predict("dd", predict_field, index=1)
+        steps, normalize_h5parm, h5parm_filename = predict._get_dp3_applycal_steps()
+
+        assert steps == []
+        assert normalize_h5parm is None
+        assert h5parm_filename is None
+
     @pytest.mark.parametrize(
         "mode, peel_outliers, has_outlier_sector, expected_sectors, expect_outlier_removed",
         [
-            ("dd", True, True, 1, True),    # outlier removed when peel_outliers=True
+            ("dd", True, True, 1, True),  # outlier removed when peel_outliers=True
             ("dd", True, False, 1, False),  # no outlier to remove
             ("dd", False, True, 2, False),  # outlier kept when peel_outliers=False
-            ("di", False, False, 1, False), # DI: only checks ms_predict_di_filename
+            ("di", False, False, 1, False),  # DI: only checks ms_predict_di_filename
         ],
     )
     def test_finalize(
@@ -179,6 +353,7 @@ class TestPredict:
         sector_obs.ms_field = "sector_field1"
         sector_obs.ms_predict_di = "predict_di.ms"
         observation.ms_field = "field1"
+        original_infix = observation.infix
 
         if has_outlier_sector:
             field.sectors.append(outlier_sector)
@@ -200,17 +375,18 @@ class TestPredict:
 
         if mode == "di":
             assert observation.ms_predict_di_filename.endswith("predict_di.ms")
+            assert observation.infix == original_infix
 
         assert Path(predict.done_file).exists()
 
     @pytest.mark.parametrize(
-    "mode, with_params",
-    [
-        ("dd", True),
-        ("dd", False),
-        ("di", False),
-    ],
-)
+        "mode, with_params",
+        [
+            ("dd", True),
+            ("dd", False),
+            ("di", False),
+        ],
+    )
     def test_collect_obs_parameters(
         self,
         predict_field,
@@ -241,8 +417,13 @@ class TestPredict:
 
         if mode == "dd":
             if with_params:
-                expected_sec = [observation.parameters["solint_fast_timestep"][0] * observation.timepersample]
-                expected_hz = [observation.parameters["solint_slow_freqstep_separate"][0] * observation.channelwidth]
+                expected_sec = [
+                    observation.parameters["solint_fast_timestep"][0] * observation.timepersample
+                ]
+                expected_hz = [
+                    observation.parameters["solint_slow_freqstep_separate"][0]
+                    * observation.channelwidth
+                ]
             else:
                 expected_sec = [0]
                 expected_hz = [0]
@@ -256,12 +437,12 @@ class TestPredict:
         "n_imaging_sectors, reweight, has_outliers, peel_outliers, has_bright, peel_bright, expect_subtracted",
         [
             (1, False, False, False, False, False, False),  # no subtraction
-            (2, False, False, False, False, False, True),   # multiple imaging sectors
-            (1, True,  False, False, False, False, True),   # reweight
-            (1, False, True,  True,  False, False, True),   # outliers peeled
-            (1, False, True,  False, False, False, False),  # outliers present but not peeled
-            (1, False, False, False, True,  True,  True),   # bright sources peeled
-            (1, False, False, False, True,  False, False),  # bright present but not peeled
+            (2, False, False, False, False, False, True),  # multiple imaging sectors
+            (1, True, False, False, False, False, True),  # reweight
+            (1, False, True, True, False, False, True),  # outliers peeled
+            (1, False, True, False, False, False, False),  # outliers present but not peeled
+            (1, False, False, False, True, True, True),  # bright sources peeled
+            (1, False, False, False, True, False, False),  # bright present but not peeled
         ],
     )
     def test_set_imaging_filenames(
@@ -302,9 +483,7 @@ class TestPredict:
                 assert obs.ms_imaging_filename == obs.ms_filename
 
     @pytest.mark.parametrize("n_sectors", [1, 2])
-    def test_collect_sector_parameters(
-        self, predict_field, sector, n_sectors
-    ):
+    def test_collect_sector_parameters(self, predict_field, sector, n_sectors):
         sector.patches = ["[patch1]"]
         sector.predict_skymodel_file = "skymodel.ms"
         predict_field.observations = sector.observations
@@ -356,7 +535,8 @@ class TestPredict:
 
         if match:
             assert getattr(observation, attr) == "/new/path.ms"
-            assert observation.infix == ""
+            expected_infix = "" if attr == "ms_filename" else original_infix
+            assert observation.infix == expected_infix
         else:
             assert observation.ms_filename == original_filename
             assert observation.infix == original_infix

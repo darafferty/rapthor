@@ -1,0 +1,1309 @@
+"""Tests for image diagnostic calculation helpers."""
+
+import json
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from threading import Barrier
+from types import SimpleNamespace
+
+import astropy.units as u
+import lsmtool
+import lsmtool.skymodel
+import numpy as np
+import pytest
+from astropy.coordinates import SkyCoord
+from astropy.table import Table
+
+from rapthor.execution.image.diagnostic_calculation import (
+    _rename_plots,
+    calculate_image_diagnostics,
+    check_astrometry,
+    check_photometry,
+    compare_photometry_survey,
+    compute_facet_rms_noise,
+    filter_skymodel_for_photometry,
+    fits_to_makesourcedb,
+    load_photometry_surveys,
+)
+from rapthor.lib import fitsimage
+from rapthor.lib.fitsimage import EmptyFacetSelectionError
+
+# ---------------------------------------------------------------------------- #
+
+
+@pytest.fixture(scope="session", params=[0, 1, 9])
+def mock_minimal_table(request):
+    num_sources = request.param
+    # Create mock Table for FITS files to return a catalog
+    dec_maj_max = 10 / 3600  # Hardcoded value in check_astrometry()
+    ra_dec_max = 2 / 3600  # Hardcoded value in check_astrometry()
+    # Ensure all sources are within the maximum allowed values
+    mock_data = {
+        "DC_Maj": [dec_maj_max - 0.0001] * num_sources,
+        "E_RA": [ra_dec_max - 0.0001] * num_sources,
+        "E_DEC": [ra_dec_max - 0.0001] * num_sources,
+        "RA": [2 / 3600 * u.degree] * num_sources,
+        "DEC": [2 / 3600 * u.degree] * num_sources,
+    }
+
+    # Test with fewer sources than min_number
+    return Table(mock_data)
+
+
+@pytest.fixture
+def mock_full_photometry_table(observation, mock_comparison_skymodel_table):
+    # Use selected sources, but anchor coordinates to the observation center so
+    # they always pass the FWHM beam cut in check_photometry().
+    table = mock_comparison_skymodel_table.copy()
+    num_sources = len(table)
+    offsets_deg = np.linspace(-2e-4, 2e-4, num_sources)
+    table["RA"] = (observation.ra + offsets_deg) * u.degree
+    table["DEC"] = (observation.dec + offsets_deg) * u.degree
+    table["DC_Maj"] = np.full(num_sources, 1 / 3600)
+    return table
+
+
+@pytest.fixture(params=[10])
+def mock_full_astrometry_table(request):
+    # Create a mock Table for astrometry with the same data as mock_full_table
+    mock_data = mock_full_table_data(num_sources=request.param, total_flux_keyword="Isl_Total_flux")
+    return Table(mock_data)
+
+
+def mock_full_table_data(num_sources, total_flux_keyword):
+    # Test with more sources than min_number
+    return {
+        "Source_id": [f"Source_{i}" for i in range(num_sources)],
+        "DC_Maj": [10 / 3600 - 0.0001] * num_sources,
+        "E_RA": [2 / 3600 - 0.0001] * num_sources,
+        "E_DEC": [2 / 3600 - 0.0001] * num_sources,
+        "RA": [2 / 3600 * u.degree] * num_sources,
+        "DEC": [2 / 3600 * u.degree] * num_sources,
+        total_flux_keyword: [1.0] * num_sources,
+    }
+
+
+@pytest.fixture()
+def mock_comparison_skymodel_table():
+    # Subset copied from tests/resources/test_apparent_sky.txt
+    selected_data = [
+        ("s0c0", "-6:48:16.324", "56:56:59.178", 0.004379054102049962),
+        ("s0c1", "-6:48:16.476", "56:56:59.175", 0.0013177344234482774),
+        ("s0c2", "-6:48:16.784", "56:57:04.168", 0.00023802236965550248),
+        ("s0c761", "-6:50:28.524", "57:26:08.192", 0.00015119098359826986),
+        ("s0c762", "-6:50:28.371", "57:26:09.455", 0.0014859517024192579),
+        ("s0c763", "-6:50:28.526", "57:26:09.442", 0.0027168816209913564),
+        ("s0c764", "-6:49:11.444", "57:26:42.234", 0.00107158521926894),
+        ("s0c765", "-6:49:11.6", "57:26:43.477", 0.0002788397060369219),
+        ("s0c766", "-6:46:30.998", "57:26:56.315", 0.005508009846638286),
+        ("s0c767", "-6:46:30.997", "57:26:57.565", 0.0009893880953724564),
+    ]
+    source_ids = [name for name, _, _, _ in selected_data]
+    coords = SkyCoord(
+        ra=[ra for _, ra, _, _ in selected_data],
+        dec=[dec for _, _, dec, _ in selected_data],
+        unit=(u.hourangle, u.deg),
+    )
+    flux_values = [flux for _, _, _, flux in selected_data]
+
+    return Table(
+        {
+            "Source_id": source_ids,
+            "DC_Maj": [10 / 3600 - 0.0001] * len(source_ids),
+            "E_RA": [2 / 3600 - 0.0001] * len(source_ids),
+            "E_DEC": [2 / 3600 - 0.0001] * len(source_ids),
+            "RA": coords.ra.deg * u.degree,
+            "DEC": coords.dec.deg * u.degree,
+            "Total_flux": flux_values,
+        }
+    )
+
+
+@pytest.fixture()
+def grouped_comparison_skymodel(mock_comparison_skymodel_table):
+    return fits_to_makesourcedb(mock_comparison_skymodel_table, 150e6, flux_colname="Total_flux")
+
+
+# ---------------------------------------------------------------------------- #
+# Test: check_astrometry
+
+
+@pytest.mark.disable_socket
+@pytest.mark.parametrize("allow_internet_access", [False, True], ids=["offline", "online"])
+def test_check_astrometry_handles_failed_supplied_catalog(
+    allow_internet_access, mock_full_astrometry_table, tmp_path, mocker, caplog
+):
+    module = "rapthor.execution.image.diagnostic_calculation"
+    input_catalog = tmp_path / "catalog.fits"
+    mock_full_astrometry_table.write(input_catalog, format="fits")
+    mocker.patch(f"{module}.fits_to_makesourcedb", return_value=mocker.Mock())
+    load = mocker.patch(f"{module}.lsmtool.load", side_effect=OSError("Invalid comparison catalog"))
+    facet = mocker.Mock(astrometry_diagnostics={})
+    mocker.patch(f"{module}.SquareFacet", return_value=facet)
+
+    with caplog.at_level(logging.INFO):
+        result = check_astrometry(
+            SimpleNamespace(ra=0.0, dec=0.0),
+            input_catalog,
+            SimpleNamespace(freq=150e6, img_data=np.zeros((2, 2)), img_hdr={"CDELT1": 0.1}),
+            facet_region_file=None,
+            min_number=5,
+            output_root=tmp_path / "astrometry",
+            comparison_skymodel="invalid.skymodel",
+            allow_internet_access=allow_internet_access,
+        )
+
+    assert result == {}
+    load.assert_called_once_with("invalid.skymodel")
+    assert "Invalid comparison catalog" in caplog.text
+    if allow_internet_access:
+        facet.find_astrometry_offsets.assert_called_once_with(None, min_number=5)
+    else:
+        facet.find_astrometry_offsets.assert_not_called()
+        assert "Internet access not allowed. Skipping astrometry check" in caplog.text
+
+
+@pytest.mark.disable_socket
+@pytest.mark.parametrize(
+    "error", [ValueError("No unit set on column"), OSError("Catalog unavailable")]
+)
+@pytest.mark.parametrize("successful_facets", [0, 2])
+def test_check_astrometry_skips_failed_facets(
+    error, successful_facets, mock_full_astrometry_table, tmp_path, mocker, caplog
+):
+    """Catalog failures must not abort diagnostics or contaminate successful offsets."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    input_catalog = tmp_path / "catalog.fits"
+    mock_full_astrometry_table.write(input_catalog, format="fits")
+    region_file = tmp_path / "facets.reg"
+    region_file.touch()
+    output_root = tmp_path / "astrometry_check"
+    keys = (
+        "meanRAOffsetDeg",
+        "stdRAOffsetDeg",
+        "meanClippedRAOffsetDeg",
+        "stdClippedRAOffsetDeg",
+        "meanDecOffsetDeg",
+        "stdDecOffsetDeg",
+        "meanClippedDecOffsetDeg",
+        "stdClippedDecOffsetDeg",
+    )
+    failed = mocker.Mock()
+    failed.name = "failed_facet"
+    failed.astrometry_diagnostics = {}
+    failed.find_astrometry_offsets.side_effect = error
+    facets = [failed]
+    for index in range(successful_facets):
+        facet = mocker.Mock()
+        facet.name = f"successful_facet_{index}"
+        facet.astrometry_diagnostics = dict.fromkeys(keys, (index + 1) / 3600)
+        facets.append(facet)
+    mocker.patch(f"{module}.read_ds9_region_file", return_value=facets)
+    plot = mocker.patch(f"{module}.plot_astrometry_offsets")
+
+    with caplog.at_level(logging.WARNING):
+        result = check_astrometry(
+            SimpleNamespace(ra=0.0, dec=0.0),
+            input_catalog,
+            SimpleNamespace(freq=150e6),
+            region_file,
+            min_number=5,
+            output_root=output_root,
+        )
+
+    for facet in facets:
+        facet.find_astrometry_offsets.assert_called_once_with(None, min_number=5)
+    assert "Skipping astrometry check for facet failed_facet" in caplog.text
+    assert str(error) in caplog.text
+    offsets_file = output_root.with_suffix(".astrometry_offsets.json")
+    if successful_facets:
+        assert result == pytest.approx(dict.fromkeys(keys, 1.5 / 3600))
+        offsets = json.loads(offsets_file.read_text())
+        assert offsets["facet_name"] == [facet.name for facet in facets[1:]]
+        for key in keys:
+            assert offsets[key] == [1 / 3600, 2 / 3600]
+        plot.assert_called_once_with(facets, 0.0, 0.0, f"{output_root}.astrometry_offsets.pdf")
+    else:
+        assert result == {}
+        assert not offsets_file.exists()
+        assert not output_root.with_suffix(".astrometry_offsets.pdf").exists()
+        plot.assert_not_called()
+
+
+def test_check_astrometry_zero_sources(
+    observation,
+    input_catalog_fits,
+    image_fits,
+    facet_region_ds9,
+    sky_model_path,
+    tmp_path,
+    caplog,
+    monkeypatch,
+    mocker,
+):
+    """
+    Test the check_astrometry function when the input skymodel contains zero
+    sources.
+    """
+
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+
+    with caplog.at_level(logging.INFO):
+        actual_result = check_astrometry(
+            observation,
+            input_catalog_fits,
+            image_fits,
+            facet_region_ds9,
+            min_number=1,
+            output_root=tmp_path / "astrometry_check",
+            comparison_skymodel=sky_model_path,
+        )
+        assert "No sources found" in caplog.text
+        assert "Skipping the astrometry check..." in caplog.text
+
+    assert actual_result == {}
+
+
+def test_check_astrometry_sources_below_minimum_number(
+    observation,
+    input_catalog_fits,
+    image_fits,
+    facet_region_ds9,
+    sky_model_path,
+    tmp_path,
+    caplog,
+    mocker,
+    monkeypatch,
+    mock_minimal_table,
+):
+    """
+    Test the check_astrometry function when the input skymodel contains fewer
+    sources than the required minimum.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table)
+
+    num_sources = len(mock_minimal_table)
+    min_number = num_sources + 1
+
+    mock_fits_image_cls = mocker.MagicMock()
+    monkeypatch.setattr(fitsimage, "FITSImage", mock_fits_image_cls)
+    mock_image = mock_fits_image_cls(image_fits)
+    mock_image.freq = 150e6  # Mock frequency in Hz
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+
+    with caplog.at_level(logging.INFO):
+        actual_result = check_astrometry(
+            observation,
+            input_catalog_fits,
+            mock_image,
+            facet_region_ds9,
+            min_number=min_number,
+            output_root=tmp_path / "astrometry_check",
+            comparison_skymodel=sky_model_path,
+        )
+
+        msg = "No sources found" if num_sources == 0 else f"Fewer than {min_number} sources found"
+        assert msg in caplog.text
+        assert "Skipping the astrometry check..." in caplog.text
+
+    assert actual_result == {}
+
+
+# ---------------------------------------------------------------------------- #
+# Test: check_photometry
+
+
+@pytest.mark.disable_socket
+@pytest.mark.parametrize(
+    "failed_surveys, expected_surveys",
+    [
+        pytest.param({"TGSS"}, ["LOTSS"], id="next-primary-survey"),
+        pytest.param({"TGSS", "LOTSS"}, ["NVSS"], id="backup-survey"),
+        pytest.param({"TGSS", "LOTSS", "NVSS"}, [], id="all-surveys-fail"),
+        pytest.param({"NVSS"}, ["TGSS", "LOTSS"], id="backup-fails-after-primaries"),
+    ],
+)
+def test_check_photometry_skips_failed_catalog_loads(
+    failed_surveys, expected_surveys, mock_comparison_skymodel_table, tmp_path, mocker, caplog
+):
+    """A failed download must leave usable surveys and their diagnostics intact."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    catalog = mock_comparison_skymodel_table
+    mocker.patch(f"{module}.Table.read", return_value=catalog)
+    mocker.patch(f"{module}.filter_skymodel_for_photometry", return_value=catalog)
+    models = {survey: mocker.Mock() for survey in ("TGSS", "LOTSS", "NVSS")}
+
+    def load_catalog(survey, **kwargs):
+        if survey in failed_surveys:
+            raise OSError("Format line not understood.")
+        return models[survey]
+
+    load = mocker.patch(f"{module}.lsmtool.load", side_effect=load_catalog)
+    compare = mocker.patch(
+        f"{module}.compare_photometry_survey",
+        side_effect=lambda catalog, survey, *args: {f"meanRatio_{survey}": 1.0},
+    )
+    with caplog.at_level(logging.INFO):
+        result = check_photometry(
+            SimpleNamespace(ra=12.0, dec=34.0),
+            "catalog.fits",
+            freq=150e6,
+            min_number=5,
+            output_root=tmp_path / "photometry",
+        )
+
+    assert load.call_args_list == [
+        mocker.call(survey, VOPosition=[12.0, 34.0], VORadius=5.0)
+        for survey in ("TGSS", "LOTSS", "NVSS")
+    ]
+    assert compare.call_args_list == [
+        mocker.call(catalog, survey, models[survey], 150e6, tmp_path / "photometry")
+        for survey in expected_surveys
+    ]
+    assert result == {f"meanRatio_{survey}": 1.0 for survey in expected_surveys}
+    for survey in failed_surveys:
+        assert f"downloading the {survey} catalog" in caplog.text
+    assert "Format line not understood." in caplog.text
+    assert "%s" not in caplog.text
+
+
+@pytest.mark.disable_socket
+@pytest.mark.parametrize("surveys", [[], ["LOTSS"]], ids=["offline", "online"])
+def test_load_photometry_surveys_handles_failed_supplied_catalog(surveys, mocker, caplog):
+    """A bad local catalogue falls back only to the permitted surveys."""
+    model = mocker.Mock()
+    load = mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.lsmtool.load",
+        side_effect=[OSError("Invalid comparison catalog"), model],
+    )
+    with caplog.at_level(logging.INFO):
+        result = load_photometry_surveys(
+            SimpleNamespace(ra=12.0, dec=34.0), "invalid.skymodel", surveys, backup_survey=None
+        )
+
+    expected_calls = [mocker.call("invalid.skymodel")]
+    if surveys:
+        expected_calls.append(mocker.call("LOTSS", VOPosition=[12.0, 34.0], VORadius=5.0))
+    assert load.call_args_list == expected_calls
+    assert result == ({"LOTSS": model} if surveys else {})
+    assert "Invalid comparison catalog" in caplog.text
+
+
+def test_check_photometry_zero_sources(
+    observation, input_catalog_fits, sky_model_path, caplog, monkeypatch, tmp_path
+):
+    """
+    Test the check_photometry function when the skymodel contains zero sources.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: [])
+
+    with caplog.at_level(logging.INFO):
+        actual_result = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq=1.5e8,  # Example frequency in Hz
+            comparison_skymodel=sky_model_path,
+            min_number=1,
+            output_root=tmp_path / "sector_1",
+        )
+        assert "No sources found" in caplog.text
+        assert "Skipping the photometry check..." in caplog.text
+
+    assert actual_result == {}
+
+
+def test_check_photometry_below_min_number_sources(
+    observation,
+    input_catalog_fits,
+    sky_model_path,
+    caplog,
+    monkeypatch,
+    mock_minimal_table,
+    tmp_path,
+):
+    """
+    Test the check_photometry function when the skymodel contains fewer sources
+    than the required minimum.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr("astropy.table.Table.read", lambda *args, **kwargs: mock_minimal_table)
+    num_sources = len(mock_minimal_table)
+    min_number = num_sources + 1
+
+    with caplog.at_level(logging.INFO):
+        actual_result = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq=1.5e8,  # Example frequency in Hz
+            comparison_skymodel=sky_model_path,
+            min_number=min_number,
+            output_root=tmp_path / "sector_1",
+        )
+        msg = "No sources found" if num_sources == 0 else f"Fewer than {min_number} sources found"
+        assert msg in caplog.text
+        assert "Skipping the photometry check..." in caplog.text
+
+    assert actual_result == {}
+
+
+@pytest.mark.disable_socket
+def test_check_photometry_with_comparison_skymodel_does_not_access_internet(
+    observation,
+    input_catalog_fits,
+    sky_model_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_photometry_table,
+    tmp_path,
+):
+    """
+    Test that the  check_photometry function does not access the internet
+    when a comparison skymodel is provided.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read",
+        lambda *args, **kwargs: mock_full_photometry_table,
+    )
+
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.compare_photometry_survey",
+        return_value={
+            "meanRatio": 1,
+            "stdRatio": 1,
+            "meanClippedRatio": 1,
+            "stdClippedRatio": 1,
+            "meanRAOffsetDeg": 1,
+            "stdRAOffsetDeg": 1,
+            "meanClippedRAOffsetDeg": 1,
+            "stdClippedRAOffsetDeg": 1,
+            "meanDecOffsetDeg": 1,
+            "stdDecOffsetDeg": 1,
+            "meanClippedDecOffsetDeg": 1,
+            "stdClippedDecOffsetDeg": 1,
+        },
+    )
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq=15,
+            comparison_skymodel=sky_model_path,
+            min_number=1,
+            output_root=tmp_path / "sector_1",
+        )
+        assert "No sources found" not in caplog.text
+        assert "Skipping the photometry check..." not in caplog.text
+
+    assert diagnostics_dict != {}
+
+
+@pytest.mark.disable_socket
+def test_check_photometry_without_comparison_surveys_does_not_access_internet(
+    observation,
+    input_catalog_fits,
+    sky_model_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_photometry_table,
+    tmp_path,
+):
+    """
+    Test that the  check_photometry function does not access the internet
+    when comparison surveys are not provided.
+    """
+
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read",
+        lambda *args, **kwargs: mock_full_photometry_table,
+    )
+
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_photometry(
+            observation,
+            input_catalog_fits,
+            freq=15,
+            comparison_skymodel=None,
+            comparison_surveys=(),
+            min_number=1,
+            output_root=tmp_path / "sector_1",
+        )
+        assert "No sources found" not in caplog.text
+        assert "The backup survey catalog" not in caplog.text
+        assert (
+            "A comparison sky model is not available and a list of comparison surveys was not supplied. Skipping photometry check..."
+            in caplog.text
+        )
+    assert diagnostics_dict == {}
+
+
+@pytest.mark.disable_socket
+def test_check_astrometry_with_comparison_skymodel_does_not_access_internet(
+    observation,
+    input_catalog_fits,
+    image_fits,
+    facet_region_ds9,
+    sky_model_path,
+    tmp_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_astrometry_table,
+):
+    """
+    Test that the  check_astrometry function does not access the internet
+    when a comparison skymodel is provided.
+    """
+    # Mock Table.read for FITS files only. LSMTool also uses Table.read when
+    # loading the temporary makesourcedb text file created by fits_to_makesourcedb.
+    original_table_read = Table.read
+
+    def mock_table_read(*args, **kwargs):
+        if kwargs.get("format") == "fits":
+            return mock_full_astrometry_table
+        return original_table_read(*args, **kwargs)
+
+    monkeypatch.setattr("astropy.table.Table.read", mock_table_read)
+
+    mock_fits_image_cls = mocker.MagicMock()
+    monkeypatch.setattr(fitsimage, "FITSImage", mock_fits_image_cls)
+    mock_image = mock_fits_image_cls(image_fits)
+    mock_image.freq = 150e6  # Mock frequency in Hz
+
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+    mocker.patch.object(
+        lsmtool.skymodel.SkyModel,
+        "compare",
+        return_value={
+            "meanRatio": 1,
+            "stdRatio": 1,
+            "meanClippedRatio": 1,
+            "stdClippedRatio": 1,
+            "meanRAOffsetDeg": 1,
+            "stdRAOffsetDeg": 1,
+            "meanClippedRAOffsetDeg": 1,
+            "stdClippedRAOffsetDeg": 1,
+            "meanDecOffsetDeg": 1,
+            "stdDecOffsetDeg": 1,
+            "meanClippedDecOffsetDeg": 1,
+            "stdClippedDecOffsetDeg": 1,
+        },
+    )
+    mocker.patch(
+        "lsmtool.facet.filter_skymodel",
+        side_effect=lambda polygon, sm, wcs: sm,
+    )
+
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_astrometry(
+            observation,
+            input_catalog_fits,
+            mock_image,
+            facet_region_ds9,
+            min_number=1,
+            output_root=str(tmp_path / "astrometry_check"),
+            comparison_skymodel=sky_model_path,
+        )
+        assert "No sources found" not in caplog.text
+        assert "Skipping the astrometry check..." not in caplog.text
+
+    assert "meanClippedRAOffsetDeg" in diagnostics_dict
+    assert "meanClippedDecOffsetDeg" in diagnostics_dict
+    assert "stdClippedRAOffsetDeg" in diagnostics_dict
+    assert "stdClippedDecOffsetDeg" in diagnostics_dict
+
+
+@pytest.mark.disable_socket
+def test_check_astrometry_with_no_internet_access_does_not_access_internet(
+    observation,
+    input_catalog_fits,
+    image_fits,
+    facet_region_ds9,
+    tmp_path,
+    mocker,
+    caplog,
+    monkeypatch,
+    mock_full_astrometry_table,
+):
+    """
+    Test that the  check_astrometry function does not access the internet
+    when internet access is not permitted.
+    """
+    # Mock Table.read for FITS files to return a catalog with length zero
+    monkeypatch.setattr(
+        "astropy.table.Table.read",
+        lambda *args, **kwargs: mock_full_astrometry_table,
+    )
+
+    mock_fits_image_cls = mocker.MagicMock()
+    monkeypatch.setattr(fitsimage, "FITSImage", mock_fits_image_cls)
+    mock_image = mock_fits_image_cls(image_fits)
+    mock_image.freq.return_value = 150e6  # Mock frequency in Hz
+
+    mocker.patch.object(lsmtool.skymodel.SkyModel, "group")
+    mocker.patch.object(
+        lsmtool.skymodel.SkyModel,
+        "compare",
+        return_value={
+            "meanRatio": 1,
+            "stdRatio": 1,
+            "meanClippedRatio": 1,
+            "stdClippedRatio": 1,
+            "meanRAOffsetDeg": 1,
+            "stdRAOffsetDeg": 1,
+            "meanClippedRAOffsetDeg": 1,
+            "stdClippedRAOffsetDeg": 1,
+            "meanDecOffsetDeg": 1,
+            "stdDecOffsetDeg": 1,
+            "meanClippedDecOffsetDeg": 1,
+            "stdClippedDecOffsetDeg": 1,
+        },
+    )
+    mocker.patch(
+        "lsmtool.facet.filter_skymodel",
+        side_effect=lambda polygon, sm, wcs: sm,
+    )
+
+    with caplog.at_level(logging.INFO):
+        diagnostics_dict = check_astrometry(
+            observation,
+            input_catalog_fits,
+            mock_image,
+            facet_region_ds9,
+            min_number=1,
+            output_root=str(tmp_path / "astrometry_check"),
+            comparison_skymodel=None,
+            allow_internet_access=False,
+        )
+        assert "No sources found" not in caplog.text
+        assert "internet access is not permitted" in caplog.text
+
+    assert diagnostics_dict == {}
+
+
+# ---------------------------------------------------------------------------- #
+# Test: fits_to_makesourcedb
+
+
+def test_fits_to_makesourcedb(mock_full_astrometry_table):
+    """
+    Test that fits_to_makesourcedb correctly converts a PyBDSF catalog to a
+    makesourcedb sky model with correct format and content.
+    """
+    reference_freq = 150e6
+    skymodel = fits_to_makesourcedb(mock_full_astrometry_table, reference_freq)
+
+    assert skymodel is not None
+    assert len(skymodel) == len(mock_full_astrometry_table)
+    assert skymodel.getColNames() == ["Name", "Type", "Ra", "Dec", "I", "ReferenceFrequency"]
+    assert np.array_equal(skymodel.getColValues("Name"), mock_full_astrometry_table["Source_id"])
+    assert np.array_equal(
+        skymodel.getColValues("Type"), ["POINT"] * len(mock_full_astrometry_table)
+    )
+    assert np.array_equal(skymodel.getColValues("I"), mock_full_astrometry_table["Isl_Total_flux"])
+    assert np.array_equal(
+        skymodel.getColValues("ReferenceFrequency"),
+        [reference_freq] * len(mock_full_astrometry_table),
+    )
+    assert np.allclose(skymodel.getColValues("Ra"), mock_full_astrometry_table["RA"])
+    assert np.allclose(skymodel.getColValues("Dec"), mock_full_astrometry_table["DEC"])
+
+
+def test_fits_to_makesourcedb_single_source():
+    """
+    Test that fits_to_makesourcedb correctly handles a catalog with a single
+    source.
+    """
+
+    single_source = Table(
+        {
+            "Source_id": ["TestSource"],
+            "RA": [2.5],
+            "DEC": [45.0],
+            "Total_flux": [1.5],
+        }
+    )
+
+    reference_freq = 150e6
+    skymodel = fits_to_makesourcedb(single_source, reference_freq, flux_colname="Total_flux")
+
+    assert len(skymodel) == 1
+    assert skymodel.getColValues("Name")[0] == "TestSource"
+    assert np.isclose(skymodel.getColValues("Ra")[0], 2.5)
+    assert np.isclose(skymodel.getColValues("Dec")[0], 45.0)
+
+
+# ---------------------------------------------------------------------------- #
+# Test: _rename_plots
+
+
+def test_rename_plots(tmp_path):
+    """Only expected plots are moved, replacing outputs from an earlier attempt."""
+    plot_dir = tmp_path / "comparison"
+    plot_dir.mkdir()
+    plots = ("flux_ratio_vs_distance", "flux_ratio_vs_flux", "flux_ratio_sky")
+    for plot in plots:
+        (plot_dir / f"{plot}.pdf").write_text("new plot")
+        (tmp_path / f"sector_1.{plot}_TGSS.pdf").write_text("old plot")
+    unrelated_pdf = tmp_path / "unrelated.pdf"
+    unrelated_pdf.write_text("user document")
+
+    _rename_plots("TGSS", plot_dir, tmp_path / "sector_1")
+
+    for plot in plots:
+        assert (tmp_path / f"sector_1.{plot}_TGSS.pdf").read_text() == "new plot"
+    assert not list(plot_dir.iterdir())
+    assert unrelated_pdf.read_text() == "user document"
+
+
+def test_compare_skymodel(
+    grouped_comparison_skymodel, mock_comparison_skymodel_table, monkeypatch, tmp_path
+):
+    """
+    Test that compare_photometry_survey correctly generates diagnostic plots and returns expected statistics.
+    """
+    catalog = mock_comparison_skymodel_table
+    survey = "TEST_SURVEY"
+    comparison_skymodel = grouped_comparison_skymodel
+    reference_skymodel = fits_to_makesourcedb(catalog, 150e6, flux_colname="Total_flux")
+    monkeypatch.chdir(tmp_path)
+    result = reference_skymodel.compare(
+        comparison_skymodel,
+        radius="5 arcsec",
+        excludeMultiple=True,
+        make_plots=True,
+        name1="Input Catalog",
+        name2=survey,
+    )
+    expected_keys = ["meanRatio", "stdRatio", "meanClippedRatio", "stdClippedRatio"]
+    expected_plot_files = [
+        "flux_ratio_vs_distance.pdf",
+        "flux_ratio_vs_flux.pdf",
+        "flux_ratio_sky.pdf",
+        "positional_offsets_sky.pdf",
+    ]
+    assert all(key in result for key in expected_keys), (
+        "Not all expected keys are present in the result"
+    )
+    assert all((tmp_path / plot).exists() for plot in expected_plot_files), (
+        "Not all expected plot files were generated"
+    )
+
+
+@pytest.mark.parametrize("relative_output_root", [False, True])
+def test_compare_photometry_survey(
+    grouped_comparison_skymodel,
+    mock_comparison_skymodel_table,
+    monkeypatch,
+    tmp_path,
+    relative_output_root,
+):
+    """
+    Test that compare_photometry_survey correctly compares photometry between the input catalog
+    and the specified survey, and returns expected statistics.
+    """
+    survey = "TEST_SURVEY"
+    monkeypatch.chdir(tmp_path)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    output_root = Path("work/sector_1") if relative_output_root else str(work_dir / "sector_1")
+    result = compare_photometry_survey(
+        mock_comparison_skymodel_table,
+        survey,
+        grouped_comparison_skymodel,
+        freq=150e6,
+        output_root=output_root,
+    )
+    expected_keys = [
+        "meanRatio_TEST_SURVEY",
+        "stdRatio_TEST_SURVEY",
+        "meanClippedRatio_TEST_SURVEY",
+        "stdClippedRatio_TEST_SURVEY",
+    ]
+    expected_plot_files = [
+        "sector_1.flux_ratio_vs_distance_TEST_SURVEY.pdf",
+        "sector_1.flux_ratio_vs_flux_TEST_SURVEY.pdf",
+        "sector_1.flux_ratio_sky_TEST_SURVEY.pdf",
+    ]
+    assert all(key in result for key in expected_keys), (
+        "Not all expected keys are present in the result"
+    )
+    assert {path.name for path in work_dir.iterdir()} == set(expected_plot_files)
+    assert list(tmp_path.iterdir()) == [work_dir]
+
+
+def test_compare_photometry_survey_no_matches(
+    grouped_comparison_skymodel, mock_comparison_skymodel_table, monkeypatch, tmp_path, caplog
+):
+    """
+    Test that compare_photometry_survey correctly handles the case where there are no matches between the input catalog and the survey.
+    """
+    survey = "TEST_SURVEY"
+    # Modify the comparison skymodel to have no sources within the matching radius
+    monkeypatch.setattr(
+        "lsmtool.skymodel.SkyModel.compare",
+        lambda self, *args, **kwargs: None,
+    )
+    monkeypatch.chdir(tmp_path)
+    with caplog.at_level(logging.INFO):
+        result = compare_photometry_survey(
+            mock_comparison_skymodel_table,
+            survey,
+            grouped_comparison_skymodel,
+            freq=150e6,
+            output_root=tmp_path / "sector_1",
+        )
+    assert result == {}, (
+        "Expected an empty result when there are no matches between the input catalog and the survey"
+    )
+    assert (
+        "The photometry check with the TEST_SURVEY catalog could not be done due to insufficient matches. Skipping this survey..."
+        in caplog.text
+    )
+
+
+def test_check_photometry_expected_plots(
+    observation,
+    input_catalog_fits,
+    mock_full_photometry_table,
+    selected_sky_model_path,
+    monkeypatch,
+    tmp_path,
+):
+    """
+    Test that check_photometry generates the expected diagnostic plots for a given survey.
+    """
+    survey = "TEST_SURVEY"
+    original_table_read = Table.read
+
+    def patched_table_read(*args, **kwargs):
+        if args and str(args[0]) == str(input_catalog_fits):
+            return mock_full_photometry_table
+        return original_table_read(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.Table.read",
+        patched_table_read,
+    )
+    comparison_skymodel = fits_to_makesourcedb(
+        mock_full_photometry_table,
+        150e6,
+        flux_colname="Total_flux",
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.load_photometry_surveys",
+        lambda *args, **kwargs: {"USER_SUPPLIED": comparison_skymodel},
+    )
+    monkeypatch.chdir(tmp_path)
+    result = check_photometry(
+        obs=observation,
+        input_catalog=input_catalog_fits,
+        freq=150e6,
+        min_number=1,
+        comparison_skymodel=str(selected_sky_model_path),
+        comparison_surveys=[survey],
+        output_root=tmp_path / "sector_1",
+    )
+    expected_plot_files = [
+        "sector_1.flux_ratio_vs_distance_USER_SUPPLIED.pdf",
+        "sector_1.flux_ratio_vs_flux_USER_SUPPLIED.pdf",
+        "sector_1.flux_ratio_sky_USER_SUPPLIED.pdf",
+    ]
+    assert all((tmp_path / plot).exists() for plot in expected_plot_files), (
+        "Not all expected plot files were generated"
+    )
+    assert result != {}, (
+        "Expected non-empty result from check_photometry when there are matches between the input catalog and the survey"
+    )
+
+
+def test_filter_skymodel_for_photometry_keeps_expected_sources(
+    mock_full_photometry_table, observation
+):
+    """
+    Test that the filter_skymodel function correctly filters sources.
+    """
+    max_major_axis = 10 / 3600  # 10 arcseconds in degrees (default)
+    freq = 150e6
+    filtered_catalog = filter_skymodel_for_photometry(
+        mock_full_photometry_table, observation, freq, max_major_axis
+    )
+    assert len(filtered_catalog) == len(mock_full_photometry_table), (
+        "Expected all sources to pass the filtering criteria since they are all within the specified limits"
+    )
+
+
+def test_filter_skymodel_for_photometry_filters_out_sources_major_axis(
+    mock_full_photometry_table, observation
+):
+    """
+    Test that the filter_skymodel function correctly filters out sources that do not meet the criteria.
+    """
+    max_major_axis = (
+        0.001 / 3600
+    )  # 0.001 arcseconds in degrees, which is smaller than the DC_Maj of the sources
+    freq = 150e6
+    filtered_catalog = filter_skymodel_for_photometry(
+        mock_full_photometry_table, observation, freq, max_major_axis=max_major_axis
+    )
+    assert len(filtered_catalog) == 0, (
+        "Expected all sources to be filtered out since they do not meet the specified criteria"
+    )
+
+
+def test_compute_facet_rms_noise_summarizes_each_facet(monkeypatch, tmp_path):
+    region_file = tmp_path / "facets.reg"
+    region_file.write_text("region")
+    facets = [SimpleNamespace(name="facet_0"), SimpleNamespace(name="facet_1")]
+
+    class FakeRmsImage:
+        def __init__(self, arrays):
+            self.arrays = arrays
+
+        def select_facet(self, facet):
+            return np.array(self.arrays[facet.name], dtype=float)
+
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.read_ds9_region_file",
+        lambda path: facets,
+    )
+
+    facets_rms = compute_facet_rms_noise(
+        region_file,
+        FakeRmsImage({"facet_0": [[1.0, 2.0]], "facet_1": [[3.0, np.nan]]}),
+        FakeRmsImage({"facet_0": [[2.0, 4.0]], "facet_1": [[6.0, np.nan]]}),
+    )
+
+    assert facets_rms["facet_0"]["flat_noise"] == {
+        "mean": 1.5,
+        "median": 1.5,
+        "std": 0.5,
+        "min": 1.0,
+        "max": 2.0,
+    }
+    assert facets_rms["facet_0"]["beam_corrected"]["mean"] == 3.0
+    assert facets_rms["facet_1"]["flat_noise"]["mean"] == 3.0
+    assert facets_rms["facet_1"]["beam_corrected"]["max"] == 6.0
+
+
+def test_compute_facet_rms_noise_skips_facets_outside_images(monkeypatch, tmp_path, caplog):
+    region_file = tmp_path / "facets.reg"
+    region_file.write_text("region")
+    facets = [SimpleNamespace(name="inside"), SimpleNamespace(name="outside")]
+
+    class FakeRmsImage:
+        def select_facet(self, facet):
+            if facet.name == "outside":
+                raise EmptyFacetSelectionError("outside image")
+            return np.array([[1.0, 2.0]])
+
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.read_ds9_region_file",
+        lambda path: facets,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        facets_rms = compute_facet_rms_noise(region_file, FakeRmsImage(), FakeRmsImage())
+
+    assert list(facets_rms) == ["inside"]
+    assert "Skipping RMS metrics for facet 'outside'" in caplog.text
+
+
+def test_compute_facet_rms_noise_returns_empty_for_missing_region(tmp_path):
+    assert compute_facet_rms_noise(tmp_path / "missing.reg", object(), object()) == {}
+    assert compute_facet_rms_noise(None, object(), object()) == {}
+    assert compute_facet_rms_noise("none", object(), object()) == {}
+
+
+def test_compute_facet_rms_noise_returns_empty_for_invalid_region(monkeypatch, tmp_path, caplog):
+    region_file = tmp_path / "invalid.reg"
+    region_file.write_text("not a valid region file")
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.read_ds9_region_file",
+        lambda path: (_ for _ in ()).throw(ValueError("invalid region")),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        facets_rms = compute_facet_rms_noise(region_file, object(), object())
+
+    assert facets_rms == {}
+    assert "Could not determine per-facet RMS diagnostics" in caplog.text
+
+
+@pytest.fixture
+def image_diagnostics_inputs(monkeypatch, tmp_path):
+    """Provide small image diagnostics inputs without requiring Measurement Sets."""
+
+    class FakeObservation:
+        timepersample = 2.0
+        ra = 12.0
+        dec = 34.0
+
+        def __init__(self, ms, starttime_mjd=None, endtime_mjd=None):
+            self.ms = ms
+            self.starttime_mjd = starttime_mjd
+            self.endtime_mjd = endtime_mjd
+
+    class FakeFITSImage:
+        def __init__(self, filename):
+            self.filename = filename
+            is_true_sky = "true_sky" in str(filename)
+            is_rms = "rms" in str(filename)
+            self.max_value = 20.0 if is_true_sky else 10.0
+            self.min_value = 4.0 if is_true_sky else 2.0
+            self.mean_value = 6.0 if is_true_sky else 3.0
+            self.median_value = 5.5 if is_true_sky else 2.5
+            self.freq = 150e6
+            self.beam = [0.1, 0.1, 0.0]
+            value = 2.0 if is_rms else 8.0
+            self.img_data = np.full((2, 2), value)
+
+    diagnostics_file = tmp_path / "input.image_diagnostics.json"
+    diagnostics_file.write_text(json.dumps({"existing": 1}))
+    region_file = tmp_path / "facets.reg"
+    region_file.write_text("region")
+
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.FITSImage",
+        FakeFITSImage,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.Observation",
+        FakeObservation,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.misc.convert_mvt2mjd",
+        lambda value: 100.0,
+    )
+    monkeypatch.setattr(
+        "rapthor.execution.image.diagnostic_calculation.misc.calc_theoretical_noise",
+        lambda obs_list, use_lotss_estimate=True: (0.123, 0.456),
+    )
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    return {
+        "flat_noise_image": "flat_noise_image.fits",
+        "flat_noise_rms_image": "flat_noise_rms_image.fits",
+        "true_sky_image": "true_sky_image.fits",
+        "true_sky_rms_image": "true_sky_rms_image.fits",
+        "input_catalog": "input_catalog.fits",
+        "obs_ms": ["obs.ms"],
+        "obs_starttime": ["2024-01-01T00:00:00"],
+        "obs_ntimes": [1],
+        "diagnostics_file": str(diagnostics_file),
+        "output_root": str(work_dir / "sector_1"),
+        "facet_region_file": str(region_file),
+        "allow_internet_access": False,
+    }
+
+
+def test_calculate_image_diagnostics_writes_facets_rms_when_region_is_valid(
+    mocker, image_diagnostics_inputs
+):
+    """The full diagnostics JSON gains facets_rms only when facet stats are available."""
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.check_photometry",
+        return_value={"photometry_metric": 1.0},
+    )
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.check_astrometry",
+        return_value={"astrometry_metric": 2.0},
+    )
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.compute_facet_rms_noise",
+        return_value={"facet_0": {"flat_noise": {"mean": 2.0}}},
+    )
+
+    calculate_image_diagnostics(**image_diagnostics_inputs)
+
+    output_root = image_diagnostics_inputs["output_root"]
+    diagnostics = json.loads(Path(f"{output_root}.image_diagnostics.json").read_text())
+    assert diagnostics["existing"] == 1
+    assert diagnostics["photometry_metric"] == 1.0
+    assert diagnostics["astrometry_metric"] == 2.0
+    assert diagnostics["theoretical_rms"] == 0.123
+    assert diagnostics["unflagged_data_fraction"] == 0.456
+    assert diagnostics["facets_rms"] == {"facet_0": {"flat_noise": {"mean": 2.0}}}
+
+
+@pytest.mark.disable_socket
+def test_calculate_image_diagnostics_finishes_when_all_survey_loads_fail(
+    image_diagnostics_inputs, mock_comparison_skymodel_table, mocker
+):
+    """Unavailable photometry catalogues must not prevent other diagnostics being saved."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    image_diagnostics_inputs["allow_internet_access"] = True
+    catalog = mock_comparison_skymodel_table
+    mocker.patch(f"{module}.Table.read", return_value=catalog)
+    mocker.patch(f"{module}.filter_skymodel_for_photometry", return_value=catalog)
+    load = mocker.patch(
+        f"{module}.lsmtool.load", side_effect=OSError("Format line not understood.")
+    )
+    astrometry = mocker.patch(f"{module}.check_astrometry", return_value={"meanRAOffsetDeg": 0.0})
+    mocker.patch(f"{module}.compute_facet_rms_noise", return_value={})
+
+    calculate_image_diagnostics(**image_diagnostics_inputs)
+
+    assert [call.args[0] for call in load.call_args_list] == ["TGSS", "LOTSS", "NVSS"]
+    astrometry.assert_called_once()
+    output_root = image_diagnostics_inputs["output_root"]
+    diagnostics = json.loads(Path(f"{output_root}.image_diagnostics.json").read_text())
+    assert diagnostics["existing"] == 1
+    assert diagnostics["theoretical_rms"] == 0.123
+    assert diagnostics["meanRAOffsetDeg"] == 0.0
+    assert not any(key.startswith("meanRatio") for key in diagnostics)
+
+
+@pytest.mark.parametrize("astrometry_fails", [False, True])
+def test_calculate_image_diagnostics_keeps_photometry_plots_in_work_directory(
+    astrometry_fails,
+    image_diagnostics_inputs,
+    mock_comparison_skymodel_table,
+    monkeypatch,
+    mocker,
+    tmp_path,
+):
+    """Photometry outputs belong to the work directory, even if a later step fails."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    launch_dir = tmp_path / "launch"
+    launch_dir.mkdir()
+    unrelated_pdf = launch_dir / "unrelated.pdf"
+    unrelated_pdf.write_text("user document")
+    monkeypatch.chdir(launch_dir)
+    output_root = image_diagnostics_inputs["output_root"]
+    catalog_path = tmp_path / "catalog.fits"
+    mock_comparison_skymodel_table.write(catalog_path, format="fits")
+    image_diagnostics_inputs["input_catalog"] = str(catalog_path)
+    mocker.patch(
+        f"{module}.filter_skymodel_for_photometry", side_effect=lambda catalog, *args: catalog
+    )
+    mocker.patch(
+        f"{module}.load_photometry_surveys",
+        return_value={"TGSS": mocker.Mock(), "LOTSS": mocker.Mock()},
+    )
+
+    def compare(comparison_skymodel, *, name2, outDir=".", **kwargs):
+        assert Path.cwd() == launch_dir
+        for name in (
+            "flux_ratio_sky",
+            "flux_ratio_vs_distance",
+            "flux_ratio_vs_flux",
+            "positional_offsets_sky",
+        ):
+            (Path(outDir) / f"{name}.pdf").write_text(name2)
+        (Path(outDir) / "stats.txt").write_text("comparison statistics")
+        return {"meanRatio": 1.0, "stdRatio": 0.1, "meanClippedRatio": 1.0, "stdClippedRatio": 0.1}
+
+    mocker.patch(f"{module}.fits_to_makesourcedb", return_value=SimpleNamespace(compare=compare))
+    mocker.patch(f"{module}.compute_facet_rms_noise", return_value={})
+    astrometry = mocker.patch(f"{module}.check_astrometry", return_value={})
+    if astrometry_fails:
+        astrometry.side_effect = RuntimeError("Astrometry failed")
+        with pytest.raises(RuntimeError, match="Astrometry failed"):
+            calculate_image_diagnostics(**image_diagnostics_inputs)
+    else:
+        calculate_image_diagnostics(**image_diagnostics_inputs)
+
+    assert sorted(path.name for path in launch_dir.iterdir()) == ["unrelated.pdf"]
+    assert unrelated_pdf.read_text() == "user document"
+    expected_plots = {
+        Path(f"{output_root}.{name}_{survey}.pdf")
+        for name in ("flux_ratio_sky", "flux_ratio_vs_distance", "flux_ratio_vs_flux")
+        for survey in ("TGSS", "LOTSS")
+    }
+    for path in expected_plots:
+        assert path.read_text() == ("LOTSS" if path.stem.endswith("LOTSS") else "TGSS")
+    work_outputs = set(Path(output_root).parent.iterdir())
+    if not astrometry_fails:
+        work_outputs.remove(Path(f"{output_root}.image_diagnostics.json"))
+    assert work_outputs == expected_plots
+
+
+def test_compare_photometry_survey_isolates_overlapping_sectors(monkeypatch, mocker, tmp_path):
+    """Overlapping comparisons must not overwrite each other's intermediate plots."""
+    module = "rapthor.execution.image.diagnostic_calculation"
+    launch_dir = tmp_path / "launch"
+    launch_dir.mkdir()
+    monkeypatch.chdir(launch_dir)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    barrier = Barrier(2)
+
+    def compare(skymodel, *, outDir=".", **kwargs):
+        assert Path.cwd() == launch_dir
+        for name in (
+            "flux_ratio_sky",
+            "flux_ratio_vs_distance",
+            "flux_ratio_vs_flux",
+            "positional_offsets_sky",
+        ):
+            (Path(outDir) / f"{name}.pdf").write_text(skymodel.sector_name)
+        barrier.wait(timeout=10)
+        return {"meanRatio": 1.0, "stdRatio": 0.1, "meanClippedRatio": 1.0, "stdClippedRatio": 0.1}
+
+    mocker.patch(f"{module}.fits_to_makesourcedb", return_value=SimpleNamespace(compare=compare))
+
+    models = {name: mocker.Mock(sector_name=name) for name in ("sector_1", "sector_2")}
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(
+                compare_photometry_survey, name, "TGSS", model, 150e6, output_root=work_dir / name
+            )
+            for name, model in models.items()
+        ]
+        for future in futures:
+            assert future.result()["meanRatio_TGSS"] == 1.0
+
+    expected_plots = {
+        work_dir / f"{sector}.{name}_TGSS.pdf": sector
+        for sector in models
+        for name in ("flux_ratio_sky", "flux_ratio_vs_distance", "flux_ratio_vs_flux")
+    }
+    assert set(work_dir.iterdir()) == set(expected_plots)
+    for path, sector in expected_plots.items():
+        assert path.read_text() == sector
+    assert not list(launch_dir.iterdir())
+
+
+@pytest.mark.parametrize("comparison_fails", [False, True])
+def test_compare_photometry_survey_cleans_up_unsuccessful_comparison(
+    comparison_fails, monkeypatch, mocker, tmp_path
+):
+    """Partial comparison outputs are discarded on no matches or an exception."""
+    launch_dir = tmp_path / "launch"
+    launch_dir.mkdir()
+    monkeypatch.chdir(launch_dir)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    def compare(*args, outDir=".", **kwargs):
+        (Path(outDir) / "flux_ratio_sky.pdf").write_text("partial plot")
+        (Path(outDir) / "stats.txt").write_text("partial statistics")
+        if comparison_fails:
+            raise RuntimeError("Comparison failed")
+        return None
+
+    mocker.patch(
+        "rapthor.execution.image.diagnostic_calculation.fits_to_makesourcedb",
+        return_value=SimpleNamespace(compare=compare),
+    )
+    inputs = (None, "TGSS", mocker.Mock(), 150e6, work_dir / "sector_1")
+    if comparison_fails:
+        with pytest.raises(RuntimeError, match="Comparison failed"):
+            compare_photometry_survey(*inputs)
+    else:
+        assert compare_photometry_survey(*inputs) == {}
+
+    assert not list(launch_dir.iterdir())
+    assert not list(work_dir.iterdir())

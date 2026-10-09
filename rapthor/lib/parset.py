@@ -6,6 +6,7 @@ import ast
 import configparser
 import glob
 import logging
+import math
 import os
 from collections.abc import Sequence
 from importlib import resources
@@ -99,7 +100,7 @@ class Parset:
 
         # Deprecated options are hard-coded below. Each deprecated option can have
         # zero or more suggestions for alternative options.
-        self.deprecated_options = {"cluster": {"dir_local": {"local_scratch_dir"}}}
+        self.deprecated_options = {}
 
         # Sanity check. Ensure that all required sections and options are also allowed.
         assert self.required_sections <= self.allowed_sections, "%s <= %s" % (
@@ -325,10 +326,19 @@ class Parset:
             )
             options["solveralgorithm"] = "directioniterative"
 
-        if options["use_image_based_predict"] and (
+        if options["use_image_based_predict"] and options["use_wsclean_predict"]:
+            log.warning(
+                "Options use_image_based_predict and use_wsclean_predict are mutually "
+                "exclusive. Turning off use_image_based_predict."
+            )
+            options["use_image_based_predict"] = False
+
+        if (options["use_image_based_predict"] or options["use_wsclean_predict"]) and (
             options["bda_timebase"] > 0 or options["bda_frequencybase"] > 0
         ):
-            log.warning("Switching off BDA during solving, since image-based predict is activated.")
+            log.warning(
+                "Switching off BDA during solving, since image-based prediction is activated."
+            )
             options["bda_timebase"] = 0
             options["bda_frequencybase"] = 0
 
@@ -338,6 +348,7 @@ class Parset:
         for opt, valid_values in {
             "idg_mode": ("cpu", "gpu", "hybrid"),
             "dde_method": ("single", "full"),
+            "model_mosaic_method": ("wsclean", "sparse_fits"),
             "pol_combine_method": ("link", "join"),
         }.items():
             if options[opt] not in valid_values:
@@ -405,7 +416,6 @@ class Parset:
 
         for opt, valid_values in {
             "batch_system": ("single_machine", "slurm", "slurm_static"),
-            "cwl_runner": ("cwltool", "streamflow", "toil"),
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(
@@ -426,10 +436,14 @@ class Parset:
             options["max_threads"] = cpu_count
 
         max_threads = options["max_threads"]
+        if not options["filter_skymodel_ncores"]:
+            options["filter_skymodel_ncores"] = max_threads
+        if options["filter_skymodel_ncores"] < 1:
+            raise ValueError("The option 'filter_skymodel_ncores' must be greater than 0")
         if not options["deconvolution_threads"]:
             options["deconvolution_threads"] = max(1, min(14, max_threads * 2 // 5))
-        if not options["parallel_gridding_threads"]:
-            options["parallel_gridding_threads"] = max(1, min(6, max_threads * 2 // 5))
+        if not options["parallel_gridding_tasks"]:
+            options["parallel_gridding_tasks"] = max(1, max_threads // 8)
 
     def read_file(self, parset_file):
         """
@@ -535,7 +549,7 @@ def parset_read(parset_file, use_log_file=True):
         set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
     log.info("=========================================================")
     log.info("Rapthor version %s", __version__)
-    log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
+    log.info("Execution backend is Prefect/Dask")
     log.info("Working directory is %s", parset_dict["dir_working"])
 
     # Get the input MS files; it can either be a string, or a list of strings
@@ -664,6 +678,25 @@ def check_and_adjust_skymodel_settings(parset_dict):
             raise ValueError(
                 "Reference frequencies for normalization sky models must be an ordered list of the"
                 "same length as the list of normalization sky models."
+            )
+        try:
+            reference_frequencies = [
+                float(frequency) for frequency in normalization_reference_frequencies
+            ]
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "Reference frequencies for normalization sky models must be numeric."
+            ) from error
+        if any(
+            frequency <= 0 or not math.isfinite(frequency) for frequency in reference_frequencies
+        ):
+            raise ValueError(
+                "Reference frequencies for normalization sky models must be positive finite values."
+            )
+        if len(set(reference_frequencies)) < 2:
+            raise ValueError(
+                "Reference frequencies for normalization sky models must include at least two "
+                "distinct frequencies for spectral-index fitting."
             )
 
     # Check if we need to access the internet to get any skymodels and if we

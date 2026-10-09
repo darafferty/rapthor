@@ -1,9 +1,10 @@
+from pathlib import Path
+
 import pytest
 
-from tests.cwl.cwl_mock import mocked_cwl_execution
+from rapthor.lib.records import file_record
 from rapthor.lib.strategy import set_selfcal_strategy
-
-from rapthor.operations.image import Image
+from rapthor.operations.image.base import Image
 from rapthor.operations.mosaic import Mosaic
 
 """
@@ -15,13 +16,28 @@ Currently the execution in process of a step has the following 3 stages:
 2. set_parset_parameters: where the parset parameters are set based on
    the field and the index
 3. run: where the actual execution of the operation happens, which
-   includes the execution of the CWL workflow.
-During the run stage, the CWL execution is mocked to return the expected
+   includes the execution of the Prefect/Dask flow.
+During the run stage, the image flow is mocked to return the expected
 output for the Image operation. Upon successful completion, the Image
-operation sets various attributes in the field using the mocked CWL output.
+operation sets various attributes in the field using the mocked flow output.
 The Mosaic operation uses the updated field to set its input parameters
 and parset parameters.
 """
+
+
+def _mock_image_flow_outputs(pipeline_working_dir, expected_outputs):
+    def materialize(value):
+        if isinstance(value, list):
+            return [materialize(item) for item in value]
+        path = pipeline_working_dir / value
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}" if value.endswith(".json") else "image")
+        return file_record(path)
+
+    outputs = {key: materialize(value) for key, value in expected_outputs.items()}
+    outputs.setdefault("sector_diagnostic_plots", [[]])
+    return outputs
+
 
 @pytest.fixture
 def field_I_no_predict(field):
@@ -39,7 +55,7 @@ def field_I_no_predict(field):
     field.update(steps[0], index=1, final=False)
     # The field update will set the predict flag to True, override it here
     field.do_predict = False
-    field.image_pol = 'I'
+    field.image_pol = "I"
     field.skip_final_major_iteration = True
     return field
 
@@ -51,23 +67,15 @@ def test_image_I_to_mosaic(field_I_no_predict, expected_image_output, monkeypatc
     1. Image (with predict disabled)
     2. Mosaic (with the output of the Image operation as input)
     """
-    # Patch the CWL execution to return the expected output for the Image operation
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env, expected_image_output),
-        raising=False
-    )
     image = Image(field=field_I_no_predict, index=1)
-    image.set_input_parameters()
-    image.set_parset_parameters()
+    image_outputs = _mock_image_flow_outputs(
+        Path(image.pipeline_working_dir), expected_image_output
+    )
+    monkeypatch.setattr(
+        "rapthor.operations.image.base.image_flow", lambda *args, **kwargs: image_outputs
+    )
     image.run()
     # Now create and run the Mosaic operation (after sector image attributes are set)
-    monkeypatch.setattr(
-        "rapthor.lib.cwlrunner.BaseCWLRunner.execute",
-        lambda self, args, env: mocked_cwl_execution(self, args, env),
-        raising=False
-    )
-
     mosaic = Mosaic(field=image.field, index=1)
     mosaic.set_input_parameters()
     mosaic.set_parset_parameters()

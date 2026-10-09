@@ -1,8 +1,14 @@
+import shutil
 from pathlib import Path
 
+import casacore.tables as pt
+import lsmtool
+import numpy as np
 import pytest
+from matplotlib import pyplot as plt
 
-from rapthor.lib.field import Field
+from rapthor.lib.field import Field, _ensure_skymodel_write_units
+from rapthor.lib.observation import Observation
 
 
 @pytest.fixture
@@ -17,8 +23,50 @@ def field(parset_for_field_test):
     yield field
 
 
+@pytest.fixture
+def calibration_strategy_field():
+    field = Field.__new__(Field)
+    field.calibration_strategy = None
+    return field
+
+
 def test_scan_observations(field):
     assert field.fwhm_ra_deg == 4.500843683229519
+
+
+def test_scan_observations_uses_mean_station_diameter(
+    parset_for_field_test,
+    test_ms,
+    tmp_path,
+):
+    second_ms = tmp_path / "different_diameter.ms"
+    shutil.copytree(test_ms, second_ms)
+
+    with pt.table(f"{second_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
+        channel_freq = table.getcol("CHAN_FREQ")
+        channel_width = table.getcol("CHAN_WIDTH")
+        frequency_offset = float(
+            channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max()
+        )
+        table.putcol("CHAN_FREQ", channel_freq + frequency_offset)
+        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + frequency_offset)
+
+    with pt.table(f"{test_ms}::ANTENNA", ack=False) as table:
+        first_diameter = float(table.getcol("DISH_DIAMETER")[0])
+    with pt.table(f"{second_ms}::ANTENNA", readonly=False, ack=False) as table:
+        table.putcol("DISH_DIAMETER", table.getcol("DISH_DIAMETER") * 2.0)
+
+    parset = parset_for_field_test.copy()
+    parset["mss"] = [test_ms, str(second_ms)]
+    mixed_field = Field(parset, minimal=True)
+
+    expected_diameter = 1.5 * first_diameter
+    mean_reference_frequency = np.mean(
+        [observation.referencefreq for observation in mixed_field.full_observations]
+    )
+    expected_fwhm_ra = 1.1 * (3.0e8 / mean_reference_frequency) / expected_diameter * 180.0 / np.pi
+    assert mixed_field.diam == pytest.approx(expected_diameter)
+    assert mixed_field.fwhm_ra_deg == pytest.approx(expected_fwhm_ra)
 
 
 def test_regular_frequency_spacing(field):
@@ -52,9 +100,62 @@ def test_chunk_observations_high_el(field):
     full_obs = field.full_observations[0]
     obs = field.imaging_sectors[0].observations[0]
     chunked_starttime = full_obs.starttime + 2 * full_obs.timepersample
-    chunked_endtime = full_obs.endtime - 3 * full_obs.timepersample
+    chunked_endtime = full_obs.endtime - 2 * full_obs.timepersample
+    assert obs.numsamples == 2
     assert obs.starttime == chunked_starttime
     assert obs.endtime == chunked_endtime
+
+
+@pytest.mark.parametrize(
+    "num_samples, expected_sizes",
+    [
+        (3594, [1198, 1198, 1198]),
+        (3595, [1198, 1198, 1199]),
+        (3596, [1198, 1199, 1199]),
+        (4791, [1597, 1597, 1597]),
+    ],
+)
+def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expected_sizes):
+    obs = field.full_observations[0]
+    obs.endtime += (num_samples - obs.numsamples) * obs.timepersample
+    obs.numsamples = num_samples
+    obs.data_fraction = 1.0
+    create_observation = mocker.patch("rapthor.lib.observation.Observation")
+
+    field.chunk_observations(1198 * obs.timepersample, prefer_high_el_periods=False)
+
+    boundaries = np.cumsum([0, *expected_sizes])
+    starts = [call.kwargs["starttime"] for call in create_observation.call_args_list]
+    ends = [call.kwargs["endtime"] for call in create_observation.call_args_list]
+    assert starts == pytest.approx(
+        obs.starttime + boundaries[:-1] * obs.timepersample, rel=0, abs=0.001
+    )
+    assert ends == pytest.approx(
+        obs.endtime - (num_samples - boundaries[1:]) * obs.timepersample, rel=0, abs=0.001
+    )
+
+
+@pytest.mark.parametrize(
+    "num_samples, max_chunks, expected_sizes",
+    [(5, None, [2, 3]), (6, None, [2, 2, 2]), (6, 2, [3, 3]), (5, 3, [2, 3])],
+)
+def test_chunk_observations_with_real_scan(field, num_samples, max_chunks, expected_sizes):
+    ms_filename = field.full_observations[0].ms_filename
+    with pt.table(ms_filename, ack=False) as table:
+        times = np.unique(table.getcol("TIME"))
+    obs = Observation(ms_filename, starttime=times[0], endtime=times[num_samples - 1])
+    field.full_observations = [obs]
+
+    field.chunk_observations(
+        2 * obs.timepersample, prefer_high_el_periods=False, max_chunks=max_chunks
+    )
+
+    assert [chunk.numsamples for chunk in field.observations] == expected_sizes
+    selected_times = [
+        times[(times >= chunk.starttime) & (times <= chunk.endtime)] for chunk in field.observations
+    ]
+    assert [len(chunk_times) for chunk_times in selected_times] == expected_sizes
+    np.testing.assert_array_equal(np.concatenate(selected_times), times[:num_samples])
 
 
 def test_get_obs_parameters(field):
@@ -77,6 +178,134 @@ def test_define_bright_source_sectors(field):
     assert field.bright_source_sectors == []
 
 
+def test_update_allows_target_number_without_target_flux(field, monkeypatch):
+    captured = {}
+
+    def fake_update_skymodels(index, regroup_model, **kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(field, "update_skymodels", fake_update_skymodels)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+    field.lofar_to_true_flux_ratio = 2.0
+    field.lofar_to_true_flux_std = 0.1
+    field.apply_normalizations = False
+
+    field.update(
+        {
+            "do_calibrate": True,
+            "calibration_strategy": {"di": ["fast_phase"]},
+            "regroup_model": True,
+            "target_flux": None,
+            "max_directions": 1,
+            "max_distance": None,
+            "peel_bright_sources": False,
+            "peel_outliers": False,
+            "reweight": False,
+            "compress_selfcal_images": False,
+            "compress_final_images": False,
+        },
+        index=2,
+    )
+
+    assert captured["target_flux"] is None
+    assert captured["target_number"] == 1
+
+
+def test_update_skymodels_allows_target_number_without_target_flux(parset_for_field_test):
+    field = Field(parset_for_field_test)
+
+    field.update_skymodels(1, True, target_flux=None, target_number=1)
+
+    assert field.target_flux is not None
+    assert len(field.calibrator_patch_names) == 1
+
+
+def test_update_skymodels_ignores_empty_apparent_sky_without_patches(field, tmp_path, monkeypatch):
+    empty_skymodel = "FORMAT = Name, Type, Ra, Dec, I\n"
+    true_sky = tmp_path / "sector_1.true_sky.txt"
+    apparent_sky = tmp_path / "sector_1.apparent_sky.txt"
+    true_sky.write_text(empty_skymodel, encoding="utf-8")
+    apparent_sky.write_text(empty_skymodel, encoding="utf-8")
+
+    class Sector:
+        name = "sector_1"
+        image_skymodel_file_true_sky = true_sky
+        image_skymodel_file_apparent_sky = apparent_sky
+
+    class StopAfterSkyModelUpdate(Exception):
+        """Stop after make_skymodels captures the apparent-sky argument."""
+
+    captured = {}
+
+    def fake_make_skymodels(skymodel_true_sky, **kwargs):
+        captured.update(kwargs)
+        raise StopAfterSkyModelUpdate
+
+    field.imaging_sectors = [Sector()]
+    field.imaged_sources_only = True
+    monkeypatch.setattr(field, "make_skymodels", fake_make_skymodels)
+
+    with pytest.raises(StopAfterSkyModelUpdate):
+        field.update_skymodels(6, False)
+
+    assert captured["skymodel_apparent_sky"] is None
+
+
+def test_update_skymodels_handles_empty_previous_cycle_sky_model(field, tmp_path, monkeypatch):
+    empty_skymodel = "FORMAT = Name, Type, Ra, Dec, I\n"
+    true_sky = tmp_path / "sector_1.true_sky.txt"
+    apparent_sky = tmp_path / "sector_1.apparent_sky.txt"
+    true_sky.write_text(empty_skymodel, encoding="utf-8")
+    apparent_sky.write_text(empty_skymodel, encoding="utf-8")
+
+    class Sector:
+        name = "sector_1"
+        image_skymodel_file_true_sky = true_sky
+        image_skymodel_file_apparent_sky = apparent_sky
+
+        def __init__(self):
+            self.region_calls = []
+
+        def make_vertices_file(self):
+            self.region_calls.append(("vertices", None))
+
+        def make_region_file(self, region_file):
+            self.region_calls.append(("region", region_file))
+
+    sector = Sector()
+    field.imaging_sectors = [sector]
+    field.imaged_sources_only = True
+    monkeypatch.setattr(field, "plot_overview", lambda *args, **kwargs: None)
+
+    field.update_skymodels(6, False)
+
+    assert field.calibrator_patch_names == []
+    assert field.calibrator_fluxes == []
+    assert field.calibrator_positions == {}
+    assert field.num_patches == 0
+    assert field.get_calibration_radius() == 0.0
+    assert sector.region_calls == [
+        ("vertices", None),
+        ("region", str(Path(field.working_dir) / "regions" / "sector_1_region_ds9.reg")),
+    ]
+    assert field.outlier_sectors == []
+    assert field.bright_source_sectors == []
+    assert field.predict_sectors == []
+
+
+def test_empty_skymodel_write_units_are_restored(tmp_path):
+    empty_skymodel = tmp_path / "empty_skymodel.txt"
+    empty_skymodel.write_text("FORMAT = Name, Type, Ra, Dec, I\n", encoding="utf-8")
+
+    skymodel = lsmtool.load(str(empty_skymodel))
+    _ensure_skymodel_write_units(skymodel)
+
+    output_skymodel = tmp_path / "output_skymodel.txt"
+    skymodel.write(str(output_skymodel), clobber=True)
+
+    assert output_skymodel.read_text(encoding="utf-8").startswith("FORMAT = Name, Type, Ra, Dec, I")
+
+
 def test_find_intersecting_sources(field):
     iss = field.find_intersecting_sources()
     assert iss[0].area == pytest.approx(18.37996802132365)
@@ -93,8 +322,10 @@ def test_plot_overview_patches(field):
     assert plot_path.exists()
 
     plot_path.unlink()  # Remove existing plot to test creation
+    plt.close("all")
     field.plot_overview(plot_filename, show_calibration_patches=True)
     assert plot_path.exists()
+    assert plt.get_fignums() == []
 
 
 def test_plot_overview_initial(field):
@@ -104,8 +335,10 @@ def test_plot_overview_initial(field):
     assert plot_path.exists()
     plot_path.unlink()  # Remove existing plot to test creation
 
+    plt.close("all")
     field.plot_overview(plot_filename, show_initial_coverage=True)
     assert plot_path.exists()
+    assert plt.get_fignums() == []
 
 
 def test_plot_overview_initial_near_pole(field):
@@ -116,5 +349,116 @@ def test_plot_overview_initial_near_pole(field):
     plot_path.unlink()  # Remove existing plot to test creation
 
     field.dec = 89.5
+    plt.close("all")
     field.plot_overview(plot_filename, show_initial_coverage=True)
     assert plot_path.exists()
+    assert plt.get_fignums() == []
+
+
+def test_set_calibration_strategy_default(calibration_strategy_field):
+    """The default calibration strategy is explicit and ignores legacy flags."""
+    calibration_strategy_field.__dict__.update(
+        {
+            "do_calibrate": True,
+            "do_slowgain_solve": False,
+            "do_fulljones_solve": True,
+        }
+    )
+    calibration_strategy_field.set_calibration_strategy()
+    assert calibration_strategy_field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert calibration_strategy_field._calibration_strategy_defaulted is True
+
+
+def test_set_calibration_strategy_user_provided(calibration_strategy_field):
+    """Test that the calibration strategy is set correctly when provided.
+
+    This captures the behaviour of the pipeline using the merged DD/DI classes.
+    """
+    user_provided_strategy = {
+        "di": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+    }
+    step_dict = {
+        "do_calibrate": True,
+        "calibration_strategy": user_provided_strategy,
+    }
+    calibration_strategy_field.__dict__.update(step_dict)
+    calibration_strategy_field.set_calibration_strategy()
+    assert calibration_strategy_field.calibration_strategy == user_provided_strategy
+    assert calibration_strategy_field._calibration_strategy_defaulted is False
+
+
+@pytest.mark.parametrize(
+    "strategy_items",
+    [
+        [
+            ("di", ["fast_phase", "medium_phase"]),
+            ("dd", ["fast_phase", "medium_phase"]),
+        ],
+        [
+            ("dd", ["fast_phase", "medium_phase"]),
+            ("di", ["fast_phase", "medium_phase"]),
+        ],
+    ],
+)
+def test_strategy_preserves_top_level_order(calibration_strategy_field, strategy_items):
+    """Test that the order of the top-level keys in the calibration strategy is preserved when set."""
+    user_provided_strategy = dict(strategy_items)
+    calibration_strategy_field.__dict__.update(
+        {
+            "do_calibrate": True,
+            "calibration_strategy": user_provided_strategy,
+        }
+    )
+    calibration_strategy_field.set_calibration_strategy()
+
+    assert list(calibration_strategy_field.calibration_strategy.items()) == strategy_items
+
+
+@pytest.mark.parametrize("didd_order", [("di", "dd"), ("dd", "di")])
+def test_set_calibration_strategy_preserves_order_of_di_vs_dd(
+    calibration_strategy_field, didd_order
+):
+    """Test that the calibration strategy preserves the order of DI vs DD keys."""
+    user_provided_strategy = {
+        didd_order[0]: ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+        didd_order[1]: ["fast_phase", "medium_phase", "slow_gains", "full_jones"],
+    }
+    step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
+    calibration_strategy_field.__dict__.update(step_dict)
+    calibration_strategy_field.set_calibration_strategy()
+    assert list(calibration_strategy_field.calibration_strategy.keys()) == list(
+        user_provided_strategy.keys()
+    )
+    assert calibration_strategy_field.calibration_strategy == user_provided_strategy
+
+
+@pytest.mark.parametrize(
+    "solve_order",
+    [
+        ("fast_phase", "medium_phase", "slow_gains", "full_jones"),
+        ("full_jones", "slow_gains", "medium_phase", "fast_phase"),
+    ],
+)
+def test_set_calibration_strategy_preserves_order_of_solves(
+    calibration_strategy_field, solve_order
+):
+    """Test that the calibration strategy preserves the order of DI vs DD keys."""
+    user_provided_strategy = {
+        "di": list(solve_order),
+        "dd": list(solve_order),
+    }
+    step_dict = {"do_calibrate": True, "calibration_strategy": user_provided_strategy}
+    calibration_strategy_field.__dict__.update(step_dict)
+    calibration_strategy_field.set_calibration_strategy()
+    assert list(calibration_strategy_field.calibration_strategy.keys()) == list(
+        user_provided_strategy.keys()
+    )
+    for key in user_provided_strategy.keys():
+        assert list(calibration_strategy_field.calibration_strategy[key]) == list(
+            user_provided_strategy[key]
+        )
+    assert calibration_strategy_field.calibration_strategy == user_provided_strategy

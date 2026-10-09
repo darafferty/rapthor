@@ -1,0 +1,6 @@
+/* Let inline code wrap inside tables marked with ".. rst-class:: wrap-code",
+   so that tables with long file and function names fit the page width. */
+table.wrap-code span.pre {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}

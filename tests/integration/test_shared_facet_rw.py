@@ -9,7 +9,18 @@ from .utils import update_parset_path
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "shared_facet_rw", [True, False], ids=["shared_facet_rw_true", "shared_facet_rw_false"]
+    "shared_facet_rw",
+    [
+        pytest.param(
+            True,
+            marks=pytest.mark.xfail(
+                run=False,
+                reason="Serial WSClean 3.7 aborts when shared-facet read/write flags are used.",
+            ),
+            id="shared_facet_rw_true",
+        ),
+        pytest.param(False, id="shared_facet_rw_false"),
+    ],
 )
 @pytest.mark.parametrize(
     "generated_parset_path",

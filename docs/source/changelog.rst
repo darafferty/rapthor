@@ -3,6 +3,51 @@
 Changelog
 =========
 
+Version 3.0 (unreleased)
+------------------------
+
+This release changes the way in which Rapthor runs the processing. The CWL
+workflows and the Toil runner of earlier versions have been replaced by Python
+code that uses Prefect to keep track of the processing and Dask to run it. The
+processing itself is unchanged. See :ref:`upgrading` for what to check in
+existing parsets and strategy files.
+
+    - CWL, Toil, and cwltool are no longer used. Prefect and Dask are
+      installed together with Rapthor, and nothing needs to be set up to use
+      them on a single machine.
+    - A run can be followed in the Prefect and Dask dashboards, which show the
+      state, run time, and log of every step of every operation. Plots of the
+      calibration solutions and the image diagnostics are shown in the Prefect
+      dashboard as well, as are (optionally) previews of the images.
+    - The output of every DP3, WSClean, or other command is written to its own
+      log file in ``dir_working/logs``, and every command that was run is
+      listed, with its run time and resource use, in
+      ``dir_working/logs/commands.jsonl``.
+    - Several steps of an operation can be run at the same time on a single
+      machine (see :term:`local_dask_workers`).
+    - For runs on multiple nodes of a cluster, Rapthor uses a Dask scheduler
+      and workers that are started by the user inside a Slurm job. Rapthor no
+      longer submits Slurm jobs itself.
+    - The :term:`use_container` option is no longer supported. To use a
+      container, run Rapthor itself inside it.
+    - The ``cwl_runner`` and ``dir_local`` options have been removed. Use
+      :term:`local_scratch_dir` instead of ``dir_local``.
+    - The ``plotrapthor`` command has been removed. Solution tables can be
+      plotted with ``python -m rapthor.execution.calibrate.plotting_cli``.
+    - The solves done during calibration, and their order, are set with
+      :term:`calibration_strategy`. The ``do_slowgain_solve`` and
+      ``do_fulljones_solve`` strategy parameters are deprecated.
+    - Frequency BDA during imaging is now enabled by default, with a baseline
+      limit of 20 km. EveryBeam 0.8.3 or later is required to make the
+      primary-beam images in this case.
+    - Rapthor now estimates the memory needed by DP3 for calibration before
+      the run starts and again before each calibration, and logs a warning if
+      it is more than the memory that is available. Setting
+      :term:`fail_on_calibration_oom_risk` stops the run instead.
+    - The calculation of the RMS noise of each facet no longer fails if a
+      facet lies outside of the image.
+
+
 Version 2.1 (2025/12/04)
 ------------------------
 
@@ -122,4 +167,3 @@ Known limitations, to be addressed in future releases, include the following:
     - The use of GPUs is not yet supported except in imaging when using screens. Work is ongoing to add support for GPUs for prediction.
     - Processing times can be very long for large datasets. Considerable effort is being devoted to speeding up the slowest parts of calibration and imaging.
     - Only Stokes I imaging is currently done.
-

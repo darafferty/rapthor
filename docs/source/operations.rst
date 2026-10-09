@@ -3,7 +3,11 @@
 Operations
 ==========
 
-Most of the processing performed by Rapthor is done in "operations," which are sets of steps that are grouped together into CWL workflows. The available operations and the primary data products of each are described in detail below.
+Most of the processing performed by Rapthor is done in "operations," which are
+sets of steps that are grouped together. Each step runs DP3, WSClean or a Python
+script. The available operations and the primary data products of each are
+described in detail below. The steps of each operation, as they appear in the
+logs and in the Prefect dashboard, are listed in :ref:`architecture_tasks`.
 
 
 .. _calibrate:
@@ -12,7 +16,7 @@ Calibrate
 ---------
 
 This operation calibrates the data using the current sky model. It uses a calibration strategy based on that of the `Facet-Selfcal package
-<https://github.com/rvweeren/lofar_facet_selfcal>`_). The exact steps done during calibration depend on the strategy, but essentially there are four main parts:
+<https://github.com/rvweeren/lofar_facet_selfcal>`_. The exact steps done during calibration depend on the strategy (see :term:`calibration_strategy`), but in the default strategy there are four main parts:
 
     1. A phase-only (scalar) solve on short timescales (the "fast" solve, which corrects for ionospheric errors on the longer baselines). A core constraint is used to force all the core stations to have the same solutions.
     2. A phase-only (scalar) solve on medium timescales (the first "medium-fast" solve, which corrects mostly for ionospheric errors on the shorter baselines). Each station is solved for independently.
@@ -35,13 +39,15 @@ Primary products:
         * ``field-solutions-slow-gain.h5`` - the calibration solution table containing the slow solutions  (created if the slow solve was done).
         * ``field-solutions.h5`` - the calibration solution table containing all the fast-, medium-, and slow-solve solutions combined together.
     * In ``plots/calibrate_X``, where ``X`` is the cycle number:
-        * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the files ``fast_scalarphase_dir[Patch_127].png`` and ``medium1_scalarphase_dir[Patch_127].png`` contain the scalar phase solutions (from the fast and first medium-fast solves) for patch 127. If the slow solve was done, additional files should be present with the names ``slow_phase_dir[Patch_127]_polXX.png`` and ``slow_amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization) from the slow solve and ``medium2_scalarphase_dir[Patch_127].png`` from the second medium-fast solve.
+        * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the files ``scalarphase_dir[Patch_127].png`` and ``medium1_phase_dir[Patch_127].png`` contain the scalar phase solutions (from the fast and first medium-fast solves) for patch 127. If the slow solve was done, additional files should be present with the names ``slow_phase_dir[Patch_127]_polXX.png`` and ``slow_amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization) from the slow solve and ``medium2_phase_dir[Patch_127].png`` from the second medium-fast solve.
 
-If a full-Jones solve was done for a given cycle, then a number of further products are created:
+If a direction-independent solve was done for a given cycle (see :term:`calibration_strategy`), then a number of further products are created:
     * In ``solutions/calibrate_di_X``, where ``X`` is the cycle number:
-        * ``fulljones-solutions.h5`` - the calibration solution table containing full-Jones gain solutions.
+        * ``di-solutions.h5`` - the calibration solution table containing the direction-independent phase and slow-gain solutions combined together (created if a fast-phase, medium-phase, or slow-gain solve was done).
+        * ``di-solutions-fast-phase.h5``, ``di-solutions-medium1-phase.h5``, and ``di-solutions-slow-gain.h5`` - the calibration solution tables of the individual direction-independent solves.
+        * ``fulljones-solutions.h5`` - the calibration solution table containing full-Jones gain solutions (created if a full-Jones solve was done).
     * In ``plots/calibrate_di_X``, where ``X`` is the cycle number:
-        * ``*.png`` files - plots of the full-Jones calibration solutions. Since the full-Jones solve is a direction-independent one, there will be two sets of four plots: the four amplitude plots (for the XX, XY, YX, and YY polarizations) and the four phase plots (again for each polarization).
+        * ``*.png`` files - plots of the direction-independent calibration solutions. The plots of the full-Jones phase solutions are named ``fulljones_phase_*.png``.
 
 .. _predict:
 
@@ -49,6 +55,8 @@ Predict
 -------
 
 This operation predicts visibilities for subtraction. Sources that lie outside of imaged regions are subtracted, as are bright sources inside imaged regions (if desired). This operation will not be run if no prediction or subtraction needs to be done.
+
+To limit the amount of memory needed, the subtraction is done on a part of each observation at a time. The size of each part is set from the memory that is available (and from :term:`mem_per_node_gb`, if set).
 
 When multiple nodes are available, this task is distributed.
 
@@ -60,11 +68,11 @@ Primary products:
     * In ``pipelines/predict_X``, where ``X`` is the cycle number:
         * Temporary measurement sets used for subsequent operations.
 
-If a full-Jones solve was done for a given cycle, then a number of further products are created:
+If a direction-independent solve was done for a given cycle, then a number of further products are created:
     * In ``skymodels/predict_X``, where ``X`` is the cycle number:
-        * ``predict_*_predict_skymodel.txt`` - sky models used for the prediction needed for the full-Jones solve
+        * ``predict_*_predict_skymodel.txt`` - sky models used for the prediction needed for the direction-independent solve
     * In ``pipelines/predict_di_X``, where ``X`` is the cycle number:
-        * Temporary measurement sets used for the full-Jones solve.
+        * Temporary measurement sets used for the direction-independent solve.
 
 
 .. _image:
@@ -76,7 +84,7 @@ This operation images the data. If multiple imaging sectors are used, a mosaic o
 
 Diagnostics for each image are written to the main log (``dir_working/logs/rapthor.log``). The diagnostics can be useful for judging how self calibration is proceeding. They include the following:
 
-    * The minimum and expected RMS noise. The minimum noise is derived from 2-D RMS maps generated by PyBDSF using the non-primary beam corrected image. The expected noise is calculated following the relation found for the LoTSS survey (see `Figure 15 <https://www.aanda.org/articles/aa/full_html/2022/03/aa42484-21/aa42484-21.html#F15>`_ of Shimwell et. al 2022[#f1]_) and includes the effects of elevation. The calculation also takes into account the amount of flagged data.
+    * The minimum and expected RMS noise. The minimum noise is derived from 2-D RMS maps generated by PyBDSF using the non-primary beam corrected image. The expected noise is calculated following the relation found for the LoTSS survey (see `Figure 15 <https://www.aanda.org/articles/aa/full_html/2022/03/aa42484-21/aa42484-21.html#F15>`_ of Shimwell et. al 2022\ [#f1]_) and includes the effects of elevation. The calculation also takes into account the amount of flagged data.
     * The median RMS noise. The median noise is derived from 2-D RMS maps generated by PyBDSF using the non-primary beam corrected image. This median noise, along with the dynamic range (see below) is used to determine whether selfcal has converged (using the :term:`convergence_ratio` and :term:`divergence_ratio` defined by the processing strategy).
     * The dynamic range, calculated as the maximum value in the image divided by the minimum RMS noise, using the non-primary beam corrected image. This quantity gives an estimate of how well focused the brightest source in the image is and is used, along with the median noise (see above) and the number of sources found in the image (see below) to determine whether selfcal has converged.
     * The number of sources found by PyBDSF. As with the noise and dynamic range estimates, the number of sources is used to determine whether selfcal has converged.
@@ -93,19 +101,32 @@ Diagnostics for each image are written to the main log (``dir_working/logs/rapth
 
             If the flux ratios from both the TGSS and LoTSS surveys are unavailable (due to, e.g., lack of coverage or too few source matches), an attempt is made to estimate the ratio using the NVSS survey (at 1.4 GHz). Note, however, that this ratio is especially uncertain due to the large extrapolation required to adjust the LOFAR and NVSS flux densities to a common frequency.
 
+            If a survey catalogue cannot be loaded because of an I/O error (including an invalid catalogue format reported by LSMTool), Rapthor logs the survey name and error, then continues with the remaining surveys. If no catalogue can be loaded, flux-ratio diagnostics are omitted and the other image diagnostics continue. A user-supplied comparison catalogue that cannot be loaded falls back to survey downloads only when internet access is allowed.
+
     * Estimates of the LOFAR-to-Pan-STARRS RA and Dec offsets (calculated as the mean of the LOFAR values minus the Pan-STARRS values, after sigma clipping). These offsets give an indication of the accuracy of the astrometry.
+
+        .. note::
+
+            If an astrometry comparison fails because of an I/O or value error while creating or using the comparison sky model, Rapthor logs a warning and skips that facet's astrometry check. Processing continues, and the mean offsets use only facets with successful comparisons. If no facets yield offsets, the astrometry diagnostics and offset files are omitted.
+
+            If a user-supplied astrometry catalogue cannot be loaded because of an I/O error, Rapthor falls back to Pan-STARRS when internet access is allowed; otherwise, it skips the astrometry check.
 
 Primary products:
     * In ``images/image_X``, where ``X`` is the cycle number:
         * ``field-MFS-image.fits`` - the Stokes I image, uncorrected for the primary beam attenuation (i.e., the apparent-sky, "flat-noise" image)
         * ``field-MFS-image-pb.fits`` - the Stokes I image, corrected for the primary beam attenuation (i.e., the true-sky image)
+        * ``field-MFS-image-pb-ast.fits`` - the Stokes I image, corrected for the primary beam attenuation and astrometry (if faceting is used for imaging)
         * ``field-MFS-residual.fits`` - the Stokes I residual image
         * ``field-MFS-dirty.fits`` - the Stokes I dirty image
-        * ``field-MFS-model.fits`` - the Stokes I model image. This model is the model generated by WSClean. If ``filter_skymodel = True`` (see :term:`filter_skymodel`), then the model used in calibration will be a filtered version of this model. An image of the filtered model can be saved with :term:`save_filtered_model_image` and the filtering mask saved with :term:`save_supplementary_images`.
+        * ``field-MFS-model-pb.fits`` - the Stokes I model image. This model is the model generated by WSClean. If ``filter_skymodel = True`` (see :term:`filter_skymodel`), then the model used in calibration will be a filtered version of this model. An image of the filtered model can be saved with :term:`save_filtered_model_image` and the filtering mask saved with :term:`save_supplementary_images`.
 
         .. note::
 
-            If the filtered model image or other supplementart files are saved (see :term:`save_filtered_model_image` and :term:`save_supplementary_images`), then they will also be placed here. The filtered model image will be named ``field-MFS-apparent_sky.txt.fits``, and the filtering mask will be named ``field-MFS-image-pb.fits.mask.fits``.
+            By default, the images made during the self calibration cycles are compressed with ``fpack`` and have the extension ``.fits.fz`` (see :term:`compress_selfcal_images`). The images of the final cycle are not compressed unless :term:`compress_final_images` is set.
+
+        .. note::
+
+            If the filtered model image or other supplementary files are saved (see :term:`save_filtered_model_image` and :term:`save_supplementary_images`), then they will also be placed here. The filtered model image will be named ``field-MFS-filtered-model.fits.fz``, and the filtering mask will be named ``field-MFS-image-pb.fits.mask.fits``.
 
         .. note::
 
@@ -129,6 +150,7 @@ Primary products:
         * ``sector_Y.flux_ratio_vs_flux_TGSS/NVSS/LoTSS.pdf``, where ``Y`` is the image sector number - plots of the flux ratio vs. Rapthor-derived LOFAR flux density.
         * ``sector_Y.positional_offsets_sky.pdf``, where ``Y`` is the image sector number -  scatter plot of the RA and Dec positional offsets.
         * ``sector_Y.astrometry_offsets.pdf``, where ``Y`` is the image sector number -  plot showing the mean RA and Dec positional offsets for each facet covered by the sector. Arrows indicate the magnitude and direction of the mean offsets.
+        * ``sector_Y.image_diagnostics.json``, where ``Y`` is the image sector number - the image diagnostics described above, in JSON format.
 
         .. note::
 
@@ -148,7 +170,10 @@ Primary products:
 
             If an initial sky model was generated from the input data (see :term:`generate_initial_skymodel`), then there will be two sky model files in ``skymodels/initial_image`` (an apparent-sky model and a true-sky model). These models are used as input for the first cycle of calibration.
 
-    * In ``visibilities/image_X/sector_Y``, where ``X`` is the cycle number and ``Y`` is the image sector number (only if the :term:`save_visibilities` parameter is set to ``True``):
+    * In ``visibilities/image_X/sector_Y``, where ``X`` is the cycle number and ``Y`` is the
+      image sector number (only if the :term:`save_visibilities` or
+      :term:`save_residual_visibilities` parameter is set to ``True``):
+
         * ``*.ms`` - measurement sets used as input to WSClean for imaging. Depending on
           the value of :term:`dde_method`, some or all of the calibration solutions may be
           preapplied: a value of "single" will preapply all solutions, whereas a value of
@@ -156,6 +181,9 @@ Primary products:
           available), since the direction-dependent solutions in those cases are applied
           by WSClean itself. These MS files can be useful for further imaging or self
           calibration outside of Rapthor.
+        * ``*_resid.ms`` - residual Measurement Sets from the final image, generated as
+          DATA minus the WSClean MODEL_DATA column. These are saved only when
+          :term:`save_residual_visibilities` is ``True``.
 
 .. rubric:: Footnotes
 

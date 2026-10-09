@@ -1,6 +1,35 @@
 import configparser
+import json
 import re
+import shlex
+import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
+
+from rapthor.execution.commands import normalize_command
+
+COMMAND_LOG_FILENAME = "commands.jsonl"
+
+
+@dataclass(frozen=True)
+class CommandRecord:
+    """A backend-neutral external command record from a Rapthor integration run."""
+
+    operation: Optional[str]
+    command: list[str]
+    command_string: str
+    source: Path
+    backend: str = "unknown"
+    name: Optional[str] = None
+
+    @property
+    def executable(self):
+        return Path(self.command[0]).name if self.command else ""
+
+    @property
+    def arguments(self):
+        return parse_command_arguments(self.command)
 
 
 def get_working_dir_from_parset(parset_path):
@@ -10,9 +39,115 @@ def get_working_dir_from_parset(parset_path):
     return parset["global"]["dir_working"]
 
 
-def find_step_logs(log_dir, step_name):
-    """Return CWL job logs for a specific step name."""
-    return sorted(Path(log_dir).glob(f"CWLJob_*pipeline_parset.cwl.*{step_name}_*.log"))
+def _operation_from_log_path(log_root, path):
+    try:
+        relative = path.relative_to(log_root)
+    except ValueError:
+        return None
+    return relative.parts[0] if len(relative.parts) > 1 else None
+
+
+def _command_records_from_jsonl(log_path):
+    records = []
+    if not log_path.exists():
+        return records
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        item = json.loads(line)
+        command = normalize_command(item["command"])
+        records.append(
+            CommandRecord(
+                operation=item.get("operation"),
+                command=command,
+                command_string=item.get("command_string") or shlex.join(command),
+                source=log_path,
+                backend=item.get("backend", "prefect"),
+                name=item.get("name"),
+            )
+        )
+    return records
+
+
+def _extract_shell_commands(text):
+    pattern = re.compile(r"^\$ (?P<command>.+?)(?=^\S|\Z)", re.MULTILINE | re.DOTALL)
+    commands = []
+    for match in pattern.finditer(text):
+        command = match.group("command").replace("\\\n", " ").strip()
+        if command:
+            commands.append(command)
+    return commands
+
+
+def _command_records_from_retained_logs(log_root):
+    records = []
+    if not log_root.exists():
+        return records
+    for log_path in sorted(log_root.glob("**/*.log")):
+        text = log_path.read_text(encoding="utf-8", errors="replace")
+        for command_string in _extract_shell_commands(text):
+            command = shlex.split(command_string)
+            records.append(
+                CommandRecord(
+                    operation=_operation_from_log_path(log_root, log_path),
+                    command=command,
+                    command_string=shlex.join(command),
+                    source=log_path,
+                    backend="retained-log",
+                )
+            )
+    return records
+
+
+def collect_command_records(working_dir):
+    """Return external command records from Prefect JSONL and retained shell logs."""
+    working_dir = Path(working_dir)
+    log_root = working_dir / "logs"
+    records = _command_records_from_jsonl(log_root / COMMAND_LOG_FILENAME)
+    records.extend(_command_records_from_retained_logs(log_root))
+    return records
+
+
+def find_command_records(
+    working_dir,
+    *,
+    operation=None,
+    executable=None,
+    contains=None,
+):
+    """Filter backend-neutral command records for integration assertions."""
+    records = collect_command_records(working_dir)
+    if operation is not None:
+        records = [record for record in records if record.operation == operation]
+    if executable is not None:
+        records = [record for record in records if record.executable == executable]
+    if contains is not None:
+        records = [
+            record
+            for record in records
+            if contains in record.command_string or contains in record.command
+        ]
+    return records
+
+
+def first_command_arguments(
+    working_dir,
+    *,
+    operation,
+    executable,
+    contains=None,
+):
+    """Return parsed arguments from the first matching command record."""
+    records = find_command_records(
+        working_dir,
+        operation=operation,
+        executable=executable,
+        contains=contains,
+    )
+    assert records, f"Expected command {executable!r} for operation {operation!r}" + (
+        "" if contains is None else f" containing {contains!r}"
+    )
+    return records[0].arguments
 
 
 def update_parset_path(parset_path, param_dict):
@@ -52,30 +187,23 @@ def get_wsclean_output_mtimes(image_pipeline_dir):
 
 
 def make_failing_filter_skymodel(fake_bin_dir):
-    """Create a PATH-injected wrapper for filter_skymodel.py."""
-    fake_script = fake_bin_dir / "filter_skymodel.py"
-    fake_script.write_text("#!/usr/bin/env python3\nraise SystemExit(1)")
+    """Create a PATH-injected Python shim that fails the skymodel filter adapter."""
+    fake_script = fake_bin_dir / "python3"
+    fake_script.write_text(
+        f"#!{sys.executable}\n"
+        "import os\n"
+        "import sys\n\n"
+        "if sys.argv[1:3] == ['-m', 'rapthor.execution.image.skymodel_filter_cli']:\n"
+        "    raise SystemExit(1)\n"
+        f"os.execv({sys.executable!r}, [{sys.executable!r}] + sys.argv[1:])\n"
+    )
     fake_script.chmod(0o755)
     return fake_script
 
 
-def parse_dp3_args_from_log(log_path):
-    """Parse the DP3 command arguments from a CWL job log file.
-
-    Returns a dict of ``{key: value}`` strings for every ``key=value`` argument
-    passed to DP3.  Arguments without a value (e.g. ``msout=``) are stored with
-    an empty string.
-
-    Raises ``ValueError`` if no DP3 command is found in the log.
-    """
-    text = Path(log_path).read_text()
-
-    # Extract everything after "$ DP3 " up to the first non-continuation line
-    match = re.search(r"\$ DP3\s+((?:.*\\\n)*.*)", text)
-    if not match:
-        raise ValueError(f"No DP3 command found in {log_path}")
-
-    # Join continuation lines, drop backslashes, split into tokens
-    tokens = match.group(1).replace("\\\n", " ").split()
-
-    return {k: v for k, _, v in (t.partition("=") for t in tokens if "=" in t)}
+def parse_command_arguments(command):
+    """Parse key-value arguments from a command token list or shell string."""
+    tokens = normalize_command(command)
+    return {
+        key: value for key, _, value in (token.partition("=") for token in tokens if "=" in token)
+    }

@@ -30,7 +30,8 @@ sphinx:
 # Optionally declare the Python requirements required to build your docs
 python:
   install:
-    - requirements: docs/requirements.txt
     # Rapthor itself needs to be installed to generate the documentation.
     - method: pip
       path: .
+      extra_requirements:
+        - docs

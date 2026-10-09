@@ -1,87 +1,75 @@
 """
 Module that holds the Mosaic class
 """
+
 import os
-import logging
 import shutil
-from rapthor.lib.operation import Operation
-from rapthor.lib.cwl import CWLFile
 
-log = logging.getLogger('rapthor:mosaic')
+from rapthor.execution.mosaic.flow import mosaic_flow
+from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs
+from rapthor.lib.records import FileRecord
+from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 
 
-class Mosaic(Operation):
+class Mosaic(FlowOperation):
     """
     Operation to mosaic sector images
     """
-    def __init__(self, field, index):
-        super().__init__(field, index=index, name='mosaic')
 
-        # For each image type we use a subworkflow, so we set the template filename
-        # for that here
-        self.subpipeline_parset_template = f"{self.rootname}_type_pipeline.cwl"
+    def __init__(self, field, index):
+        super().__init__(field, index=index, name="mosaic")
 
         # Determine whether processing is needed
         self.skip_processing = len(self.field.imaging_sectors) < 2
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the CWL workflow template
+        Define parameters needed by the mosaic flow.
         """
-        if self.batch_system.startswith('slurm'):
-            # For some reason, setting coresMax ResourceRequirement hints does
-            # not work with SLURM
-            max_cores = None
-        else:
-            max_cores = self.field.parset['cluster_specific']['max_cores']
-        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'pipeline_working_dir': self.pipeline_working_dir,
-                             'max_cores': max_cores,
-                             'skip_processing': self.skip_processing,
-                             'compress_images': self.field.compress_images}
+        self.parset_parms = self.flow_parset_parameters(
+            include_pipeline_working_dir=True,
+            skip_processing=self.skip_processing,
+            compress_images=self.field.compress_images,
+        )
 
     def set_input_parameters(self):
         """
-        Define the CWL workflow inputs
+        Define inputs passed to the mosaic flow.
         """
         # Define various input and output filenames
         sector_image_filename = []
         sector_vertices_filename = []
+        sector_model_skymodel_filename = []
         regridded_image_filename = []
         template_image_filename = []
         self.image_names = []  # list of input image names
         for pol in self.field.image_pol:
             polup = pol.upper()
             self.image_names.extend(
-                [f"{polup}_image_file_true_sky", f"{polup}_image_file_apparent_sky"]
+                [
+                    f"{polup}_image_file_true_sky",
+                    f"{polup}_image_file_true_sky_astcorr",
+                    f"{polup}_image_file_apparent_sky",
+                ]
             )
             if not self.field.disable_clean:
                 self.image_names.extend(
                     [
                         f"{polup}_model_file_true_sky",
                         f"{polup}_residual_file_apparent_sky",
-                        f"{polup}_dirty_file_apparent_sky"
+                        f"{polup}_dirty_file_apparent_sky",
                     ]
                 )
         if self.field.save_supplementary_images:
             self.image_names.append("filtering_mask_file")
         if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
             self.image_names.append("filtered_model_file_apparent_sky")
-
-        for image_name in self.image_names:
-            image_list = []
-            vertices_list = []
-            regridded_list = []
-            for sector in self.field.imaging_sectors:
-                image_list.append(getattr(sector, image_name))
-                vertices_list.append(sector.vertices_file)
-                regridded_list.append(
-                    f'{os.path.basename(getattr(sector, image_name))}.regridded'
-                )
-            sector_image_filename.append(CWLFile(image_list).to_json())
-            sector_vertices_filename.append(CWLFile(vertices_list).to_json())
-            regridded_image_filename.append(regridded_list)
-            template_image_filename.append(f'{self.name}_template.fits')
+        if self.field.imaging_sectors:
+            self.image_names = [
+                image_name
+                for image_name in self.image_names
+                if all(hasattr(sector, image_name) for sector in self.field.imaging_sectors)
+            ]
 
         self.mosaic_filename = []
         if self.skip_processing:
@@ -93,20 +81,69 @@ class Mosaic(Operation):
                 self.mosaic_filename.append(None)
         else:
             for image_name in self.image_names:
+                image_list = []
+                vertices_list = []
+                regridded_list = []
+                for sector in self.field.imaging_sectors:
+                    image_list.append(getattr(sector, image_name))
+                    vertices_list.append(sector.vertices_file)
+                    regridded_list.append(
+                        f"{os.path.basename(getattr(sector, image_name))}.regridded"
+                    )
+                sector_image_filename.append(FileRecord(image_list).to_json())
+                sector_vertices_filename.append(FileRecord(vertices_list).to_json())
+                model_skymodels = self._model_skymodels_for_image_name(image_name)
+                sector_model_skymodel_filename.append(
+                    FileRecord(model_skymodels).to_json() if model_skymodels else None
+                )
+                regridded_image_filename.append(regridded_list)
+                template_image_filename.append(f"{self.name}_template.fits")
+
                 # Define output filenames for each mosaic image
-                suffix = getattr(self.field.imaging_sectors[0], image_name).split('sector_1')[-1]
+                suffix = getattr(self.field.imaging_sectors[0], image_name).split("sector_1")[-1]
                 if suffix.endswith(".fz"):
                     # Remove the compressed extension, as the output mosaic files are not
                     # compressed until a later step in the pipeline
                     suffix = os.path.splitext(suffix)[0]
                 self.mosaic_filename.append(f"{self.name}{suffix}")
 
-        self.input_parms = {'skip_processing': self.skip_processing,
-                            'sector_image_filename': sector_image_filename,
-                            'sector_vertices_filename': sector_vertices_filename,
-                            'template_image_filename': template_image_filename,
-                            'regridded_image_filename': regridded_image_filename,
-                            'mosaic_filename': self.mosaic_filename}
+        self.input_parms = {
+            "skip_processing": self.skip_processing,
+            "sector_image_filename": sector_image_filename,
+            "sector_vertices_filename": sector_vertices_filename,
+            "sector_model_skymodel_filename": sector_model_skymodel_filename,
+            "template_image_filename": template_image_filename,
+            "regridded_image_filename": regridded_image_filename,
+            "mosaic_filename": self.mosaic_filename,
+        }
+
+    def _model_skymodels_for_image_name(self, image_name):
+        """Return sector sky-model paths when WSClean can render this model mosaic."""
+        if self.field.model_mosaic_method == "sparse_fits":
+            return None
+        skymodel_attr_by_image_name = {
+            "I_model_file_true_sky": "image_skymodel_file_true_sky",
+            "filtered_model_file_apparent_sky": "image_skymodel_file_apparent_sky",
+        }
+        skymodel_attr = skymodel_attr_by_image_name.get(image_name)
+        if skymodel_attr is None:
+            return None
+        skymodels = [getattr(sector, skymodel_attr, None) for sector in self.field.imaging_sectors]
+        if any(skymodel is None for skymodel in skymodels):
+            return None
+        return skymodels
+
+    def execute_workflow(self):
+        """
+        Execute mosaicking through the Prefect flow and return operation outputs.
+        """
+        payload = mosaic_payload_from_inputs(
+            self.input_parms,
+            self.pipeline_working_dir,
+            compress_images=self.field.compress_images,
+        )
+        outputs = run_prefect_flow(mosaic_flow, payload, self.parset)
+        return True, outputs
 
     def finalize(self):
         """
@@ -123,17 +160,18 @@ class Mosaic(Operation):
             # Copy the image to the images directory. Note: the individual sector images that were
             # used to make the mosaic are left in place, as they will be needed if the mosaic
             # operation is reset without reseting the preceding image operation as well
-            dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
-                                   f'image_{self.index}')
+            dst_dir = os.path.join(
+                self.field.parset["dir_working"], "images", f"image_{self.index}"
+            )
             os.makedirs(dst_dir, exist_ok=True)
             if self.skip_processing:
                 # Single imaging sector: split on the sector name
-                suffix = self.mosaic_filename[i].split('sector_1')[-1]
+                suffix = self.mosaic_filename[i].split("sector_1")[-1]
             else:
                 # Mosacking done: split on the mosaic name
                 suffix = self.mosaic_filename[i].split(self.name)[-1]
-            field_image_filename = os.path.join(dst_dir, f'field{suffix}')
-            if image_name == 'I_image_file_true_sky':
+            field_image_filename = os.path.join(dst_dir, f"field{suffix}")
+            if image_name == "I_image_file_true_sky":
                 # Save the Stokes I true-sky image filename as an attribute of the field
                 # object for later use
                 self.field.field_image_filename_prev = self.field.field_image_filename

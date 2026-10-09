@@ -1,7 +1,7 @@
 """Tests for rapthor CLI."""
 
-import shlex
 import subprocess
+import sys
 
 import pytest
 
@@ -10,7 +10,9 @@ import pytest
 @pytest.mark.integration
 def test_rapthor_help(help_option):
     """Test the Rapthor pipeline CLI options."""
-    command = shlex.split(f"rapthor {help_option}")
+    command = [sys.executable, "-m", "rapthor.cli"]
+    if help_option:
+        command.append(help_option)
     result = subprocess.run(
         command,
         capture_output=True,

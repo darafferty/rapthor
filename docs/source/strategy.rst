@@ -3,13 +3,13 @@
 Setting the processing strategy
 ===============================
 
-The steps used during a Rapthor run are defined though the choice of a processing
+The steps used during a Rapthor run are defined through the choice of a processing
 strategy. The processing strategy is set with the :term:`strategy` parameter of the
 Rapthor parset. The options for this parameter are described below:
 
 ``strategy = selfcal`` (the default)
     This strategy performs self calibration of the field in which the sky model is
-    iteratively improved though calibration and imaging. The processing generally involves
+    iteratively improved through calibration and imaging. The processing generally involves
     up to two cycles of phase-only calibration followed by up to 6 cycles of phase and
     amplitude calibration until convergence is obtained.
 
@@ -17,7 +17,10 @@ Rapthor parset. The options for this parameter are described below:
 
         If an initial sky model is automatically generated from the data (see
         :ref:`auto_sky_generation`), the phase-only cycles are not generally
-        needed and are therefore skipped.
+        needed and are therefore skipped. If a sky model is downloaded from a
+        survey catalog or supplied directly by the user, the phase-only cycles
+        are not skipped. In these cases, a custom strategy can disable them
+        when they are not needed (see :ref:`custom_strategy`).
 
 ``strategy = image``
     This strategy performs imaging only; no calibration is done. As such, a file
@@ -78,10 +81,11 @@ cycle.
     (for self calibration), `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`_
     (for imaging only) and `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_ska_low.py>`_
-    (for SKA low). Files that duplicate the default strategies are available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/flexible_calibration_strategy.py>`_
+    (for more control over the calibration strategy). Files that duplicate the default strategies are available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
-    (for self calibration) and `here
+    (for self calibration; unlike the built-in self calibration strategy, this
+    file never runs phase-only cycles) and `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
     (for imaging only).
 
@@ -111,10 +115,7 @@ The following processing parameters can be set for each cycle:
         Float that sets the solution interval in sec to use in the fast (scalarphase) solve. For this solve, all the core stations are constrained to have the same solutions.
 
     medium_timestep_sec
-        Float that sets the solution interval in sec to use in the medium-fast (scalarphase) solves. For the first medium-fast solve, each station is solved for independently. For the second medium-fast solve (done only when ``do_slowgain_solve`` is activated), the core stations are constrained to have the same solutions.
-
-    do_slowgain_solve
-        Boolean flag that determines whether the slow (diagonal) solve should be done for this cycle. If enabled, a slow solve is done, followed by a second medium-fast solve.
+        Float that sets the solution interval in sec to use in the medium-fast (scalarphase) solves. For the first medium-fast solve, each station is solved for independently. For a medium-fast solve requested after ``slow_gains`` in ``calibration_strategy``, the core stations are constrained to have the same solutions.
 
     slow_timestep_sec
         Float that sets the solution interval in sec to use in the slow-gain solve. For this solve, each station is solved for independently.
@@ -122,11 +123,8 @@ The following processing parameters can be set for each cycle:
     fulljones_timestep_sec
         Float that sets the solution interval in sec to use in the full-Jones solve. For this solve, each station is solved for independently.
 
-    do_fulljones_solve
-        Boolean flag that determines whether the direction-independent full-Jones part of calibration should be done for this cycle.
-
     peel_outliers
-        Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector region) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles. Note that, because they are not imaged, outlier source models do not change during self calibration: however, the solutions they receive may change. To include one or more outlier sources in self calibration, a small imaging sector can be placed on each outlier of interest. The outliers will than be imaging and its model updated with the rest of the field.
+        Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector region) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles. Note that, because they are not imaged, outlier source models do not change during self calibration: however, the solutions they receive may change. To include one or more outlier sources in self calibration, a small imaging sector can be placed on each outlier of interest. The outliers will then be imaged and their models updated with the rest of the field.
 
     peel_bright_sources
         Boolean flag that determines whether the bright sources should be peeled for this cycle (for imaging only). The peeled bright sources are added back before subsequent selfcal cycles are performed (so they are included in the calibration, etc.). Currently, peeling is not supported when screens are used.
@@ -185,3 +183,66 @@ The following processing parameters can be set for each cycle:
     failure_ratio
         Float that sets the minimum ratio of the current image noise to the theoretical image noise above which selfcal is considered to have failed (must be > 1).
 
+    calibration_strategy
+        Dictionary that sets the sequence of solves for this cycle. The keys of the dictionary are "di" and "dd", which set the direction-independent and direction-dependent calibration strategies, respectively. The value for each key is a list of solve names to run for that calibration mode. For example:
+
+        .. code-block:: python
+
+            strategy_steps[i]["calibration_strategy"] = {
+                "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+                "di": [],
+            }
+
+        Allowed solve names are:
+
+        - "fast_phase": run the fast (scalarphase) solve.
+        - "medium_phase": run the medium-fast (scalarphase) solve.
+        - "slow_gains": run the slow (diagonal) solve.
+        - "full_jones": run the full-Jones solve.
+
+        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles. If this parameter is not set for a cycle in which calibration is done, Rapthor logs a warning and uses the sequence of the example above (i.e., the full direction-dependent sequence and no direction-independent solves). See :ref:`calibration_strategy_details` for the combinations of solves that can be used and for how the resulting solutions are applied.
+
+
+.. _calibration_strategy_details:
+
+Setting the calibration strategy
+--------------------------------
+
+The :term:`calibration_strategy` parameter sets, for each cycle, which solves are done and in what order. Not every sequence of solves is possible. The sequences that can be used are:
+
+For the direction-dependent ("dd") calibration:
+
+- ``["fast_phase"]``
+- ``["fast_phase", "medium_phase"]``
+- ``["fast_phase", "medium_phase", "slow_gains"]``
+- ``["fast_phase", "medium_phase", "slow_gains", "medium_phase"]``
+- ``["slow_gains"]``
+- ``["slow_gains", "medium_phase"]``
+
+For the direction-independent ("di") calibration:
+
+- ``["fast_phase"]``
+- ``["fast_phase", "medium_phase"]``
+- ``["fast_phase", "medium_phase", "slow_gains"]``
+- ``["slow_gains"]``
+- ``["full_jones"]``
+
+Rapthor stops with an error at the start of the run if the strategy contains any other sequence. A full-Jones solve can only be done as a direction-independent solve, on its own. To do a full-Jones solve in addition to other direction-independent solves, do them in different cycles.
+
+The order of the "dd" and "di" keys sets which of the two is done first:
+
+- A direction-dependent calibration is done by the calibrate operation (named ``calibrate_X`` in the working directory, where ``X`` is the cycle number).
+- A direction-independent calibration is done in two parts: the model visibilities are first predicted (``predict_di_X``) and the solve is then done against them (``calibrate_di_X``).
+- If the direction-independent calibration is done first, its solutions are applied to the data before the direction-dependent solves are done.
+- If the direction-dependent calibration is done first, its solutions are used when the model visibilities for the direction-independent solve are predicted.
+
+The solutions are then used in the imaging of the same cycle as follows:
+
+- Direction-independent solutions (including full-Jones solutions) are applied to the visibilities before imaging.
+- Direction-dependent solutions are applied by WSClean during imaging, facet by facet. If :term:`dde_method` = ``single``, the solutions of the direction closest to the center of each sector are applied to the visibilities before imaging instead.
+
+The solutions found in one cycle are not applied to the data in later cycles in which calibration is done again. They are used only as the starting values for the same solves in the next cycle, which speeds up the convergence of the solver.
+
+.. note::
+
+    The ``do_slowgain_solve`` and ``do_fulljones_solve`` parameters of earlier versions are deprecated. If one of them is present, Rapthor logs a warning and uses the equivalent ``calibration_strategy``. It is an error to set both one of these parameters and ``calibration_strategy`` for the same cycle.

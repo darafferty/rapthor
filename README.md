@@ -1,6 +1,6 @@
 # Rapthor: LOFAR DDE Pipeline
 
-Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It is also being developed for use on SKA-Low data. It uses DP3 and WSClean to derive and apply the corrections in facets or as smooth 2-D screens. It uses [CWL](https://www.commonwl.org) for the pipeline language and either [Toil](http://toil.ucsc-cgl.org) or [StreamFlow](https://streamflow.di.unito.it) to run the pipelines.
+Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It is also being developed for use on SKA-Low data. It uses DP3 and WSClean to derive and apply the corrections in facets or as smooth 2-D screens. The processing is run with Prefect and Dask, on a single machine or on multiple nodes of a compute cluster.
 
 ## Documentation
 
@@ -18,7 +18,7 @@ To install rapthor, follow the instructions below.
 Rapthor requires the following packages (beyond those installed automatically with rapthor):
 
 * [DP3](https://git.astron.nl/RD/DP3.git) (version 6.5 or later; building with [AOFlagger](https://gitlab.com/aroffringa/aoflagger), [EveryBeam](https://git.astron.nl/RD/EveryBeam), and [IDG](https://git.astron.nl/RD/idg) is required)
-* [EveryBeam](https://git.astron.nl/RD/EveryBeam.git) (version 0.7.4 or later)
+* [EveryBeam](https://git.astron.nl/RD/EveryBeam.git) (version 0.8.3 or later)
 * [IDG](https://git.astron.nl/RD/idg.git) (version 1.2.0 or later)
 * [WSClean](https://gitlab.com/aroffringa/wsclean.git) (version 3.6 or later; building with [EveryBeam](https://git.astron.nl/RD/EveryBeam) and [IDG](https://git.astron.nl/RD/idg) is required)
 

@@ -6,14 +6,12 @@ import subprocess
 from pathlib import Path
 
 import casacore.tables as pt
+import lsmtool
 import numpy as np
 import pytest
 
 COMMON_STRATEGY_SETTINGS = {
     "channel_width_hz": 195312.5,
-    # Set slow-gain and fulljones solves to False except when required
-    "do_slowgain_solve": False,
-    "do_fulljones_solve": False,
     # Don't remove bright outliers or in-field sources -- image full field
     "peel_outliers": False,
     "peel_bright_sources": False,
@@ -24,38 +22,63 @@ COMMON_STRATEGY_SETTINGS = {
     # Turn off flux-scale bootstrapping
     "do_normalize": False,
     # PyBDSF settings
-    "auto_mask": 5.0,
-    "auto_mask_nmiter": 2,
+    "auto_mask": 7.0,
+    "auto_mask_nmiter": 1,
     "threshisl": 3.0,
     "threshpix": 5.0,
     # Constrain max nr of imaging major cycles
-    "max_nmiter": 12,
+    "max_nmiter": 2,
     # Disable regrouping of sky model
     "regroup_model": True,
-    # Max distance allowed between selected DDE calibrators
+    # Max distance allowed between selected DD calibrators
     "max_distance": None,  # no distance constraint
     # Don't check for self-cal convergence
     "do_check": False,
     "target_flux": 0.3,
     "max_directions": 4,
+    "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
 }
 
 
 def make_strategy_step(**overrides):
     """Helper to create a strategy step with settings and overrides."""
-    return {**COMMON_STRATEGY_SETTINGS, **overrides}
+    step = {**COMMON_STRATEGY_SETTINGS, **overrides}
+    if "calibration_strategy" not in overrides:
+        step["calibration_strategy"] = {
+            mode: list(solves)
+            for mode, solves in COMMON_STRATEGY_SETTINGS["calibration_strategy"].items()
+        }
+    return step
 
 
 def _write_normalization_skymodel(output_path):
-    """Write an apparent sky model with one extra bright source for normalization tests."""
-    source_model_path = Path("tests/resources/integration_apparent_sky.txt")
+    """Write the model with isolated bright sources used by normalization tests."""
+    source_model_path = Path(__file__).parents[1] / "resources/normalization_apparent_sky.txt"
     output_path.write_text(source_model_path.read_text(encoding="utf-8"), encoding="utf-8")
-    with output_path.open("a", encoding="utf-8") as handle:
-        handle.write(" , , Patch_patch_norm_1, 1:37:41.299, 33.09.35.132\n")
-        handle.write(
-            "snorm0, POINT, Patch_patch_norm_1, 1:37:41.299, 33.09.35.132, "
-            "20.0, [-0.8], false, 148240661.621094, 0, 0, 0\n"
+
+
+@pytest.fixture
+def normalization_reference_inputs(tmp_path):
+    """Generate two true-sky catalogs with consistent fluxes and reference frequencies."""
+    model_path = Path(__file__).parents[1] / "resources/normalization_true_sky.txt"
+    model = lsmtool.load(str(model_path))
+    spectral_indices = np.asarray(model.getColValues("SpectralIndex"))[:, 0]
+    reference_paths = []
+    for frequency in (120e6, 160e6):
+        reference = model.copy()
+        reference.setColValues(
+            "I",
+            model.getColValues("I")
+            * (frequency / model.getColValues("ReferenceFrequency")) ** spectral_indices,
         )
+        reference.setColValues("ReferenceFrequency", np.full(len(model), frequency))
+        path = tmp_path / f"normalization_reference_{frequency / 1e6:.0f}mhz.txt"
+        reference.write(str(path))
+        reference_paths.append(str(path))
+    return {
+        "normalization_skymodels": f"[{', '.join(reference_paths)}]",
+        "normalization_reference_frequencies": "[120000000.0, 160000000.0]",
+    }
 
 
 def _set_synthetic_uvw_geometry(ms_path):
@@ -106,6 +129,95 @@ def single_loop_strategy_path(tmp_path):
     return strategy_path
 
 
+@pytest.fixture
+def calibrate_only_strategy_path(tmp_path):
+    """Strategy file that produces calibration solutions without final imaging."""
+    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=False)]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "calibrate_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def image_only_strategy_path(tmp_path):
+    """Strategy file that images with provided calibration solutions."""
+    strategy_steps = [make_strategy_step(do_calibrate=False, do_image=True, regroup_model=False)]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def calibrate_then_image_only_strategy_path(tmp_path):
+    """Strategy file that self-calibrates once, then runs a final image-only pass."""
+    calibration_strategy = {"di": ["full_jones"], "dd": ["fast_phase"]}
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy=calibration_strategy,
+        ),
+        make_strategy_step(
+            do_calibrate=False,
+            do_image=True,
+            regroup_model=False,
+            calibration_strategy=calibration_strategy,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "calibrate_then_image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def dd_slow_then_image_only_strategy_path(tmp_path):
+    """Strategy file that applies DD slow gains on the fly during image-only imaging."""
+    calibration_strategy = {"dd": ["slow_gains"], "di": []}
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy=calibration_strategy,
+        ),
+        make_strategy_step(
+            do_calibrate=False,
+            do_image=True,
+            regroup_model=False,
+            calibration_strategy=calibration_strategy,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "dd_slow_then_image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def di_slow_dd_fast_then_image_only_strategy_path(tmp_path):
+    """Strategy file that pre-applies DI slow gains and applies DD gains on the fly."""
+    calibration_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy=calibration_strategy,
+        ),
+        make_strategy_step(
+            do_calibrate=False,
+            do_image=True,
+            regroup_model=False,
+            calibration_strategy=calibration_strategy,
+        ),
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "di_slow_dd_fast_then_image_only_strategy.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
 @pytest.fixture(
     params=[True, False],
     ids=["peel_bright_sources_enabled", "peel_bright_sources_disabled"],
@@ -131,9 +243,64 @@ def single_loop_strategy_path_peel_bright_sources(request, tmp_path):
 @pytest.fixture
 def single_loop_strategy_path_calibrate_di(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with DI calibration."""
-    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_fulljones_solve=True)]
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["full_jones"]},
+        )
+    ]
+
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_calibrate_di.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def single_loop_strategy_path_calibrate_di_fast_medium_phase(tmp_path):
+    """Fixture to generate a strategy file for a single self-calibration loop with DI fast and medium phase solves."""
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["fast_phase", "medium_phase"]},
+        )
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy_calibrate_di_fast_medium_phase.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def single_loop_strategy_path_calibrate_di_fast_medium_slow(tmp_path):
+    """Fixture to generate a strategy file for a single self-calibration loop with DI fast, medium, and slow gains solves."""
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"di": ["fast_phase", "medium_phase", "slow_gains"]},
+        )
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy_calibrate_di_fast_medium_slow.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def single_loop_strategy_path_calibrate_dd_slow(tmp_path):
+    """Fixture to generate a strategy file for a single self-calibration loop with DD slow gains solves."""
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={"dd": ["slow_gains"]},
+        )
+    ]
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy_calibrate_dd_slow.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
 
@@ -151,9 +318,27 @@ def single_loop_do_normalize_strategy_path(tmp_path):
 @pytest.fixture
 def single_loop_strategy_path_fast_medium_slow(tmp_path):
     """Fixture to generate a strategy file for a single self-calibration loop with fast, medium, and slow gains."""
-    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True, do_slowgain_solve=True)]
+    strategy_steps = [
+        make_strategy_step(
+            do_calibrate=True,
+            do_image=True,
+            calibration_strategy={
+                "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+            },
+        )
+    ]
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy_fast_medium_slow.py"
+    strategy_path.write_text(strategy_content)
+    return strategy_path
+
+
+@pytest.fixture
+def single_loop_strategy_with_calibration_strategy(tmp_path, request):
+    strategy_steps = [make_strategy_step(do_calibrate=True, do_image=True)]
+    strategy_steps[0]["calibration_strategy"] = request.param
+    strategy_content = f"strategy_steps = {strategy_steps}"
+    strategy_path = tmp_path / "single_loop_strategy.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
 

@@ -1,7 +1,7 @@
 Rapthor: LOFAR DDE Pipeline
 ===========================
 
-Rapthor is a tool for producing low-noise, high-resolution images from HBA LOFAR data. 
+Rapthor is a tool for producing low-noise, high-resolution images from HBA LOFAR data.
 It is also being developed for use on SKA-Low data.
 
 Introduction
@@ -23,6 +23,7 @@ Obtaining Rapthor
 
    installation
    changelog
+   upgrading
    future
 
 
@@ -48,4 +49,7 @@ Rapthor Details
 
    structure
    operations
+   development/architecture
+   development/adr_replace_cwl_toil_with_prefect_dask
+   development/cwl_to_prefect_comparison
    code

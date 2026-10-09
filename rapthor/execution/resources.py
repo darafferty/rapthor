@@ -1,0 +1,137 @@
+"""Resource declarations for external commands."""
+
+from dataclasses import dataclass
+from typing import Iterable, Optional
+
+from rapthor.execution.config import ExecutionConfig
+
+SLURM_BATCH_SYSTEMS = {"slurm", "slurm_static"}
+
+
+@dataclass(frozen=True)
+class ResourceRequest:
+    """CPU, memory, process, and MPI requirements for a command task."""
+
+    name: str = "command"
+    threads: int = 1
+    processes: int = 1
+    memory_gb: Optional[int] = None
+    use_mpi: bool = False
+    exclusive: bool = False
+
+    def __post_init__(self):
+        if self.threads < 1:
+            raise ValueError("threads must be >= 1")
+        if self.processes < 1:
+            raise ValueError("processes must be >= 1")
+        if self.memory_gb is not None and self.memory_gb < 1:
+            raise ValueError("memory_gb must be >= 1 when set")
+
+
+def collect_resource_issues(
+    resource_request: ResourceRequest,
+    execution_config: ExecutionConfig,
+) -> list[tuple[str, str]]:
+    """Collect resource validation issues for a command request."""
+    issues = []
+    if execution_config.cpus_per_task and resource_request.threads > execution_config.cpus_per_task:
+        issues.append(
+            (
+                "resource_threads_oversubscribed",
+                f"{resource_request.name} requests {resource_request.threads} threads, "
+                f"but cpus_per_task is {execution_config.cpus_per_task}",
+            )
+        )
+
+    if (
+        resource_request.memory_gb
+        and execution_config.mem_per_node_gb
+        and resource_request.memory_gb > execution_config.mem_per_node_gb
+    ):
+        issues.append(
+            (
+                "resource_memory_oversubscribed",
+                f"{resource_request.name} requests {resource_request.memory_gb} GB, "
+                f"but mem_per_node_gb is {execution_config.mem_per_node_gb}",
+            )
+        )
+
+    if (
+        execution_config.task_runner == "local_dask"
+        and not resource_request.use_mpi
+        and resource_request.processes > execution_config.local_dask_worker_count
+    ):
+        issues.append(
+            (
+                "resource_processes_oversubscribed",
+                f"{resource_request.name} requests {resource_request.processes} concurrent "
+                f"processes, but local_dask provides "
+                f"{execution_config.local_dask_worker_count} workers",
+            )
+        )
+
+    slurm_node_limit = (
+        execution_config.max_nodes
+        if str(execution_config.batch_system).lower() in SLURM_BATCH_SYSTEMS
+        and execution_config.max_nodes > 0
+        else None
+    )
+    if (
+        slurm_node_limit is not None
+        and execution_config.task_runner != "local_dask"
+        and not resource_request.use_mpi
+        and resource_request.processes > slurm_node_limit
+    ):
+        issues.append(
+            (
+                "slurm_processes_oversubscribed",
+                f"{resource_request.name} requests {resource_request.processes} concurrent "
+                f"processes, but the Slurm allocation is limited to "
+                f"{slurm_node_limit} nodes",
+            )
+        )
+
+    if resource_request.use_mpi and not resource_request.exclusive:
+        issues.append(
+            (
+                "mpi_not_exclusive",
+                f"{resource_request.name} uses MPI and must be marked exclusive",
+            )
+        )
+
+    if (
+        resource_request.use_mpi
+        and execution_config.max_nodes > 0
+        and resource_request.processes > execution_config.max_nodes
+    ):
+        issues.append(
+            (
+                "mpi_processes_oversubscribed",
+                f"{resource_request.name} requests {resource_request.processes} MPI processes, "
+                f"but max_nodes is {execution_config.max_nodes}",
+            )
+        )
+
+    return issues
+
+
+def collect_resource_request_issues(
+    resource_requests: Iterable[ResourceRequest],
+    execution_config: ExecutionConfig,
+) -> list[tuple[str, str]]:
+    """Collect validation issues across several command requests."""
+    issues = []
+    for resource_request in resource_requests:
+        issues.extend(collect_resource_issues(resource_request, execution_config))
+    return issues
+
+
+def validate_resource_request(
+    resource_request: ResourceRequest,
+    execution_config: ExecutionConfig,
+) -> ResourceRequest:
+    """Raise when a command request would oversubscribe the execution config."""
+    issues = collect_resource_issues(resource_request, execution_config)
+    if issues:
+        raise ValueError("; ".join(message for _, message in issues))
+    return resource_request

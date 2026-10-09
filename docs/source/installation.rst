@@ -25,12 +25,12 @@ How can I use containers (Docker or Singularity) with Rapthor?
     Containers can be used with Rapthor in two ways (see :ref:`using_containers`
     for details):
 
-        * by running it completely within the container (only for use on a
+        * by running it completely within the container (for use on a
           single machine, no local installation of Rapthor or its dependencies is
           necessary)
-        * by installing Rapthor locally and running only the operations (CWL workflows)
-          within the container (for use on a single machine or on multiple nodes of a
-          compute cluster).
+        * by starting Rapthor and the Dask scheduler and workers that it
+          uses inside the container on each node (for use on multiple nodes
+          of a compute cluster).
 
     A Docker image with the latest release of Rapthor and all its dependencies
     is available on `Docker Hub <https://hub.docker.com/r/astronrd/rapthor>`_.
@@ -41,20 +41,19 @@ How can I troubleshoot a Rapthor problem?
 
     .. code-block:: console
 
-        CRITICAL - rapthor - Operation image_1 failed due to an error
+        ERROR - rapthor - Operation image_1 failed due to an error
 
-    then an error was encountered during the running of the CWL workflow of the
-    ``image_1`` operation. In this situation, it usually helpful to check the
-    log files for the failed operation, which, in the case above, should be
-    located in ``dir_working/logs/image_1``. When Toil is used for the CWL
-    runner (the default; see :term:`cwl_runner`), filenames beginning with the
-    word "failed" indicate the logs of the steps, if any, that failed. A search
-    in these logs will often reveal the reason for the failure.
+    then an error was encountered during the running of the ``image_1``
+    operation. In this situation, it is usually helpful to check the log files
+    for the failed operation, which, in the case above, should be located in
+    ``dir_working/logs/image_1``. There is one log file for each command that
+    was run (for example, ``wsclean_image.log``), and the file of the command
+    that failed will often reveal the reason for the failure. The command
+    lines themselves are listed in ``dir_working/logs/commands.jsonl``. If a
+    Prefect server is in use (see :ref:`persistent_prefect_dashboard`), the
+    Prefect dashboard shows which task failed, together with its log.
 
     If the error or its cause is not clear from the log files, it may be useful
     to run with the :term:`keep_temporary_files` option enabled. When this option
-    is enabled, the working directory will not be cleaned up. In addition, most
-    CWL runners also provide extra debugging options. These can be enabled with
-    :term:`debug_workflow`. In that case, ``stdout`` and ``stderr``
-    will not be redirected, and the log level of the CWL runner will be set to
-    ``DEBUG``.
+    is enabled, the temporary and intermediate files of each operation are
+    kept. Running with the ``-v`` option gives more detailed log messages.

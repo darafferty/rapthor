@@ -1,0 +1,680 @@
+"""Shell command wrappers used by Prefect tasks."""
+
+import hashlib
+import json
+import logging
+import os
+import queue
+import re
+import resource
+import shutil
+import subprocess
+import tempfile
+import threading
+import time
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
+from typing import Mapping, Optional
+
+from rapthor.execution.commands import CommandInput, command_to_string, normalize_command
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.environments import EnvironmentOverrides
+from rapthor.execution.scratch import task_temporary_directory, temporary_environment
+from rapthor.execution.task_metrics import current_prefect_task_metadata
+
+
+class MissingPrefectShellError(RuntimeError):
+    """Raised when prefect-shell is required but not installed."""
+
+
+class ShellCommandError(RuntimeError):
+    """Raised when an external command exits unsuccessfully."""
+
+    def __init__(self, message: str, returncode: int):
+        super().__init__(message)
+        self.message = message
+        self.returncode = returncode
+
+    def __reduce__(self):
+        return (type(self), (self.message, self.returncode))
+
+
+log = logging.getLogger("rapthor:shell")
+STREAM_LOG_FLUSH_INTERVAL_SECONDS = 1.0
+STREAM_LOG_MAX_LINES_PER_RECORD = 40
+TIME_PROFILE_MODES = {"auto", "time"}
+_STREAM_DONE = object()
+
+_TIME_METRIC_FIELDS = {
+    "User time (seconds)": ("user_seconds", float),
+    "System time (seconds)": ("system_seconds", float),
+    "Percent of CPU this job got": ("cpu_percent", lambda value: float(value.rstrip("%"))),
+    "Elapsed (wall clock) time (h:mm:ss or m:ss)": ("elapsed_seconds", "elapsed"),
+    "Maximum resident set size (kbytes)": ("max_rss_kb", int),
+    "Average resident set size (kbytes)": ("average_rss_kb", int),
+    "Major (requiring I/O) page faults": ("major_page_faults", int),
+    "Minor (reclaiming a frame) page faults": ("minor_page_faults", int),
+    "File system inputs": ("file_system_inputs", int),
+    "File system outputs": ("file_system_outputs", int),
+    "Voluntary context switches": ("voluntary_context_switches", int),
+    "Involuntary context switches": ("involuntary_context_switches", int),
+    "Exit status": ("exit_status", int),
+}
+
+
+@dataclass(frozen=True)
+class ShellCommand:
+    """A shell command plus metadata; None environment values remove inherited variables."""
+
+    command: CommandInput
+    environment: EnvironmentOverrides = field(default_factory=dict)
+    working_directory: Optional[str] = None
+    name: Optional[str] = None
+
+    @property
+    def command_string(self) -> str:
+        return command_to_string(self.command)
+
+
+def run_external_command(
+    command: CommandInput,
+    working_directory: Optional[str],
+    execution_config: ExecutionConfig,
+    *,
+    environment: Optional[EnvironmentOverrides] = None,
+    name: Optional[str] = None,
+    shell_operation_cls=None,
+):
+    """Execute a command with child-only environment overrides (None means unset)."""
+    return run_shell_command(
+        ShellCommand(
+            command=command,
+            environment={} if environment is None else dict(environment),
+            working_directory=working_directory,
+            name=name,
+        ),
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
+
+
+def run_shell_command(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+):
+    """Execute a command with worker-owned scratch and child-only temp variables.
+
+    Commands that specify TMPDIR own their temporary storage, including WSClean
+    and PyBDSF. Other commands receive an isolated local scratch directory.
+    """
+    if "TMPDIR" in shell_command.environment:
+        return _run_shell_command(shell_command, execution_config, shell_operation_cls)
+    with task_temporary_directory(
+        execution_config, name=shell_command.name or "command"
+    ) as temporary_directory:
+        if temporary_directory is not None:
+            shell_command = replace(
+                shell_command,
+                environment={
+                    **temporary_environment(temporary_directory),
+                    **shell_command.environment,
+                },
+            )
+        return _run_shell_command(shell_command, execution_config, shell_operation_cls)
+
+
+def _run_shell_command(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    shell_operation_cls=None,
+):
+    """Run and record one command while its temporary directory is available."""
+    started_at = datetime.now(timezone.utc)
+    start_time = time.monotonic()
+    status = "completed"
+    returncode = 0
+    error = None
+    profile = {}
+    output_log_path = None
+    task_metadata = current_prefect_task_metadata()
+    try:
+        operation_cls = shell_operation_cls or _load_shell_operation_cls()
+        if shell_operation_cls is None and _is_prefect_shell_operation_cls(operation_cls):
+            if execution_config.log_commands:
+                output_log_path = command_output_log_path(
+                    shell_command,
+                    task_metadata=task_metadata,
+                )
+            return _run_captured_shell_command(
+                shell_command,
+                execution_config,
+                started_at,
+                profile,
+                output_log_path=output_log_path,
+                task_metadata=task_metadata,
+            )
+
+        operation = operation_cls(**shell_operation_kwargs(shell_command, execution_config))
+        return operation.run()
+    except ShellCommandError as err:
+        status = "failed"
+        returncode = err.returncode
+        error = str(err)
+        raise
+    except Exception as err:
+        status = "failed"
+        returncode = None
+        error = str(err)
+        raise
+    finally:
+        finished_at = datetime.now(timezone.utc)
+        write_command_log_record(
+            shell_command,
+            execution_config,
+            started_at=started_at,
+            finished_at=finished_at,
+            duration_seconds=time.monotonic() - start_time,
+            status=status,
+            returncode=returncode,
+            error=error,
+            profile=profile,
+            output_log_path=output_log_path,
+            task_metadata=task_metadata,
+        )
+
+
+def shell_operation_kwargs(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+) -> dict:
+    """Build keyword arguments for `prefect_shell.ShellOperation`."""
+    kwargs = {
+        "commands": [shell_command.command_string],
+        "stream_output": execution_config.stream_output,
+    }
+    if shell_command.environment:
+        environment = {
+            key: value for key, value in shell_command.environment.items() if value is not None
+        }
+        if environment:
+            kwargs["env"] = environment
+        unset_variables = [key for key, value in shell_command.environment.items() if value is None]
+        if unset_variables:
+            # ShellOperation merges env into os.environ and only accepts strings.
+            # Its commands share one script, so remove variables in that child shell.
+            kwargs["commands"].insert(0, command_to_string(["unset", "--", *unset_variables]))
+    if shell_command.working_directory is not None:
+        kwargs["working_dir"] = shell_command.working_directory
+    return kwargs
+
+
+def command_log_path(working_directory: Optional[str]) -> Optional[Path]:
+    """Return the backend-neutral command log path for an operation workdir."""
+    if working_directory is None:
+        return None
+    workdir = Path(working_directory)
+    if workdir.parent.name != "pipelines":
+        return None
+    return workdir.parent.parent / "logs" / "commands.jsonl"
+
+
+def command_output_log_path(
+    shell_command: ShellCommand,
+    task_metadata: Optional[Mapping[str, object]] = None,
+) -> Optional[Path]:
+    """Return the durable combined-output log path for a shell task."""
+    command_record_path = command_log_path(shell_command.working_directory)
+    if command_record_path is None:
+        return None
+
+    metadata = dict(current_prefect_task_metadata() if task_metadata is None else task_metadata)
+    command = normalize_command(shell_command.command)
+    label = (
+        metadata.get("task_run_name")
+        or shell_command.name
+        or (Path(command[0]).name if command else "command")
+    )
+    operation = Path(str(shell_command.working_directory)).name
+    return command_record_path.parent / operation / f"{_log_filename(label)}.log"
+
+
+def write_command_log_record(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    *,
+    started_at: Optional[datetime] = None,
+    finished_at: Optional[datetime] = None,
+    duration_seconds: Optional[float] = None,
+    status: Optional[str] = None,
+    returncode: Optional[int] = None,
+    error: Optional[str] = None,
+    profile: Optional[Mapping[str, object]] = None,
+    output_log_path: Optional[Path] = None,
+    task_metadata: Optional[Mapping[str, object]] = None,
+) -> Optional[Path]:
+    """Append a structured command record for integration assertions."""
+    if not execution_config.log_commands:
+        return None
+
+    log_path = command_log_path(shell_command.working_directory)
+    if log_path is None:
+        return None
+
+    cwd = None if shell_command.working_directory is None else str(shell_command.working_directory)
+    record = {
+        "backend": "prefect",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "operation": Path(cwd).name if cwd is not None else None,
+        "name": shell_command.name,
+        "cwd": cwd,
+        "command": normalize_command(shell_command.command),
+        "command_string": shell_command.command_string,
+        "environment": dict(shell_command.environment),
+    }
+    if started_at is not None:
+        record["started_at"] = started_at.isoformat()
+    if finished_at is not None:
+        record["finished_at"] = finished_at.isoformat()
+    if duration_seconds is not None:
+        record["duration_seconds"] = round(duration_seconds, 6)
+    if status is not None:
+        record["status"] = status
+    if returncode is not None:
+        record["returncode"] = returncode
+    if error is not None:
+        record["error"] = error
+    if profile:
+        record["profile"] = dict(profile)
+    if output_log_path is not None:
+        record["output_log"] = str(output_log_path)
+
+    metadata = current_prefect_task_metadata() if task_metadata is None else task_metadata
+    if metadata:
+        record.update(
+            {key: value for key, value in metadata.items() if value not in (None, "", [])}
+        )
+
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True) + "\n")
+    return log_path
+
+
+def parse_gnu_time_metrics(path: Path) -> dict:
+    """Parse selected metrics from GNU ``time -v`` output."""
+    metrics = {}
+    if not path.exists():
+        return metrics
+
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = re.match(r"\s*(?P<key>.*?):\s+(?P<value>.*)$", line)
+        if match is None:
+            continue
+        key = match.group("key").strip()
+        value = match.group("value").strip()
+        if key not in _TIME_METRIC_FIELDS:
+            continue
+
+        metric_name, parser = _TIME_METRIC_FIELDS[key]
+        try:
+            if parser == "elapsed":
+                metrics[metric_name] = _parse_elapsed_seconds(value)
+            else:
+                metrics[metric_name] = parser(value)
+        except ValueError:
+            log.debug("Could not parse GNU time metric %s=%r from %s", key, value, path)
+    return metrics
+
+
+def _load_shell_operation_cls():
+    try:
+        from prefect_shell import ShellOperation
+    except ImportError as err:
+        raise MissingPrefectShellError("prefect-shell is required to execute shell tasks") from err
+    return ShellOperation
+
+
+def _is_prefect_shell_operation_cls(operation_cls) -> bool:
+    return (
+        getattr(operation_cls, "__module__", None) == "prefect_shell.commands"
+        and getattr(operation_cls, "__name__", None) == "ShellOperation"
+    )
+
+
+def _get_command_logger():
+    try:
+        from prefect.logging import get_run_logger
+
+        return get_run_logger()
+    except Exception:
+        return log
+
+
+def _profiled_process_args(
+    base_args: list[str],
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    started_at: datetime,
+    profile: dict,
+) -> list[str]:
+    if not execution_config.log_commands or execution_config.command_profile == "off":
+        return base_args
+    if execution_config.command_profile not in TIME_PROFILE_MODES:
+        return base_args
+
+    profile_dir = _profile_directory(shell_command, started_at)
+    if profile_dir is None:
+        return base_args
+
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    profile.update(
+        {
+            "mode": execution_config.command_profile,
+            "status": "resource",
+            "resource_source": "python_resource",
+        }
+    )
+
+    time_path = _gnu_time_path()
+    if time_path is None:
+        if execution_config.command_profile != "auto":
+            profile["reason"] = "GNU time -v is not available"
+        return base_args
+
+    time_output_path = profile_dir / "time.txt"
+    profile.update(
+        {
+            "mode": execution_config.command_profile,
+            "status": "time",
+            "resource_source": "gnu_time",
+            "artifacts": {"gnu_time": str(time_output_path)},
+        }
+    )
+    return [time_path, "-v", "-o", str(time_output_path), *base_args]
+
+
+def _run_captured_shell_command(
+    shell_command: ShellCommand,
+    execution_config: ExecutionConfig,
+    started_at: datetime,
+    profile: dict,
+    *,
+    output_log_path: Optional[Path],
+    task_metadata: Mapping[str, object],
+) -> list[str]:
+    command_logger = _get_command_logger() if execution_config.stream_output else None
+    buffered_log_lines = []
+    output_lines = []
+    process = None
+    reader_thread = None
+    temp_file = None
+    output_log_handle = None
+    resource_before = None
+    process_start_time = None
+    try:
+        if output_log_path is not None:
+            output_log_path.parent.mkdir(parents=True, exist_ok=True)
+            output_log_handle = output_log_path.open("a", encoding="utf-8", buffering=1)
+            _write_command_output_header(
+                output_log_handle,
+                shell_command,
+                started_at,
+                task_metadata=task_metadata,
+            )
+
+        temp_file = tempfile.NamedTemporaryFile(
+            prefix="rapthor-prefect-",
+            suffix=".sh",
+            delete=False,
+        )
+        temp_file.write(shell_command.command_string.encode())
+        temp_file.close()
+
+        env = os.environ.copy()
+        for key, value in shell_command.environment.items():
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = value
+        process_args = _profiled_process_args(
+            ["bash", temp_file.name],
+            shell_command,
+            execution_config,
+            started_at,
+            profile,
+        )
+        if profile:
+            resource_before = _resource_usage_snapshot()
+            process_start_time = time.monotonic()
+        process = subprocess.Popen(
+            process_args,
+            cwd=shell_command.working_directory,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if process.stdout is None:
+            raise RuntimeError("Command output pipe was not created")
+
+        output_queue = queue.Queue()
+        reader_thread = threading.Thread(
+            target=_queue_process_output,
+            args=(process.stdout, output_queue),
+            daemon=True,
+        )
+        reader_thread.start()
+
+        while True:
+            try:
+                raw_line = output_queue.get(timeout=STREAM_LOG_FLUSH_INTERVAL_SECONDS)
+            except queue.Empty:
+                if command_logger is not None:
+                    _flush_stream_log(command_logger, buffered_log_lines)
+                continue
+
+            if raw_line is _STREAM_DONE:
+                break
+
+            lines = _output_lines(raw_line)
+            output_lines.extend(lines)
+            if output_log_handle is not None:
+                output_log_handle.write(raw_line.decode(errors="replace"))
+            if command_logger is not None:
+                buffered_log_lines.extend(lines)
+                if len(buffered_log_lines) >= STREAM_LOG_MAX_LINES_PER_RECORD:
+                    _flush_stream_log(command_logger, buffered_log_lines)
+
+        if command_logger is not None:
+            _flush_stream_log(command_logger, buffered_log_lines)
+
+        process.wait()
+        resource_after = _resource_usage_snapshot() if resource_before is not None else None
+        profile_elapsed_seconds = (
+            time.monotonic() - process_start_time if process_start_time is not None else 0.0
+        )
+        _finish_command_profile(
+            profile,
+            resource_before=resource_before,
+            resource_after=resource_after,
+            elapsed_seconds=profile_elapsed_seconds,
+        )
+        if process.returncode != 0:
+            raise ShellCommandError(
+                "Command failed with return code "
+                f"{process.returncode}: {shell_command.command_string}",
+                process.returncode,
+            )
+    finally:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait()
+        if reader_thread is not None:
+            reader_thread.join(timeout=1)
+        if temp_file is not None and os.path.exists(temp_file.name):
+            os.remove(temp_file.name)
+        if output_log_handle is not None:
+            _write_command_output_footer(
+                output_log_handle,
+                returncode=None if process is None else process.returncode,
+            )
+            output_log_handle.close()
+
+    return output_lines
+
+
+def _profile_directory(shell_command: ShellCommand, started_at: datetime) -> Optional[Path]:
+    log_path = command_log_path(shell_command.working_directory)
+    if log_path is None:
+        return None
+
+    operation = Path(str(shell_command.working_directory)).name
+    name = shell_command.name or normalize_command(shell_command.command)[0]
+    timestamp = started_at.strftime("%Y%m%dT%H%M%S%fZ")
+    digest = hashlib.sha1(shell_command.command_string.encode("utf-8")).hexdigest()[:8]
+    return (
+        log_path.parent
+        / "profiles"
+        / (f"{_slug(operation)}-{_slug(str(name))}-{timestamp}-{digest}")
+    )
+
+
+def _finish_command_profile(
+    profile: dict,
+    resource_before=None,
+    resource_after=None,
+    elapsed_seconds: float = 0.0,
+) -> None:
+    artifacts = profile.get("artifacts")
+    if isinstance(artifacts, dict) and artifacts.get("gnu_time"):
+        metrics = parse_gnu_time_metrics(Path(artifacts["gnu_time"]))
+        if metrics:
+            profile["resource_metrics"] = metrics
+    if "resource_metrics" not in profile:
+        metrics = _resource_usage_metrics(resource_before, resource_after, elapsed_seconds)
+        if metrics:
+            profile["resource_metrics"] = metrics
+            profile["resource_source"] = "python_resource"
+
+
+def _resource_usage_snapshot():
+    return resource.getrusage(resource.RUSAGE_CHILDREN)
+
+
+def _resource_usage_metrics(before, after, elapsed_seconds: float) -> dict:
+    if before is None or after is None:
+        return {}
+
+    user_seconds = max(0.0, after.ru_utime - before.ru_utime)
+    system_seconds = max(0.0, after.ru_stime - before.ru_stime)
+    cpu_seconds = user_seconds + system_seconds
+    metrics = {
+        "user_seconds": user_seconds,
+        "system_seconds": system_seconds,
+        "elapsed_seconds": max(0.0, elapsed_seconds),
+        "max_rss_kb": max(0, after.ru_maxrss),
+        "major_page_faults": max(0, after.ru_majflt - before.ru_majflt),
+        "minor_page_faults": max(0, after.ru_minflt - before.ru_minflt),
+        "file_system_inputs": max(0, after.ru_inblock - before.ru_inblock),
+        "file_system_outputs": max(0, after.ru_oublock - before.ru_oublock),
+        "voluntary_context_switches": max(0, after.ru_nvcsw - before.ru_nvcsw),
+        "involuntary_context_switches": max(0, after.ru_nivcsw - before.ru_nivcsw),
+    }
+    if elapsed_seconds > 0:
+        metrics["cpu_percent"] = cpu_seconds / elapsed_seconds * 100.0
+    return metrics
+
+
+def _queue_process_output(output, output_queue) -> None:
+    try:
+        for raw_line in iter(output.readline, b""):
+            output_queue.put(raw_line)
+    finally:
+        output_queue.put(_STREAM_DONE)
+
+
+def _output_lines(raw_line: bytes) -> list[str]:
+    text = raw_line.decode(errors="replace").rstrip("\r\n")
+    return text.splitlines() or [text]
+
+
+def _write_command_output_header(
+    handle,
+    shell_command: ShellCommand,
+    started_at: datetime,
+    *,
+    task_metadata: Mapping[str, object],
+) -> None:
+    """Append a readable command preamble to a durable output log."""
+    handle.write(f"=== Rapthor command started {started_at.isoformat()} ===\n")
+    if task_metadata.get("task_run_name"):
+        handle.write(f"Task: {task_metadata['task_run_name']}\n")
+    if task_metadata.get("task_run_id"):
+        handle.write(f"Task run ID: {task_metadata['task_run_id']}\n")
+    task_tags = task_metadata.get("task_tags")
+    if isinstance(task_tags, (list, tuple, set)) and task_tags:
+        handle.write(f"Tags: {', '.join(str(tag) for tag in task_tags)}\n")
+    if shell_command.working_directory is not None:
+        handle.write(f"Working directory: {shell_command.working_directory}\n")
+    handle.write(f"Command: {shell_command.command_string}\n\n")
+
+
+def _write_command_output_footer(handle, *, returncode: Optional[int]) -> None:
+    """Append completion metadata to a durable output log."""
+    handle.write("\n")
+    handle.write(f"Exit status: {returncode if returncode is not None else 'unknown'}\n")
+    handle.write(f"=== Rapthor command finished {datetime.now(timezone.utc).isoformat()} ===\n\n")
+
+
+def _flush_stream_log(command_logger, buffered_lines: list[str]) -> None:
+    if not buffered_lines:
+        return
+    message = "\n".join(buffered_lines).rstrip("\n")
+    buffered_lines.clear()
+    if message:
+        command_logger.info(message)
+
+
+@lru_cache
+def _gnu_time_path() -> Optional[str]:
+    candidates = ["/usr/bin/time", shutil.which("time")]
+    for candidate in dict.fromkeys(path for path in candidates if path):
+        try:
+            result = subprocess.run(
+                [candidate, "-v", "true"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except OSError:
+            continue
+        if result.returncode == 0:
+            return candidate
+    return None
+
+
+def _parse_elapsed_seconds(value: str) -> float:
+    parts = value.strip().split(":")
+    if len(parts) == 3:
+        hours, minutes, seconds = parts
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    if len(parts) == 2:
+        minutes, seconds = parts
+        return int(minutes) * 60 + float(seconds)
+    return float(value)
+
+
+def _slug(value: str, max_length: int = 80) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    if not slug:
+        return "command"
+    return slug[:max_length].strip("-") or "command"
+
+
+def _log_filename(value: object, max_length: int = 120) -> str:
+    filename = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._-")
+    if not filename:
+        return "command"
+    return filename[:max_length].rstrip("._-") or "command"

@@ -1,14 +1,14 @@
 # This Dockerfile builds the base image for the Rapthor pipeline,
 # containing all its dependencies.
 
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 # Set default versions. Can be overridden from the command-line
 ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
 ARG DP3_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
-ARG IDG_COMMIT=master
+ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=master
 ARG WSCLEAN_COMMIT=master
@@ -17,6 +17,9 @@ ARG WSCLEAN_COMMIT=master
 # Intel Haswell and newer, AMD Excavator and newer
 ARG PORTABLE=FALSE
 ARG TARGET_CPU=x86-64-v3
+
+# Allow pip to break system packages; we know what we're doing
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Suppress warning from pip when installing packages as root
 ENV PIP_ROOT_USER_ACTION=ignore
@@ -42,6 +45,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-numpy-dev \
         libboost-python-dev \
         libcfitsio-dev \
+        libdeflate-dev \
         libfftw3-dev \
         libgsl-dev \
         libhdf5-dev \
@@ -72,10 +76,12 @@ RUN python3 -m pip install \
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
-# leap seconds appear, ignore them or regenerate the docker image.
-RUN mkdir -p /usr/local/share/casacore/data && \
-    wget -qO - https://www.astron.nl/iers/WSRT_Measures.ztar | \
-        tar -C /usr/local/share/casacore/data -xzf -
+# leap seconds appear, ignore them or regenerate the docker image. If the
+# ASTRON endpoint is unavailable, use backup from git.astron.nl.
+RUN mkdir -p /usr/local/share/casacore/data \
+    && wget -nv --timeout 5 --tries=3 https://iers.astron.nl/WSRT_Measures.ztar \
+    && tar -C /usr/local/share/casacore/data -xzf WSRT_Measures.ztar \
+    && rm WSRT_Measures.ztar
 
 # Install Casacore
 RUN git clone --no-checkout https://github.com/casacore/casacore.git
@@ -198,7 +204,7 @@ RUN pip install ./rapthor
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:22.04 AS runner
+FROM ubuntu:24.04 AS runner
 
 COPY --from=builder /usr/local /usr/local
 
@@ -207,7 +213,7 @@ ARG AOFLAGGER_COMMIT=master
 ARG CASACORE_COMMIT=master
 ARG DP3_COMMIT=master
 ARG EVERYBEAM_COMMIT=master
-ARG IDG_COMMIT=master
+ARG IDG_COMMIT=main
 ARG PYTHONCASACORE_COMMIT=master
 ARG SAGECAL_COMMIT=master
 ARG WSCLEAN_COMMIT=master
@@ -230,28 +236,31 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         ca-certificates \
         git \
         libblas3 \
-        libboost-filesystem1.74.0 \
-        libboost-program-options1.74.0 \
-        libboost-python1.74.0 \
-        libboost-numpy1.74.0 \
+        libboost-filesystem1.83.0 \
+        libboost-program-options1.83.0 \
+        libboost-python1.83.0 \
+        libc6 \
         libcfitsio-bin \
+        libdeflate0 \
         libfftw3-double3 \
         libfftw3-single3 \
+        libgcc-s1 \
         libgfortran5 \
         libgomp1 \
         libgsl27 \
-        libhdf5-103-1 \
-        libhdf5-cpp-103-1 \
+        libhdf5-103-1t64 \
+        libhdf5-cpp-103-1t64 \
         liblapack3 \
         liblua5.4-0 \
-        libpng16-16 \
-        libpython3.10 \
+        libpng16-16t64 \
+        libpython3.12t64 \
+        libreadline8t64 \
         libstdc++6 \
-        libwcs7 \
+        libwcs8 \
         nodejs \
         python3 \
-        python3-distutils \
-        wget
+        wget \
+        zlib1g
 RUN rm -rf /var/lib/apt/lists/*
 
 # Basic sanity check: try to run the compiled tools, binaries that Rapthor

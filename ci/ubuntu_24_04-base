@@ -1,0 +1,365 @@
+# This Dockerfile builds the base image for the Rapthor pipeline,
+# containing all its dependencies.
+
+FROM ubuntu:24.04 AS builder
+
+# Set default versions. Can be overridden from the command-line
+ARG AOFLAGGER_COMMIT=master
+ARG CASACORE_COMMIT=master
+ARG DP3_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
+ARG IDG_COMMIT=main
+ARG PYTHONCASACORE_COMMIT=master
+ARG SAGECAL_COMMIT=master
+ARG WSCLEAN_COMMIT=master
+
+# Build binaries for CPUs that support AVX2 (x86-64 feature level 3):
+# Intel Haswell and newer, AMD Excavator and newer
+ARG PORTABLE=FALSE
+ARG TARGET_CPU=x86-64-v3
+
+# Allow pip to break system packages; we know what we're doing
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
+# Suppress warning from pip when installing packages as root
+ENV PIP_ROOT_USER_ACTION=ignore
+
+# Set our working directory
+WORKDIR /src
+
+# It looks like we run into rate limitations when using the default
+# Ubuntu APT server, resulting in HTTP 403 errors.
+# Use "nl.archive.ubuntu.com", instead of "archive.ubuntu.com".
+RUN sed -ri "s/(archive\.ubuntu\.com)/nl.\1/" /etc/apt/sources.list
+
+# Install all build-time dependencies
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y \
+        bison \
+        bzip2 \
+        flex \
+        g++ \
+        gfortran \
+        git \
+        libboost-date-time-dev \
+        libboost-filesystem-dev \
+        libboost-program-options-dev \
+        libboost-python-dev \
+        libcfitsio-dev \
+        libdeflate-dev \
+        libfftw3-dev \
+        libgsl-dev \
+        libhdf5-dev \
+        liblapack-dev \
+        liblua5.4-dev \
+        libpng-dev \
+        libpython3-dev \
+        libreadline-dev \
+        ninja-build \
+        pkgconf \
+        pybind11-dev \
+        python3 \
+        wcslib-dev \
+        wget
+
+# Do not use `pip` from the Debian repository, but fetch it from PyPA.
+# This way, we are sure that the latest versions of `pip`, `setuptools`, and
+# `wheel` are installed in /usr/local, the only directory we're going to copy
+# over to the next build stage.
+RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
+    python3 get-pip.py
+
+# Install required Python build packages. Build Python extensions against NumPy
+# 2 from the start so the copied runtime image does not mix NumPy 1.x extension
+# modules with a NumPy 2 runtime.
+RUN python3 -m pip install \
+    'cmake<4' \
+    'numpy>=2,<3'
+
+# Build Boost.NumPy from source against pip NumPy 2. Distro Boost.NumPy
+# libraries may be compiled against NumPy 1.x, which breaks packages such as
+# PyBDSF when the runtime uses NumPy 2.
+ARG BOOST_VERSION=1.88.0
+ARG BOOST_VERSION_UNDERSCORED=1_88_0
+RUN wget -q https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    tar -xjf boost_${BOOST_VERSION_UNDERSCORED}.tar.bz2 && \
+    cd boost_${BOOST_VERSION_UNDERSCORED} && \
+    NUMPY_INC=$(python3 -c "import numpy; print(numpy.get_include())") && \
+    ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3 && \
+    ./b2 --with-python \
+        python=3.12 \
+        cxxflags="-I${NUMPY_INC}" \
+        include="/usr/include/python3.12:${NUMPY_INC}" \
+        variant=release \
+        threading=multi \
+        link=shared \
+        --layout=system \
+        --prefix=/opt/boost-numpy \
+        --libdir=/opt/boost-numpy/lib \
+        install && \
+    cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORED}*
+
+# Install the casacore measures data. We purposely do not install these from
+# the Ubuntu repository, but download the latest version from the ASTRON site.
+# Note: The file on the ftp site is updated daily. When warnings regarding
+# leap seconds appear, ignore them or regenerate the docker image. If the
+# ASTRON endpoint is unavailable, use backup from git.astron.nl.
+RUN mkdir -p /usr/local/share/casacore/data \
+    && wget -nv --timeout 5 --tries=3 https://iers.astron.nl/WSRT_Measures.ztar \
+    && tar -C /usr/local/share/casacore/data -xzf WSRT_Measures.ztar \
+    && rm WSRT_Measures.ztar
+
+# Install Casacore
+RUN git clone --no-checkout https://github.com/casacore/casacore.git
+RUN git -C casacore checkout ${CASACORE_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
+    -H/src/casacore \
+    -B/src/casacore/build \
+    -G Ninja
+RUN ninja -C /src/casacore/build install
+
+# Install IDG
+RUN git clone --no-checkout https://git.astron.nl/RD/idg.git
+RUN git -C idg checkout ${IDG_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DBUILD_WITH_PYTHON=OFF \
+    -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
+    -H/src/idg \
+    -B/src/idg/build \
+    -G Ninja
+RUN ninja -C /src/idg/build install
+
+# Install EveryBeam. Do not compile python bindings, they will interfere with
+# the ones in the binary wheel on PyPI.
+RUN git clone --no-checkout https://git.astron.nl/RD/EveryBeam.git
+RUN git -C EveryBeam checkout ${EVERYBEAM_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DBUILD_WITH_PYTHON=OFF \
+    -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
+    -H/src/EveryBeam \
+    -B/src/EveryBeam/build \
+    -G Ninja
+RUN ninja -C /src/EveryBeam/build install
+
+# Install AOFlagger
+RUN git clone --no-checkout https://gitlab.com/aroffringa/aoflagger.git
+RUN git -C aoflagger checkout ${AOFLAGGER_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
+    -DENABLE_GUI=OFF \
+    -H/src/aoflagger \
+    -B/src/aoflagger/build \
+    -G Ninja
+RUN ninja -C /src/aoflagger/build install
+
+# Install WSClean
+RUN git clone --no-checkout https://gitlab.com/aroffringa/wsclean.git
+RUN git -C wsclean checkout ${WSCLEAN_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
+    -H/src/wsclean \
+    -B/src/wsclean/build \
+    -G Ninja
+RUN ninja -C /src/wsclean/build install
+
+# Install SAGECal libdirac
+RUN git clone --no-checkout https://github.com/nlesc-dirac/sagecal.git
+RUN git -C sagecal checkout ${SAGECAL_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DLIB_ONLY=1 \
+    -H/src/sagecal \
+    -B/src/sagecal/build \
+    -G Ninja
+RUN ninja -C /src/sagecal/build install
+
+# Install DP3
+RUN git clone --no-checkout https://git.astron.nl/RD/DP3.git
+RUN git -C DP3 checkout ${DP3_COMMIT}
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
+    -DLIBDIRAC_PREFIX=/usr/ \
+    -DMETADATA_COMPRESSION_DEFAULT=ON \
+    -H/src/DP3 \
+    -B/src/DP3/build \
+    -G Ninja
+RUN ninja -C /src/DP3/build install
+
+# Install python-casacore
+RUN git clone --no-checkout https://github.com/casacore/python-casacore.git
+RUN git -C python-casacore checkout ${PYTHONCASACORE_COMMIT}
+RUN CASACORE_DATA=/usr/local/share/casacore/data \
+    pip install -v /src/python-casacore
+
+# We need to `pip install` EveryBeam from source as well, because the C++
+# build does not produce a proper Python package.
+RUN pip install -v /src/EveryBeam
+
+# Use the NumPy-2-built Boost.NumPy when building Python packages that need
+# Boost.Python/NumPy, while the CMake-built astronomy tools above keep using the
+# distro Boost stack.
+ENV BOOST_ROOT=/opt/boost-numpy
+ENV BOOST_INCLUDEDIR=/opt/boost-numpy/include
+ENV BOOST_LIBRARYDIR=/opt/boost-numpy/lib
+ENV CMAKE_ARGS="-DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/opt/boost-numpy -DBOOST_INCLUDEDIR=/opt/boost-numpy/include -DBOOST_LIBRARYDIR=/opt/boost-numpy/lib -DBoost_PYTHON_LIBRARY=/opt/boost-numpy/lib/libboost_python312.so -DBoost_PYTHON_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_python312.so -DBoost_NUMPY_LIBRARY=/opt/boost-numpy/lib/libboost_numpy312.so -DBoost_NUMPY_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_numpy312.so"
+ENV CPLUS_INCLUDE_PATH=/opt/boost-numpy/include
+ENV LD_LIBRARY_PATH=/opt/boost-numpy/lib:/usr/local/lib
+
+# Generate file with one-liner package version descriptions
+RUN mkdir -p /usr/local/share/rapthor; \
+for p in $(find /src -type d -name .git | sort); \
+do \
+  d=$(dirname $p); b=$(basename $d); cd $d; l=$(git log -1 --oneline); \
+  echo "$b: $l"; \
+done \
+> /usr/local/share/rapthor/sw-versions.txt
+
+# Install all Python packages that Rapthor depends on from the project metadata.
+# Build PyBDSF locally so it links against the NumPy-2-compatible Boost.NumPy
+# above, and avoid maintaining a second dependency list next to pyproject.toml.
+COPY pyproject.toml .
+RUN python3 -c "import pathlib, tomllib; deps = tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']; pathlib.Path('/tmp/rapthor-runtime-requirements.txt').write_text('\n'.join(deps) + '\n')" && \
+    pip install --no-binary=bdsf -r /tmp/rapthor-runtime-requirements.txt
+RUN python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__version__} import check passed')"
+
+
+#---------------------------------------------------------------------------
+# The image will now be rebuilt without adding the sources, in order to
+# reduce the size of the image.
+#---------------------------------------------------------------------------
+FROM ubuntu:24.04 AS runtime
+
+COPY --from=builder /usr/local /usr/local
+COPY --from=builder /opt/boost-numpy /opt/boost-numpy
+
+# Set default versions. Can be overridden from the command-line
+ARG AOFLAGGER_COMMIT=master
+ARG CASACORE_COMMIT=master
+ARG DP3_COMMIT=master
+ARG EVERYBEAM_COMMIT=master
+ARG IDG_COMMIT=main
+ARG PYTHONCASACORE_COMMIT=master
+ARG SAGECAL_COMMIT=master
+ARG WSCLEAN_COMMIT=master
+
+# Add version information to the metadata of the image
+LABEL \
+    nl.astron.rapthor.aoflagger.version=${AOFLAGGER_COMMIT} \
+    nl.astron.rapthor.casacore.version=${CASACORE_COMMIT} \
+    nl.astron.rapthor.dp3.version=${DP3_COMMIT} \
+    nl.astron.rapthor.everybeam.version=${EVERYBEAM_COMMIT} \
+    nl.astron.rapthor.idg.version=${IDG_COMMIT} \
+    nl.astron.rapthor.python-casacore.version=${PYTHONCASACORE_COMMIT} \
+    nl.astron.rapthor.sagecal.version=${SAGECAL_COMMIT} \
+    nl.astron.rapthor.wsclean.version=${WSCLEAN_COMMIT}
+
+ENV BOOST_ROOT=/opt/boost-numpy
+ENV BOOST_INCLUDEDIR=/opt/boost-numpy/include
+ENV BOOST_LIBRARYDIR=/opt/boost-numpy/lib
+ENV CMAKE_ARGS="-DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=/opt/boost-numpy -DBOOST_INCLUDEDIR=/opt/boost-numpy/include -DBOOST_LIBRARYDIR=/opt/boost-numpy/lib -DBoost_PYTHON_LIBRARY=/opt/boost-numpy/lib/libboost_python312.so -DBoost_PYTHON_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_python312.so -DBoost_NUMPY_LIBRARY=/opt/boost-numpy/lib/libboost_numpy312.so -DBoost_NUMPY_LIBRARY_RELEASE=/opt/boost-numpy/lib/libboost_numpy312.so"
+ENV CPLUS_INCLUDE_PATH=/opt/boost-numpy/include
+ENV LD_LIBRARY_PATH=/opt/boost-numpy/lib:/usr/local/lib
+
+# Only install run-time required packages
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        git \
+        libblas3 \
+        libboost-filesystem1.83.0 \
+        libboost-program-options1.83.0 \
+        libboost-python1.83.0 \
+        libc6 \
+        libcfitsio-bin \
+        libdeflate0 \
+        libfftw3-double3 \
+        libfftw3-single3 \
+        libgcc-s1 \
+        libgfortran5 \
+        libgomp1 \
+        libgsl27 \
+        libhdf5-103-1t64 \
+        libhdf5-cpp-103-1t64 \
+        liblapack3 \
+        liblua5.4-0 \
+        libpng16-16t64 \
+        libpython3.12t64 \
+        libreadline8t64 \
+        libstdc++6 \
+        libwcs8 \
+        nodejs \
+        python3 \
+        wget \
+        zlib1g
+RUN rm -rf /var/lib/apt/lists/*
+
+# Try to run the compiled tools and binaries that Rapthor needs, to make
+# sure the software runs without problems (e.g. no missing libraries).
+RUN aoflagger --version && \
+    DP3 --version && \
+    wsclean --version && \
+    fpack -H && \
+    python3 -c "import bdsf, casacore.tables, numpy; print(f'NumPy {numpy.__version__} runtime import check passed')"
+
+
+#---------------------------------------------------------------------------
+# Development target. It extends the CI runner so the OS, Python version,
+# compiled tools, and runtime dependencies are identical to CI.
+#---------------------------------------------------------------------------
+FROM runtime AS dev
+
+# The isolated development environment rebuilds PyBDSF against NumPy 2, so it
+# needs the compiler toolchain and Python headers that are omitted from runtime.
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        gfortran \
+        ninja-build \
+        python3-dev \
+        python3-venv \
+        time && \
+    rm -rf /var/lib/apt/lists/*
+
+# CI installs Rapthor and its test dependencies in an isolated tox environment.
+# Do the same here so pip installs NumPy-compatible wheels instead of reusing
+# Python extensions from the runtime image that were built against NumPy 1.x.
+ENV VIRTUAL_ENV=/opt/rapthor-venv
+RUN python3 -m venv ${VIRTUAL_ENV}
+
+ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam \
+    PATH="${VIRTUAL_ENV}/bin:${PATH}" \
+    PIP_ROOT_USER_ACTION=ignore
+
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-binary=bdsf bdsf && \
+    python3 -c "import bdsf, numpy; print(f'PyBDSF development import check passed with NumPy {numpy.__version__}')"
+
+WORKDIR /app
+
+CMD ["/bin/bash"]
+
+
+# Keep the CI runner as the default final target while allowing the dev
+# container to branch from the same runtime image above.
+FROM runtime AS runner

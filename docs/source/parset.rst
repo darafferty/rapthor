@@ -72,6 +72,8 @@ The available options are described below under their respective sections.
         Fraction of data to use during the generation of the initial sky model (default =
         0.2). If less than one, the input data are divided by time into chunks that sum to
         the requested fraction, spaced out evenly over the full time range.
+        Very small selections retain at least two time samples when available, as
+        required for Dysco compression, even if this exceeds the requested fraction.
 
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one
@@ -131,8 +133,12 @@ The available options are described below under their respective sections.
         the processing time
 
     input_h5parm
-        Full path to an H5parm file with direction-dependent solutions (default = None).
-        This file is used if no calibration is to be done.
+        Full path to an H5parm file with scalar phase or diagonal slow-gain
+        calibration solutions (default = None). This file is used if no
+        calibration is to be done. With an image-only DI strategy, Rapthor
+        pre-applies this file during imaging preparation. With an image-only DD
+        strategy, Rapthor applies this file during imaging and therefore needs
+        matching sky-model patches or a facet layout.
 
         .. note::
 
@@ -141,20 +147,22 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            If an imput sky model is also supplied, the directions in the H5parm file
-            must match the patches in the input sky model, or, if not, a facet layout
-            file with matching directions must be supplied and
-            :term:`regroup_input_skymodel` activated.
+            For DD use, the directions in the H5parm file must match the
+            patches in the input sky model, or, if not, a facet layout file with
+            matching directions must be supplied and
+            :term:`regroup_input_skymodel` activated. DI use does not require
+            an input sky model.
 
     input_fulljones_h5parm
-        Full path to an H5parm file with full-Jones solutions (default = None). This
-        file is used if no calibration is to be done. The notes given for
-        :term:`input_h5parm` also apply to this file.
+        Full path to an H5parm file with DI full-Jones solutions (default =
+        None). This file is used if no calibration is to be done. Rapthor
+        pre-applies full-Jones solutions during imaging preparation, separately
+        from the scalar phase or diagonal slow-gain products supplied through
+        :term:`input_h5parm`.
 
     input_normalization_h5parm
         Full path to an H5parm file with flux-scale normalization solutions (default =
-        None). This file is used if no calibration is to be done. The notes given for
-        :term:`input_h5parm` also apply to this file.
+        None). This file is used if no calibration is to be done.
 
     facet_layout
         Full path to a text file that defines the facet layout (default = None). This file
@@ -183,6 +191,10 @@ The available options are described below under their respective sections.
         completed successfully), IDGCal is used during calibration to generate smooth 2-D
         screens that are then applied by WSClean in the final imaging step.
 
+        .. note::
+
+            The ``hybrid`` mode should be considered experimental.
+
 
 .. _parset_calibration_options:
 
@@ -190,6 +202,10 @@ The available options are described below under their respective sections.
 -----------------
 
 .. glossary::
+
+    use_included_skymodels
+        Include a packaged sky model in calibration when it is within twice the primary
+        beam FWHM of the field center (default = ``False``).
 
     use_image_based_predict
         Use image-based prediction (default = ``False``)? Image-based prediction can be
@@ -202,6 +218,19 @@ The available options are described below under their respective sections.
             is such that time or frequency smearing is significant within the field
             of view of interest, then the use of image-based prediction is not
             recommended.
+
+    use_wsclean_predict
+        Use WSClean to predict calibration model columns before DD calibration solves
+        (default = ``False``)? This is an alternative image-based prediction path for
+        large sky models. It is mutually exclusive with :term:`use_image_based_predict`;
+        if both are enabled, Rapthor keeps ``use_wsclean_predict`` and disables
+        ``use_image_based_predict``.
+
+    wsclean_predict_bw
+        Bandwidth in Hz for each model image drawn during WSClean-based prediction
+        (default = ``2e6``). Wide-band data are split into channel groups no wider
+        than this value before model images are drawn and predicted into temporary
+        model-data columns.
 
     llssolver
         The linear least-squares solver to use (one of ``qr``, ``svd``, or ``lsmr``;
@@ -315,7 +344,7 @@ The available options are described below under their respective sections.
 
     medium_smoothnessconstraint
         Smoothness constraint bandwidth used during the medium-fast calibration, in
-        Hz (default = 3e6).
+        Hz (default = 6e6).
 
     medium_smoothnessreffrequency
         Smoothness constraint reference frequency used during the medium-fast calibration, in
@@ -383,33 +412,22 @@ The available options are described below under their respective sections.
     solverlbfgs_iter
         Number of iterations per minibatch in the LBFGS solver (only used when
         :term:`solveralgorithm` = ``lbfgs``; default = 4).
-    
-    average_visibilities
-        Perform averaging of the input visibilities for imaging (default = ``True``), 
-        determined by the maximum allowed before smearing effects become important (see
-        :term:`max_peak_smearing`). 
-         
-        .. note:: 
 
-            This works in conjuntion with :term:`save_visibilities`, so that 
-            visibilities used in each imaging cycle can be saved without averaging 
-            (unless other averaging such as bda is requested).
-
-    bda_timebase
+    bda_timebase (calibration)
         Maximum baseline used in baseline-dependent time averaging (BDA) during the
         calibration, in m (default = 20000). A value of 0 will disable the averaging.
         Depending on the solution time step used during the calibration,
         activating this option may improve the speed of the solve and lower the memory
         usage during solving.
 
-    bda_frequencybase
+    bda_frequencybase (calibration)
         Maximum baseline used in baseline-dependent frequency averaging (BDA) during the
         calibration, in m (default = 20000). A value of 0 will disable the averaging.
         Depending on the solution time step used during the calibration,
         activating this option may improve the speed of the solve and lower the memory
         usage during solving.
 
-    correct_time_frequency_smearing
+    correct_time_frequency_smearing (calibration)
         Correct for time and frequency smearing during the prediction part of
         calibration (default = ``False``). Generally, if enabled and imaging is
         to be done, the identical parameter in the ``[imaging]`` section should
@@ -457,10 +475,18 @@ The available options are described below under their respective sections.
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
 
-    bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during imaging, in m
-        (default = 0). A value of 0 will disable the averaging. Activating this option
-        may improve the speed of imaging.
+    bda_timebase (imaging)
+        Maximum baseline used in baseline-dependent time averaging (BDA) during
+        imaging, in m (default = 20000). A value of 0 will disable time BDA.
+        Activating this option may improve the speed of imaging.
+
+    bda_frequencybase (imaging)
+        Maximum baseline used in baseline-dependent frequency averaging (BDA) during
+        imaging, in m (default = 20000). A value of 0 will disable frequency BDA.
+        Activating this option may improve the speed of imaging.
+
+        Frequency BDA produces a Measurement Set with multiple spectral windows.
+        Primary-beam correction for this layout requires EveryBeam 0.8.3 or later.
 
         .. note::
 
@@ -487,9 +513,12 @@ The available options are described below under their respective sections.
         .. note::
 
             It is not recommneded to turn off filtering of the sky model unless the
-            :term:`use_image_based_predict` parameter is set, as the sky model without
-            filtering can be very large (resulting in runtimes becoming very long unless
-            image-based predict is used).
+            :term:`use_image_based_predict` or :term:`use_wsclean_predict` parameter is
+            set, as the sky model without filtering can be very large (resulting in
+            runtimes becoming very long unless image-based predict is used).
+
+    source_finder
+        Source finder used when filtering the sky model (default = ``bdsf``).
 
     save_visibilities
         Save visibilities used for imaging (default = ``False``). If ``True``, the imaging
@@ -497,6 +526,23 @@ The available options are described below under their respective sections.
         if available, applied. Note, however, that the direction-dependent solutions will
         not be applied unless :term:`dde_method` = ``single``, in which case the solutions
         closest to the image centers are used.
+
+    save_residual_visibilities
+        Save residual visibilities for the final image (default = ``False``).
+        If ``True``, WSClean keeps the model data required for the final image, and Rapthor
+        writes residual Measurement Sets as DATA minus MODEL_DATA in
+        ``visibilities/image_X/sector_Y``.
+
+    average_visibilities
+        Perform averaging of the input visibilities for imaging (default = ``True``),
+        determined by the maximum allowed before smearing effects become important (see
+        :term:`max_peak_smearing`).
+
+        .. note::
+
+            This works in conjunction with :term:`save_visibilities`, so that
+            visibilities used in each imaging cycle can be saved without averaging
+            (unless other averaging such as BDA is requested).
 
     save_image_cube
         Save frequency cube(s) for the given Stokes parameters (default = ``False``).
@@ -515,9 +561,16 @@ The available options are described below under their respective sections.
         this is just the PyBDSF-generated masks used for filtering of the sky model (if
         :term:`filter_skymodel` = ``True``).
 
-    save_filtered_model_images
+    save_filtered_model_image
         Save images of the filtered sky model made during each imaging cycle
         (default = ``False``).
+
+    model_mosaic_method
+        Method used to generate model mosaics from multiple imaging sectors
+        (default = ``wsclean``). With ``wsclean``, the model mosaic is drawn by
+        WSClean from the sky models of the sectors. With ``sparse_fits``, the
+        model images of the sectors are regridded instead; this method is
+        intended mainly for testing.
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
@@ -586,18 +639,20 @@ The available options are described below under their respective sections.
         Use MPI to distribute WSClean jobs over multiple nodes (default = ``False``)? If
         ``True`` and more than one node can be allocated to each WSClean job (i.e.,
         ``max_nodes`` / ``num_images`` >= 2), then distributed imaging will be used (only
-        available if :term:`batch_system` = ``slurm``).
+        available if :term:`batch_system` = ``slurm`` or ``slurm_static``). WSClean is
+        started with ``mpirun``, with one process on each node.
 
         .. note::
 
-            If MPI is activated, :term:`dir_local` (under the
-            :ref:`parset_cluster_options` section below) must not be set unless it is on a
-            shared filesystem.
+            When MPI is used, WSClean's temporary files are placed in
+            :term:`global_scratch_dir` if it is set, and otherwise in
+            :term:`dir_working`, because all the nodes must be able to see them.
 
         .. note::
 
-            Currently, Toil does not fully support ``openmpi``. Because of this, imaging
-            can only use the worker nodes, and the master node will be idle.
+            Whether MPI works depends on how MPI and Slurm are set up on the
+            cluster. Check this mode with a short run before using it for a
+            full reduction.
 
     shared_facet_rw
         When using facet-based imaging runs WSClean with the options
@@ -654,7 +709,7 @@ The available options are described below under their respective sections.
         smearing away from the image centers. Note this option is not considered if 
         :term:`average_visibilities` = ``False``.
 
-    correct_time_frequency_smearing
+    correct_time_frequency_smearing (imaging)
         Correct for time and frequency smearing during imaging (default =
         ``False``). Generally, if enabled and calibration is to be done, the
         identical parameter in the ``[calibration]`` section should also be
@@ -694,39 +749,113 @@ The available options are described below under their respective sections.
         image diagnostics. If this is not set, a sky model will be downloaded from 
         Pan-STARRS. Default = ``None`` (sky model will be downloaded by default).
 
+    normalization_skymodels
+        List of at least two sky model paths used for flux normalization when enabled
+        by the strategy (see :term:`do_normalize`). The default is ``None``, which allows
+        Rapthor to download suitable sky models when internet access is available.
+
+    normalization_reference_frequencies
+        Reference frequencies, in Hz, corresponding to ``normalization_skymodels``
+        (default = ``None``).
+
 .. _parset_cluster_options:
 
 ``[cluster]``
 -------------
 
+The options in this section set where and how the processing is run. For a run
+on a single machine, the defaults are usually sufficient. See :ref:`running`
+for how these options are used.
+
 .. glossary::
 
     batch_system
-        Cluster batch system (only used when either StreamFlow or Toil is the CWL runner;
-        default = ``single_machine``). Use ``single_machine`` when running on a single
-        machine and ``slurm`` to use multiple nodes of a Slurm-based cluster.
+        Cluster batch system (default = ``single_machine``). Use
+        ``single_machine`` when running on a single machine, and ``slurm`` or
+        ``slurm_static`` to use multiple nodes of a Slurm-based cluster.
 
-        .. note::
+        With ``single_machine``, Rapthor starts the Dask scheduler and workers
+        that it needs itself. With ``slurm`` or ``slurm_static``, Rapthor uses a
+        Dask scheduler and workers that you have started inside your Slurm job
+        (see :ref:`running_on_cluster`), and the address of the scheduler must
+        be given (see :term:`dask_scheduler`). Rapthor does not submit Slurm
+        jobs itself.
 
-            When using the ``slurm`` batch system, additional Slurm arguments can be
-            passed to Toil by setting the ``TOIL_SLURM_ARGS`` environment variable in
-            your environment before running Rapthor. See the Toil
-            `environment variables <https://toil.readthedocs.io/en/latest/appendices/environment_vars.html>`_
-            page for details.
+        The ``slurm`` and ``slurm_static`` systems differ only when
+        :term:`use_mpi` is set: with ``slurm_static``, all of the nodes set by
+        :term:`max_nodes` are used for imaging with MPI, whereas with
+        ``slurm`` one node fewer is used for each imaging sector.
 
     max_nodes
-        When :term:`batch_system` = ``slurm``, the maximum number of nodes of the cluster
-        to use at once (default = 12).
+        When :term:`batch_system` is ``slurm`` or ``slurm_static``, the number
+        of nodes of the cluster to use. The default is 0, which results in a
+        value of 1 for ``single_machine`` and 12 for the Slurm batch systems.
+        Set this to the number of nodes in your Slurm job. When all of the data
+        are used (a data fraction of 1), each observation is split in time
+        into up to this many balanced chunks, subject to the minimum calibration
+        duration and two samples per chunk, so that the nodes can work on them
+        at the same time.
+
+    local_dask_workers
+        Number of Dask workers to start when Rapthor is run on a single machine
+        (default = 0 = one worker). Each worker runs one step of the
+        processing at a time, so this is the number of DP3 or WSClean commands
+        that can be run at the same time. See :ref:`local_dask_runtime` for
+        when it is useful to set this.
 
     cpus_per_task
-        When :term:`batch_system` = ``slurm``, the number of processors per task to
-        request (default = 0 = all). By setting this value to the number of processors per
-        node, one can ensure that each task gets the entire node to itself, which is the
-        recommended way of running Rapthor.
+        The number of processors that each task may use (default = 0 = all the
+        processors of the machine on which Rapthor is started). When
+        :term:`batch_system` = ``slurm``, set this value to the number of
+        processors per node, so that each task gets the entire node to itself,
+        which is the recommended way of running Rapthor.
 
     mem_per_node_gb
-        When :term:`batch_system` = ``slurm``, the amount of memory per node in GB to
-        request (default = 0 = all).
+        The amount of memory per node in GB that Rapthor may use (default = 0
+        = all). When set, it limits the memory of each Dask worker that Rapthor
+        starts on a single machine, the memory used by WSClean (see
+        :term:`mem_gb`), and the amount of data that the predict operation
+        holds in memory at once.
+
+        Rapthor also uses this value for DP3 calibration memory checks. A preflight
+        check uses each strategy step's maximum number of directions, and a second
+        check before each calibration cycle uses the resolved facet count and DP3
+        solve intervals. If ``mem_per_node_gb`` is zero, the checks compare against
+        memory available on the machine running Rapthor. When running on multiple
+        nodes, set ``mem_per_node_gb``, because the memory of the machine on which
+        Rapthor is started may not be the same as that of the other nodes.
+
+        The estimate uses decimal GB and a conservative current DP3 peak-memory model
+        of 80 bytes per visibility sample. It includes the original data buffer,
+        visibility copies, weights, and weighted data, and uses the unaveraged channel
+        count because calibration BDA is baseline-dependent. By default, Rapthor logs
+        likely out-of-memory configurations but continues processing.
+
+        The estimated peak memory is calculated as follows::
+
+            baselines = nstations * (nstations + 1) // 2
+            time_steps = ceil(solution_interval_seconds / sampling_interval_seconds)
+            samples = baselines * channels * time_steps * (directions + 1)
+
+            visibility_copies_gb = samples * 4 * 8 / 1e9
+            weights_gb = samples * 4 * 4 / 1e9
+            weighted_data_gb = samples * 4 * 8 / 1e9
+            peak_memory_gb = visibility_copies_gb + weights_gb + weighted_data_gb
+
+        A DI solve always uses one direction. A DD preflight estimate uses the
+        strategy step's ``max_directions`` value, while the resolved estimate uses the
+        actual number of calibration facets. The additional direction in
+        ``directions + 1`` accounts for DP3 retaining the original data buffer.
+
+    fail_on_calibration_oom_risk
+        Stop Rapthor when a DP3 calibration memory estimate is greater than the
+        applicable memory limit (default = ``False``). This applies to both the
+        preflight upper bound and the resolved estimate immediately before each
+        calibration cycle. An estimate exactly equal to the limit is allowed.
+
+        When enabled, a high-risk estimate raises an actionable error before the
+        affected pipeline operation starts. If capacity cannot be determined or the
+        estimate cannot be calculated, the check remains advisory.
 
     max_cores
         Maximum number of cores per task to use on each node (default = 0 = all).
@@ -734,119 +863,198 @@ The available options are described below under their respective sections.
     max_threads
         Maximum number of threads per task to use on each node (default = 0 = all).
 
+    filter_skymodel_ncores
+        Number of cores used by PyBDSF when filtering the sky model during
+        imaging (default = 15). Set to 0 to use :term:`max_threads`. This
+        value can be set separately from :term:`max_threads`, since the
+        filtering may run faster with fewer cores than DP3 or WSClean use.
+
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
         ``max_threads``, but not more than 14).
 
-    parallel_gridding_threads
-        Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5 of
-        ``max_threads``, but not more than 6).
-
-    dir_local
-        Full path to a local disk on the nodes for IO-intensive processing (default = not
-        used). The path must exist on all nodes (but does not have to be on a shared
-        filesystem). This parameter is useful if you have a fast local disk (e.g., an SSD)
-        that is not the one used for :term:`dir_working`. If this parameter is not set,
-        IO-intensive processing (e.g., WSClean) will use a default path in
-        :term:`dir_working` instead.
-
-        .. note::
-
-            This parameter should not be set in the following situations:
-
-            - when :term:`batch_system` = ``single_machine`` and multiple imaging sectors
-              are used (as each sector will overwrite files from the other sectors).
-
-            - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
-              section and ``dir_local`` is not on a shared filesystem.
-
-        .. attention::
-
-            This parameter is deprecated. Use :term:`local_scratch_dir` instead.
+    parallel_gridding_tasks
+        Number of task groups WSClean can use for parallel gridding. If this is
+        set to 0 (default), Rapthor uses ``max_threads // 8`` with a minimum of
+        1. During imaging, Rapthor reduces the value when there are fewer facet
+        or channel work units available, and chooses a divisor of
+        :term:`max_cores` so gridding threads are distributed evenly.
 
     local_scratch_dir
-        Full path to a local disk on the nodes for IO-intensive processing (default =
-        ``/tmp``). When :term:`batch_system` = ``slurm``, the path must exist on all the
-        compute nodes, but not necessarily on the head node.
-        This parameter is useful if you have a fast local disk (e.g., an SSD)
-        that is not the one used for :term:`dir_working`. If this parameter is not set,
-        IO-intensive processing (e.g., WSClean) will use a default path in
-        :term:`dir_working` instead.
+        Full path to a local disk on the nodes for the temporary files of each
+        command, including those written by WSClean (default = ``None``). This
+        parameter is useful if you have a fast local disk (e.g., an SSD). The
+        path does not have to be on a shared filesystem, and does not have to
+        exist on the machine on which Rapthor is started: Rapthor creates a
+        directory for each command on the node that runs it and removes it
+        when the command has finished. The path may contain environment
+        variables (e.g., ``$TMPDIR``) and ``~``; these are expanded on the node
+        that runs the command.
 
-        When :term:`cwl_runner` = ``toil`` and :term:`batch_system` = ``single_machine``,
-        it is recommended to set this parameter, so that Rapthor can clean up any
-        temporary files and directories that Toil left behind.
+        If this parameter is not set, WSClean writes its temporary files to
+        :term:`dir_working`, and the other commands use the default temporary
+        directory of the node.
 
-        .. warning::
+        When Rapthor is run on a single machine, the Dask workers that it
+        starts also use this directory for their own temporary data. If you
+        start the Dask workers yourself, set this with the
+        ``--local-directory`` option of ``dask worker``.
 
-            If you want to run multiple instances of Rapthor concurrently using Toil,
-            make sure that you specify different directories as
-            :term:`local_scratch_dir`. Otherwise, one Rapthor instance will
-            potentially clobber files/directories created by another instance.
+        .. note::
+
+            The temporary files are kept if :term:`keep_temporary_files` is
+            set. If a directory cannot be removed, Rapthor logs a warning that
+            names it and continues.
+
+        .. note::
+
+            PyBDSF always writes its temporary files to ``/tmp``. WSClean jobs
+            that use MPI (see :term:`use_mpi`) use :term:`global_scratch_dir`
+            instead of this directory, since all the nodes must be able to see
+            their temporary files.
 
     global_scratch_dir
-        Full path to a directory on a shared disk that is readable and writable by all
-        the compute nodes and the head node. This directory will be used to store the
-        intermediate outputs that need to be shared between the different steps in the
-        workflow. If this parameter is not set and :term:`batch_system` = ``slurm``,
-        then Rapthor will create a temporary directory in :term:`dir_working`.
+        Full path to a directory on a shared disk that is readable and writable
+        by all the compute nodes and the head node (default = ``None``). If
+        set, the intermediate files of each operation (the files that are
+        passed from one step to the next) are written to this directory
+        instead of to :term:`dir_working`.
 
-        When :term:`cwl_runner` = ``toil``, it is recommended to set this parameter, so
-        that Rapthor can clean up any temporary files and directories that Toil left
-        behind.
-
-        .. warning::
-
-            If you want to run multiple instances of Rapthor concurrently using Toil,
-            make sure that you specify different directories as
-            :term:`global_scratch_dir`. Otherwise, one Rapthor instance will
-            potentially clobber files/directories created by another instance.
+        While an operation runs, ``dir_working/pipelines/<operation>`` is a
+        link to a directory that Rapthor creates inside the global scratch
+        directory. When the operation ends, whether it succeeded or failed,
+        its files are moved back to ``dir_working/pipelines/<operation>``, so
+        that the run can be resumed whether or not the scratch directory still
+        exists. If Rapthor is interrupted before the files have been moved
+        back, the move is completed the next time the run is resumed. The
+        final products and the logs are always written to :term:`dir_working`.
 
     use_container
-        Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
-        workflow for each operation (such as calibrate or image) will be run inside a
-        container. The type of container can be specified with the :term:`container_type`
-        parameter.
-
-        .. note::
-
-            This option should not be used when Rapthor itself is being run inside a
-            container. See :ref:`using_containers` for details.
+        Not supported, and must be left at its default of ``False``: a run in
+        which this option is ``True`` stops with an error. To use a container,
+        run Rapthor itself inside it. See :ref:`using_containers` for details.
 
     container_type
-        The type of container to use when :term:`use_container` = ``True``. The supported
-        types are: ``docker`` (the default), ``udocker``, or ``singularity``.
+        Not used (see :term:`use_container`).
 
-    cwl_runner
-        CWL runner to use. Currently supported runners are: ``cwltool``, ``streamflow``,
-        and ``toil`` (default). Toil is the recommended runner, since it provides much
-        more fine-grained control over the execution of a workflow. For example, Toil and
-        StreamFlow can use Slurm to automatically distribute workflow steps over different
-        compute nodes, whereas CWLTool can only execute workflows on a single node. With
-        CWLTool you also run the risk of overloading your machine when too many jobs are
-        run in parallel. For debugging purposes CWLTool outshines Toil, because its logs
-        are easier to understand.
+    dask_scheduler
+        Address of a Dask scheduler that you have started yourself, for
+        example ``tcp://127.0.0.1:8786`` (default = ``None``). If this is not
+        set, the ``DASK_SCHEDULER`` environment variable is used when present.
+        If neither is set, Rapthor starts its own scheduler and workers on the
+        machine on which it is run. See :ref:`external_dask_runtime` for
+        details.
 
-    debug_workflow
-        Debug workflow related issues (default = ``False``). Enabling this option
-        implies that temporary files, produced during the workflow run, will be kept
-        (i.e. the option ``keep_temporary_files`` is implicitly set to ``True``). This
-        will require significantly more disk space.  The working directory will never be
-        cleaned up, ``stdout`` and ``stderr`` will not be redirectied, and log level of
-        the CWL runner will be set to ``DEBUG``.  Additionally, when using Toil as the
-        CWL runner, some tasks will run using only a single thread (to make debugging
-        easier). Use this option with care!
+    dask_dashboard_address
+        Address at which the dashboard of the Dask scheduler started by Rapthor
+        is made available, for example ``:8787`` (default = ``None``, which
+        lets Dask choose).
+
+    prefect_task_runner
+        How the steps of each operation are run (default = ``None``). The
+        default results in ``external_dask`` when a Dask scheduler is given
+        with :term:`dask_scheduler` and ``local_dask`` otherwise, and does not
+        normally need to be changed. With ``local_dask``, Rapthor starts its
+        own Dask scheduler and workers. With ``external_dask``, Rapthor uses
+        the scheduler given by :term:`dask_scheduler`. With ``sync``, the
+        steps are run one at a time without Dask; this is intended for testing
+        only.
+
+    prefect_api_url
+        URL of a Prefect server that you have started yourself, for example
+        ``http://127.0.0.1:4200/api`` (default = ``None``). If this is not set,
+        the ``PREFECT_API_URL`` environment variable is used when present. See
+        :ref:`persistent_prefect_dashboard` for details.
+
+    prefect_api_mode
+        Sets which Prefect server is used: ``auto``, ``external``, or
+        ``ephemeral`` (default = ``auto``). If ``auto``, the server given by
+        :term:`prefect_api_url` is used if there is one, and otherwise a
+        temporary server is used that exists only for the duration of the run.
+        If ``external``, a server must be given with :term:`prefect_api_url`.
+        If ``ephemeral``, a temporary server is always used, even if a server
+        is given. In the ``auto`` and ``external`` modes, the run stops with an
+        error if the server that was given cannot be reached.
 
         .. note::
 
-            If Toil is the CWL runner, this option will only work when
-            :term:`batch_system` = ``single_machine`` (the default).
+            Any server set in your own Prefect configuration (a Prefect
+            profile) is ignored. Each run that uses a temporary server keeps
+            its Prefect data in its own temporary directory, so several runs
+            can be done at the same time without affecting one another.
+
+    prefect_run_tags
+        Optional comma-separated list of labels to attach to the run in the
+        Prefect dashboard, for example ``prefect_run_tags = ngc891,
+        test-robust`` (default = ``None``). The labels can be used in the
+        dashboard to find the run and everything that belongs to it.
+
+    prefect_retries
+        Number of times that a step that failed is tried again before the
+        operation is stopped (default = ``0``).
+
+    prefect_log_commands
+        Record every command that is run in ``dir_working/logs/commands.jsonl``
+        and write its output to ``dir_working/logs/<operation>/<task>.log``
+        (default = ``True``). These files are written whether or not a Prefect
+        dashboard is in use, and include the output of commands that failed.
+
+    prefect_stream_output
+        Show the output of DP3, WSClean, and the other commands in the logs of
+        the Prefect dashboard as well (default = ``True``). This does not
+        affect the log files written when :term:`prefect_log_commands` is
+        set.
+
+    prefect_command_profile
+        Sets how the resource use of each command is measured: ``auto``,
+        ``time``, or ``off`` (default = ``auto``). If ``auto`` or
+        ``time``, the CPU time, memory use, and disk I/O of each command are
+        recorded in ``dir_working/logs/commands.jsonl``, using
+        ``/usr/bin/time`` when it is available. If ``off``, only the run time
+        of each command is recorded.
+
+    prefect_publish_fits_previews
+        Make PNG previews of the images and show them in the Prefect dashboard
+        (default = ``False``). The previews take extra time and disk space to
+        make. The images themselves, the plots, and the image diagnostics are
+        made whether or not this option is set.
+
+    prefect_publish_postage_stamp_previews
+        Make small PNG previews of the area around the brightest sources found
+        by PyBDSF and show them in the Prefect dashboard (default =
+        ``False``). The previews are made from the primary-beam-corrected
+        image, are also saved in ``dir_working/.rapthor-artifacts/postage-stamps``,
+        and are independent of the previews made with
+        :term:`prefect_publish_fits_previews`.
+
+    prefect_postage_stamp_preview_count
+        Maximum number of sources for which a preview is made when
+        :term:`prefect_publish_postage_stamp_previews` is set (default =
+        ``5``).
+
+    prefect_postage_stamp_preview_size_px
+        Width and height, in image pixels, of each preview made when
+        :term:`prefect_publish_postage_stamp_previews` is set (default =
+        ``96``).
+
+    prefect_fits_preview_clip_percentile
+        Upper percentile used for FITS preview display limits (default =
+        ``99.9``). Rapthor uses ``100 - value`` as the lower percentile, so the
+        default displays whole-field previews and postage stamps with ``0.1``
+        and ``99.9`` percentile clipping. Postage stamps use limits computed
+        from the full FITS image plane, not from the cropped stamp, so their
+        colour scale matches the corresponding full-field preview. Set this to
+        ``100`` to use the finite minimum and maximum values.
+
+    debug_workflow
+        Has the same effect as :term:`keep_temporary_files` (default =
+        ``False``).
 
     keep_temporary_files
-        Keep temporary files created during the workflow execution (default =
-        ``False``). If ``True``, temporary files and directories created during the
-        workflow execution will not be deleted at the end of the run. This will require
-        significantly more disk space. This option is useful for debugging purposes.
+        Keep the temporary and intermediate files of each operation (default =
+        ``False``). If ``True``, these files will not be deleted when the
+        operation has finished. This will require significantly more disk
+        space. This option is useful for debugging purposes.
 
         .. note::
 
