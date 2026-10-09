@@ -56,4 +56,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: astronrd/rapthor:2.2rc1
+    dockerPull: astronrd/rapthor
