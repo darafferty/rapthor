@@ -1,10 +1,9 @@
 #!/bin/sh -e
-git ls-remote https://gitlab.com/aroffringa/aoflagger.git     HEAD | awk '{ print "AOFLAGGER_COMMIT="$1 }'
-git ls-remote https://github.com/casacore/casacore.git        HEAD | awk '{ print "CASACORE_COMMIT="$1 }'
-git ls-remote https://git.astron.nl/RD/DP3.git                HEAD | awk '{ print "DP3_COMMIT="$1 }'
-git ls-remote https://git.astron.nl/RD/EveryBeam.git          HEAD | awk '{ print "EVERYBEAM_COMMIT="$1 }'
-git ls-remote https://git.astron.nl/RD/idg.git                HEAD | awk '{ print "IDG_COMMIT="$1 }'
-git ls-remote https://github.com/casacore/python-casacore.git HEAD | awk '{ print "PYTHONCASACORE_COMMIT="$1 }'
-# Keep libdirac compatible with Rapthor's GLib-free build.
-printf '%s\n' 'SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f'
-git ls-remote https://gitlab.com/aroffringa/wsclean.git       HEAD | awk '{ print "WSCLEAN_COMMIT="$1 }'
+echo AOFLAGGER_COMMIT=811f8e09261f04e97a4802a23635eee125fbf4b7
+echo CASACORE_COMMIT=a1399b6b99907bd14021920a089403a93c10aba1
+echo DP3_COMMIT=03728e5301bcbf6be1b6b3ee1c7d6b0f2cc2c776
+echo EVERYBEAM_COMMIT=586a0cbf38cae343201205d99e0c43bdb1f002ea
+echo IDG_COMMIT=2e0e66306e045242670710e48f2bec7f85e86b1d
+echo PYTHONCASACORE_COMMIT=1f6cd466099f3f7ee617f746772d8f6bf1d17e23
+echo SAGECAL_COMMIT=33d21c45000bf13e5e29077ba3413405c42c503f
+echo WSCLEAN_COMMIT=bbe024ab277517117c1171279ad7b152c1d197c4
