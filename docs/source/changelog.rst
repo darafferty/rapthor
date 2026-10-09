@@ -9,8 +9,7 @@ Version 2.2rc1 (2026/10/09)
 This release candidate for version 2.2 includes the following improvements:
 
     - Calibration strategies are now more configurable, including support for
-      direction-independent calibration, image-only application of calibration,
-      and user-defined calibration strategy options.
+      user-defined calibration strategy options.
     - Spectral cubes can now be generated for selected Stokes parameters.
       Deconvolution can optionally be disabled for full-Stokes imaging.
     - Clean masks can be reused between imaging runs, and images of filtered
@@ -18,8 +17,6 @@ This release candidate for version 2.2 includes the following improvements:
     - Imaging now supports frequency-dependent baseline-dependent averaging
       (BDA), with limits to prevent excessive averaging, and BDA can be used
       together with smearing corrections.
-      The default frequency BDA baseline limit is now 5000 m for calibration
-      and imaging; the time BDA baseline limit remains 20000 m.
     - Astrometric corrections are now applied automatically when appropriate.
     - Rapthor can generate residual visibilities and save model data during
       imaging. Visibility averaging for imaging can optionally be disabled.
@@ -41,10 +38,8 @@ This release candidate for version 2.2 includes the following improvements:
       The cluster option ``parallel_gridding_threads`` has been replaced by
       ``parallel_gridding_tasks``; custom parsets should use the new name.
       Experimental shared facet reads and writes can also be enabled.
-    - WSClean-based prediction now applies array and element beams directly,
-      with a configurable facet-beam update interval; duplicate beam
-      application in the downstream calibration steps is disabled for this
-      prediction mode.
+    - WSClean-based prediction can now be used to generate model data for
+      calibration.
     - Image workflow input generation now correctly provides parallel-gridding
       task counts for every imaging sector.
     - Observation chunking now balances full-data chunks across compute nodes
@@ -54,8 +49,6 @@ This release candidate for version 2.2 includes the following improvements:
       images, fixing CWL validation with newer cwltool versions.
     - Calibration workflows now use consistent names for DP3's BDA averaging
       step and its parameters.
-    - Diagnostics now include per-facet RMS statistics and ignore facets
-      outside the RMS image.
     - The default container images and dependencies have been updated,
       including support for Ubuntu 24.04 and NumPy 2. The C++ dependencies are
       now pinned to fixed commit revisions. The most relevant changes in the
