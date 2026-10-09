@@ -1,6 +1,6 @@
 # Post-Merge Development Plan
 
-Updated: 2026-10-08.
+Updated: 2026-10-09.
 
 ## Scope and Review Baseline
 
@@ -10,7 +10,8 @@ The normal command remains `rapthor input.parset`; temporary `rapthor3`
 comparison overlays do not belong in production branches.
 
 - **Part A: missing master functionality and bug fixes.** These are identified
-  gaps, missing regression coverage, and explicit compatibility decisions.
+  gaps, defects found in review, missing regression coverage, and explicit
+  compatibility decisions.
 - **Part B: future improvements.** These extend or improve the resulting
   Prefect/Dask pipeline; they are not missing ports from master.
 
@@ -21,6 +22,17 @@ The review used both histories, the final trees, the previous plan and the
 [upgrade guide](docs/source/upgrading.rst). Commit ancestry alone does not show
 which features are missing: many master changes were reimplemented during the
 migration. This is a source review, not a new scientific-equivalence run.
+
+A second pre-merge review on 2026-10-09 compared migration HEAD `2271eb89`
+with the unchanged master `ff1f29d9`. It re-verified every open Part A item
+below against the tree (all still apply) and added the defects in
+[Defects Found in the Pre-Merge Review](#defects-found-in-the-pre-merge-review).
+Items labelled **both branches** also exist on master; they are not migration
+regressions, but still need fixing on merged master. That review also ran the
+non-integration, non-Prefect unit suite (excluding `test_field.py`) in a fresh
+Python 3.12 environment without DP3/WSClean: 1376 passed and 2 failed. Both
+failures are the unmarked WSClean-dependent restoration tests in E05. The field,
+Prefect-server and integration suites were not run in that review.
 
 After the merge, record its revision, dependency versions and final manual-test
 findings in the merge request or a compact baseline report. Recheck Part A
@@ -37,10 +49,16 @@ with `git show <hash>`. Port behavior into the current execution owners, using
 plain serializable payloads and the current output/finalizer/restart contracts.
 Do not transplant old CWL workflows or merge an older migration snapshot.
 
-Suggested priority: scientific behavior/defaults (P01, P03, P04, P06), build and
-CI reliability (P09–P12), then the remaining ports. P02 follows P01 and the facet
-format decision D02. P05 should use P04's catalog metadata behavior. The test
-ports can proceed independently and should protect later changes.
+Suggested priority: correctness defects that can silently change products
+(E01, R01, R03, E02), production-scale runtime defects (R04, R05, R06, R07),
+scientific behavior/defaults (P01, P03, P04, P06), build and CI reliability
+(P09–P12), then the remaining ports and lower-severity defects. Resolve or rule
+out R01, R03 and E01 before production runs that use image-only cycles after
+calibration, flux-scale normalization, WSClean prediction or
+`dde_method = single`, and R05/R06 before multi-node production use.
+P02 follows P01 and the facet format decision D02. P05 should use P04's catalog
+metadata behavior. The test ports can proceed independently and should protect
+later changes.
 
 ### Scientific and User-Visible Behavior
 
@@ -55,7 +73,8 @@ ports can proceed independently and should protect later changes.
   `-facet-beam-update`. Use the required `-model-fpb.fits` names and disable the
   corresponding DP3 beam application when WSClean has already applied it.
   Main implementation: `rapthor/execution/calibrate/{prediction,commands,builders}.py`
-  and `rapthor/operations/calibrate/`.
+  and `rapthor/operations/calibrate/`. Resolve R03's pre-application gap in the
+  same DP3 step chain.
 - **Done when:** both defaults, parset docs and test templates include the
   option; command and real multi-facet tests demonstrate one beam application,
   correct model-column names and consistent fluxes for WSClean and DP3 paths.
@@ -134,7 +153,9 @@ ports can proceed independently and should protect later changes.
   imaging on master, but remains `20000.0` in both branch defaults.
 - **Change:** adopt `5000.0` in `defaults.parset`, `defaults.json`, documentation
   and expected-default templates, unless scientific review explicitly chooses
-  and documents a different value. Keep the time-BDA default unchanged.
+  and documents a different value. Keep the time-BDA default unchanged. Also fix
+  the `[imaging]` comment in `defaults.parset`, which says "default = 0 for
+  frequency BDA" although the value is `20000.0`.
 - **Done when:** parsing and command tests agree on the default; representative
   calibration/imaging runs record smearing, flux/RMS, memory and runtime
   effects. Explicit user overrides and frequency-only BDA must still work.
@@ -197,7 +218,11 @@ ports can proceed independently and should protect later changes.
 - **Gap:** the branch advertises Python >=3.9 and tests 3.9–3.13; master declares
   >=3.10 and tests 3.10–3.14. The SPDX license expression, `license-files`,
   `setuptools>=77`, integration `EVERYBEAM_DATADIR` passthrough and master's
-  `sitepackages = true` test configuration are also absent.
+  `sitepackages = true` test configuration are also absent. The branch code
+  already needs Python 3.10: `zip(..., strict=True)` in
+  `rapthor/execution/image/diagnostic_calculation.py` raises `TypeError` on 3.9,
+  so every image diagnostics step would fail there despite
+  `requires-python >=3.9`.
 - **Change:** align the supported/tested Python policy after checking the
   Prefect dependency stack; adopt the metadata and beam-data environment fixes.
   Decide explicitly how tox obtains compatible compiled astronomy libraries
@@ -280,6 +305,274 @@ ports can proceed independently and should protect later changes.
   already covered by the rewritten migration docs; retain their Prefect paths,
   solution semantics and legacy-option rules when reconciling text.
 
+### Defects Found in the Pre-Merge Review
+
+These defects were found by the 2026-10-09 source review. **R** items exist only
+on the migration branch; **E** items are existing defects present on **both
+branches**. Severities describe production impact. Several items depend on DP3
+or Prefect runtime behavior inferred from source: reproduce each one (DP3
+command logs and DP3's unused-parameter warnings are useful) before changing it.
+
+#### R01. Keep image-only cycles consistent with the solutions they apply
+
+- [ ] **Migration branch only** (regression from master `0ebc0690`); high.
+- **Gap:** master's `Field.update()` reuses the existing calibration patch
+  layout in an image-only cycle that follows calibration
+  (`reuse_solution_layout`). The branch always calls `update_skymodels()`, so
+  the patches may be regrouped. Imaging compensates by building facets from
+  `calibration_skymodel_file_prev_cycle`, but
+  `Predict._get_applycal_h5parm_filename()` in `rapthor/operations/predict.py`
+  rejects a DD h5parm from an earlier cycle, or one lacking any requested patch,
+  and then predicts with no solutions, logging only a warning. Outlier,
+  bright-source and other-sector models are then subtracted uncorrupted while
+  imaging applies the carried-forward solutions. Predict runs whenever there
+  are outlier sectors, several imaging sectors, bright-source peeling or
+  reweighting. In two consecutive image-only cycles (including
+  `ntimes_to_repeat_final_cycle > 0` with an image-only final step),
+  `Image._facet_skymodel_file()` uses the cycle N−1 calibration sky model
+  although the applied h5parm is older. Master's predict always used the DD
+  h5parm and would fail in DP3 on a missing direction.
+- **Change:** use one carry-forward rule for predict and imaging: keep, or
+  record with each h5parm, the patch layout and calibration sky model that
+  produced it. Raise a clear error instead of silently predicting uncorrupted
+  models when directions do not match.
+- **Done when:** integration runs with outlier sectors, several imaging sectors
+  and a final image-only cycle, and with two consecutive image-only cycles,
+  show DP3 predict and WSClean using the same h5parm and directions. Unit tests
+  cover the mismatch error.
+
+#### R02. Define what an omitted `calibration_strategy` means
+
+- [ ] **Migration branch only**; medium.
+- **Gap:** master sets `calibration_strategy = None` for a cycle that omits it
+  and resolves it from the legacy flags (fast and medium phase unless
+  `do_slowgain_solve` is set). The branch's `Field.update()` no longer resets it,
+  so a cycle that omits it reuses the previous cycle's sequence; only when no
+  earlier cycle set one does `set_calibration_strategy()` use the full
+  four-solve default. A first-cycle omission therefore adds slow-gain solves
+  compared with master. `docs/source/strategy.rst` says an omitted value always
+  uses the full default, `check_and_adjust_parameters()` warns that it uses "the
+  default value of None", and the upgrade guide does not mention the change.
+- **Change:** choose the semantics (per-cycle default, carry-over or error),
+  implement them in `Field.update()`/`set_calibration_strategy()`, correct the
+  warning and document the difference from master in `upgrading.rst`.
+- **Done when:** strategy tests cover omission in the first cycle, later cycles
+  and image-only cycles that apply earlier solutions.
+
+#### R03. Restore DI and normalization pre-application in DD solves
+
+- [ ] **Migration branch only** (dropped wiring); high if (b) is confirmed.
+- **Gap:** (a) With `use_wsclean_predict`, `build_calibration_dp3_steps()` in
+  `rapthor/operations/calibrate/plan.py` omits the leading `applycal` step, and
+  a unit test asserts this. DI phase, slow-gain and full-Jones solutions and the
+  normalization are therefore not applied before DD solves; master keeps the
+  step in this mode. (b) Master passes `ddecal_applycal_steps` and the
+  normalization h5parm to the slow-gain solve as `solve3.applycal.steps` and
+  `solve3.applycal.normalization.parmdb`. The branch still computes
+  `calibration_applycal_steps` but emits no per-solve applycal options. In the
+  DP3-prediction chain, the top-level normalization applycal uses
+  `usemodeldata=True` but runs before any model data exist. Verify how DP3
+  treats both forms, because the normalization may currently be absorbed by the
+  slow gains and then applied again during imaging.
+- **Change:** establish where DI corrections and normalization must be applied
+  for DP3, image-based and WSClean prediction, then restore the required
+  options. Coordinate with P01/P02.
+- **Done when:** command tests cover each prediction mode with DI, full-Jones
+  and normalization products, and a normalized-cycle comparison shows that the
+  slow-gain amplitudes do not re-absorb the normalization.
+
+#### R04. Bound Prefect artifact and log publication
+
+- [ ] **Migration branch only**; high for production-size runs.
+- **Gap:** `_run_operation()` in `rapthor/execution/pipeline/flow.py` calls
+  `publish_plot_artifacts_for_field()` after every operation. It walks all of
+  `dir_working/plots` (every cycle, including PDF and JSON files), embeds each
+  file as a base64 data URL and creates a new artifact version. API calls and
+  Prefect database size therefore grow with operations × plots, which reaches
+  thousands of PNGs in runs with tens of directions; the temporary database
+  lives in `/tmp` or `SLURM_TMPDIR`. Publication errors are not caught, so a
+  Prefect API failure aborts a run after an operation has succeeded, and plot
+  artifacts cannot be disabled. The command-metrics artifact re-reads all JSONL
+  records and re-renders its chart after every operation, and the default
+  `prefect_stream_output = True` also sends all DP3/WSClean output to the API.
+- **Change:** publish only products created by the finished operation; link
+  large files instead of embedding them, or cap their size; add an option to
+  disable plot artifacts; make publication best-effort with a warning.
+- **Done when:** a multi-cycle, many-direction run publishes each plot once,
+  artifact failures are logged without failing the run, and database size and
+  publication time are recorded.
+
+#### R05. Validate and document multi-node execution
+
+- [ ] **Migration branch only** (new runtime); high for cluster use.
+- **Gap:** the Slurm job script in `docs/source/running.rst` starts
+  `dask worker` processes without `PREFECT_API_URL` or `PREFECT_HOME`. With the
+  default `prefect_api_mode = auto` and no URL, Rapthor creates a temporary
+  Prefect API and home only in the launching process. A local probe (Prefect
+  3.7.7, prefect-dask 0.3.7) with a separately started scheduler and worker,
+  emulating that setup, showed the worker receiving an empty API URL and the
+  launcher's temporary home path through Prefect's serialized settings,
+  starting its own temporary Prefect server, logging event-emission errors, and
+  the task run missing from the launcher's API. On a real cluster each worker
+  node would therefore keep its own database, under the launch node's
+  temporary path recreated locally. MPI imaging runs
+  `mpirun -npernode 1 -np N wsclean-mp`
+  from inside a Dask worker that already runs in an `srun` step; this needs a
+  nested Slurm step and can place ranks on nodes running other tasks.
+  `tests/integration/test_slurm_execution.py` only checks scheduler
+  connectivity, and P15 checks MPI routing with serial WSClean.
+- **Change:** run real multi-node jobs (calibration chunks across nodes,
+  multi-sector imaging and MPI imaging) on the target clusters. Either require
+  an external Prefect API with external Dask or propagate the API URL and a
+  node-local Prefect home to workers. Document the worker environment and MPI
+  launch constraints, or reject unsupported combinations during preflight.
+- **Done when:** the documented job script completes a short run with every
+  task visible in one Prefect API and MPI ranks on the intended nodes. Related
+  to P12 and B2.
+
+#### R06. Fail instead of running a Slurm configuration on a local Dask cluster
+
+- [ ] **Migration branch only**; medium.
+- **Gap:** with `batch_system = slurm` or `slurm_static` but no `dask_scheduler`
+  or `DASK_SCHEDULER`, `ExecutionConfig.from_parset()` selects `local_dask`.
+  Bootstrap then starts a `LocalCluster` on the launch node with
+  `max(1, max_nodes)` workers (12 by default), each running commands with all
+  cores, and the data are chunked for 12 nodes. The Slurm preflight check that
+  requires `external_dask` passes because it receives the rewritten runtime
+  configuration. Separately, `parset.rst` documents `local_dask_workers = 0` as
+  one worker, but `ExecutionConfig.local_dask_worker_count` uses `max_nodes`.
+- **Change:** require a scheduler for the Slurm batch systems, checking the
+  configured rather than rewritten task runner, and align the local-worker
+  default with the documentation.
+- **Done when:** CLI/bootstrap tests cover a missing scheduler and the
+  single-machine worker default.
+
+#### R07. Terminate external commands with their process group
+
+- [ ] **Migration branch only**; medium.
+- **Gap:** `_run_captured_shell_command()` in `rapthor/execution/shell.py` runs
+  `bash <script>`, optionally under GNU `time`, and on interruption kills only
+  that process. DP3, WSClean or `mpirun` children survive Ctrl-C, Prefect
+  cancellation or worker shutdown and may keep writing shared products. Every
+  command's complete output is also kept in memory and returned.
+- **Change:** start commands in their own session/process group and terminate
+  the group with a grace period; stop retaining full output in memory.
+- **Done when:** a test interrupting a command that has a child process finds
+  no surviving descendants.
+
+#### R08. Make `rapthor -r` reset staged operations
+
+- [ ] **Migration branch only**; low to medium.
+- **Gap:** with `global_scratch_dir`, an interrupted operation leaves
+  `pipelines/<operation>` as a symlink to scratch plus a `.<operation>.scratch`
+  recovery record. `modifystate.run()` calls `shutil.rmtree(path,
+  ignore_errors=True)`, which silently fails on a symlink, so the reset keeps the
+  staged workspace and the next run resumes from it.
+- **Change:** unlink operation symlinks and remove the recovery record and the
+  owned scratch workspace, reporting any failure.
+- **Done when:** reset tests cover staged, partially promoted and ordinary
+  operation directories.
+
+#### R09. Validate or document the WSClean model-mosaic default
+
+- [ ] **Migration branch only**; low to medium.
+- **Gap:** the new default `model_mosaic_method = wsclean` renders multi-sector
+  model mosaics from the sectors' filtered sky models
+  (`image_skymodel_file_*`) instead of regridding WSClean model images. With
+  the default `filter_skymodel = True`, the mosaic `model-pb` product therefore
+  contains only components retained by source filtering.
+  `combine_sector_skymodels()` raises when every sector sky model is empty,
+  failing a mosaic that master completes. The upgrade guide does not mention the
+  change.
+- **Change:** compare rendered and regridded mosaics, handle empty sky models,
+  and document the product difference or default to `sparse_fits` until the
+  rendering is validated.
+- **Done when:** multi-sector mosaic tests cover empty and non-empty sector
+  models and the upgrade guide records the result.
+
+#### R10. Keep or document the astrometry offsets product
+
+- [ ] **Migration branch only**; low.
+- **Gap:** master copies each sector's `sector_offsets` output
+  (`<sector>.astrometry_offsets.json`) to `plots/image_N`. The branch flow still
+  returns it, but `Image.finalize()` does not keep it, so it is deleted with the
+  operation's temporary outputs.
+- **Done when:** the JSON is kept with the other diagnostics, or its removal is
+  documented in `products.rst` and `upgrading.rst`.
+
+#### E01. Do not apply combined phases twice with `dde_method = single`
+
+- [ ] **Both branches** (introduced on master by `0ebc0690` and ported); high
+  for `dde_method = single`.
+- **Gap:** when DD solutions are pre-applied during imaging preparation,
+  `build_image_applycal_steps()` in `rapthor/operations/image/plan.py` (master:
+  `_strategy_scalar_steps()`) adds a `mediumphase` applycal step for DD
+  `medium_phase` solves, for example `[fastphase,mediumphase,slowgain]`. Neither
+  the branch command nor master's `prepare_imaging_data.cwl` defines
+  `applycal.mediumphase.*`, so DP3 falls back to `applycal.parmdb` and
+  `applycal.correction=phase000`. The selected h5parm's `phase000`, which
+  already contains the combined phases, is then applied twice. The merge base
+  used only `fastphase` and `slowgain`, and current unit tests assert
+  `[fastphase,mediumphase]`.
+- **Change:** apply each soltab of the selected h5parm once: omit `mediumphase`
+  when a combined product is selected, or give it its own h5parm and soltab.
+  Correct the tests.
+- **Done when:** command tests show one application per soltab, and a
+  `dde_method = single` run is compared with facet-based application.
+
+#### E02. Include medium-phase solutions in phase-only DD products
+
+- [ ] **Both branches** (since master `b7e58780`); medium to high scientific
+  impact; needs a scientific decision.
+- **Gap:** in a DD `["fast_phase", "medium_phase"]` cycle, which the built-in
+  strategy uses for its early phase-only cycles with supplied or downloaded
+  initial models, DP3 solves both, but `_dd_active_solution()` copies only
+  `fast_phases.h5parm` to `field-solutions.h5`, and that file is applied during
+  predict and imaging. The medium-phase solutions are discarded. The branch flow
+  already builds and source-adjusts `combined_fast_medium1_phases.h5parm`, and
+  DI phase-only cycles use their combined product, but the DD finalizer ignores
+  it. `operations.rst` says `field-solutions.h5` contains all solves combined.
+- **Change:** decide whether phase-only cycles should apply fast plus medium
+  phases or should not run the medium solve, and implement the decision
+  consistently for DD and DI products, seeding and documentation.
+- **Done when:** finalizer tests cover every supported DD sequence and a
+  phase-only selfcal comparison records image quality.
+
+#### E03. Copy the final step of the built-in selfcal strategy
+
+- [ ] **Both branches**; low to medium.
+- **Gap:** `set_selfcal_strategy()` in `rapthor/lib/strategy.py` appends the last
+  selfcal dict itself as the final step and then sets `channel_width_hz = 4e6`
+  on it. The last selfcal cycle therefore also images with 4 MHz channels,
+  `do_final_pass()` compares that object with itself, and later in-place changes
+  (`peel_outliers`, hybrid-mode changes, `regroup_model`) are shared. When
+  selfcal reaches its last cycle, the data fractions are equal and QUV imaging
+  is off, no final pass is run.
+- **Change:** append a deep copy, and avoid mutating user strategy dicts in
+  place.
+- **Done when:** strategy tests assert distinct step objects and the intended
+  channel widths.
+
+#### E04. Allow resetting repeated final cycles
+
+- [ ] **Both branches**; low.
+- **Gap:** `modifystate.run()` only offers operations for cycle numbers up to
+  `len(strategy_steps)`, so operations of final cycles repeated with
+  `ntimes_to_repeat_final_cycle > 0` beyond that cannot be reset.
+- **Done when:** reset lists every existing operation directory in run order.
+
+#### E05. Mark tests that need external tools
+
+- [ ] **Both branches**; low.
+- **Gap:** `test_integration_restore_skymodel` and
+  `test_integration_restore_skymodel_compressed` in
+  `tests/execution/test_image_restoration.py` (master:
+  `tests/scripts/test_restore_skymodel.py`) run WSClean but are not marked
+  `integration`, so the non-integration commands in [TESTING.md](TESTING.md)
+  fail without WSClean.
+- **Done when:** they carry the `integration` marker, and a non-integration run
+  without DP3/WSClean on `PATH` passes.
+
 ### Compatibility Decisions and Existing Limitations
 
 These items need an explicit result before they can be closed. A missing code
@@ -305,6 +598,13 @@ fragment alone does not establish a regression in these cases.
   resolves upstream `HEAD` after migration commit `310fbb04`. Build and test the
   intended source tuple before deciding whether to restore the pin. Keep the
   resolver, standalone build defaults, labels and build-cache key consistent.
+- [ ] **D04 — SKA-Low settings template.** Migration commit `9222c562` deletes
+  `rapthor/settings/defaults_skalow.parset`; master still ships it and updated it
+  in `38abdb92`, `c6f4375b` and `043c15d4`. The master file names a strategy
+  (`custom_ska_low.py`) that is not in the repository and contains a stray
+  ``max_threads`` line, so it is not a valid parset as is. Provide a validated
+  SKA-Low example parset with the current `[cluster]` options, or record the
+  removal in the upgrade guide and changelog.
 - [ ] **L01 — Shared-facet I/O tool failure (existing limitation).**
   `tests/integration/test_shared_facet_rw.py` marks the enabled case
   `xfail(run=False)` because serial WSClean 3.7 aborts; the disabled control runs.
@@ -329,7 +629,7 @@ This table records source-review findings, not fresh runtime validation.
 | Basic WSClean prediction and configurable narrow-band models (`d90786e8`, `e8867abd`, `c4dfcfd8`) | Present through `5c3c9471` and `d201dded`; end-exclusive channels fixed by `706556f6`. Remaining changes are P01/P02/D02. |
 | Model-data and residual-visibility products (`971a2b25`, `17448437`) | Ported by `d51e08a2`, including current output records/finalizers. |
 | Parallel gridding/shared-facet selection (`38abdb92`, `01a81e11`) and per-sector input shape (`18cf2d72`) | Current `Image` builds one gridding value per sector; builders preserve that mapping. Selection behavior was ported by `5974f354`/`d201dded`; remaining integration coverage is P15/L01. |
-| Flexible strategies and image-only application (`0ebc0690`) | Present with explicit execution validation and image-only integration cases. Only the support decision D01 remains; retain documented cycle/seeding differences. |
+| Flexible strategies and image-only application (`0ebc0690`) | Strategy parsing, explicit execution validation and image-only integration cases are present; the support decision D01 remains; retain documented cycle/seeding differences. Not covered: the image-only patch-layout reuse (R01) and the omitted-strategy semantics (R02). The ported imaging `mediumphase` step is defective on both branches (E01). |
 | Imaging frequency BDA and averaging limits (`c6f4375b`, `15d4ccb0`, `3fd9e69f`) | Implemented with operation, command and integration coverage. P06 addresses the later default reduction. |
 | Calibration-memory preflight/per-cycle checks (`043c15d4`) | Ported by `4fd75842`; unit/integration coverage remains. Node-wide scheduling budgets in B1 are additional work. |
 | Reset with missing directories (`e25b4a6a`) | `rapthor/modifystate.py` skips absent product directories. |
@@ -338,6 +638,7 @@ This table records source-review findings, not fresh runtime validation.
 | CWL-only fixes (`b457f49c`, `c28c9ae2`, `e8873f19`) | Duplicate CWL fields, `pickValue`/nullable outputs and staging symlinks belong to retired workflows. Prefect owns outputs and direct input paths; no CWL restoration is needed. |
 | Calibration `avg` → `bdaavg` rename (`dbb8993c`) | Both versions explicitly use `bdaaverager`; this is a step-label change, not missing averaging behavior. Keep any later naming cleanup separate from ports. |
 | Formatting (`f826c262`, `13e3bd8e`, `6c74e20d`, `f379cf15`), pytest/helper refactors (including `0c422261`) and obsolete DP3 `writefullresflag` removal (`b307e769`) | Covered or superseded by the new modules/tests; no wholesale test-helper or formatting port. Relevant remaining fixture/CI changes are P12/P16. |
+| Master defects already fixed by the migration | Master's multi-sector `Image.finalize()` reads `sector_diagnostics[0]` for every sector, so all sectors report sector 1's diagnostics; the branch uses each sector's file. After outlier or bright-source peeling, master's subtraction still reads `data_colname` from the peeled copy, which fails when it is not `DATA`; the branch reads the peeled output column (`4091e26d`). Do not reintroduce either when porting master code. |
 
 ## Part B — Future Improvements
 
@@ -413,7 +714,8 @@ concurrency only when the combined workload stays within its allocation.
   users who need one dashboard and durable history for independent jobs.
   Document startup, configuration and recovery. Keep isolated ephemeral state
   available for standalone runs; shared SQLite is unsuitable for the intended
-  concurrent production service.
+  concurrent production service. Build on R05's multi-node validation, and
+  bound artifact and log volume (R04) before keeping durable history.
 
 Keep Ubuntu 24.04 as the supported container baseline while Ubuntu 26.04's
 reported memory problems are investigated separately.
@@ -429,6 +731,13 @@ Cache reference catalogs per run to avoid repeated survey queries across
 sectors and cycles. Key cached data by the query and sky coverage, reuse
 supplied catalogs, and preserve offline, empty-result and fallback behavior.
 Avoid unnecessary temporary-FITS round trips where profiling shows a benefit.
+
+Measure the cost of the merged `global_scratch_dir` staging in
+`rapthor/execution/workspace.py`. Each operation copies its whole directory to
+scratch and, across filesystems, copies the whole workspace, intermediates
+included, back to `dir_working` when it ends; master used the global scratch
+only for CWL temporary outputs. Keep step-only intermediates on scratch or
+promote only declared outputs if the measured I/O and disk use justify it.
 
 Benchmark WSClean multi-band and frequency-BDA workloads before extending
 performance claims to them. For each optimization, record input/configuration,
