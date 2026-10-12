@@ -4,15 +4,15 @@
 #SBATCH --constraint=amd
 #
 # Script to run Rapthor. The `SBATCH` directives specify the resources required
-# for the job when submitted to a job scheduler (like SLURM). The script sets
-# up the environment and runs Rapthor with the specified parset file.
-# Afterwards, it will create a tar-ball of all the logs, the parset file, and
-# optionally the user-supplied skymodel file(s) and processing strategy.
+# for the job when submitted to a job scheduler (like SLURM). The script
+# sets up the environment and runs Rapthor with the specified parset file.
+# Afterwards, it will create a tar-ball of all the logs, the parset file,
+# and optionally the user-supplied skymodel file(s) and processing strategy.
 # Information about the location of these files will be extracted from the
 # parset file. The tar-ball will be stored in the working directory that is
 # specified in the parset file. The name of the tar-ball will be of the form
-# `rapthor_logs_<timestamp>.tar.gz`, where `<timestamp>` is the date and time
-# when the tar-ball was created.
+# `rapthor_logs_<timestamp>.tar.gz`, where `<timestamp>` is the date and
+# time when the tar-ball was created.
 
 set -euo pipefail
 
@@ -22,6 +22,9 @@ set -euo pipefail
 # For example:
 #   `RAPTHOR_RC=/path/to/rapthor.rc run-rapthor.sh rapthor.parset`
 RAPTHOR_RC=${RAPTHOR_RC:-/project/rapthor/Software/rapthor/etc/rapthor.rc}
+
+# Variable to hold the exit status of the `rapthor` command.
+RAPTHOR_STATUS=0
 
 # Error function
 error()
@@ -36,8 +39,8 @@ warning()
   echo -e "\nWARNING: $@\n" >&2
 }
 
-# Check if the parset file exists and determine the working directory from the
-# parset file. Also load the rapthor environment.
+# Check if the parset file exists and determine the working directory from
+# the parset file. Also load the rapthor environment.
 setup()
 {
   echo -e "\n**** Running on node $(hostname) ****"
@@ -54,7 +57,10 @@ setup()
     sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*,,p' "${PARSET}"
   )
   [ -n "${WORKING_DIR}" ] || error "Working directory not set in ${PARSET}!"
-  [ -d "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} does not exist!"
+
+  # Create working directory if it does not exist, and check if it is writable.
+  mkdir -p "${WORKING_DIR}" || error "Failed to create working directory ${WORKING_DIR}!"
+  [ -w "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} is not writable!"
 
   # Load the rapthor environment
   . "${RAPTHOR_RC}"
@@ -66,10 +72,15 @@ setup()
   python -m pip list
 }
 
+# Run Rapthor with the specified parset file. If the execution fails, print
+# a warning message, and update the RAPTHOR_STATUS variable.
 run_rapthor()
 {
   echo -e "\nRunning Rapthor with parset file ${PARSET} ..."
-  rapthor -v "${PARSET}" || warning "Rapthor execution failed; collecting logs"
+  rapthor -v "${PARSET}" || {
+    RAPTHOR_STATUS=$?;
+    warning "Rapthor execution failed, exit code: ${RAPTHOR_STATUS}";
+  }
 }
 
 # Create or update a symbolic link in the working directory pointing to the
@@ -92,8 +103,14 @@ make_symlink()
   }
 }
 
+# Create a tar-ball of the logs, the parset file, and optionally the user-
+# supplied skymodel file(s) and processing strategy. The tar-ball will
+# be stored in the working directory, and its name will be of the form
+# `rapthor_logs_<timestamp>.tar.gz`, where `<timestamp>` is the date and
+# time when the tar-ball was created.
 create_tarball()
 {
+  echo -e "\nCollecting logs ..."
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local tarball_name="rapthor_logs_${timestamp}.tar.gz"
   local tarball_path="${WORKING_DIR}/${tarball_name}"
