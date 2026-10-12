@@ -132,3 +132,4 @@ create_tarball()
 setup "$@"
 run_rapthor
 create_tarball
+exit ${RAPTHOR_STATUS}
