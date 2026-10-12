@@ -59,7 +59,17 @@ setup()
   [ -n "${WORKING_DIR}" ] || error "Working directory not set in ${PARSET}!"
 
   # Create working directory if it does not exist, and check if it is writable.
+  # Extract the working directory from the parset file
+  WORKING_DIR=$(
+    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*,,p' "${PARSET}" \
+      | sed 's/[[:space:]]*$//'
+  )
+  [ -n "${WORKING_DIR}" ] || error "Working directory not set in ${PARSET}!"
+  [ "${WORKING_DIR}" != "None" ] || error "Invalid working directory in ${PARSET}!"
+
+  # Create working directory if it does not exist, and check if it is writable.
   mkdir -p "${WORKING_DIR}" || error "Failed to create working directory ${WORKING_DIR}!"
+  [ -w "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} is not writable!"
   [ -w "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} is not writable!"
 
   # Load the rapthor environment
