@@ -52,24 +52,15 @@ setup()
   local parset=${1}
   PARSET=$(readlink -e "${parset}") || error "Parset file ${parset} not found!"
 
-  # Extract the working directory from the parset file
+  # Extract the working directory from the parset file, path must be absolute
   WORKING_DIR=$(
-    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*,,p' "${PARSET}"
+    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*/,,p' "${PARSET}" \
+      | sed 's,[[:space:]]*$,,'
   )
-  [ -n "${WORKING_DIR}" ] || error "Working directory not set in ${PARSET}!"
-
-  # Create working directory if it does not exist, and check if it is writable.
-  # Extract the working directory from the parset file
-  WORKING_DIR=$(
-    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*,,p' "${PARSET}" \
-      | sed 's/[[:space:]]*$//'
-  )
-  [ -n "${WORKING_DIR}" ] || error "Working directory not set in ${PARSET}!"
-  [ "${WORKING_DIR}" != "None" ] || error "Invalid working directory in ${PARSET}!"
+  [ -n "${WORKING_DIR}" ] || error "Working directory invalid or not set in ${PARSET}!"
 
   # Create working directory if it does not exist, and check if it is writable.
   mkdir -p "${WORKING_DIR}" || error "Failed to create working directory ${WORKING_DIR}!"
-  [ -w "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} is not writable!"
   [ -w "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} is not writable!"
 
   # Load the rapthor environment
@@ -128,8 +119,7 @@ create_tarball()
   make_symlink "${PARSET}" && tarball_contents+=("$(basename "${PARSET}")")
   for name in input_skymodel apparent_skymodel strategy; do
     local file=$(
-      sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*,,p" "${PARSET}" \
-        | grep "/"
+      sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,,p" "${PARSET}"
     )
     make_symlink "${file}" && tarball_contents+=("$(basename "${file}")")
   done
