@@ -219,7 +219,7 @@ class Field(object):
 
         if not minimal:
             # Scan calibration h5parm files (if any) to get solution info
-            self.scan_h5parms()
+            self.scan_h5parms(derive_solution_timesteps=True)
 
             # Set up imaging sectors
             self.makeWCS()
@@ -1724,12 +1724,20 @@ class Field(object):
             return int(match.group(1))
         return None
 
-    def scan_h5parms(self):
+    def scan_h5parms(self, derive_solution_timesteps=False):
         """
         Scans the calibration h5parms
 
         The basic structure is checked for correctness and for the presence of
         amplitude solutions (which may require different processing steps).
+
+        Parameters
+        ----------
+        derive_solution_timesteps : bool
+            If True and calibration solutions exist, derive the solution time steps from the
+            solutions. These time steps are stored in the same attributes set by the calibration
+            strategy. If this parameter is False, the exiting values of these attributes are not
+            altered.
         """
         if self.h5parm_filename is not None:
             with h5parm(self.h5parm_filename) as solutions:
@@ -1740,8 +1748,18 @@ class Field(object):
                             f"The screen solutions file {self.h5parm_filename!r} must "
                             "have a phase_coefficients soltab."
                         )
+                        if derive_solution_timesteps:
+                            self.fast_timestep_sec = np.min(
+                                solset.getSoltab("phase_coefficients").time[1:]
+                                - solset.getSoltab("phase_coefficients").time[:-1]
+                            )
                     if "amplitude1_coefficients" in solset.getSoltabNames():
                         self.apply_amplitudes = True
+                        if derive_solution_timesteps:
+                            self.slow_timestep_sec = np.min(
+                                solset.getSoltab("amplitude1_coefficients").time[1:]
+                                - solset.getSoltab("amplitude1_coefficients").time[:-1]
+                            )
                     else:
                         self.apply_amplitudes = False
                 elif "sol000" in solutions.getSolsetNames():
@@ -1751,8 +1769,18 @@ class Field(object):
                             f"The direction-dependent solutions file {self.h5parm_filename!r} must "
                             "have a phase000 soltab."
                         )
+                    if derive_solution_timesteps:
+                        self.fast_timestep_sec = np.min(
+                            solset.getSoltab("phase000").time[1:]
+                            - solset.getSoltab("phase000").time[:-1]
+                        )
                     if "amplitude000" in solset.getSoltabNames():
                         self.apply_amplitudes = True
+                        if derive_solution_timesteps:
+                            self.slow_timestep_sec = np.min(
+                                solset.getSoltab("amplitude000").time[1:]
+                                - solset.getSoltab("amplitude000").time[:-1]
+                            )
                     else:
                         self.apply_amplitudes = False
                 else:
@@ -1760,6 +1788,12 @@ class Field(object):
                         f"The direction-dependent solutions file {self.h5parm_filename!r} must "
                         "have the solutions stored in the sol000 or coefficients000 solset."
                     )
+            if derive_solution_timesteps:
+                # Set reasonable values for solution steps that cannot be derived from the
+                # solutions
+                self.medium_timestep_sec = self.fast_timestep_sec * 4
+                if not self.apply_amplitudes:
+                    self.slow_timestep_sec = self.medium_timestep_sec * 4
         else:
             self.apply_amplitudes = False
 
@@ -1779,6 +1813,11 @@ class Field(object):
                     raise ValueError(
                         f"The full-Jones solution file {self.fulljones_h5parm_filename!r} must have"
                         "both a phase000 soltab and a amplitude000 soltab."
+                    )
+                if derive_solution_timesteps:
+                    self.fulljones_timestep_sec = np.min(
+                        solset.getSoltab("phase000").time[1:]
+                        - solset.getSoltab("phase000").time[:-1]
                     )
         else:
             self.apply_fulljones = False
