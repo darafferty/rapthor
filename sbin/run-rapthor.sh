@@ -84,22 +84,23 @@ run_rapthor()
   }
 }
 
-# Create or update a symbolic link in the working directory pointing to the
-# given file, unless the file already exists in the working directory. Print
-# a warning if the link could not be created, but continue with the tar-ball
-# be created. The link is used to include the user-supplied skymodel file(s)
-# and processing strategy in the tar-ball, without including the full path.
+# Create a link to the given target with the given link name. Existing links
+# will be overwritten. If the link name is not provided, the link will be
+# created in the current working directory with the same name as the target.
+# Return with an error status if the target does not exist or the link could
+# not be created.
 make_symlink()
 {
-  local file=${1}
-  [ -n "${file}" ] || return 1
-  file=$(readlink -s "${file}") || {
-    warning "Failed to resolve absolute path for ${file}; skipping symbolic link creation!"
+  local target=${1}
+  local link_name=${2}
+  [ -n "${target}" ] || return 1
+  [ -n "${link_name}" ] || link_name=$(basename "${target}")
+  target=$(readlink -e "${target}") || {
+    warning "Target file ${target} does not exist"
     return 1
   }
-  [ "$(dirname "${file}")" = "${WORKING_DIR}" ] && return 0
-  ln -sfn "${file}" "${WORKING_DIR}/" || {
-    warning "Failed to create symbolic link for ${file}"
+  ln -sfn "${target}" "${link_name}" || {
+    warning "Failed to create symbolic link ${link_name} to target ${target}"
     return 1
   }
 }
@@ -116,12 +117,12 @@ create_tarball()
   local tarball_name="rapthor_logs_${timestamp}.tar.gz"
   local tarball_path="${WORKING_DIR}/${tarball_name}"
   local tarball_contents=()
-  make_symlink "${PARSET}" && tarball_contents+=("$(basename "${PARSET}")")
+  make_symlink "${PARSET}" "parset" && tarball_contents+=("parset")
   for name in input_skymodel apparent_skymodel strategy; do
     local file=$(
       sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,,p" "${PARSET}"
     )
-    make_symlink "${file}" && tarball_contents+=("$(basename "${file}")")
+    make_symlink "${file}" "${name}" && tarball_contents+=("${name}")
   done
   [ -d "${WORKING_DIR}/logs" ] && tarball_contents+=("logs")
   echo -e "\nCreating tar-ball of logs and configuration files ..."
