@@ -93,8 +93,8 @@ make_symlink()
 {
   local file=${1}
   [ -n "${file}" ] || return 1
-  [ -f "${file}" ] || {
-    warning "File ${file} does not exist; skipping symbolic link creation!"
+  file=$(readlink -e "${file}") || {
+    warning "Failed to resolve absolute path for ${file}; skipping symbolic link creation!"
     return 1
   }
   [ "$(dirname "${file}")" = "${WORKING_DIR}" ] && return 0
