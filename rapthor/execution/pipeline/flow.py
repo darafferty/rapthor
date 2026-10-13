@@ -218,7 +218,9 @@ def run_pipeline(
             if index == 0:
                 hooks.chunk_observations(field, [final_step], parset["final_data_fraction"])
 
-            run_pipeline_steps(field, [final_step], final_cycle_number=index+1, operation_factories=factories)
+            run_pipeline_steps(
+                field, [final_step], final_cycle_number=index + 1, operation_factories=factories
+            )
 
     hooks.make_report(field)
     publish_plot_artifacts_for_field(field)
