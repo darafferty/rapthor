@@ -5,6 +5,7 @@ Test suite for rapthor.scripts.calculate_image_diagnostics.
 import json
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import astropy.units as u
@@ -25,6 +26,7 @@ from rapthor.scripts.calculate_image_diagnostics import (
     compute_facet_rms_noise,
     filter_skymodel_for_photometry,
     fits_to_makesourcedb,
+    load_photometry_surveys,
     main,
     parse_args,
 )
@@ -129,6 +131,42 @@ def grouped_comparison_skymodel(mock_comparison_skymodel_table):
 # Test: check_astrometry
 
 
+@pytest.mark.disable_socket
+@pytest.mark.parametrize("allow_internet_access", [False, True], ids=["offline", "online"])
+def test_check_astrometry_handles_failed_supplied_catalog(
+    allow_internet_access, mock_full_astrometry_table, tmp_path, mocker, caplog
+):
+    """A bad supplied catalog falls back to Pan-STARRS only when internet access is allowed."""
+    module = "rapthor.scripts.calculate_image_diagnostics"
+    input_catalog = tmp_path / "catalog.fits"
+    mock_full_astrometry_table.write(input_catalog, format="fits")
+    mocker.patch(f"{module}.fits_to_makesourcedb", return_value=mocker.Mock())
+    load = mocker.patch(f"{module}.lsmtool.load", side_effect=OSError("Invalid comparison catalog"))
+    facet = mocker.Mock(astrometry_diagnostics={})
+    mocker.patch(f"{module}.SquareFacet", return_value=facet)
+
+    with caplog.at_level(logging.INFO):
+        result = check_astrometry(
+            SimpleNamespace(ra=0.0, dec=0.0),
+            input_catalog,
+            SimpleNamespace(freq=150e6, img_data=np.zeros((2, 2)), img_hdr={"CDELT1": 0.1}),
+            facet_region_file=None,
+            min_number=5,
+            output_root=tmp_path / "astrometry",
+            comparison_skymodel="invalid.skymodel",
+            allow_internet_access=allow_internet_access,
+        )
+
+    assert result == {}
+    load.assert_called_once_with("invalid.skymodel")
+    assert "Invalid comparison catalog" in caplog.text
+    if allow_internet_access:
+        facet.find_astrometry_offsets.assert_called_once_with(None, min_number=5)
+    else:
+        facet.find_astrometry_offsets.assert_not_called()
+        assert "Internet access not allowed. Skipping astrometry check" in caplog.text
+
+
 def test_check_astrometry_zero_sources(
     observation,
     input_catalog_fits,
@@ -214,6 +252,80 @@ def test_check_astrometry_sources_below_minimum_number(
 
 # ---------------------------------------------------------------------------- #
 # Test: check_photometry
+
+
+@pytest.mark.disable_socket
+@pytest.mark.parametrize(
+    "failed_surveys, expected_surveys",
+    [
+        pytest.param({"TGSS"}, ["LOTSS"], id="next-primary-survey"),
+        pytest.param({"TGSS", "LOTSS"}, ["NVSS"], id="backup-survey"),
+        pytest.param({"TGSS", "LOTSS", "NVSS"}, [], id="all-surveys-fail"),
+        pytest.param({"NVSS"}, ["TGSS", "LOTSS"], id="backup-fails-after-primaries"),
+    ],
+)
+def test_check_photometry_skips_failed_catalog_loads(
+    failed_surveys, expected_surveys, mock_comparison_skymodel_table, tmp_path, mocker, caplog
+):
+    """A failed download must leave usable surveys and their diagnostics intact."""
+    module = "rapthor.scripts.calculate_image_diagnostics"
+    catalog = mock_comparison_skymodel_table
+    mocker.patch(f"{module}.Table.read", return_value=catalog)
+    mocker.patch(f"{module}.filter_skymodel_for_photometry", return_value=catalog)
+    models = {survey: mocker.Mock() for survey in ("TGSS", "LOTSS", "NVSS")}
+
+    def load_catalog(survey, **kwargs):
+        if survey in failed_surveys:
+            raise OSError("Format line not understood.")
+        return models[survey]
+
+    load = mocker.patch(f"{module}.lsmtool.load", side_effect=load_catalog)
+    compare = mocker.patch(
+        f"{module}.compare_photometry_survey",
+        side_effect=lambda catalog, survey, *args: {f"meanRatio_{survey}": 1.0},
+    )
+    with caplog.at_level(logging.INFO):
+        result = check_photometry(
+            SimpleNamespace(ra=12.0, dec=34.0),
+            "catalog.fits",
+            freq=150e6,
+            min_number=5,
+        )
+
+    assert load.call_args_list == [
+        mocker.call(survey, VOPosition=[12.0, 34.0], VORadius=5.0)
+        for survey in ("TGSS", "LOTSS", "NVSS")
+    ]
+    assert compare.call_args_list == [
+        mocker.call(catalog, survey, models[survey], 150e6) for survey in expected_surveys
+    ]
+    assert result == {f"meanRatio_{survey}": 1.0 for survey in expected_surveys}
+    for survey in failed_surveys:
+        assert f"downloading the {survey} catalog" in caplog.text
+    assert "Format line not understood." in caplog.text
+    assert "%s" not in caplog.text
+
+
+@pytest.mark.disable_socket
+@pytest.mark.parametrize("surveys", [[], ["LOTSS"]], ids=["offline", "online"])
+def test_load_photometry_surveys_handles_failed_supplied_catalog(surveys, mocker, caplog):
+    """A bad local catalog falls back only to the permitted surveys."""
+    model = mocker.Mock()
+    load = mocker.patch(
+        "rapthor.scripts.calculate_image_diagnostics.lsmtool.load",
+        side_effect=[OSError("Invalid comparison catalog"), model],
+    )
+    with caplog.at_level(logging.INFO):
+        result = load_photometry_surveys(
+            SimpleNamespace(ra=12.0, dec=34.0), "invalid.skymodel", surveys, backup_survey=None
+        )
+
+    expected_calls = [mocker.call("invalid.skymodel")]
+    if surveys:
+        expected_calls.append(mocker.call("LOTSS", VOPosition=[12.0, 34.0], VORadius=5.0))
+    assert load.call_args_list == expected_calls
+    assert result == ({"LOTSS": model} if surveys else {})
+    assert "Invalid comparison catalog" in caplog.text
 
 
 def test_check_photometry_zero_sources(
@@ -605,17 +717,14 @@ def test_calculate_image_diagnostics_parse_args(monkeypatch, allow_internet_acce
     assert args.allow_internet_access is allow_internet_access
 
 
-@pytest.mark.parametrize("region_file", [None, "none"])
-def test_calculate_image_diagnostics_main_writes_merged_diagnostics(
-    monkeypatch,
-    mocker,
-    tmp_path,
-    region_file,
-):
-    """Test that main() merges diagnostics and writes the output file."""
+@pytest.fixture
+def image_diagnostics_inputs(monkeypatch, tmp_path):
+    """Provide small image diagnostics inputs without requiring Measurement Sets."""
 
     class FakeObservation:
         timepersample = 2.0
+        ra = 12.0
+        dec = 34.0
 
         def __init__(self, ms, starttime_mjd=None, endtime_mjd=None):
             self.ms = ms
@@ -648,6 +757,30 @@ def test_calculate_image_diagnostics_main_writes_merged_diagnostics(
         lambda obs_list, use_lotss_estimate=True: (0.123, 0.456),
     )
 
+    return {
+        "flat_noise_image": "flat_noise_image.fits",
+        "flat_noise_rms_image": "flat_noise_rms_image.fits",
+        "true_sky_image": "true_sky_image.fits",
+        "true_sky_rms_image": "true_sky_rms_image.fits",
+        "input_catalog": "input_catalog.fits",
+        "obs_ms": "obs.ms",
+        "obs_starttime": "2024-01-01T00:00:00",
+        "obs_ntimes": "1",
+        "diagnostics_file": str(diagnostics_file),
+        "output_root": str(tmp_path / "output_root"),
+        "facet_region_file": None,
+        "allow_internet_access": False,
+    }
+
+
+@pytest.mark.parametrize("region_file", [None, "none"])
+def test_calculate_image_diagnostics_main_writes_merged_diagnostics(
+    mocker,
+    tmp_path,
+    region_file,
+    image_diagnostics_inputs,
+):
+    """Test that main() merges diagnostics and writes the output file."""
     photometry_result = {"photometry_metric": 1.0}
     astrometry_result = {"astrometry_metric": 2.0}
     photometry_mock = mocker.patch(
@@ -659,19 +792,9 @@ def test_calculate_image_diagnostics_main_writes_merged_diagnostics(
         return_value=astrometry_result,
     )
 
+    image_diagnostics_inputs["facet_region_file"] = region_file
     main(
-        "flat_noise_image.fits",
-        "flat_noise_rms_image.fits",
-        "true_sky_image.fits",
-        "true_sky_rms_image.fits",
-        "input_catalog.fits",
-        "obs.ms",
-        "2024-01-01T00:00:00",
-        "1",
-        str(diagnostics_file),
-        str(tmp_path / "output_root"),
-        facet_region_file=region_file,
-        allow_internet_access=False,
+        **image_diagnostics_inputs,
         photometry_comparison_skymodel="photometry.sky",
         photometry_comparison_surveys=["SURVEY"],
         photometry_backup_survey="BACKUP",
@@ -693,6 +816,33 @@ def test_calculate_image_diagnostics_main_writes_merged_diagnostics(
     assert output_data["unflagged_data_fraction"] == 0.456
     assert output_data["freq"] == 150e6
     assert output_data["beam_fwhm"] == "10 arcsec"
+
+
+@pytest.mark.disable_socket
+def test_calculate_image_diagnostics_main_finishes_when_all_survey_loads_fail(
+    image_diagnostics_inputs, mock_comparison_skymodel_table, mocker
+):
+    """Unavailable photometry catalogs must not prevent other diagnostics being saved."""
+    module = "rapthor.scripts.calculate_image_diagnostics"
+    image_diagnostics_inputs["allow_internet_access"] = True
+    catalog = mock_comparison_skymodel_table
+    mocker.patch(f"{module}.Table.read", return_value=catalog)
+    mocker.patch(f"{module}.filter_skymodel_for_photometry", return_value=catalog)
+    load = mocker.patch(
+        f"{module}.lsmtool.load", side_effect=OSError("Format line not understood.")
+    )
+    astrometry = mocker.patch(f"{module}.check_astrometry", return_value={"meanRAOffsetDeg": 0.0})
+
+    main(**image_diagnostics_inputs)
+
+    assert [call.args[0] for call in load.call_args_list] == ["TGSS", "LOTSS", "NVSS"]
+    astrometry.assert_called_once()
+    output_root = image_diagnostics_inputs["output_root"]
+    diagnostics = json.loads(Path(f"{output_root}.image_diagnostics.json").read_text())
+    assert diagnostics["existing"] == 1
+    assert diagnostics["theoretical_rms"] == 0.123
+    assert diagnostics["meanRAOffsetDeg"] == 0.0
+    assert not any(key.startswith("meanRatio") for key in diagnostics)
 
 
 # ---------------------------------------------------------------------------- #
