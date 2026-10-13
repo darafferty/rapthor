@@ -113,21 +113,19 @@ make_symlink()
 create_tarball()
 {
   echo -e "\nCollecting logs ..."
-  local timestamp=$(date +%Y%m%d_%H%M%S)
-  local tarball_name="rapthor_logs_${timestamp}.tar.gz"
-  local tarball_path="${WORKING_DIR}/${tarball_name}"
+  local tarball_name="rapthor_logs_$(date +%Y%m%d_%H%M%S).tar.gz"
   local tarball_contents=()
-  make_symlink "${PARSET}" "parset" && tarball_contents+=("parset")
+  make_symlink "${PARSET}" "${WORKING_DIR}/parset" && tarball_contents+=("parset")
   for name in input_skymodel apparent_skymodel strategy; do
     local file=$(
       sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,,p" "${PARSET}"
     )
-    make_symlink "${file}" "${name}" && tarball_contents+=("${name}")
+    make_symlink "${file}" "${WORKING_DIR}/${name}" && tarball_contents+=("${name}")
   done
   [ -d "${WORKING_DIR}/logs" ] && tarball_contents+=("logs")
   echo -e "\nCreating tar-ball of logs and configuration files ..."
-  tar -C "${WORKING_DIR}" -chzf "${tarball_path}" "${tarball_contents[@]}"
-  echo -e "\nTar-ball created successfully: ${tarball_path}"
+  tar -C "${WORKING_DIR}" -chzf "${tarball_name}" "${tarball_contents[@]}"
+  echo -e "\nTar-ball created successfully: ${tarball_name}"
 }
 
 setup "$@"
