@@ -1960,7 +1960,7 @@ class Field(object):
             # Report not converged, not diverged, and not failed
             return SelfcalState(False, False, False)
 
-    def update(self, step_dict, index, final=False):
+    def update(self, step_dict, index, final_cycle_number=0):
         """
         Updates parameters, sky models, etc. for current cycle
 
@@ -1970,13 +1970,12 @@ class Field(object):
             Dict of parameter values for given processing cycle
         index : int
             Index of processing cycle (counting starts from 1)
-        final : bool, optional
-            If True, process as the final pass (needed for correct processing of
-            the sky models)
+        final_cycle_number : int, optional
+            Index of final processing cycle (counting starts from 1; 0 indicates a non-final cycle)
         """
-        # If this is set as a final pass, set some peeling/calibration options to
+        # If this is set as the initial final pass, set some peeling/calibration options to
         # the defaults
-        if final:
+        if final_cycle_number == 1:
             self.imaged_sources_only = False
 
         # Update field and sector dicts with the parameters for this cycle
@@ -2033,7 +2032,7 @@ class Field(object):
             target_flux=target_flux,
             target_number=target_number,
             calibrator_max_dist_deg=calibrator_max_dist_deg,
-            combine_current_and_intial=final,
+            combine_current_and_intial=(final_cycle_number == 1),
         )
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
@@ -2068,7 +2067,9 @@ class Field(object):
             self.do_predict = False
 
         # check whether images are to be compressed
-        self.compress_images = self.compress_final_images if final else self.compress_selfcal_images
+        self.compress_images = (
+            self.compress_final_images if final_cycle_number > 0 else self.compress_selfcal_images
+        )
 
     def set_calibration_strategy(self):
         """
