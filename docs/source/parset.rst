@@ -485,16 +485,6 @@ The available options are described below under their respective sections.
         imaging, in m (default = 5000). A value of 0 will disable frequency BDA.
         Activating this option may improve the speed of imaging.
 
-        Frequency BDA produces a Measurement Set with multiple spectral windows.
-        Primary-beam correction for this layout requires EveryBeam 0.8.3 or later.
-
-        .. note::
-
-            Currently, correction for time and frequency smearing cannot be done
-            when BDA is used during imaging. If the averaging of the input data
-            is such that time or frequency smearing is significant within the field
-            of view of interest, then the use of BDA is not recommended.
-
     dde_method
         Method to use to correct for direction-dependent effects during imaging:
         ``single`` or ``full`` (default = ``full``). If ``single``, a single,
