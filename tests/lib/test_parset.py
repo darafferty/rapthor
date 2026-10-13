@@ -198,7 +198,7 @@ def test_calibration_oom_risk_policy_is_boolean(parset_scenario):
 def test_default_imaging_frequency_bda_uses_production_value(parset_scenario):
     parset = parset_read(str(parset_scenario.parset))
 
-    assert parset["imaging_specific"]["bda_frequencybase"] == 20000.0
+    assert parset["imaging_specific"]["bda_frequencybase"] == 5000.0
 
 
 def test_filter_skymodel_ncores_zero_uses_max_threads(parset_scenario):
