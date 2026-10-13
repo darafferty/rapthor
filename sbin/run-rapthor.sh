@@ -54,7 +54,7 @@ setup()
 
   # Extract the working directory from the parset file, path must be absolute
   WORKING_DIR=$(
-    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*/,,p' "${PARSET}" \
+    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*/,/,p' "${PARSET}" \
       | sed 's,[[:space:]]*$,,'
   )
   [ -n "${WORKING_DIR}" ] || error "Working directory invalid or not set in ${PARSET}!"
