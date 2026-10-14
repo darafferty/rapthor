@@ -74,7 +74,7 @@ def concatenate_epoch_task(
     epoch: ConcatenateEpochPayload,
     data_colname: str,
     pipeline_working_dir: str,
-    use_array_beam: bool = False,
+    use_array_beam: bool = True,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -94,7 +94,7 @@ def run_concatenate_epoch(
     epoch: ConcatenateEpochPayload,
     data_colname: str,
     pipeline_working_dir: str,
-    use_array_beam: bool = False,
+    use_array_beam: bool = True,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
