@@ -942,7 +942,7 @@ def test_pipeline_flow_runs_no_selfcal_image_only_strategy():
         )
 
     assert field is lifecycle.field
-    assert field.final_seen is True
+    assert field.final_cycle_number_seen == 1
     assert field.cycle_number == 1
     assert parset["generate_initial_skymodel"] is False
     assert parset["download_initial_skymodel"] is False
