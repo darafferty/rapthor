@@ -267,7 +267,11 @@ The available options are described below under their respective sections.
 
     sagecalpredict
         Use SAGECal for model calculation, both in predict and calibration (default =
-        ``False``).
+        ``False``). Note that the SAGECal predictor in DP3 applies at most two kinds of
+        corrections to the predicted model at once, so it cannot combine fast-phase
+        and slow-gain corrections with a flux-scale normalization. Use the default
+        predictor when ``apply_normalizations`` is active together with slow-gain
+        solutions.
 
     fast_datause
         This parameter sets the visibilities mode used during the fast-phase solves  (one

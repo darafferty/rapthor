@@ -23,16 +23,20 @@ def build_predict_model_data_command(
     applycal_steps: Optional[str] = None,
     normalize_h5parm: Optional[str] = None,
 ) -> list[str]:
-    """Build the DP3 prediction command for one sector/observation pair."""
-    applycal_step_names = _applycal_step_names(applycal_steps)
-    predict_applycal_steps = [step for step in applycal_step_names if step != "normalization"]
-    dp3_steps = ["predict"]
-    if normalize_h5parm is not None:
-        dp3_steps.append("applycal")
+    """Build the DP3 prediction command for one sector/observation pair.
+
+    All corrections, including the flux-scale normalization, are applied by the
+    predict step's own applycal sub-steps. With ``predict.operation=replace``
+    the prediction is written to the data buffer, so a separate ``applycal``
+    step with ``usemodeldata=True`` would act on an empty model buffer and
+    leave the written visibilities unchanged. The predict-internal applycal
+    corrupts the model with the non-inverted solutions, which maps the model
+    from the normalized flux scale back onto the scale of the observed data.
+    """
     command = [
         "DP3",
         "msout.overwrite=True",
-        f"steps={bracketed_list_token(dp3_steps)}",
+        "steps=[predict]",
         "predict.operation=replace",
     ]
     if h5parm is not None:
@@ -48,12 +52,8 @@ def build_predict_model_data_command(
     if normalize_h5parm is not None:
         command.extend(
             [
-                "applycal.type=applycal",
-                "applycal.steps=[normalization]",
-                "applycal.normalization.correction=amplitude000",
-                "applycal.normalization.solset=sol000",
-                "applycal.normalization.usemodeldata=True",
-                "applycal.normalization.invert=False",
+                "predict.applycal.normalization.correction=amplitude000",
+                "predict.applycal.normalization.solset=sol000",
             ]
         )
     # If calibration with the array beam is requested, make sure to only predict the array beam.
@@ -84,12 +84,12 @@ def build_predict_model_data_command(
             f"predict.type={_predict_type(sagecalpredict, h5parm)}",
         ]
     )
-    if predict_applycal_steps:
-        command.append(f"predict.applycal.steps={bracketed_list_token(predict_applycal_steps)}")
+    if applycal_steps is not None:
+        command.append(f"predict.applycal.steps={applycal_steps}")
     if h5parm is not None:
         command.append(f"predict.applycal.parmdb={h5parm}")
     if normalize_h5parm is not None:
-        command.append(f"applycal.normalization.parmdb={normalize_h5parm}")
+        command.append(f"predict.applycal.normalization.parmdb={normalize_h5parm}")
     command.extend(
         [
             f"predict.sourcedb={sourcedb}",
@@ -106,13 +106,3 @@ def _predict_type(sagecalpredict: bool, h5parm: Optional[str]) -> str:
     if h5parm is None:
         return "predict"
     return "h5parmpredict"
-
-
-def _applycal_step_names(applycal_steps: Optional[str]) -> list[str]:
-    """Return DP3 applycal step names from a bracketed parset token."""
-    if applycal_steps is None:
-        return []
-    steps = applycal_steps.strip()
-    if steps.startswith("[") and steps.endswith("]"):
-        steps = steps[1:-1]
-    return [step.strip() for step in steps.split(",") if step.strip()]

@@ -358,134 +358,131 @@ def _dd_predict_input_parms():
     return input_parms
 
 
+def _build_predict_command(**overrides):
+    """Build a predict command from the reference-fixture inputs with overrides."""
+    kwargs = {
+        "msin": "obs_0.ms",
+        "data_colname": "DATA",
+        "msout": "obs_0.ms.sector_1_modeldata",
+        "starttime": "50000.0",
+        "ntimes": 10,
+        "onebeamperpatch": True,
+        "correctfreqsmearing": False,
+        "correcttimesmearing": False,
+        "sagecalpredict": False,
+        "sourcedb": "sector_1.skymodel",
+        "directions": ["patch1", "patch2"],
+        "use_array_beam": True,
+        "numthreads": 4,
+    }
+    kwargs.update(overrides)
+    return build_predict_model_data_command(**kwargs)
+
+
+def _has_standalone_applycal(command):
+    """Return True if the command configures an applycal step outside predict."""
+    return any(token.startswith("applycal.") or "usemodeldata" in token for token in command)
+
+
 def test_predict_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
-    assert (
-        normalize_command(
-            build_predict_model_data_command(
-                msin="obs_0.ms",
-                data_colname="DATA",
-                msout="obs_0.ms.sector_1_modeldata",
-                starttime="50000.0",
-                ntimes=10,
-                onebeamperpatch=True,
-                correctfreqsmearing=False,
-                correcttimesmearing=False,
-                sagecalpredict=False,
-                sourcedb="sector_1.skymodel",
-                directions=["patch1", "patch2"],
-                use_array_beam=True,
-                numthreads=4,
-            )
-        )
-        == commands["predict"]["predict_model_data"]
-    )
+    assert normalize_command(_build_predict_command()) == commands["predict"]["predict_model_data"]
+
+
+def test_build_predict_model_data_command_without_corrections_has_no_applycal():
+    command = _build_predict_command()
+
+    assert "steps=[predict]" in command
+    assert "predict.type=predict" in command
+    assert not any("applycal" in token for token in command)
 
 
 def test_build_predict_model_data_command_adds_h5parm_applycal_options():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "CORRECTED_DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        10,
-        onebeamperpatch=False,
+    command = _build_predict_command(
+        data_colname="CORRECTED_DATA",
         correctfreqsmearing=True,
         correcttimesmearing=True,
-        sagecalpredict=False,
-        sourcedb="sector_1.skymodel",
         directions=["patch1"],
-        use_array_beam=True,
         numthreads=8,
         h5parm="solutions.h5",
         applycal_steps="[fastphase,normalization]",
         normalize_h5parm="norm.h5",
     )
 
-    assert "steps=[predict,applycal]" in command
-    assert "predict.applycal.correction=phase000" in command
+    # All corrections are applied by the predict step itself: a stand-alone
+    # applycal step cannot see the prediction written with operation=replace.
+    assert "steps=[predict]" in command
     assert "predict.type=h5parmpredict" in command
-    assert "predict.applycal.steps=[fastphase]" in command
+    assert "predict.applycal.correction=phase000" in command
+    assert "predict.applycal.steps=[fastphase,normalization]" in command
     assert "predict.applycal.parmdb=solutions.h5" in command
-    assert "applycal.type=applycal" in command
-    assert "applycal.steps=[normalization]" in command
-    assert "applycal.normalization.parmdb=norm.h5" in command
-    assert "applycal.normalization.usemodeldata=True" in command
-    assert "applycal.normalization.invert=False" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.applycal.normalization.correction=amplitude000" in command
+    assert "predict.applycal.normalization.solset=sol000" in command
     assert "predict.correctfreqsmearing=True" in command
     assert "predict.correcttimesmearing=True" in command
+    assert not _has_standalone_applycal(command)
 
 
-def test_build_predict_model_data_command_applies_normalization_to_model_data():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        10,
-        onebeamperpatch=False,
-        correctfreqsmearing=False,
-        correcttimesmearing=False,
-        sagecalpredict=False,
-        sourcedb="sector_1.skymodel",
-        directions=["patch1"],
-        use_array_beam=True,
-        numthreads=8,
+def test_build_predict_model_data_command_applies_normalization_inside_predict():
+    command = _build_predict_command(
         applycal_steps="[normalization]",
         normalize_h5parm="norm.h5",
     )
 
-    assert "steps=[predict,applycal]" in command
+    assert "steps=[predict]" in command
     assert "predict.type=predict" in command
-    assert "predict.applycal.steps=[normalization]" not in command
-    assert "predict.applycal.normalization.parmdb=norm.h5" not in command
-    assert "applycal.steps=[normalization]" in command
-    assert "applycal.normalization.parmdb=norm.h5" in command
-    assert "applycal.normalization.usemodeldata=True" in command
+    assert "predict.applycal.steps=[normalization]" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.applycal.normalization.correction=amplitude000" in command
+    assert "predict.applycal.normalization.solset=sol000" in command
+    assert not any(token.startswith("predict.applycal.parmdb") for token in command)
+    assert not _has_standalone_applycal(command)
+
+
+def test_build_predict_model_data_command_applies_dd_solutions_and_normalization():
+    command = _build_predict_command(
+        directions=["[Patch_0]", "[Patch_1]"],
+        h5parm="dd_solutions.h5",
+        applycal_steps="[fastphase,slowgain,normalization]",
+        normalize_h5parm="norm.h5",
+    )
+
+    assert "steps=[predict]" in command
+    assert "predict.type=h5parmpredict" in command
+    assert "predict.applycal.steps=[fastphase,slowgain,normalization]" in command
+    assert "predict.applycal.parmdb=dd_solutions.h5" in command
+    assert "predict.applycal.slowgain.correction=amplitude000" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.directions=[[Patch_0],[Patch_1]]" in command
+    assert not _has_standalone_applycal(command)
 
 
 def test_build_predict_model_data_command_omits_zero_ntimes():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        0,
-        onebeamperpatch=True,
-        correctfreqsmearing=False,
-        correcttimesmearing=False,
-        sagecalpredict=False,
-        sourcedb="sector_1.skymodel",
-        directions=["patch1"],
-        use_array_beam=True,
-        numthreads=4,
-    )
+    command = _build_predict_command(ntimes=0, directions=["patch1"])
 
     assert "msin.ntimes=0" not in command
     assert command[command.index("msin.starttime=50000.0") + 1] == "predict.onebeamperpatch=True"
 
 
 def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        10,
-        onebeamperpatch=True,
-        correctfreqsmearing=False,
-        correcttimesmearing=False,
+    # DP3's SagecalPredict reads the same predict.applycal.* settings as the
+    # other predictors; it accepts at most two applycal sub-steps.
+    command = _build_predict_command(
         sagecalpredict=True,
-        sourcedb="sector_1.skymodel",
-        directions=["patch1"],
-        use_array_beam=True,
-        numthreads=4,
+        directions=["[Patch_0]"],
         h5parm="solutions.h5",
+        applycal_steps="[fastphase,normalization]",
+        normalize_h5parm="norm.h5",
     )
 
+    assert "steps=[predict]" in command
     assert "predict.type=sagecalpredict" in command
     assert "predict.applycal.parmdb=solutions.h5" in command
+    assert "predict.applycal.steps=[fastphase,normalization]" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert not _has_standalone_applycal(command)
 
 
 def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
@@ -566,21 +563,7 @@ def test_validate_predict_payload_preserves_beam_setting_and_normalizes_optional
     [True, False],
 )
 def test_build_predict_model_data_command_respects_array_beam(use_array_beam):
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        10,
-        onebeamperpatch=True,
-        correctfreqsmearing=False,
-        correcttimesmearing=False,
-        sagecalpredict=False,
-        sourcedb="sector_1.skymodel",
-        directions=["patch1"],
-        use_array_beam=use_array_beam,
-        numthreads=4,
-    )
+    command = _build_predict_command(directions=["patch1"], use_array_beam=use_array_beam)
 
     if use_array_beam:
         assert "predict.beammode=array_factor" in command
