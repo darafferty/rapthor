@@ -59,6 +59,7 @@ def fake_select_concatenation_command(monkeypatch):
         data_colname="DATA",
         concat_property="frequency",
         overwrite=False,
+        use_array_beam=False,
     ):
         calls.append(
             {
@@ -67,6 +68,7 @@ def fake_select_concatenation_command(monkeypatch):
                 "data_colname": data_colname,
                 "concat_property": concat_property,
                 "overwrite": overwrite,
+                "use_array_beam": use_array_beam,
             }
         )
         return [
@@ -153,6 +155,7 @@ def test_concatenate_payload_from_inputs_is_serializable(tmp_path):
     assert payload == {
         "pipeline_working_dir": str(tmp_path),
         "data_colname": "DATA",
+        "use_array_beam": False,
         "epochs": [
             {
                 "input_filenames": ["/data/epoch_0_input_0.ms", "/data/epoch_0_input_1.ms"],
@@ -237,6 +240,7 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
             "data_colname": "DATA",
             "concat_property": "frequency",
             "overwrite": False,
+            "use_array_beam": False,
         }
     ]
 

@@ -114,7 +114,7 @@ def concat_freq_command(
     if make_dummies:
         mslist = _insert_dummy_ms_for_frequency_gaps(msfiles, mslist)
 
-    steps = "[applybeam]" if use_array_beam else "[]"
+    steps = "[]" if use_array_beam else "[applybeam]"
     command = [
         "DP3",
         f"msin=[{','.join(mslist)}]",
@@ -125,7 +125,7 @@ def concat_freq_command(
         "msin.missingdata=True",
         "msout.storagemanager=Dysco",
     ]
-    if use_array_beam:
+    if not use_array_beam:
         command.append("applybeam.beammode=None")
     return command
 

@@ -235,6 +235,7 @@ def _validate_predict_model_task(
             predict_task.get("directions"),
             f"predict_tasks[{index}].directions",
         ),
+        "use_array_beam": bool(predict_task["use_array_beam"]),
         "numthreads": int(predict_task["numthreads"]),
         "h5parm": optional_string(predict_task.get("h5parm")),
         "applycal_steps": optional_string(predict_task.get("applycal_steps")),
