@@ -24,6 +24,7 @@ class ConcatenatePayload(TypedDict):
 
     pipeline_working_dir: str
     data_colname: str
+    use_array_beam: bool
     epochs: list[ConcatenateEpochPayload]
 
 
@@ -36,6 +37,7 @@ def concatenate_payload_from_inputs(
     input_filenames = input_parms.get("input_filenames", [])
     output_filenames = input_parms.get("output_filenames", [])
     data_colname = input_parms.get("data_colname", "DATA")
+    use_array_beam = input_parms.get("use_array_beam", False)
 
     if not isinstance(input_filenames, list):
         raise ValueError("input_filenames must be a list")
@@ -45,6 +47,8 @@ def concatenate_payload_from_inputs(
         raise ValueError("input_filenames and output_filenames must have the same length")
     if not isinstance(data_colname, str):
         raise ValueError("data_colname must be a string")
+    if not isinstance(use_array_beam, bool):
+        raise ValueError("use_array_beam must be a boolean")
 
     epochs: list[ConcatenateEpochPayload] = []
     for index, (epoch_inputs, output_filename) in enumerate(zip(input_filenames, output_filenames)):
@@ -62,6 +66,7 @@ def concatenate_payload_from_inputs(
     payload: ConcatenatePayload = {
         "pipeline_working_dir": pipeline_dir,
         "data_colname": data_colname,
+        "use_array_beam": use_array_beam,
         "epochs": epochs,
     }
     _validate_unique_output_paths(epochs)
@@ -73,6 +78,9 @@ def validate_concatenate_payload(payload: Mapping[str, object]) -> ConcatenatePa
     """Validate a Concatenate payload received by a flow or worker."""
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     data_colname = str(payload["data_colname"])
+    use_array_beam = payload.get("use_array_beam", False)
+    if not isinstance(use_array_beam, bool):
+        raise ValueError("use_array_beam must be a boolean")
     raw_epochs = payload.get("epochs", [])
     if not isinstance(raw_epochs, list):
         raise ValueError("epochs must be a list")
@@ -98,6 +106,7 @@ def validate_concatenate_payload(payload: Mapping[str, object]) -> ConcatenatePa
     return {
         "pipeline_working_dir": pipeline_working_dir,
         "data_colname": data_colname,
+        "use_array_beam": use_array_beam,
         "epochs": epochs,
     }
 

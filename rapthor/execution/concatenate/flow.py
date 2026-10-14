@@ -60,6 +60,7 @@ def _run_concatenate_prefect_tasks(
             epoch,
             payload["data_colname"],
             payload["pipeline_working_dir"],
+            use_array_beam=payload["use_array_beam"],
             execution_config=config,
         )
         for index, epoch in enumerate(payload["epochs"])
@@ -73,6 +74,7 @@ def concatenate_epoch_task(
     epoch: ConcatenateEpochPayload,
     data_colname: str,
     pipeline_working_dir: str,
+    use_array_beam: bool = False,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -82,6 +84,7 @@ def concatenate_epoch_task(
             epoch,
             data_colname,
             pipeline_working_dir,
+            use_array_beam=use_array_beam,
             execution_config=execution_config,
             shell_operation_cls=shell_operation_cls,
         )
@@ -91,6 +94,7 @@ def run_concatenate_epoch(
     epoch: ConcatenateEpochPayload,
     data_colname: str,
     pipeline_working_dir: str,
+    use_array_beam: bool = False,
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
@@ -98,7 +102,12 @@ def run_concatenate_epoch(
     config = execution_config or ExecutionConfig(task_runner="sync")
     input_filenames = epoch["input_filenames"]
     output_path = epoch["output_path"]
-    command = select_concatenation_command(input_filenames, output_path, data_colname)
+    command = select_concatenation_command(
+        input_filenames,
+        output_path,
+        data_colname,
+        use_array_beam=use_array_beam,
+    )
     run_external_command(
         command,
         pipeline_working_dir,

@@ -49,6 +49,7 @@ class Concatenate(FlowOperation):
         self.input_parms = {
             "input_filenames": input_filenames,
             "data_colname": self.field.data_colname,
+            "use_array_beam": getattr(self.field, "use_array_beam", True),
             "output_filenames": output_filenames,
         }
 
