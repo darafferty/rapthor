@@ -259,6 +259,7 @@ class FieldStub:
         self.peel_outliers = False
         self.peel_bright_sources = False
         self.imaged_sources_only = False
+        self.use_array_beam = True
 
 
 def _operation_parset(tmp_path):
@@ -561,10 +562,10 @@ def test_validate_predict_payload_preserves_beam_setting_and_normalizes_optional
 
 
 @pytest.mark.parametrize(
-    "use_array_beam, expected_beammode",
-    [(True, None), (False, "predict.beammode=array_factor")],
+    "use_array_beam",
+    [True, False],
 )
-def test_build_predict_model_data_command_respects_array_beam(use_array_beam, expected_beammode):
+def test_build_predict_model_data_command_respects_array_beam(use_array_beam):
     command = build_predict_model_data_command(
         "obs_0.ms",
         "DATA",
@@ -581,10 +582,10 @@ def test_build_predict_model_data_command_respects_array_beam(use_array_beam, ex
         numthreads=4,
     )
 
-    if expected_beammode is None:
-        assert not any(item.startswith("predict.beammode=") for item in command)
+    if use_array_beam:
+        assert "predict.beammode=array_factor" in command
     else:
-        assert expected_beammode in command
+        assert not any(item.startswith("predict.beammode=") for item in command)
 
 
 def test_predict_model_outputs_are_grouped_by_observation_and_starttime():
