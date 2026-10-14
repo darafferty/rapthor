@@ -102,7 +102,7 @@ def concat_freq_command(
     data_colname: str,
     output_file: str,
     make_dummies: bool = True,
-    use_array_beam: bool = False,
+    use_array_beam: bool = True,
 ) -> list[str]:
     """
     Build the DP3 command used to concatenate Measurement Sets in frequency.

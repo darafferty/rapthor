@@ -37,7 +37,7 @@ def concatenate_payload_from_inputs(
     input_filenames = input_parms.get("input_filenames", [])
     output_filenames = input_parms.get("output_filenames", [])
     data_colname = input_parms.get("data_colname", "DATA")
-    use_array_beam = input_parms.get("use_array_beam", False)
+    use_array_beam = input_parms.get("use_array_beam", True)
 
     if not isinstance(input_filenames, list):
         raise ValueError("input_filenames must be a list")
@@ -78,7 +78,7 @@ def validate_concatenate_payload(payload: Mapping[str, object]) -> ConcatenatePa
     """Validate a Concatenate payload received by a flow or worker."""
     pipeline_working_dir = str(payload["pipeline_working_dir"])
     data_colname = str(payload["data_colname"])
-    use_array_beam = payload.get("use_array_beam", False)
+    use_array_beam = payload.get("use_array_beam", True)
     if not isinstance(use_array_beam, bool):
         raise ValueError("use_array_beam must be a boolean")
     raw_epochs = payload.get("epochs", [])
