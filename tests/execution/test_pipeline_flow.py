@@ -62,10 +62,10 @@ class RecordingField:
     events: list[dict] = field(default_factory=list)
     selfcal_result: SelfcalState = field(default_factory=SelfcalState)
 
-    def update(self, step, index, final=False):
+    def update(self, step, index, final_cycle_number=0):
         self.__dict__.update(step)
         self.cycle_number_seen = index
-        self.final_seen = final
+        self.final_cycle_number_seen = final_cycle_number
 
     def check_selfcal_progress(self):
         return self.selfcal_result
