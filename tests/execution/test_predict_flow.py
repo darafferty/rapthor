@@ -308,6 +308,7 @@ def _predict_input_parms():
         "normalize_h5parm": None,
         "dp3_applycal_steps": None,
         "onebeamperpatch": True,
+        "use_array_beam": True,
         "sagecalpredict": False,
         "obs_filename": [
             directory_record("/data/obs_0.ms"),
@@ -501,6 +502,7 @@ def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
         "sagecalpredict": False,
         "sourcedb": "/data/sector_1.skymodel",
         "directions": ["patch1", "patch2"],
+        "use_array_beam": True,
         "numthreads": 4,
         "h5parm": None,
         "applycal_steps": None,

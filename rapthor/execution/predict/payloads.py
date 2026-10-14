@@ -31,6 +31,7 @@ class PredictModelTaskPayload(TypedDict):
     sagecalpredict: bool
     sourcedb: str
     directions: list[str]
+    use_array_beam: bool
     numthreads: int
     h5parm: Optional[str]
     applycal_steps: Optional[str]
@@ -128,6 +129,7 @@ def predict_payload_from_inputs(
                 "sagecalpredict": bool(input_parms["sagecalpredict"]),
                 "sourcedb": file_record_path(sector_skymodels[index]),
                 "directions": [str(direction) for direction in sector_patches[index]],
+                "use_array_beam": bool(input_parms["use_array_beam"]),
                 "numthreads": int(input_parms["max_threads"]),
                 "h5parm": h5parm,
                 "applycal_steps": dp3_applycal_steps,

@@ -17,6 +17,7 @@
                           'medium_smoothnessrefdistance': 0.0,
                           'medium_smoothnessreffrequency': None,
                           'onebeamperpatch': False,
+                          'use_array_beam': True,
                           'parallelbaselines': False,
                           'propagatesolutions': True,
                           'sagecalpredict': False,

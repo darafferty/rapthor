@@ -21,6 +21,7 @@ PREDICT_COMMON_INPUT_KEYS = {
     "normalize_h5parm",
     "dp3_applycal_steps",
     "onebeamperpatch",
+    "use_array_beam",
     "sagecalpredict",
     "obs_filename",
     "obs_starttime",
@@ -64,6 +65,7 @@ def predict_field(operation_parset):
             self.apply_amplitudes = False
             self.apply_normalizations = False
             self.onebeamperpatch = True
+            self.use_array_beam = True
             self.sagecalpredict = False
             self.correct_smearing_in_calibration = False
             self.peel_outliers = False

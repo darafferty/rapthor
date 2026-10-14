@@ -130,6 +130,7 @@ def representative_predict_payload(
                 "sagecalpredict": False,
                 "sourcedb": "/data/sector_1.skymodel",
                 "directions": ["patch1", "patch2"],
+                "use_array_beam": True,
                 "numthreads": 4,
                 "h5parm": None,
                 "applycal_steps": None,

@@ -94,6 +94,7 @@ def concat_freq_command(
     data_colname: str,
     output_file: str,
     make_dummies: bool = True,
+    use_apply_beam: bool = False,
 ) -> list[str]:
     """
     Build the DP3 command used to concatenate Measurement Sets in frequency.
@@ -105,16 +106,20 @@ def concat_freq_command(
     if make_dummies:
         mslist = _insert_dummy_ms_for_frequency_gaps(msfiles, mslist)
 
-    return [
+    steps = "[applybeam]" if use_apply_beam else "[]"
+    command = [
         "DP3",
         f"msin=[{','.join(mslist)}]",
         f"msin.datacolumn={data_colname}",
         f"msout={output_file}",
-        "steps=[]",
+        f"steps={steps}",
         "msin.orderms=False",
         "msin.missingdata=True",
         "msout.storagemanager=Dysco",
     ]
+    if use_apply_beam:
+        command.append("applybeam.beammode=None")
+    return command
 
 
 def concat_time_command(msfiles: list[str], output_file: str) -> list[str]:

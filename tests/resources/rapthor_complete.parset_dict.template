@@ -17,6 +17,7 @@
                           'medium_smoothnessreffrequency': 200000.0,
                           'medium_datause': 'dual',
                           'onebeamperpatch': True,
+                          'use_array_beam': False,
                           'parallelbaselines': True,
                           'propagatesolutions': False,
                           'sagecalpredict': True,

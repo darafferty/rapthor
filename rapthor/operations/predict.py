@@ -90,10 +90,11 @@ class Predict(FlowOperation):
             "sector_patches": sector_parms["sector_patches"],
             "h5parm": FileRecord(h5parm_filename).to_json() if h5parm_filename else None,
             "normalize_h5parm": normalize_h5parm,
-            "dp3_applycal_steps": f"[{','.join(dp3_applycal_steps)}]"
-            if dp3_applycal_steps
-            else None,
+            "dp3_applycal_steps": (
+                f"[{','.join(dp3_applycal_steps)}]" if dp3_applycal_steps else None
+            ),
             "onebeamperpatch": field.onebeamperpatch,
+            "use_array_beam": field.use_array_beam,
             "sagecalpredict": field.sagecalpredict,
             "obs_filename": DirectoryRecord(obs_parms["obs_filename"]).to_json(),
             "obs_starttime": obs_parms["obs_starttime"],

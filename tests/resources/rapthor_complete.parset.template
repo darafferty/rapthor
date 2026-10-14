@@ -37,6 +37,7 @@ maxiter = 50
 propagatesolutions = False
 solveralgorithm = directioniterative
 onebeamperpatch = True
+use_array_beam = False
 stepsize = 0.2
 stepsigma = 0.1
 tolerance = 1e-2
