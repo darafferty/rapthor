@@ -1725,44 +1725,71 @@ class Field(object):
             return int(match.group(1))
         return None
 
+    def _scan_scalar_h5parm(self, filename):
+        """
+        Check the structure of a scalar (non-full-Jones) solution h5parm.
+
+        Returns True when the file holds amplitude solutions alongside the
+        required phase solutions, for either the sol000 or the coefficients000
+        (screen) layout.
+        """
+        filename = str(filename)
+        with h5parm(filename) as solutions:
+            if "coefficients000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("coefficients000")
+                if "phase_coefficients" not in solset.getSoltabNames():
+                    raise ValueError(
+                        f"The screen solutions file {filename!r} must "
+                        "have a phase_coefficients soltab."
+                    )
+                return "amplitude1_coefficients" in solset.getSoltabNames()
+            if "sol000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("sol000")
+                if "phase000" not in solset.getSoltabNames():
+                    raise ValueError(
+                        f"The direction-dependent solutions file {filename!r} must "
+                        "have a phase000 soltab."
+                    )
+                return "amplitude000" in solset.getSoltabNames()
+            raise ValueError(
+                f"The direction-dependent solutions file {filename!r} must "
+                "have the solutions stored in the sol000 or coefficients000 solset."
+            )
+
     def scan_h5parms(self):
         """
         Scans the calibration h5parms
 
         The basic structure is checked for correctness and for the presence of
         amplitude solutions (which may require different processing steps).
+        The DD and DI products are scanned separately: ``dd_apply_amplitudes``
+        and ``di_apply_amplitudes`` describe their own files, while
+        ``apply_amplitudes`` describes ``h5parm_filename``, which points at the
+        most recent product (or the parset-supplied h5parm).
         """
+        self.dd_apply_amplitudes = False
+        self.di_apply_amplitudes = False
+        scanned = {}
+
+        def has_amplitudes(filename):
+            if filename not in scanned:
+                scanned[filename] = self._scan_scalar_h5parm(filename)
+            return scanned[filename]
+
         if self.h5parm_filename is not None:
-            with h5parm(self.h5parm_filename) as solutions:
-                if "coefficients000" in solutions.getSolsetNames():
-                    solset = solutions.getSolset("coefficients000")
-                    if "phase_coefficients" not in solset.getSoltabNames():
-                        raise ValueError(
-                            f"The screen solutions file {self.h5parm_filename!r} must "
-                            "have a phase_coefficients soltab."
-                        )
-                    if "amplitude1_coefficients" in solset.getSoltabNames():
-                        self.apply_amplitudes = True
-                    else:
-                        self.apply_amplitudes = False
-                elif "sol000" in solutions.getSolsetNames():
-                    solset = solutions.getSolset("sol000")
-                    if "phase000" not in solset.getSoltabNames():
-                        raise ValueError(
-                            f"The direction-dependent solutions file {self.h5parm_filename!r} must "
-                            "have a phase000 soltab."
-                        )
-                    if "amplitude000" in solset.getSoltabNames():
-                        self.apply_amplitudes = True
-                    else:
-                        self.apply_amplitudes = False
-                else:
-                    raise ValueError(
-                        f"The direction-dependent solutions file {self.h5parm_filename!r} must "
-                        "have the solutions stored in the sol000 or coefficients000 solset."
-                    )
+            self.apply_amplitudes = has_amplitudes(self.h5parm_filename)
         else:
             self.apply_amplitudes = False
+
+        if self.dd_h5parm_filename is not None:
+            self.dd_apply_amplitudes = has_amplitudes(self.dd_h5parm_filename)
+        elif self.h5parm_filename is not None and self.di_h5parm_filename is None:
+            # A supplied h5parm without DI or DD ownership is applied as the DD
+            # product (legacy single-file state).
+            self.dd_apply_amplitudes = self.apply_amplitudes
+
+        if self.di_h5parm_filename is not None:
+            self.di_apply_amplitudes = has_amplitudes(self.di_h5parm_filename)
 
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
