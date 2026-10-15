@@ -71,7 +71,9 @@ def _solution_values(h5parm_path, soltab_name):
         soltab = solutions.getSolset("sol000").getSoltab(soltab_name)
         values = soltab.getValues()[0]
         weights = soltab.getValues(weight=True)[0]
-    return values[weights > 0]
+    unflagged_values = values[weights > 0]
+    assert unflagged_values.size > 0, f"No unflagged values in {h5parm_path}: {soltab_name}"
+    return unflagged_values
 
 
 @pytest.fixture(scope="module")
