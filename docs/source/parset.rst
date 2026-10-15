@@ -224,7 +224,11 @@ The available options are described below under their respective sections.
         (default = ``False``)? This is an alternative image-based prediction path for
         large sky models. It is mutually exclusive with :term:`use_image_based_predict`;
         if both are enabled, Rapthor keeps ``use_wsclean_predict`` and disables
-        ``use_image_based_predict``.
+        ``use_image_based_predict``. Direction-independent solutions are still applied
+        to the data before the solves. Note that DP3 cannot apply the flux-scale
+        normalization to model data columns, so with this option the slow-gain
+        amplitudes absorb the normalization instead; Rapthor logs a warning when this
+        happens.
 
     wsclean_predict_bw
         Bandwidth in Hz for each model image drawn during WSClean-based prediction

@@ -1,12 +1,27 @@
 """Pytest setup for execution-layer tests."""
 
 import os
+import shutil
 from contextlib import nullcontext
 from unittest.mock import patch
 
+import casacore.tables as pt
+import numpy as np
+import pytest
+from astropy.coordinates import SkyCoord
 from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.image.flux_normalization import create_normalization_h5parm
+from rapthor.lib import miscellaneous as misc
+
+# Shared inputs for tests that run real DP3 on the small test Measurement Set.
+requires_dp3 = pytest.mark.skipif(shutil.which("DP3") is None, reason="DP3 is not available")
+TEST_PATCH_NAME = "Patch_0"
+TEST_DIRECTION_NAME = f"[{TEST_PATCH_NAME}]"
+# The normalization h5parm stores sqrt(normalization) as an amplitude, so a
+# model corrupted with it scales by the normalization itself.
+TEST_NORMALIZATION = 4.0
 
 
 def pytest_sessionstart(session):  # pragma: no cover
@@ -32,3 +47,56 @@ def run_flow_for_test(
     config = execution_config or ExecutionConfig(task_runner="sync")
     with shell_loader, prefect_test_harness(server_startup_timeout=None):
         return flow_fn(payload, execution_config=config)
+
+
+@pytest.fixture(scope="session")
+def test_ms_info(test_ms):
+    """Return the test MS quantities needed to build sky models and h5parms."""
+    with pt.table(test_ms, ack=False) as table:
+        times = np.unique(table.getcol("TIME"))
+        interval = table.getcol("INTERVAL")[0]
+    with pt.table(f"{test_ms}/SPECTRAL_WINDOW", ack=False) as table:
+        frequencies = table.getcol("CHAN_FREQ")[0]
+    with pt.table(f"{test_ms}/FIELD", ack=False) as table:
+        ra, dec = np.squeeze(table.getcol("PHASE_DIR"))
+    with pt.table(f"{test_ms}/ANTENNA", ack=False) as table:
+        antennas = list(table.getcol("NAME"))
+    return {
+        # Start just before the first sample, as Observation does.
+        "starttime": misc.convert_mjd2mvt(times[0] - interval / 100),
+        "times": times,
+        "frequencies": frequencies,
+        "ra": ra,
+        "dec": dec,
+        "antennas": antennas,
+    }
+
+
+@pytest.fixture(scope="session")
+def point_source_skymodel(test_ms_info, tmp_path_factory):
+    """Write a one-patch sky model with a single 1 Jy point source at the phase centre."""
+    coord = SkyCoord(test_ms_info["ra"], test_ms_info["dec"], unit="rad")
+    ra = coord.ra.to_string(unit="hourangle", sep=":", precision=4)
+    dec = coord.dec.to_string(unit="deg", sep=".", precision=4, alwayssign=True)
+    path = tmp_path_factory.mktemp("skymodel") / "point_source.skymodel"
+    path.write_text(
+        "FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', LogarithmicSI, "
+        "ReferenceFrequency='134000000.0', MajorAxis, MinorAxis, Orientation\n"
+        f" , , {TEST_PATCH_NAME}, {ra}, {dec}\n"
+        f"source_0, POINT, {TEST_PATCH_NAME}, {ra}, {dec}, 1.0, [], false, 134000000.0, , , \n"
+    )
+    return path.as_posix()
+
+
+@pytest.fixture(scope="session")
+def normalization_h5parm(test_ms, test_ms_info, tmp_path_factory):
+    """Write a normalization h5parm of TEST_NORMALIZATION in the production layout."""
+    path = tmp_path_factory.mktemp("normalize") / "normalize.h5"
+    create_normalization_h5parm(
+        antenna_file=f"{test_ms}/ANTENNA",
+        field_file=f"{test_ms}/FIELD",
+        h5parm_file=path.as_posix(),
+        frequencies=test_ms_info["frequencies"],
+        normalizations=np.full(len(test_ms_info["frequencies"]), TEST_NORMALIZATION),
+    )
+    return path.as_posix()

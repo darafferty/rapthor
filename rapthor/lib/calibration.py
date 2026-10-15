@@ -2,6 +2,13 @@
 
 from dataclasses import dataclass
 
+# DP3 applycal sub-steps that a DDECal solve applies to the model it predicts
+# itself. Direction-independent corrections (fastphase, slowgain, fulljones)
+# are applied to the data by the stand-alone applycal step before the solves,
+# so only the flux-scale normalization belongs here: it maps the sky model from
+# the normalized flux scale onto the scale of the observed data.
+DDECAL_MODEL_APPLYCAL_STEPS = ("normalization",)
+
 
 @dataclass(frozen=True)
 class CalibrationSolveMetadata:

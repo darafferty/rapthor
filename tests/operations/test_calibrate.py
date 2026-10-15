@@ -12,6 +12,7 @@ from rapthor.operations.calibrate.plan import (
     build_calibration_core_stations,
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,
+    build_calibration_solve_applycal_steps,
     build_calibration_solve_plan,
     build_calibration_solve_slot_inputs,
     requested_calibration_solves,
@@ -867,17 +868,45 @@ class TestCalibrate:
             == expected_steps
         )
 
-    def test_build_calibration_dp3_steps_wsclean_predict_skips_preprocessing(self):
-        assert build_calibration_dp3_steps(
-            10,
-            10,
-            all_channels_regular=True,
-            use_image_based_predict=False,
-            use_wsclean_predict=True,
-            has_slow_gain_solve=False,
-            solve_steps=["solve1", "solve2"],
-            preapply_solutions=True,
-        ) == ["solve1", "solve2"]
+    @pytest.mark.parametrize(
+        "preapply_solutions, expected_steps",
+        [
+            (False, ["solve1", "solve2"]),
+            # WSClean writes the model columns outside DP3, so the data still
+            # needs the stand-alone applycal; only BDA is skipped.
+            (True, ["applycal", "solve1", "solve2"]),
+        ],
+    )
+    def test_build_calibration_dp3_steps_wsclean_predict_keeps_applycal_without_bda(
+        self, preapply_solutions, expected_steps
+    ):
+        assert (
+            build_calibration_dp3_steps(
+                10,
+                10,
+                all_channels_regular=True,
+                use_image_based_predict=False,
+                use_wsclean_predict=True,
+                has_slow_gain_solve=False,
+                solve_steps=["solve1", "solve2"],
+                preapply_solutions=preapply_solutions,
+            )
+            == expected_steps
+        )
+
+    @pytest.mark.parametrize(
+        "preapply_steps, expected_steps",
+        [
+            ([], []),
+            (["fastphase", "slowgain", "fulljones"], []),
+            (["normalization"], ["normalization"]),
+            (["fastphase", "fulljones", "normalization"], ["normalization"]),
+        ],
+    )
+    def test_build_calibration_solve_applycal_steps_keeps_only_model_corrections(
+        self, preapply_steps, expected_steps
+    ):
+        assert build_calibration_solve_applycal_steps(preapply_steps) == expected_steps
 
     @pytest.mark.parametrize(
         "strategy, apply_amplitudes, expected_steps",
@@ -1513,9 +1542,8 @@ class TestCalibrate:
 
         assert parse_dp3(calibrate.input_parms["dp3_steps"])[0] == "applycal"
         assert calibrate.input_parms["applycal_steps"] == "[fastphase,slowgain,fulljones]"
-        assert (
-            calibrate.input_parms["calibration_applycal_steps"] == "[fastphase,slowgain,fulljones]"
-        )
+        # DI corrections go to the data only; nothing is applied to the solve model.
+        assert calibrate.input_parms["calibration_applycal_steps"] is None
         assert calibrate.input_parms["applycal_h5parm"]["path"] == str(di_h5parm)
         assert calibrate.input_parms["fulljones_h5parm"]["path"] == str(fulljones_h5parm)
 
@@ -1616,7 +1644,7 @@ class TestCalibrate:
         calibrate.set_input_parameters()
 
         assert calibrate.input_parms["applycal_steps"] == "[fastphase]"
-        assert calibrate.input_parms["calibration_applycal_steps"] == "[fastphase]"
+        assert calibrate.input_parms["calibration_applycal_steps"] is None
         assert calibrate.input_parms["applycal_h5parm"]["path"] == str(di_h5parm)
         assert "mediumphase" not in parse_dp3(calibrate.input_parms["applycal_steps"])
 
