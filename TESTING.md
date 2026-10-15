@@ -120,11 +120,14 @@ introduce network dependencies.
 ```bash
 RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
   python -m pytest -m integration -vv -ra --durations=0 \
-  tests/integration tests/operations/integration
+  tests/integration tests/operations/integration tests/execution/integration
 ```
 
 Alternatively use `tox -e test_integration`; CI can split that lane with
-`CI_NODE_TOTAL` and `CI_NODE_INDEX`.
+`CI_NODE_TOTAL` and `CI_NODE_INDEX`. The lane collects only the three
+directories above, so a test marked `integration` must live in one of them or
+CI never runs it. Real-tool checks of one execution owner (for example DP3
+runs of a command builder) belong in `tests/execution/integration/`.
 
 Reuse [integration fixtures](tests/integration/conftest.py),
 [helpers](tests/integration/utils.py), and
