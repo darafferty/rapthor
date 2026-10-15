@@ -603,14 +603,14 @@ class TestImage:
                 False,
                 False,
                 False,
-                "[fastphase,mediumphase,fulljones]",
+                "[fastphase,fulljones]",
             ),
             (
                 {"dd": ["fast_phase", "medium_phase"]},
                 False,
                 True,
                 False,
-                "[fastphase,mediumphase,normalization]",
+                "[fastphase,normalization]",
             ),
             (
                 {"dd": ["slow_gains"]},
@@ -624,7 +624,7 @@ class TestImage:
                 False,
                 True,
                 True,
-                "[fastphase,mediumphase,slowgain,fulljones,normalization]",
+                "[fastphase,slowgain,fulljones,normalization]",
             ),
             (
                 {},
@@ -645,14 +645,14 @@ class TestImage:
                 False,
                 True,
                 False,
-                "[fastphase,mediumphase,normalization]",
+                "[fastphase,normalization]",
             ),
             (
                 {"dd": ["medium_phase", "fast_phase"]},
                 False,
                 True,
                 False,
-                "[mediumphase,fastphase,normalization]",
+                "[fastphase,normalization]",
             ),
             (
                 {"dd": ["slow_gains", "fast_phase"], "di": ["full_jones"]},
@@ -674,7 +674,7 @@ class TestImage:
                 False,
                 False,
                 False,
-                "[fastphase,mediumphase]",
+                "[fastphase]",
             ),
             (
                 {"dd": ["slow_gains"]},
@@ -688,7 +688,7 @@ class TestImage:
                 False,
                 False,
                 True,
-                "[fastphase,mediumphase,slowgain,fulljones]",
+                "[fastphase,slowgain,fulljones]",
             ),
             (
                 {"di": ["full_jones"], "dd": ["fast_phase", "slow_gains"]},
@@ -756,7 +756,7 @@ class TestImage:
                 False,
                 False,
                 False,
-                "[fastphase,mediumphase]",
+                "[fastphase]",
             ),
         ],
     )
@@ -793,21 +793,37 @@ class TestImage:
         steps, _, _, _ = image._build_applycal_steps()
         assert steps == expected_steps
 
-    def test_build_applycal_steps_keeps_mediumphase_for_imaging_prepare_data(
-        self, field, h5parm_file
-    ):
-        """Medium phase is an imaging applycal step, not a DD calibration pre-apply step."""
+    def test_build_applycal_steps_applies_the_combined_dd_phases_once(self, field, h5parm_file):
+        """The combined DD product holds one phase000, so one phase step must apply it."""
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.dd_h5parm_filename = str(h5parm_file)
-        field.calibration_strategy = {"dd": ["fast_phase", "medium_phase"]}
+        field.calibration_strategy = {"dd": ["fast_phase", "medium_phase", "slow_gains"]}
+        field.dd_apply_amplitudes = True
 
         image = Image(field=field, index=1)
         image.use_facets = False
+        image.apply_normalizations = False
         image.set_parset_parameters()
+        image.apply_amplitudes = field.dd_apply_amplitudes
 
         steps, _, _, _ = image._build_applycal_steps()
 
-        assert steps == "[fastphase,mediumphase]"
+        assert steps == "[fastphase,slowgain]"
+
+    def test_build_image_applycal_steps_collapses_dd_phase_solves_to_one_step(self):
+        steps, selected_h5parm = build_image_applycal_steps(
+            {"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"]},
+            dd_h5parm="dd-solutions.h5",
+            di_h5parm=None,
+            has_fulljones_h5parm=False,
+            use_facets=False,
+            apply_amplitudes=True,
+            apply_normalizations=True,
+            apply_none=False,
+        )
+
+        assert steps == ["fastphase", "slowgain", "normalization"]
+        assert selected_h5parm == "dd-solutions.h5"
 
     def test_build_applycal_steps_prefers_dd_h5parm_when_mixed(self, field, h5parm_file, tmp_path):
         """DD products are selected over DI products when both exist."""
