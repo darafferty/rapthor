@@ -296,7 +296,7 @@ class Image(FlowOperation):
                 self.field.apply_amplitudes
                 if di_h5parm == self.field.h5parm_filename
                 and getattr(self.field, "di_h5parm_filename", None) is None
-                else getattr(self.field, "di_apply_amplitudes", self.apply_amplitudes)
+                else getattr(self.field, "di_apply_amplitudes", False)
             ),
             dd_apply_amplitudes=self.apply_amplitudes,
         )
@@ -411,7 +411,12 @@ class Image(FlowOperation):
         if self.pol_combine_method is None:
             self.pol_combine_method = self.field.pol_combine_method
         if self.apply_amplitudes is None:
-            self.apply_amplitudes = self.field.apply_amplitudes  # set by CalibrateDD.finalize()
+            # The DD product's own amplitude state, kept separate from the DI
+            # product's by Field.scan_h5parms(). Older state objects only carry
+            # the legacy single flag.
+            self.apply_amplitudes = getattr(
+                self.field, "dd_apply_amplitudes", self.field.apply_amplitudes
+            )
         if self.apply_fulljones is None:
             self.apply_fulljones = self.field.apply_fulljones  # set by CalibrateDI.finalize()
         if self.apply_normalizations is None:

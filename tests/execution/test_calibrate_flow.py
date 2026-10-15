@@ -402,6 +402,8 @@ class CalibrateFieldStub:
         self._calibration_strategy_defaulted = False
         self.apply_diagonal_solutions = False
         self.apply_amplitudes = False
+        self.dd_apply_amplitudes = False
+        self.di_apply_amplitudes = False
         self.generate_screens = False
         self.use_image_based_predict = False
         self.use_wsclean_predict = False
@@ -537,7 +539,8 @@ def _configure_dd_preapply_products(field, tmp_path):
     field.di_h5parm_filename = str(di_h5parm)
     field.fulljones_h5parm_filename = str(fulljones_h5parm)
     field.normalize_h5parm = str(normalize_h5parm)
-    field.apply_amplitudes = True
+    # The DI product carries slow gains; the DI pre-apply follows its own flag.
+    field.di_apply_amplitudes = True
     field.apply_normalizations = True
     return di_h5parm, fulljones_h5parm, normalize_h5parm
 

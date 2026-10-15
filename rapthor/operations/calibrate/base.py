@@ -695,7 +695,7 @@ class Calibrate(FlowOperation):
             self.mode,
             has_di_h5parm=applycal_h5parm is not None,
             has_fulljones_h5parm=fulljones_h5parm is not None,
-            apply_amplitudes=getattr(field, "apply_amplitudes", False),
+            apply_amplitudes=getattr(field, "di_apply_amplitudes", False),
             apply_normalizations=getattr(field, "apply_normalizations", False),
             calibration_strategy=getattr(field, "calibration_strategy", None),
         )
@@ -940,9 +940,8 @@ class Calibrate(FlowOperation):
             non_fulljones_solves = [
                 solve for solve in solve_plan if solve.solve_type != "full_jones"
             ]
-            field.di_apply_amplitudes = any(
-                solve.solve_type == "slow_gains" for solve in non_fulljones_solves
-            )
+            # field.di_apply_amplitudes is derived from the copied product by
+            # Field.scan_h5parms() in finalize(), not from the solve plan.
 
             if fulljones_solve is not None:
                 field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
