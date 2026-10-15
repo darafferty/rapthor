@@ -258,7 +258,7 @@ The available options are described below under their respective sections.
         Use the DP3 array-factor beam mode during prediction (default = ``True``)? When
         disabled, DP3 uses the full beam mode. When only the array beam is used, a small
         beam error remains in the data, caused by not correcting for the differential
-        element beam. Use of the array beam leads to four tims faster predict compared to
+        element beam. Use of the array beam leads to four times faster predict compared to
         using the full beam.
 
     parallelbaselines
