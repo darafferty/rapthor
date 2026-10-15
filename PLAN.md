@@ -311,9 +311,13 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   the kept model (`reusemodel=[solve1.*]`) it gives 1.0, that is no effect; on a
   solve reading model data columns 1.0. Normalization on the predicting solve1
   alone propagates through the kept model to solve3 (0.5), and on both solves it
-  is not applied twice (0.5). Master's `solve3`-only wiring is therefore a no-op
-  with reused models, and its `solve3.modeldatacolumns=[solve1.*]` syntax is
-  rejected by DP3 6.6 ("Table column solve1.* is unknown"). The stand-alone
+  is not applied twice (0.5). Master wires `solve1.keepmodel=True`,
+  `solve3.reusemodel=[solve1.*]` and the normalization on `solve3` only, which
+  is exactly the no-op case. DP3's source agrees: the solve-internal applycal
+  is part of `OnePredict`, the per-direction predictor built from the sky
+  model, and is applied right after prediction, before the buffer reaches
+  DDECal or is kept; reused models and model data columns never pass through
+  it. The stand-alone
   `applycal.normalization.usemodeldata=True` sub-step changes neither the data
   nor model data columns (1.0 in every probe); per DP3's `OneApplyCal` it acts
   only on named direction buffers from a DP3 predict step, which is the
@@ -1299,7 +1303,11 @@ the existing test MS was read as input only. No production code was changed.
   | `modeldatacolumns=[MODEL_DATA]` solve, internal normalization | 1.0 |
   | stand-alone applycal slowgain (amp 2) then modeldatacolumns solve | 0.5 (data only) |
   | stand-alone applycal normalization `usemodeldata=True`, then column or sourcedb solve | 1.0 |
-  | master `solve3.modeldatacolumns=[solve1.*]` | DP3 error |
+
+  Master's chain (`solve1.keepmodel=True`, `solve3.reusemodel=[solve1.*]`,
+  normalization on `solve3` only) is the third row. An earlier probe of
+  `solve3.modeldatacolumns=[solve1.*]` was mislabelled "master style"; master
+  does not use that syntax and the result is withdrawn.
 
 - Checks run: `tests/execution/test_calibrate_dp3.py` (2 passed; 1 fails
   against the old `solves.py`), `tests/operations/test_calibrate.py` and
