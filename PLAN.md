@@ -21,7 +21,7 @@ in production branches.
 
 | Branch | Revision | Notes |
 | --- | --- | --- |
-| `main` | `d0e7e148` | Squashed migration `c6196cb4` (GEC-468) plus `d0e7e148` (reduced frequency-BDA default, closes review task P06). |
+| `main` | `d0e7e148` (review baseline); `aff26023` since 2026-10-15 | Squashed migration `c6196cb4` (GEC-468) plus `d0e7e148` (reduced frequency-BDA default, closes review task P06). `aff26023` adds the `use_array_beam` option (see P2-PORT-01); it touches no open P0 task. |
 | `master` | `76a7ff2f` | Tagged `v2.2rc1` at `b9c98086`. 69 commits since the common ancestor `2e21be62`. |
 
 Master gained five commits after the previous plan baseline `ff1f29d9`. Three
@@ -136,10 +136,10 @@ restart unreliable. Items marked *regression* behave correctly on master.
 | --- | --- | --- | --- |
 | P0-BUG-01 | Prediction normalization never reaches the written visibilities; affects every DD subtraction after the default cycle-1 normalization. **Fixed 2026-10-14** (real-DP3 test added). | Yes | S / Medium |
 | P0-BUG-02 | Slow-gain solves ignore the normalization h5parm; WSClean prediction drops DI pre-application. Default path after cycle 1. **Fixed 2026-10-15** (real-DP3 test added). | Yes | M / High |
-| P0-BUG-03 | DD amplitudes stop being applied after a DI solve in the same run. | Yes | M / Medium |
+| P0-BUG-03 | DD amplitudes stop being applied after a DI solve in the same run. **Fixed 2026-10-15.** | Yes | M / Medium |
 | P0-BUG-04 | A strategy cycle that omits `calibration_strategy` silently reuses the previous cycle's solves; first-cycle default differs from master. | Yes | M / Medium |
 | P0-BUG-05 | Restart accepts partial MS directories as complete and fails on already-compressed images. | New (Toil handled restart) | L / High |
-| P0-BUG-06 | `dde_method = single` applies the combined phase correction twice. Cheap to fix. | No (also on master) | S / Low |
+| P0-BUG-06 | `dde_method = single` applies the combined phase correction twice. Cheap to fix. **Fixed 2026-10-15** (real-DP3 test added). | No (also on master) | S / Low |
 | P0-BUG-07 | The built-in final step aliases the last selfcal step. Cheap to fix. | No (also on master) | S / Low |
 | P0-BUG-08 | `prefect_retries` is accepted but does nothing. Retire or document before release. | New | S / Low |
 
@@ -375,7 +375,23 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 
 #### P0-BUG-03. Keep DI and DD amplitude-application state separate
 
-- [ ] **Release blocker; regression. Size M, complexity Medium.**
+- [x] **Release blocker; regression. Size M, complexity Medium. Fixed 2026-10-15
+  on `gec-669-fix-amplitude-state-and-phase-application` (stacked on the two
+  normalization branches).**
+- **Resolved (2026-10-15):** `Field.scan_h5parms()` now scans
+  `dd_h5parm_filename` and `di_h5parm_filename` separately through a new
+  `_scan_scalar_h5parm()` and keeps `dd_apply_amplitudes` and
+  `di_apply_amplitudes` next to the legacy `apply_amplitudes` (which still
+  follows `h5parm_filename`); a lone supplied h5parm counts as the DD product.
+  `Image` takes its amplitude state from `dd_apply_amplitudes` (WSClean facet
+  soltabs and the prepare-imaging `slowgain` step), `Predict` uses the flag of
+  the product it actually applies, and the DI pre-apply in `Calibrate` uses
+  `di_apply_amplitudes`; the solve-plan-based assignment of the DI flag in the
+  finalizer is gone, so the file content is the single source. Tests cover both
+  mode orders in `tests/lib/test_field.py` (real h5parms via the new
+  `write_scalar_h5parm` helper in `tests/conftest.py`), and the imaging,
+  prediction and calibration adapters in `tests/operations/`. Not ported from
+  master: `scalar_h5parm_directions` (P2-BUG-01) and `input_apply_amplitudes`.
 - **Verified (2026-10-14):** `Calibrate.finalize()` in
   `rapthor/operations/calibrate/base.py:945` sets
   `field.h5parm_filename = field.di_h5parm_filename` after a DI solve.
@@ -402,11 +418,24 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 - **Done when:** tests run both mode orders (DD then DI, DI then DD) with
   different soltab contents and assert the imaging applycal steps and predict
   h5parm selection; a DD-amplitude/DI-phase run applies `slowgain` in the
-  prepare-imaging command and the DD h5parm in DD prediction.
+  prepare-imaging command and the DD h5parm in DD prediction. All met; see
+  **Resolved** above.
 
 #### P0-BUG-06. Apply combined phases once with `dde_method = single`
 
-- [ ] **Release blocker (cheap); also present on master. Size S, complexity Low.**
+- [x] **Release blocker (cheap); also present on master. Size S, complexity Low.
+  Fixed 2026-10-15 on `gec-669-fix-amplitude-state-and-phase-application`.**
+- **Resolved (2026-10-15):** `SOLVE_TYPE_TO_APPLYCAL_STEP` in
+  `rapthor/operations/image/plan.py` maps `medium_phase` to `fastphase`, so all
+  phase solves of a mode share one step and `slowgain` is added only when the
+  product carries amplitudes (P0-BUG-03). The real-DP3 test
+  `tests/execution/integration/test_image_dp3.py` runs the production
+  `prepare_visibility_ms()` on the predicted model with a combined product
+  (per-antenna phases 0.1·i rad, amplitude 2): the planner's step list applies
+  the phases once and the amplitudes as 1/4, for a phase-only and a
+  phase-plus-amplitude product, within Dysco compression noise (1 %); the former
+  `[fastphase,mediumphase]` list is shown to apply the phases twice. Facet
+  application is unchanged. Master keeps the double application.
 - **Verified (2026-10-14):** `build_image_applycal_steps()` in
   `rapthor/operations/image/plan.py` maps DD `fast_phase` and `medium_phase` to
   separate `fastphase` and `mediumphase` steps (`SOLVE_TYPE_TO_APPLYCAL_STEP`),
@@ -428,7 +457,8 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   `amplitude000`), as the DI branch already does. Update the affected tests.
 - **Done when:** a real DP3 test shows one phase application for a combined
   phase-only product and for a phase-plus-amplitude product with
-  `dde_method = single`; facet application is unchanged.
+  `dde_method = single`; facet application is unchanged. All met; see
+  **Resolved** above.
 
 #### P1-DEC-01. Resolve the discarded medium-phase result in phase-only DD cycles
 
@@ -814,6 +844,10 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P2-PORT-01. Apply the full beam during WSClean prediction
 
 - [ ] **Port `23ed80e9`. Size M, complexity Medium.**
+- **Update (2026-10-15):** `main` commit `aff26023` adds `use_array_beam`, which
+  makes the predict and concatenate beam mode a command option; the calibrate
+  solve still hard-codes `solve1.beammode=array_factor`, so the WSClean half of
+  this task remains.
 - **Gap (verified 2026-10-14):** `main` has no `wsclean_predict_beam_interval`
   option, `build_wsclean_predict_command()` in
   `rapthor/execution/calibrate/commands.py` predicts without
