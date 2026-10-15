@@ -16,7 +16,7 @@ from rapthor.execution.payloads import (
     validate_basename,
     validate_required_list,
 )
-from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
+from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA, DDECAL_MODEL_APPLYCAL_STEPS
 from rapthor.lib.records import directory_record_path
 
 DEFAULT_WSCLEAN_PREDICT_BANDWIDTH_HZ = 2.0e6
@@ -262,6 +262,7 @@ def calibrate_payload_from_inputs(
     payload.update(
         {
             "applycal_steps": input_parms.get("applycal_steps"),
+            "calibration_applycal_steps": input_parms.get("calibration_applycal_steps"),
             "applycal_h5parm": optional_file_path(
                 input_parms.get("applycal_h5parm"), "applycal_h5parm"
             ),
@@ -457,6 +458,20 @@ def _validate_applycal_inputs(
         raise ValueError("DD pre-application requires " + ", ".join(missing_inputs))
 
 
+def _validate_solve_applycal_inputs(input_parms: Mapping[str, object]) -> None:
+    steps_record = input_parms.get("calibration_applycal_steps")
+    if steps_record is None:
+        return
+    steps = parse_steps(steps_record)
+    unsupported_steps = [step for step in steps if step not in DDECAL_MODEL_APPLYCAL_STEPS]
+    if unsupported_steps:
+        raise ValueError(
+            "Unsupported DDECal model applycal step(s): " + ",".join(sorted(unsupported_steps))
+        )
+    if "normalization" in steps and input_parms.get("normalize_h5parm") is None:
+        raise ValueError("DDECal model normalization requires normalize_h5parm")
+
+
 def _validate_image_predict_inputs(
     mode: str,
     steps: list[str],
@@ -546,6 +561,7 @@ def _supported_calibration_kind(mode: str, input_parms: Mapping[str, object]) ->
     if input_parms.get("generate_screens"):
         return "dd_screen"
     _validate_applycal_inputs(mode, steps, input_parms)
+    _validate_solve_applycal_inputs(input_parms)
     _validate_image_predict_inputs(mode, steps, input_parms)
 
     active_solves = [step for step in steps if step.startswith("solve")]
