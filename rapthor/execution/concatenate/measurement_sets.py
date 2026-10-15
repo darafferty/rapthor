@@ -114,6 +114,10 @@ def concat_freq_command(
     if make_dummies:
         mslist = _insert_dummy_ms_for_frequency_gaps(msfiles, mslist)
 
+    # The data is assumed to be corrected for the element beam at the target direction.
+    # Therefore, if the array beam is to be used in calibration, we do not have to do
+    # anything. However, if calibration uses the full beam, the array beam should be
+    # undone.
     steps = "[]" if use_array_beam else "[applybeam]"
     command = [
         "DP3",
