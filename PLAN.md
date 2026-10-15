@@ -82,6 +82,7 @@ were the previous plan's port, decision and limitation tasks.
 | Task ID | Review ID | Title | Workstream | Effort |
 | --- | --- | --- | --- | --- |
 | P0-BUG-01 | R16 | Prediction normalization never reaches written visibilities | WS-A | S / Medium |
+| P0-BUG-09 | new (2026-10-15) | DD calibration with a pre-apply step rewrites its input MS in place | WS-A | S / Medium |
 | P0-BUG-02 | R03 | Slow-gain normalization and WSClean pre-application wiring | WS-A | M / High |
 | P0-BUG-03 | R11 | DD and DI amplitude-application state | WS-B | M / Medium |
 | P0-BUG-04 | R02 | Per-cycle semantics for an omitted `calibration_strategy` | WS-C | M / Medium |
@@ -136,6 +137,7 @@ restart unreliable. Items marked *regression* behave correctly on master.
 | --- | --- | --- | --- |
 | P0-BUG-01 | Prediction normalization never reaches the written visibilities; affects every DD subtraction after the default cycle-1 normalization. **Fixed 2026-10-14** (real-DP3 test added). | Yes | S / Medium |
 | P0-BUG-02 | Slow-gain solves ignore the normalization h5parm; WSClean prediction drops DI pre-application. Default path after cycle 1. **Fixed 2026-10-15** (real-DP3 test added). | Yes | M / High |
+| P0-BUG-09 | A DD calibration chain with the stand-alone `applycal` step and `msout=` makes DP3 write the DI-corrected DATA back into the calibration input MS, which can be an original input MS. Any strategy with DI solves. | No (also on master) | S / Medium |
 | P0-BUG-03 | DD amplitudes stop being applied after a DI solve in the same run. **Fixed 2026-10-15.** | Yes | M / Medium |
 | P0-BUG-04 | A strategy cycle that omits `calibration_strategy` silently reuses the previous cycle's solves; first-cycle default differs from master. | Yes | M / Medium |
 | P0-BUG-05 | Restart accepts partial MS directories as complete and fails on already-compressed images. | New (Toil handled restart) | L / High |
@@ -187,7 +189,7 @@ overlaps are listed so that rebases are planned, not discovered.
 
 | Workstream | Tasks (suggested order) | Owned code | Overlaps to coordinate |
 | --- | --- | --- | --- |
-| **WS-A Normalization and pre-application wiring** | P0-BUG-01, P0-BUG-02 | `rapthor/execution/predict/commands.py`, `rapthor/execution/calibrate/solves.py`, `rapthor/execution/calibrate/commands.py`, `rapthor/operations/calibrate/plan.py`, `Calibrate._build_applycal()` in `rapthor/operations/calibrate/base.py` | WS-F1 also edits `calibrate/commands.py` and `plan.py` (beam mode). Land WS-A first. |
+| **WS-A Normalization and pre-application wiring** | P0-BUG-01, P0-BUG-02, P0-BUG-09 | `rapthor/execution/predict/commands.py`, `rapthor/execution/calibrate/solves.py`, `rapthor/execution/calibrate/commands.py`, `rapthor/operations/calibrate/plan.py`, `Calibrate._build_applycal()` in `rapthor/operations/calibrate/base.py` | WS-F1 also edits `calibrate/commands.py` and `plan.py` (beam mode). Land WS-A first. |
 | **WS-B Solution state and application** | P0-BUG-03, P0-BUG-06, P1-DEC-01, P2-BUG-01 | `Field.scan_h5parms()` in `rapthor/lib/field.py`, `Calibrate.finalize()`/`_dd_active_solution()` in `rapthor/operations/calibrate/base.py`, `rapthor/operations/image/plan.py`, `rapthor/operations/image/base.py`, `rapthor/operations/predict.py`, `rapthor/execution/image/commands.py` | WS-A edits other functions in `operations/calibrate/base.py`. WS-C edits `Field.update()`. |
 | **WS-C Strategy semantics** | P0-BUG-07, P0-BUG-04, P2-DEC-01 | `rapthor/lib/strategy.py`, `Field.update()`/`set_calibration_strategy()` in `rapthor/lib/field.py`, `docs/source/strategy.rst`, `docs/source/upgrading.rst` | WS-B edits `Field.scan_h5parms()`. |
 | **WS-D Restart, reset and output ownership** | P0-BUG-05, P0-BUG-08, P1-BUG-04, P2-BUG-02, P2-BUG-03, P2-BUG-04, P2-BUG-05, P2-BUG-06 | `rapthor/execution/image/preparation.py`, `rapthor/execution/image/outputs.py`, `rapthor/execution/concatenate/flow.py`, `rapthor/execution/mosaic/`, `rapthor/execution/calibrate/collection.py`, `rapthor/execution/predict/flow.py`, `rapthor/modifystate.py`, `Image.finalize()` | WS-E edits `rapthor/execution/pipeline/flow.py` for publication; P0-BUG-08 touches `execution/config.py` (also WS-E). |
@@ -372,6 +374,40 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   (P2-PORT-01/P3-PORT-01) which edits the same command builders afterwards.
 
 ### WS-B. Solution State and Application
+
+#### P0-BUG-09. Stop the pre-apply calibration chain from rewriting its input MS
+
+- [ ] **Release blocker; also present on master. Size S, complexity Medium. Found
+  2026-10-15 while writing the developer guide.**
+- **Verified (2026-10-15, DP3 6.6 probe on a fresh copy of the test MS):**
+  `steps=[applycal,solve1]` with `msout=` and a DI amplitude of 2 left the
+  input MS with DATA divided by 4; `steps=[solve1]` left it unchanged;
+  `steps=[applycal,solve1,null]` left it unchanged. DP3's driver
+  (`DP3/base/DP3.cc:583-600`) appends an in-place `MSUpdater` when `msout` is
+  empty and any step declares that it provides data or flags; `OneApplyCal`
+  and `ApplyBeam` do (`OneApplyCal.h:48-51`, `ApplyBeam.h:103-106`), DDECal
+  alone does not. `build_calibration_dp3_steps()` in
+  `rapthor/operations/calibrate/plan.py` appends `null` only on the BDA chain,
+  so the plain chain `[applycal, solve1, ...]` (DI pre-application, from
+  P0-BUG-02 also the WSClean path) and the image-based chain
+  `[predict, applybeam, applycal?, solve1, ...]` rewrite `msin.datacolumn` of
+  the calibration input. That input is the time-chunk MS or, with a data
+  fraction of 1 on one node, the original input MS, and later operations read
+  it again and apply the DI corrections a second time.
+- **Master reference:** none; `ddecal_solve.cwl` uses `msout=` with the same
+  step chains, so master has the same behaviour. The DI pre-apply exists only
+  for strategies with a `"di"` mode, which explains why it was not noticed on
+  the default strategy.
+- **Change:** terminate every solve-only chain with the `null` step (not only
+  the BDA chain), or give the chain an explicit non-writing output; keep the
+  `null.type=null` emission in `build_calibration_solve_command()`. Add a
+  real-DP3 test that runs `run_calibrate_chunk()` with a DI pre-apply and
+  asserts the input MS DATA column is unchanged, and a command test for the
+  trailing `null` on every chain shape.
+- **Done when:** the command tests show `null` at the end of the plain,
+  WSClean and image-based chains; the real-DP3 test passes; the AGENTS rule
+  "do not modify original input Measurement Sets" is covered by a test for
+  the calibrate operation.
 
 #### P0-BUG-03. Keep DI and DD amplitude-application state separate
 
