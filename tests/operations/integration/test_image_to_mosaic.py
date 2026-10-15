@@ -52,7 +52,7 @@ def field_I_no_predict(field):
     field.scan_observations()
     field.parset["regroup_input_skymodel"] = False
     steps = set_selfcal_strategy(field)
-    field.update(steps[0], index=1, final=False)
+    field.update(steps[0], index=1, final_cycle_number=0)
     # The field update will set the predict flag to True, override it here
     field.do_predict = False
     field.image_pol = "I"
