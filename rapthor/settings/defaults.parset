@@ -134,6 +134,7 @@ maxiter = 150
 propagatesolutions = True
 solveralgorithm = directioniterative
 onebeamperpatch = False
+use_array_beam = True
 stepsize = 0.02
 stepsigma = 2.0
 tolerance = 5e-3

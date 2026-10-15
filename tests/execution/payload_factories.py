@@ -130,6 +130,7 @@ def representative_predict_payload(
                 "sagecalpredict": False,
                 "sourcedb": "/data/sector_1.skymodel",
                 "directions": ["patch1", "patch2"],
+                "use_array_beam": True,
                 "numthreads": 4,
                 "h5parm": None,
                 "applycal_steps": None,
@@ -177,6 +178,7 @@ def representative_concatenate_payload(work_dir: object = "/work/concatenate_1")
     return {
         "pipeline_working_dir": work_dir,
         "data_colname": "DATA",
+        "use_array_beam": True,
         "epochs": [
             {
                 "input_filenames": ["/data/obs_0.ms", "/data/obs_1.ms"],

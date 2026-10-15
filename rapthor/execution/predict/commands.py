@@ -17,6 +17,7 @@ def build_predict_model_data_command(
     sagecalpredict: bool,
     sourcedb: str,
     directions: list[str],
+    use_array_beam: bool,
     numthreads: int,
     h5parm: Optional[str] = None,
     applycal_steps: Optional[str] = None,
@@ -55,11 +56,15 @@ def build_predict_model_data_command(
                 "applycal.normalization.invert=False",
             ]
         )
+    # If calibration with the array beam is requested, make sure to only predict the array beam.
+    # If the full beam is requested (i.e. use_array_beam = False), we do not have to add anything,
+    # because using the full beam is the default.
+    if use_array_beam:
+        command.append("predict.beammode=array_factor")
     command.extend(
         [
             "predict.usebeammodel=True",
             "predict.beam_interval=120",
-            "predict.beammode=array_factor",
             "msout.storagemanager=Dysco",
             "msout.storagemanager.databitrate=0",
             "msout.antennacompression=False",

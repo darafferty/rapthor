@@ -36,6 +36,7 @@
         "propagatesolutions": true,
         "solveralgorithm": "directioniterative",
         "onebeamperpatch": false,
+        "use_array_beam": true,
         "stepsize": 0.02,
         "stepsigma": 2.0,
         "tolerance": 0.005,

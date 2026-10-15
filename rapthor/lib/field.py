@@ -118,6 +118,7 @@ class Field(object):
         self.propagatesolutions = self.parset["calibration_specific"]["propagatesolutions"]
         self.solveralgorithm = self.parset["calibration_specific"]["solveralgorithm"]
         self.onebeamperpatch = self.parset["calibration_specific"]["onebeamperpatch"]
+        self.use_array_beam = self.parset["calibration_specific"]["use_array_beam"]
         self.llssolver = self.parset["calibration_specific"]["llssolver"]
         self.maxiter = self.parset["calibration_specific"]["maxiter"]
         self.stepsize = self.parset["calibration_specific"]["stepsize"]

@@ -259,6 +259,7 @@ class FieldStub:
         self.peel_outliers = False
         self.peel_bright_sources = False
         self.imaged_sources_only = False
+        self.use_array_beam = True
 
 
 def _operation_parset(tmp_path):
@@ -308,6 +309,7 @@ def _predict_input_parms():
         "normalize_h5parm": None,
         "dp3_applycal_steps": None,
         "onebeamperpatch": True,
+        "use_array_beam": True,
         "sagecalpredict": False,
         "obs_filename": [
             directory_record("/data/obs_0.ms"),
@@ -373,6 +375,7 @@ def test_predict_command_builders_match_reference_fixtures():
                 sagecalpredict=False,
                 sourcedb="sector_1.skymodel",
                 directions=["patch1", "patch2"],
+                use_array_beam=True,
                 numthreads=4,
             )
         )
@@ -393,6 +396,7 @@ def test_build_predict_model_data_command_adds_h5parm_applycal_options():
         sagecalpredict=False,
         sourcedb="sector_1.skymodel",
         directions=["patch1"],
+        use_array_beam=True,
         numthreads=8,
         h5parm="solutions.h5",
         applycal_steps="[fastphase,normalization]",
@@ -426,6 +430,7 @@ def test_build_predict_model_data_command_applies_normalization_to_model_data():
         sagecalpredict=False,
         sourcedb="sector_1.skymodel",
         directions=["patch1"],
+        use_array_beam=True,
         numthreads=8,
         applycal_steps="[normalization]",
         normalize_h5parm="norm.h5",
@@ -453,6 +458,7 @@ def test_build_predict_model_data_command_omits_zero_ntimes():
         sagecalpredict=False,
         sourcedb="sector_1.skymodel",
         directions=["patch1"],
+        use_array_beam=True,
         numthreads=4,
     )
 
@@ -473,6 +479,7 @@ def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
         sagecalpredict=True,
         sourcedb="sector_1.skymodel",
         directions=["patch1"],
+        use_array_beam=True,
         numthreads=4,
         h5parm="solutions.h5",
     )
@@ -501,6 +508,7 @@ def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
         "sagecalpredict": False,
         "sourcedb": "/data/sector_1.skymodel",
         "directions": ["patch1", "patch2"],
+        "use_array_beam": True,
         "numthreads": 4,
         "h5parm": None,
         "applycal_steps": None,
@@ -535,17 +543,49 @@ def test_predict_payload_from_inputs_builds_dd_specific_postprocess_payload(tmp_
     }
 
 
-def test_validate_predict_payload_normalizes_unset_optional_strings(tmp_path):
+@pytest.mark.parametrize("use_array_beam", [True, False])
+def test_validate_predict_payload_preserves_beam_setting_and_normalizes_optional_strings(
+    tmp_path, use_array_beam
+):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
     payload["predict_tasks"][0]["h5parm"] = "None"
     payload["predict_tasks"][0]["applycal_steps"] = ""
     payload["predict_tasks"][0]["normalize_h5parm"] = None
+    payload["predict_tasks"][0]["use_array_beam"] = use_array_beam
 
     validated = validate_predict_payload(payload)
 
+    assert validated["predict_tasks"][0]["use_array_beam"] is use_array_beam
     assert validated["predict_tasks"][0]["h5parm"] is None
     assert validated["predict_tasks"][0]["applycal_steps"] is None
     assert validated["predict_tasks"][0]["normalize_h5parm"] is None
+
+
+@pytest.mark.parametrize(
+    "use_array_beam",
+    [True, False],
+)
+def test_build_predict_model_data_command_respects_array_beam(use_array_beam):
+    command = build_predict_model_data_command(
+        "obs_0.ms",
+        "DATA",
+        "obs_0.ms.sector_1_modeldata",
+        "50000.0",
+        10,
+        onebeamperpatch=True,
+        correctfreqsmearing=False,
+        correcttimesmearing=False,
+        sagecalpredict=False,
+        sourcedb="sector_1.skymodel",
+        directions=["patch1"],
+        use_array_beam=use_array_beam,
+        numthreads=4,
+    )
+
+    if use_array_beam:
+        assert "predict.beammode=array_factor" in command
+    else:
+        assert not any(item.startswith("predict.beammode=") for item in command)
 
 
 def test_predict_model_outputs_are_grouped_by_observation_and_starttime():
