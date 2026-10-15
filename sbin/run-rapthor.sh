@@ -26,24 +26,45 @@ RAPTHOR_RC=${RAPTHOR_RC:-/project/rapthor/Software/rapthor/etc/rapthor.rc}
 # Variable to hold the exit status of the `rapthor` command.
 RAPTHOR_STATUS=0
 
+# Always cleanup when the script exits
+trap 'cleanup; exit ${RAPTHOR_STATUS}' EXIT
+
+# Cleanup function to remove the staging directory when the script exits,
+# regardless of whether it exits normally or due to an error.
+# shellcheck disable=SC2317
+cleanup() {
+  [ -n "${STAGING_DIR-}" ] && rm -rf "${STAGING_DIR}"
+  if [ ${RAPTHOR_STATUS} -eq 0 ]; then
+    info "Rapthor exited successfully."
+  else
+    error "Rapthor exited with non-zero status: ${RAPTHOR_STATUS}"
+  fi
+}
+
 # Error function
-error()
-{
-  echo -e "\nERROR: $@\n" >&2
+error() {
+  echo -e "\nERROR: $*\n" >&2
   exit 1
 }
 
 # Warning function
-warning()
-{
-  echo -e "\nWARNING: $@\n" >&2
+warning() {
+  echo -e "\nWARNING: $*\n" >&2
+}
+
+# Info function
+info() {
+  echo -e "\nINFO: $*\n" >&2
 }
 
 # Check if the parset file exists and determine the working directory from
 # the parset file. Also load the rapthor environment.
-setup()
-{
-  echo -e "\n**** Running on node $(hostname) ****"
+setup() {
+  info "**** Running on node $(hostname) ****"
+
+  # Load the rapthor environment
+  # shellcheck disable=SC1090
+  . "${RAPTHOR_RC}" || error "Failed to source rapthor environment from ${RAPTHOR_RC}!"
 
   # Check if the parset file is provided as an argument
   [ $# -ne 1 ] && error "Usage: $0 <parset-file>"
@@ -54,8 +75,8 @@ setup()
 
   # Extract the working directory from the parset file, path must be absolute
   WORKING_DIR=$(
-    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*/,/,p' "${PARSET}" \
-      | sed 's,[[:space:]]*$,,'
+    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*/,/,p' "${PARSET}" |
+      sed 's,[[:space:]]*$,,'
   )
   [ -n "${WORKING_DIR}" ] || error "Working directory invalid or not set in ${PARSET}!"
 
@@ -63,44 +84,44 @@ setup()
   mkdir -p "${WORKING_DIR}" || error "Failed to create working directory ${WORKING_DIR}!"
   [ -w "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} is not writable!"
 
-  # Load the rapthor environment
-  . "${RAPTHOR_RC}"
+  # Create a staging directory for the tar-ball artifacts.
+  STAGING_DIR="$(mktemp -d tmp.XXXXXX -p "${WORKING_DIR}")" ||
+    error "Failed to create staging directory in ${WORKING_DIR}!"
 
   # Print the software versions to the console for debugging purposes.
-  echo -e "\n**** C++ packages ****"
+  info "**** C++ packages ****"
   cat "${RAPTHOR_INSTALL_DIR}/sw-versions.txt"
-  echo -e "\n**** Python packages ****"
+  info "**** Python packages ****"
   python -m pip list
 }
 
 # Run Rapthor with the specified parset file. If the execution fails, print
 # a warning message, and update the RAPTHOR_STATUS variable.
-run_rapthor()
-{
-  echo -e "\nRunning Rapthor with parset file ${PARSET} ..."
+run_rapthor() {
+  info "Running Rapthor with parset file ${PARSET} ..."
   rapthor -v "${PARSET}" || {
-    RAPTHOR_STATUS=$?;
-    warning "Rapthor execution failed, exit code: ${RAPTHOR_STATUS}";
+    RAPTHOR_STATUS=$?
+    warning "Rapthor execution failed, exit code: ${RAPTHOR_STATUS}"
   }
 }
 
 # Create a link to the given target with the given link name. Existing links
 # will be overwritten. If the link name is not provided, the link will be
 # created in the current working directory with the same name as the target.
-# Return with an error status if the target does not exist or the link could
+# Return a non-zero status if the target does not exist or the link could
 # not be created.
-make_symlink()
-{
+make_symlink() {
   local target=${1}
   local link_name=${2}
+  local real_target
   [ -n "${target}" ] || return 1
   [ -n "${link_name}" ] || link_name=$(basename "${target}")
-  target=$(readlink -e "${target}") || {
-    warning "Target file ${target} does not exist"
+  real_target=$(readlink -e "${target}") || {
+    warning "File ${target} does not exist; not creating symbolic link"
     return 1
   }
-  ln -sfn "${target}" "${link_name}" || {
-    warning "Failed to create symbolic link ${link_name} to target ${target}"
+  ln -sfn "${real_target}" "${link_name}" || {
+    warning "Failed to create symbolic link ${link_name} to target ${real_target}"
     return 1
   }
 }
@@ -110,24 +131,27 @@ make_symlink()
 # be stored in the working directory, and its name will be of the form
 # `rapthor_logs_<timestamp>.tar.gz`, where `<timestamp>` is the date and
 # time when the tar-ball was created.
-create_tarball()
-{
-  echo -e "\nCollecting logs ..."
-  local timestamp=$(date +%Y%m%d_%H%M%S)
-  local tarball_name="rapthor_logs_${timestamp}.tar.gz"
-  local tarball_path="${WORKING_DIR}/${tarball_name}"
-  local tarball_contents=()
-  make_symlink "${PARSET}" "${WORKING_DIR}/parset" && tarball_contents+=("parset")
+create_tarball() {
+  info "Creating tar-ball of logs and configuration files ..."
+  local tarball_name tarball_path tarball_contents target
+  tarball_name="rapthor_logs_$(date +%Y%m%d-%H%M%S).tar.gz"
+  tarball_path="${WORKING_DIR}/${tarball_name}"
+  tarball_contents=()
+  make_symlink "${PARSET}" "${STAGING_DIR}/parset" && tarball_contents+=("parset")
   for name in input_skymodel apparent_skymodel strategy; do
-    local file=$(
-      sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,,p" "${PARSET}"
+    target=$(
+      sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,/,p" "${PARSET}"
     )
-    make_symlink "${file}" "${WORKING_DIR}/${name}" && tarball_contents+=("${name}")
+    make_symlink "${target}" "${STAGING_DIR}/${name}" && tarball_contents+=("${name}")
   done
-  [ -d "${WORKING_DIR}/logs" ] && tarball_contents+=("logs")
-  echo -e "\nCreating tar-ball of logs and configuration files ..."
-  tar -C "${WORKING_DIR}" -chzf "${tarball_path}" "${tarball_contents[@]}"
-  echo -e "\nTar-ball created successfully: ${tarball_path}"
+  make_symlink "${WORKING_DIR}/logs" "${STAGING_DIR}/logs" && tarball_contents+=("logs")
+
+  # if tar -C "${STAGING_DIR}" -chzf "${tarball_path}" "${tarball_contents[@]}"; then
+  if tar -C "${STAGING_DIR}" -chzf "${tarball_path}" . ; then
+    info "Tar-ball created successfully: ${tarball_path}"
+  else
+    warning "Errors occurred while creating tar-ball ${tarball_path}. Tar-ball may be incomplete."
+  fi
 }
 
 setup "$@"
