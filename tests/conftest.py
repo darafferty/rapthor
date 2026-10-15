@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 import requests
 from astropy.table import Table
+from losoto.h5parm import h5parm
 from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
@@ -773,3 +774,47 @@ def source_catalog_with_outliers_fits(tmp_path):
     )  # 10 sources, 4 of which will be outliers
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
+
+
+def write_scalar_h5parm(
+    path,
+    antennas,
+    *,
+    with_amplitudes=False,
+    phases=0.0,
+    amplitudes=1.0,
+    directions=("[Patch_0]",),
+    times=(0.0,),
+    frequencies=(1.0e8,),
+):
+    """Write a Rapthor-style scalar solution h5parm with phase000 and optionally amplitude000.
+
+    ``phases`` and ``amplitudes`` may be scalars or arrays broadcastable to the
+    (time, freq, ant, dir) solution shape. Returns the path as a string.
+    """
+    antennas = list(antennas)
+    directions = list(directions)
+    axes = {
+        "time": np.asarray(times, dtype=float),
+        "freq": np.asarray(frequencies, dtype=float),
+        "ant": antennas,
+        "dir": directions,
+    }
+    shape = tuple(len(values) for values in axes.values())
+    with h5parm(str(path), readonly=False) as solutions:
+        solset = solutions.makeSolset("sol000")
+        solset.obj._f_get_child("antenna").append([(name, np.zeros(3)) for name in antennas])
+        solset.obj._f_get_child("source").append([(name, (0.0, 0.0)) for name in directions])
+        soltabs = [("phase", "phase000", phases)]
+        if with_amplitudes:
+            soltabs.append(("amplitude", "amplitude000", amplitudes))
+        for soltype, name, values in soltabs:
+            solset.makeSoltab(
+                soltype,
+                name,
+                axesNames=list(axes),
+                axesVals=list(axes.values()),
+                vals=np.broadcast_to(np.asarray(values, dtype=float), shape).copy(),
+                weights=np.ones(shape),
+            )
+    return str(path)
