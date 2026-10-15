@@ -27,34 +27,48 @@ RAPTHOR_RC=${RAPTHOR_RC:-/project/rapthor/Software/rapthor/etc/rapthor.rc}
 RAPTHOR_STATUS=0
 
 # Always cleanup when the script exits
-trap 'cleanup; exit ${RAPTHOR_STATUS}' EXIT
+trap cleanup EXIT
+
+# Color codes for terminal output. If the script is run in a terminal and
+# the `NO_COLOR` environment variable is not set, the output will be colored.
+if [[ -t 2 && ${TERM:-dumb} != dumb && -z ${NO_COLOR:-} ]]; then
+  RED=$'\033[31m'
+  YELLOW=$'\033[33m'
+  GREEN=$'\033[32m'
+  RESET=$'\033[0m'
+else
+  RED=''
+  YELLOW=''
+  GREEN=''
+  RESET=''
+fi
+
+# Functions to print messages with different severity levels. The messages
+# will be printed to standard error, and will be colored if the script is run
+# in a terminal and the `NO_COLOR` environment variable is not set.
+info() {
+  printf '\n%sINFO: %s%s\n\n' "$GREEN" "$*" "$RESET" >&2
+}
+
+warning() {
+  printf '\n%sWARNING: %s%s\n\n' "$YELLOW" "$*" "$RESET" >&2
+}
+
+error() {
+  printf '\n%sERROR: %s%s\n\n' "$RED" "$*" "$RESET" >&2
+}
 
 # Cleanup function to remove the staging directory when the script exits,
 # regardless of whether it exits normally or due to an error.
 # shellcheck disable=SC2317
 cleanup() {
   [ -n "${STAGING_DIR-}" ] && rm -rf "${STAGING_DIR}"
-  if [ ${RAPTHOR_STATUS} -eq 0 ]; then
-    info "Rapthor exited successfully."
+  if [ "${RAPTHOR_STATUS}" -eq 0 ]; then
+    info "Rapthor exited successfully"
   else
     error "Rapthor exited with non-zero status: ${RAPTHOR_STATUS}"
   fi
-}
-
-# Error function
-error() {
-  echo -e "\nERROR: $*\n" >&2
-  exit 1
-}
-
-# Warning function
-warning() {
-  echo -e "\nWARNING: $*\n" >&2
-}
-
-# Info function
-info() {
-  echo -e "\nINFO: $*\n" >&2
+  return "${RAPTHOR_STATUS}"
 }
 
 # Check if the parset file exists and determine the working directory from
@@ -98,7 +112,7 @@ setup() {
 # Run Rapthor with the specified parset file. If the execution fails, print
 # a warning message, and update the RAPTHOR_STATUS variable.
 run_rapthor() {
-  info "Running Rapthor with parset file ${PARSET} ..."
+  info "Running Rapthor with parset file ${PARSET}"
   rapthor -v "${PARSET}" || {
     RAPTHOR_STATUS=$?
     warning "Rapthor execution failed, exit code: ${RAPTHOR_STATUS}"
@@ -132,25 +146,22 @@ make_symlink() {
 # `rapthor_logs_<timestamp>.tar.gz`, where `<timestamp>` is the date and
 # time when the tar-ball was created.
 create_tarball() {
-  info "Creating tar-ball of logs and configuration files ..."
-  local tarball_name tarball_path tarball_contents target
-  tarball_name="rapthor_logs_$(date +%Y%m%d-%H%M%S).tar.gz"
-  tarball_path="${WORKING_DIR}/${tarball_name}"
-  tarball_contents=()
-  make_symlink "${PARSET}" "${STAGING_DIR}/parset" && tarball_contents+=("parset")
+  info "Creating tar-ball of logs and configuration files"
+  local tarball target
+  tarball="${WORKING_DIR}/rapthor_logs_$(date +%Y%m%d-%H%M%S).tar.gz"
+  make_symlink "${PARSET}" "${STAGING_DIR}/parset"
   for name in input_skymodel apparent_skymodel strategy; do
     target=$(
       sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,/,p" "${PARSET}"
     )
-    make_symlink "${target}" "${STAGING_DIR}/${name}" && tarball_contents+=("${name}")
+    make_symlink "${target}" "${STAGING_DIR}/${name}"
   done
-  make_symlink "${WORKING_DIR}/logs" "${STAGING_DIR}/logs" && tarball_contents+=("logs")
+  make_symlink "${WORKING_DIR}/logs" "${STAGING_DIR}/logs"
 
-  # if tar -C "${STAGING_DIR}" -chzf "${tarball_path}" "${tarball_contents[@]}"; then
-  if tar -C "${STAGING_DIR}" -chzf "${tarball_path}" . ; then
-    info "Tar-ball created successfully: ${tarball_path}"
+  if tar -C "${STAGING_DIR}" -chzf "${tarball}" .; then
+    info "Tar-ball created successfully: ${tarball}"
   else
-    warning "Errors occurred while creating tar-ball ${tarball_path}. Tar-ball may be incomplete."
+    warning "Errors occurred while creating tar-ball: ${tarball} may be incomplete"
   fi
 }
 
