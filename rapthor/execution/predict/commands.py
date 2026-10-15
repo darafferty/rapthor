@@ -60,11 +60,7 @@ def build_predict_model_data_command(
     # If the full beam is requested (i.e. use_array_beam = False), we do not have to add anything,
     # because using the full beam is the default.
     if use_array_beam:
-        command.extend(
-            [
-                "predict.beammode=array_factor",
-            ]
-        )
+        command.append("predict.beammode=array_factor")
     command.extend(
         [
             "predict.usebeammodel=True",
