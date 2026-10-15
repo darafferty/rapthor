@@ -266,11 +266,11 @@ class Image(FlowOperation):
         """
         Build the DP3 applycal steps for the prepare-imaging-data stage.
 
-        The steps are determined from the solve-type flags set on the
-        field by the calibration strategy. Unlike DD calibration pre-apply,
-        imaging preparation may apply separate final non-full-Jones products,
-        so an explicit ``mediumphase`` step is valid here when a DD
-        medium-phase solution is selected.
+        The steps are determined from the solve types in the calibration
+        strategy and the amplitude state of the selected products. The
+        combined DD and DI products each hold a single ``phase000`` soltab, so
+        all phase solves of a mode share one ``fastphase`` step; ``slowgain``
+        is added only when that product carries amplitudes.
         """
         if self.apply_none:
             self._selected_applycal_h5parm = None
