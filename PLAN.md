@@ -376,7 +376,7 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P0-BUG-03. Keep DI and DD amplitude-application state separate
 
 - [x] **Release blocker; regression. Size M, complexity Medium. Fixed 2026-10-15
-  on `gec-669-fix-amplitude-state-and-phase-application` (stacked on the two
+  on `gec-670-fix-amplitude-state-and-phase-application` (stacked on the two
   normalization branches).**
 - **Resolved (2026-10-15):** `Field.scan_h5parms()` now scans
   `dd_h5parm_filename` and `di_h5parm_filename` separately through a new
@@ -424,7 +424,7 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P0-BUG-06. Apply combined phases once with `dde_method = single`
 
 - [x] **Release blocker (cheap); also present on master. Size S, complexity Low.
-  Fixed 2026-10-15 on `gec-669-fix-amplitude-state-and-phase-application`.**
+  Fixed 2026-10-15 on `gec-670-fix-amplitude-state-and-phase-application`.**
 - **Resolved (2026-10-15):** `SOLVE_TYPE_TO_APPLYCAL_STEP` in
   `rapthor/operations/image/plan.py` maps `medium_phase` to `fastphase`, so all
   phase solves of a mode share one step and `slowgain` is added only when the
