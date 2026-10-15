@@ -1535,7 +1535,7 @@ class TestCalibrate:
         fulljones_h5parm.touch()
         calibrate_field.di_h5parm_filename = str(di_h5parm)
         calibrate_field.fulljones_h5parm_filename = str(fulljones_h5parm)
-        calibrate_field.apply_amplitudes = True
+        calibrate_field.di_apply_amplitudes = True
 
         calibrate = Calibrate("dd", field=calibrate_field, index=1)
         calibrate.set_input_parameters()
@@ -1627,6 +1627,24 @@ class TestCalibrate:
             assert not any(token.startswith("applycal.fulljones.parmdb=") for token in command)
             assert str(di_h5parm) not in command_string
             assert str(fulljones_h5parm) not in command_string
+
+    def test_set_input_parameters_dd_preapplies_di_slowgain_from_the_di_product_flag(
+        self, calibrate_field, tmp_path
+    ):
+        """The DI pre-apply follows the DI product's amplitudes, not the latest product's."""
+        di_h5parm = tmp_path / "di-solutions.h5"
+        di_h5parm.touch()
+        calibrate_field.di_h5parm_filename = str(di_h5parm)
+        calibrate_field.calibration_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
+        # A DD phase-only product was produced after the DI slow gains.
+        calibrate_field.apply_amplitudes = False
+        calibrate_field.dd_apply_amplitudes = False
+        calibrate_field.di_apply_amplitudes = True
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert calibrate.input_parms["applycal_steps"] == "[fastphase,slowgain]"
 
     def test_set_input_parameters_dd_preapply_skips_di_slowgain_with_phase_solves(
         self, calibrate_field, tmp_path

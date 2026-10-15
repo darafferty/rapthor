@@ -118,6 +118,26 @@ def _prepare_field_for_image(field, h5parm_filename="nonexisting_h5parm_file.h5"
     field.skip_final_major_iteration = True
 
 
+def _configure_dd_amplitudes_then_di_phases(field, dd_h5parm, tmp_path):
+    """Field state after a DD slow-gain solve followed by a DI phase-only solve.
+
+    Field.scan_h5parms() leaves the legacy flag following h5parm_filename (the
+    DI product) while the DD flag keeps the DD product's own amplitudes.
+    """
+    di_h5parm = tmp_path / "di-solutions.h5"
+    di_h5parm.touch()
+    _prepare_field_for_image(field, h5parm_filename=di_h5parm)
+    field.dd_h5parm_filename = str(dd_h5parm)
+    field.dd_h5parm_cycle_number = 1
+    field.di_h5parm_filename = str(di_h5parm)
+    field.di_h5parm_cycle_number = 1
+    field.calibration_strategy = {"dd": ["fast_phase", "slow_gains"], "di": ["fast_phase"]}
+    field.apply_amplitudes = False
+    field.dd_apply_amplitudes = True
+    field.di_apply_amplitudes = False
+    return di_h5parm
+
+
 def _prepare_field_for_initial_image(field):
     """
     Prepare the field object for an initial image operation.
@@ -1077,6 +1097,7 @@ class TestImage:
         field.dd_h5parm_filename = str(h5parm_file)
         field.calibration_strategy = {"dd": ["slow_gains"]}
         field.apply_amplitudes = True
+        field.dd_apply_amplitudes = True
         field.apply_diagonal_solutions = True
 
         image = Image(field=field, index=1)
@@ -1118,6 +1139,39 @@ class TestImage:
         assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
         assert image._selected_applycal_h5parm == str(di_h5parm)
         assert image._selected_imaging_h5parm == str(h5parm_file)
+
+    def test_set_input_parameters_keeps_dd_amplitudes_after_di_phase_solve(
+        self, field, h5parm_file, tmp_path
+    ):
+        """A DD slow-gain product stays applied when a DI phase solve is the latest product."""
+        di_h5parm = _configure_dd_amplitudes_then_di_phases(field, h5parm_file, tmp_path)
+
+        image = Image(field=field, index=1)
+        image.use_facets = False
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["prepare_data_applycal_steps"] == "[fastphase,slowgain]"
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(h5parm_file)
+
+    def test_set_input_parameters_images_dd_amplitudes_with_facets_after_di_phase_solve(
+        self, field, h5parm_file, tmp_path
+    ):
+        """WSClean facet imaging applies the DD amplitudes even when a DI phase solve came last."""
+        di_h5parm = _configure_dd_amplitudes_then_di_phases(field, h5parm_file, tmp_path)
+        field.apply_diagonal_solutions = True
+
+        image = Image(field=field, index=1)
+        image.use_facets = True
+        image.apply_normalizations = False
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["h5parm"]["path"] == str(h5parm_file)
+        assert image.input_parms["soltabs"] == "amplitude000,phase000"
+        assert image.input_parms["prepare_data_applycal_steps"] == "[fastphase]"
+        assert image.input_parms["prepare_data_h5parm"]["path"] == str(di_h5parm)
 
     def test_image_only_cycle_can_reuse_previous_cycle_solutions(
         self, field, h5parm_file, tmp_path
