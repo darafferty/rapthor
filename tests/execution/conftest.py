@@ -13,7 +13,9 @@ from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.flux_normalization import create_normalization_h5parm
+from rapthor.execution.predict.flow import run_predict_model_data
 from rapthor.lib import miscellaneous as misc
+from tests.execution.payload_factories import representative_predict_payload
 
 # Shared inputs for tests that run real DP3 on the small test Measurement Set.
 requires_dp3 = pytest.mark.skipif(shutil.which("DP3") is None, reason="DP3 is not available")
@@ -100,3 +102,27 @@ def normalization_h5parm(test_ms, test_ms_info, tmp_path_factory):
         normalizations=np.full(len(test_ms_info["frequencies"]), TEST_NORMALIZATION),
     )
     return path.as_posix()
+
+
+@pytest.fixture(scope="session")
+def predicted_model_ms(test_ms, test_ms_info, point_source_skymodel, tmp_path_factory):
+    """Return an MS whose DATA column holds the predicted point-source model.
+
+    The prediction runs through the production predict task, so the model
+    carries the same beam treatment as a pipeline prediction.
+    """
+    workdir = tmp_path_factory.mktemp("model_ms")
+    task = representative_predict_payload(workdir)["predict_tasks"][0]
+    task.update(
+        {
+            "msin": test_ms,
+            "msout": "model.ms",
+            "msout_path": (workdir / "model.ms").as_posix(),
+            "starttime": test_ms_info["starttime"],
+            "ntimes": 0,
+            "sourcedb": point_source_skymodel,
+            "directions": [TEST_DIRECTION_NAME],
+            "numthreads": 2,
+        }
+    )
+    return run_predict_model_data(task, workdir.as_posix())["path"]
