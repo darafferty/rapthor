@@ -135,7 +135,7 @@ restart unreliable. Items marked *regression* behave correctly on master.
 | Task | Why it blocks | Regression? | Effort |
 | --- | --- | --- | --- |
 | P0-BUG-01 | Prediction normalization never reaches the written visibilities; affects every DD subtraction after the default cycle-1 normalization. **Fixed 2026-10-14** (real-DP3 test added). | Yes | S / Medium |
-| P0-BUG-02 | Slow-gain solves ignore the normalization h5parm; WSClean prediction drops DI pre-application. Default path after cycle 1. | Yes | M / High |
+| P0-BUG-02 | Slow-gain solves ignore the normalization h5parm; WSClean prediction drops DI pre-application. Default path after cycle 1. **Fixed 2026-10-15** (real-DP3 test added). | Yes | M / High |
 | P0-BUG-03 | DD amplitudes stop being applied after a DI solve in the same run. | Yes | M / Medium |
 | P0-BUG-04 | A strategy cycle that omits `calibration_strategy` silently reuses the previous cycle's solves; first-cycle default differs from master. | Yes | M / Medium |
 | P0-BUG-05 | Restart accepts partial MS directories as complete and fails on already-compressed images. | New (Toil handled restart) | L / High |
@@ -288,7 +288,40 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 
 #### P0-BUG-02. Restore missing DI/normalization wiring in calibration commands
 
-- [ ] **Release blocker; regression. Size M, complexity High.**
+- [x] **Release blocker; regression. Size M, complexity High. Fixed 2026-10-15
+  on `gec-669-fix-normalisation-and-preapply-calibrate`.**
+- **Resolved (2026-10-15):** gap 1: `build_calibration_dp3_steps()` keeps the
+  stand-alone `applycal` step for WSClean prediction (only DP3 image-based
+  prediction moves it after `predict`/`applybeam`). A DP3 probe confirmed the
+  step corrects the data only and leaves model data columns untouched, so the
+  WSClean model columns are not corrected twice. Gap 2:
+  `calibration_applycal_steps` now has a distinct meaning, the DDECal-internal
+  model corrections (`[normalization]` or `None`, from the new
+  `build_calibration_solve_applycal_steps()` and `DDECAL_MODEL_APPLYCAL_STEPS`
+  in `rapthor/lib/calibration.py`); it is forwarded through the payload,
+  validated in `builders.py`, and `_solve_slots_for_chunk()` attaches it with
+  `normalize_h5parm` to the solve that predicts the model. The real-DP3 test
+  `tests/execution/test_calibrate_dp3.py` runs `run_calibrate_chunk()` with a
+  fast-phase plus slow-gain chunk on data equal to the predicted model and gets
+  slow-gain amplitudes of 1.0 without and 0.5 with a normalization of 4, with
+  unchanged phases; the old wiring gives 1.0 in both cases.
+- **Deviation from master, with evidence (DP3 6.6.0, fresh MS copy per case):**
+  DDECal applies its `applycal` sub-steps only to the model it predicts itself.
+  Normalization on a sourcedb solve gives amplitude 0.5; on a solve that reuses
+  the kept model (`reusemodel=[solve1.*]`) it gives 1.0, that is no effect; on a
+  solve reading model data columns 1.0. Normalization on the predicting solve1
+  alone propagates through the kept model to solve3 (0.5), and on both solves it
+  is not applied twice (0.5). Master's `solve3`-only wiring is therefore a no-op
+  with reused models, and its `solve3.modeldatacolumns=[solve1.*]` syntax is
+  rejected by DP3 6.6 ("Table column solve1.* is unknown"). The stand-alone
+  `applycal.normalization.usemodeldata=True` sub-step changes neither the data
+  nor model data columns (1.0 in every probe); per DP3's `OneApplyCal` it acts
+  only on named direction buffers from a DP3 predict step, which is the
+  image-based path. Consequently the flux-scale normalization cannot reach
+  WSClean model columns in DP3 6.6: the Calibrate adapter logs a warning and
+  `docs/source/parset.rst` documents it under `use_wsclean_predict`. The DI
+  calibrate block keeps `normalize_h5parm=None` as on master; the DI predict
+  (P0-BUG-01) already normalizes the DI model columns.
 - **Verified (2026-10-14), two separate gaps:**
   1. `build_calibration_dp3_steps()` in `rapthor/operations/calibrate/plan.py`
      prepends `applycal` only when `preapply_solutions` is set *and* neither
@@ -326,11 +359,13 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   solve3-only wiring. Trace data and model corrections through the DP3,
   image-based and WSClean prediction paths to ensure nothing is applied twice.
 - **Done when:** command tests show `solveN.applycal.steps` and
-  `solveN.applycal.normalization.parmdb` on the slow-gain solve and on no phase
-  solve; a real-tool comparison of normalized slow-gain amplitudes against a
-  known reference agrees within tolerance; WSClean-prediction commands include
-  the `applycal` step when `preapply_solutions` is true. Coordinate with
-  WS-F1 (P2-PORT-01/P3-PORT-01) which edits the same command builders afterwards.
+  `solveN.applycal.normalization.parmdb` on the solve that predicts the model
+  and on no other solve (changed from "the slow-gain solve" after the DP3
+  probes above); a real-tool comparison of normalized slow-gain amplitudes
+  against a known reference agrees within tolerance; WSClean-prediction
+  commands include the `applycal` step when `preapply_solutions` is true.
+  All met; see **Resolved** above. Coordinate with WS-F1
+  (P2-PORT-01/P3-PORT-01) which edits the same command builders afterwards.
 
 ### WS-B. Solution State and Application
 
@@ -1244,6 +1279,32 @@ the existing test MS was read as input only. No production code was changed.
 - Checks run: `tests/execution/test_predict_flow.py`,
   `tests/execution/test_commands.py`, `tests/operations/test_predict.py`
   (`not integration and not prefect`): 100 passed, 5 deselected.
+
+### P0-BUG-02 Fix (2026-10-15)
+
+- DP3 6.6.0 (`v6.6-136-g2cf52e0f`) in the dev container; DATA set to the
+  predicted point-source model; normalization 4 (amplitude 2) in the
+  production h5parm layout; a fresh MS copy per case because DP3 updates the
+  input MS in place when `msout=` is empty (an earlier probe round was
+  contaminated by this and discarded). Diagonal solve amplitudes, expected 1.0
+  for an untouched model and 0.5 for a model scaled by 4:
+
+  | Case | Amplitude |
+  | --- | --- |
+  | sourcedb solve, no normalization | 1.0 |
+  | sourcedb solve, `solve.applycal.steps=[normalization]` | 0.5 |
+  | solve1 keepmodel, solve3 reusemodel, normalization on solve3 only | 1.0 |
+  | normalization on solve1 only, solve3 reuses the model | 0.5 |
+  | normalization on solve1 and solve3 | 0.5 |
+  | `modeldatacolumns=[MODEL_DATA]` solve, internal normalization | 1.0 |
+  | stand-alone applycal slowgain (amp 2) then modeldatacolumns solve | 0.5 (data only) |
+  | stand-alone applycal normalization `usemodeldata=True`, then column or sourcedb solve | 1.0 |
+  | master `solve3.modeldatacolumns=[solve1.*]` | DP3 error |
+
+- Checks run: `tests/execution/test_calibrate_dp3.py` (2 passed; 1 fails
+  against the old `solves.py`), `tests/operations/test_calibrate.py` and
+  `tests/execution/test_calibrate_flow.py` (160 passed), command, payload and
+  architecture tests, Prefect-marked calibrate flow tests (12 passed), ruff.
 
 ### Release Recheck (2026-10-14)
 
