@@ -134,7 +134,7 @@ restart unreliable. Items marked *regression* behave correctly on master.
 
 | Task | Why it blocks | Regression? | Effort |
 | --- | --- | --- | --- |
-| P0-BUG-01 | Prediction normalization never reaches the written visibilities; affects every DD subtraction after the default cycle-1 normalization. | Yes | S / Medium |
+| P0-BUG-01 | Prediction normalization never reaches the written visibilities; affects every DD subtraction after the default cycle-1 normalization. **Fixed 2026-10-14** (real-DP3 test added). | Yes | S / Medium |
 | P0-BUG-02 | Slow-gain solves ignore the normalization h5parm; WSClean prediction drops DI pre-application. Default path after cycle 1. | Yes | M / High |
 | P0-BUG-03 | DD amplitudes stop being applied after a DI solve in the same run. | Yes | M / Medium |
 | P0-BUG-04 | A strategy cycle that omits `calibration_strategy` silently reuses the previous cycle's solves; first-cycle default differs from master. | Yes | M / Medium |
@@ -215,7 +215,46 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 
 #### P0-BUG-01. Apply prediction normalization to the predicted visibility buffer
 
-- [ ] **Release blocker; regression. Size S, complexity Medium.**
+- [x] **Release blocker; regression. Size S, complexity Medium. Fixed 2026-10-14.**
+- **Resolved (2026-10-14):** `build_predict_model_data_command()` now runs a
+  single `predict` step and applies the normalization through
+  `predict.applycal.steps`, with `predict.applycal.normalization.parmdb`,
+  `.correction=amplitude000` and `.solset=sol000` emitted whenever a
+  normalization h5parm is given (master only emitted the last two when a
+  solution h5parm was also present). The stand-alone `applycal` step and
+  `usemodeldata` are gone. `tests/execution/test_predict_dp3.py` runs real DP3
+  on the test MS with the production h5parm layout from
+  `create_normalization_h5parm()` (one amplitude per frequency, no antenna or
+  direction axis) and checks a visibility ratio of 4 for a normalization of 4,
+  for both `predict` and `h5parmpredict` with a unit DD h5parm; against the old
+  command the same tests give a ratio of 1. Token tests in
+  `tests/execution/test_predict_flow.py` cover DI and DD predictions with and
+  without a DD h5parm and the SageCal predictor. SageCal probe: DP3's
+  `SagecalPredict` rejects `predict.directions` without an h5parm and accepts
+  at most two `applycal` sub-steps, so it cannot combine fast-phase, slow-gain
+  and normalization corrections. This limit is shared with master and is now
+  noted under `sagecalpredict` in `docs/source/parset.rst`.
+- **Origin (git history, 2026-10-14):** the first Prefect port (`70859094` on
+  `gec-468-ai-migrate-to-prefect-backup`) copied the CWL step exactly,
+  including master's gating of `predict.applycal.normalization.correction` and
+  `.solset` on a solution h5parm being present. The four-cycle benchmark
+  strategy added on 2026-07-09 (cycle 1 DI phases with `do_normalize`, cycle 4
+  DI full-Jones) produced a DI prediction with a normalization h5parm and no
+  solution h5parm, which DP3 rejects with `Key predict.applycal.correction
+  unknown` (reproduced with DP3 6.6; master emits the same command shape, so by
+  source it has the same latent failure). Commit `5a6b8620` ("Fix bug in apply
+  normalization solutions during di predict") worked around the error by moving
+  the normalization into a stand-alone `applycal` step with `usemodeldata=True`
+  and `invert=False`, and rewrote the command tests to expect those tokens. The
+  step corrected an empty model buffer because `predict.operation=replace`
+  writes to the data buffer. The 2026-07-06 option-matrix normalization
+  scenario was a single cycle with one sector, no peeling and no reweighting,
+  so no prediction ever consumed the normalization h5parm and the
+  branch-vs-master gate (rerun as `0cb3c11b`) could not expose the no-op. The
+  benchmark that triggered the workaround measured timing and task structure,
+  not outputs. The current fix emits the normalization correction and solset
+  whenever a normalization h5parm is given, which closes both the branch no-op
+  and master's missing-key crash on the DI path.
 - **Verified (2026-10-14):** `build_predict_command()` in
   `rapthor/execution/predict/commands.py` runs `steps=[predict,applycal]` with
   `predict.operation=replace` and a stand-alone `applycal` step whose
@@ -243,9 +282,9 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   model corrections.
 - **Done when:** a real DP3 test predicts with and without a normalization
   h5parm and shows the expected amplitude ratio for the production h5parm
-  layout (one amplitude per antenna/direction/frequency); command tests cover
-  DI and DD predictions with and without a DD h5parm; the SageCal predictor
-  path is checked or explicitly excluded.
+  layout (one amplitude per frequency); command tests cover DI and DD
+  predictions with and without a DD h5parm; the SageCal predictor path is
+  checked or explicitly excluded. All met; see **Resolved** above.
 
 #### P0-BUG-02. Restore missing DI/normalization wiring in calibration commands
 
@@ -1188,6 +1227,23 @@ the existing test MS was read as input only. No production code was changed.
   field/Prefect/integration suites, or fresh verification of every existing
   master-port task. These remain explicit acceptance work above. The earlier
   reviews' test counts and remote-worker probe are not results of this follow-up.
+
+### P0-BUG-01 Fix (2026-10-14)
+
+- Real DP3 (`v6.6-136-g2cf52e0f`) in the dev container, test MS copy, point
+  source at the phase centre, normalization 4 in the production h5parm layout:
+  new command gives a visibility ratio of 4.0000 for `predict` and for
+  `h5parmpredict` with a unit DD h5parm; the previous command gives 1.0 in both
+  cases (`tests/execution/test_predict_dp3.py`, marked `integration`).
+- SageCal probe with the same inputs: `predict.directions` without an h5parm
+  fails ("H5parm name not specified but directions specified"), and three
+  `applycal` sub-steps fail ("Only one or two types of gain application can be
+  done at a time"). With a unit h5parm and two sub-steps the container's
+  SageCal predictor returned all-zero visibilities; not investigated further,
+  as SageCal is optional and the behaviour is independent of this fix.
+- Checks run: `tests/execution/test_predict_flow.py`,
+  `tests/execution/test_commands.py`, `tests/operations/test_predict.py`
+  (`not integration and not prefect`): 100 passed, 5 deselected.
 
 ### Release Recheck (2026-10-14)
 
