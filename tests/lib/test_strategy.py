@@ -192,8 +192,7 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
         assert (
             f"Parameter {missing_parameter!r} is not defined in the strategy "
             "for cycle 1. Falling back to using the values of do_slowgain_solve "
-            "and do_fulljones_solve to set the calibration steps."
-            in caplog.text
+            "and do_fulljones_solve to set the calibration steps." in caplog.text
         )
     else:
         assert (
