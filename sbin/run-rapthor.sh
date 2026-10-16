@@ -77,7 +77,7 @@ cleanup() {
 
 # Read the named option ($1) only from the parset's [global] section.
 # Match option names case-insensitively, trim surrounding whitespace, and remove
-# decode Python string literals. Print only absolute paths; otherwise print nothing.
+# matching single or double quotes. Print only absolute paths; otherwise print nothing.
 # Treat parset values as data; never evaluate them as shell expressions.
 parset_path() {
   local value
@@ -94,19 +94,10 @@ parset_path() {
       }
     ' "${PARSET}"
   )
-  value=$(python - "${value}" <<'PY'
-import ast
-import sys
-
-value = sys.argv[1]
-try:
-    value = ast.literal_eval(value)
-except (ValueError, TypeError, SyntaxError):
-    pass
-if isinstance(value, str):
-    print(value)
-PY
-  )
+  case "${value}" in
+    \"*\") value=${value:1:${#value}-2} ;;
+    \'*\') value=${value:1:${#value}-2} ;;
+  esac
   if [[ ${value} == /* ]]; then
     printf '%s\n' "${value}"
   fi
