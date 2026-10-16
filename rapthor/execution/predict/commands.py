@@ -25,6 +25,12 @@ def build_predict_model_data_command(
 ) -> list[str]:
     """Build the DP3 prediction command for one sector/observation pair.
 
+    ``applycal_steps`` is an ordered list of correction step names serialized
+    as a bracketed, comma-separated string, e.g.
+    ``"[fastphase,slowgain,normalization]"``. The predict operation creates this
+    string before building the execution payload; this builder passes it to
+    DP3 unchanged. ``None`` omits the ``predict.applycal.steps`` option.
+
     All corrections, including the flux-scale normalization, are applied by the
     predict step's own applycal sub-steps. With ``predict.operation=replace``
     the prediction is written to the data buffer, so a separate ``applycal``
