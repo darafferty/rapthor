@@ -364,20 +364,25 @@ def check_and_adjust_parameters(field, strategy_steps):
                 )
             if strategy_steps[i][primary]:
                 for secondary in secondary_parameters:
-                    if secondary not in strategy_steps[i] and secondary != "calibration_strategy":
-                        # Don't warn about the missing calibration_strategy parameter, as the
-                        # message below is misleading in this case (it reports "Using the default
-                        # of None." which can be misinterpreted as skipping calibration completely,
-                        # whereas instead it will perform the calibration steps set by the legacy
-                        # parameters do_slowgain_solve and do_fulljones_solve).
+                    if secondary not in strategy_steps[i]:
                         if hasattr(field, secondary):
-                            log.warning(
-                                "Parameter %r is not defined in the strategy "
-                                "for cycle %i. Using the default value of %r.",
-                                secondary,
-                                i + 1,
-                                getattr(field, secondary),
-                            )
+                            if secondary == "calibration_strategy":
+                                log.warning(
+                                    "Parameter %r is not defined in the strategy "
+                                    "for cycle %i. Falling back to using the values "
+                                    "of do_slowgain_solve and do_fulljones_solve to "
+                                    "set the calibration steps.",
+                                    secondary,
+                                    i + 1,
+                                )
+                            else:
+                                log.warning(
+                                    "Parameter %r is not defined in the strategy "
+                                    "for cycle %i. Using the default value of %r.",
+                                    secondary,
+                                    i + 1,
+                                    getattr(field, secondary),
+                                )
                         else:
                             raise ValueError(
                                 f'Required parameter "{secondary}" is not '
