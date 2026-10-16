@@ -1,10 +1,9 @@
-"""Real DP3 checks for the prediction command.
+"""Integration tests for the model data prediction task.
 
-These tests run the production predict task (``run_predict_model_data``, which
-builds the command, runs DP3 through the shell runner and validates the output)
-on the small test Measurement Set, and verify that the requested corrections
-reach the written visibilities. They cover the buffer handling of the command,
-not the scientific equivalence of the beam or the predictors.
+Tests for the pipeline's predict task (``run_predict_model_data``), which
+builds the DP3 command, runs DP3 and validates the output. Checks ensure
+that the requested corrections are actually applied to the visibilities written
+to the output measurement set.
 """
 
 import shutil
@@ -27,8 +26,7 @@ pytestmark = [
 
 PATCH_NAME = "Patch_0"
 DIRECTION_NAME = f"[{PATCH_NAME}]"
-# The normalization h5parm stores sqrt(normalization) as an amplitude, so the
-# predicted visibilities scale by the normalization itself.
+# Normalization factor for the normalize_h5parm fixture
 NORMALIZATION = 4.0
 
 
