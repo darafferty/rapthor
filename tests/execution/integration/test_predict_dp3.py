@@ -16,6 +16,7 @@ from losoto.h5parm import h5parm
 
 from rapthor.execution.image.flux_normalization import create_normalization_h5parm
 from rapthor.execution.predict.flow import run_predict_model_data
+from rapthor.execution.shell import ShellCommandError
 from rapthor.lib import miscellaneous as misc
 from tests.execution.payload_factories import representative_predict_payload
 
@@ -191,4 +192,52 @@ def test_h5parmpredict_normalization_scales_written_visibilities(
     # Unit DD solutions must leave the prediction unchanged; adding the
     # normalization must scale it.
     _assert_ratio(corrupted, plain_prediction, 1.0)
+    _assert_ratio(normalized, plain_prediction, NORMALIZATION)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=ShellCommandError,
+    reason="DP3 SAGECalPredict rejects more than two applycal steps.",
+)
+def test_sagecalpredict_normalization_scales_written_visibilities(
+    predict, plain_prediction, normalize_h5parm, unity_dd_h5parm, caplog
+):
+    """SAGECal should apply normalization alongside fast-phase and slow-gain solutions."""
+    caplog.set_level("INFO", logger="rapthor:shell")
+    try:
+        normalized = predict(
+            "sagecal_normalized",
+            sagecalpredict=True,
+            h5parm=unity_dd_h5parm,
+            applycal_steps="[fastphase,slowgain,normalization]",
+            normalize_h5parm=normalize_h5parm,
+        )
+    except ShellCommandError:
+        # Only the known DP3 limitation should be treated as an expected failure.
+        assert "applycal.steps should specify only one or two steps" in caplog.text
+        raise
+
+    _assert_ratio(normalized, plain_prediction, NORMALIZATION)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="DP3 SAGECalPredict ignores the separate normalization H5parm in a two-step prediction.",
+)
+def test_sagecalpredict_normalization_without_slow_gains(
+    predict, plain_prediction, normalize_h5parm, unity_dd_h5parm
+):
+    """SAGECal should apply normalization alongside fast-phase solutions."""
+    normalized = predict(
+        "sagecal_phase_normalized",
+        sagecalpredict=True,
+        h5parm=unity_dd_h5parm,
+        applycal_steps="[fastphase,normalization]",
+        normalize_h5parm=normalize_h5parm,
+    )
+
+    # DP3 completes but ignores predict.applycal.normalization.parmdb, so check
+    # the written flux scale rather than treating command success as sufficient.
     _assert_ratio(normalized, plain_prediction, NORMALIZATION)

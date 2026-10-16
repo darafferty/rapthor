@@ -267,11 +267,13 @@ The available options are described below under their respective sections.
 
     sagecalpredict
         Use SAGECal for model calculation, both in predict and calibration (default =
-        ``False``). Note that the SAGECal predictor in DP3 applies at most two kinds of
-        corrections to the predicted model at once, so it cannot combine fast-phase
-        and slow-gain corrections with a flux-scale normalization. Use the default
-        predictor when ``apply_normalizations`` is active together with slow-gain
-        solutions.
+        ``False``). The SAGECal predictor in DP3 supports at most two ``applycal``
+        substeps for amplitude/phase solutions from a single H5parm file. It rejects
+        the three-step combination of fast phase, slow gain, and flux-scale
+        normalization. With only fast phase and normalization, DP3 can complete but
+        ignores Rapthor's separate normalization H5parm, so the predicted model does
+        not have the requested flux scale. Keep ``sagecalpredict=False`` whenever
+        ``apply_normalizations`` is active.
 
     fast_datause
         This parameter sets the visibilities mode used during the fast-phase solves  (one
