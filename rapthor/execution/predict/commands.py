@@ -28,11 +28,21 @@ def build_predict_model_data_command(
     ``applycal_steps`` is an ordered list of correction step names serialized
     as a bracketed, comma-separated string, e.g.
     ``"[fastphase,slowgain,normalization]"``. The predict operation creates this
-    string before building the execution payload; this builder passes it to
-    DP3 unchanged. ``None`` omits the ``predict.applycal.steps`` option.
+    string before building the execution payload. For SAGECal, this builder
+    orders the fast-phase/slow-gain pair as amplitude then phase, as required
+    by DP3's two-soltab reader. ``None`` omits ``predict.applycal.steps``.
 
-    All corrections, including the flux-scale normalization, are applied by the
-    predict step's own applycal sub-steps. With ``predict.operation=replace``
+    DP3's SAGECal predictor accepts at most two applycal substeps and reads their
+    soltabs from ``predict.applycal.parmdb``. It ignores the per-step file
+    ``predict.applycal.normalization.parmdb``: even with amplitude-first ordering,
+    a phase/normalization pair reads the amplitude from the main solutions file
+    instead. Adding normalization to the phase/slow-gain pair exceeds the two-step
+    limit and is rejected. The ordering workaround does not enable normalization;
+    these limitations are covered by strict xfails in ``test_predict_dp3.py``.
+
+    With the default DP3 predictors, all corrections, including flux-scale
+    normalization, are applied by the predict step's own applycal substeps.
+    With ``predict.operation=replace``
     the prediction is written to the data buffer, so a separate ``applycal``
     step with ``usemodeldata=True`` would act on an empty model buffer and
     leave the written visibilities unchanged. The predict-internal applycal
@@ -91,6 +101,13 @@ def build_predict_model_data_command(
         ]
     )
     if applycal_steps is not None:
+        if sagecalpredict:
+            steps = [step.strip() for step in applycal_steps.strip().strip("[]").split(",")]
+            # DP3's SagecalPredict reads two soltabs positionally as amplitude
+            # and phase without checking their types. Reorder this gain pair
+            # only; separate normalization files remain unsupported.
+            if steps == ["fastphase", "slowgain"]:
+                applycal_steps = "[slowgain,fastphase]"
         command.append(f"predict.applycal.steps={applycal_steps}")
     if h5parm is not None:
         command.append(f"predict.applycal.parmdb={h5parm}")

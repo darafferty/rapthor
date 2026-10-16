@@ -467,22 +467,52 @@ def test_build_predict_model_data_command_omits_zero_ntimes():
 
 
 def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
-    # DP3's SagecalPredict reads the same predict.applycal.* settings as the
-    # other predictors; it accepts at most two applycal sub-steps.
     command = _build_predict_command(
         sagecalpredict=True,
         directions=["[Patch_0]"],
         h5parm="solutions.h5",
-        applycal_steps="[fastphase,normalization]",
-        normalize_h5parm="norm.h5",
+        applycal_steps="[fastphase]",
     )
 
     assert "steps=[predict]" in command
     assert "predict.type=sagecalpredict" in command
     assert "predict.applycal.parmdb=solutions.h5" in command
-    assert "predict.applycal.steps=[fastphase,normalization]" in command
-    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.applycal.steps=[fastphase]" in command
     assert not _has_standalone_applycal(command)
+
+
+@pytest.mark.parametrize("sagecalpredict", [False, True], ids=["default", "sagecal"])
+@pytest.mark.parametrize(
+    "applycal_steps,sagecal_steps",
+    [
+        pytest.param(None, None, id="no-corrections"),
+        pytest.param("[fastphase]", "[fastphase]", id="phase-only"),
+        pytest.param("[slowgain]", "[slowgain]", id="amplitude-only"),
+        pytest.param("[fastphase,slowgain]", "[slowgain,fastphase]", id="phase-amplitude"),
+        pytest.param("[slowgain,fastphase]", "[slowgain,fastphase]", id="amplitude-phase"),
+        pytest.param("[ fastphase, slowgain ]", "[slowgain,fastphase]", id="whitespace"),
+        pytest.param(
+            "[fastphase,normalization]", "[fastphase,normalization]", id="phase-normalization"
+        ),
+        pytest.param(
+            "[fastphase,slowgain,normalization]",
+            "[fastphase,slowgain,normalization]",
+            id="three-corrections",
+        ),
+    ],
+)
+def test_build_predict_model_data_command_orders_sagecal_gain_pair(
+    sagecalpredict, applycal_steps, sagecal_steps
+):
+    command = _build_predict_command(
+        sagecalpredict=sagecalpredict,
+        h5parm="solutions.h5",
+        applycal_steps=applycal_steps,
+    )
+
+    expected = sagecal_steps if sagecalpredict else applycal_steps
+    steps_tokens = [token for token in command if token.startswith("predict.applycal.steps=")]
+    assert steps_tokens == ([] if expected is None else [f"predict.applycal.steps={expected}"])
 
 
 def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
