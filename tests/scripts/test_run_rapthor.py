@@ -135,8 +135,11 @@ class TestRunRapthor(unittest.TestCase):
         )
         self.write_parset("".join(f"{name} = {path}\n" for name, path in inputs.items()))
         self.parset.write_text(
-            "[calibration]\n" + other_options + self.parset.read_text()
-            + "[imaging]\n" + other_options
+            "[calibration]\n"
+            + other_options
+            + self.parset.read_text()
+            + "[imaging]\n"
+            + other_options
         )
         result = self.run_wrapper(self.parset)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

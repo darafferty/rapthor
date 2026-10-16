@@ -95,8 +95,8 @@ parset_path() {
     ' "${PARSET}"
   )
   case "${value}" in
-    \"*\") value=${value:1:${#value}-2} ;;
-    \'*\') value=${value:1:${#value}-2} ;;
+  \"*\") value=${value:1:${#value}-2} ;;
+  \'*\') value=${value:1:${#value}-2} ;;
   esac
   if [[ ${value} == /* ]]; then
     printf '%s\n' "${value}"
