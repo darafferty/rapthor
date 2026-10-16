@@ -379,7 +379,7 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 
 - [x] **Release blocker; also present on master. Size S, complexity Medium. Found
   2026-10-15 while writing the developer guide. Fixed 2026-10-16 on
-  `gec-664-fix-calibrate-input-ms-rewrite` (stacked on
+  `gec-678-fix-calibrate-input-ms-rewrite` (stacked on
   `gec-670-fix-amplitude-state-and-phase-application`).**
 - **Resolved (2026-10-16):** `build_calibration_dp3_steps()` in
   `rapthor/operations/calibrate/plan.py` now appends the `null` step to every
