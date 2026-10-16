@@ -3734,7 +3734,7 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
-    assert "steps=[applycal,solve1,solve2]" in commands[0]
+    assert "steps=[applycal,solve1,solve2,null]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
     assert f"applycal.parmdb={di_h5parm}" in commands[0]
     assert f"applycal.fulljones.parmdb={fulljones_h5parm}" in commands[0]
@@ -3791,7 +3791,7 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
         "-scale",
         "0.001",
     ]
-    assert "steps=[predict,applybeam,solve1,solve2]" in commands[1]
+    assert "steps=[predict,applybeam,solve1,solve2,null]" in commands[1]
     assert f"predict.regions={pipeline_dir / 'field_facets_ds9.reg'}" in commands[1]
     assert f"predict.images=[{pipeline_dir / 'calibration_model-term-0.fits'}]" in commands[1]
     assert "solve1.reusemodel=[predict.*]" in commands[1]
@@ -3908,7 +3908,7 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2, 1)
-    assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
+    assert "steps=[solve1,solve2,solve3,solve4,null]" in commands[0]
     assert "solve3.h5parm=slow_gain_0.h5parm" in commands[0]
     assert field.scan_h5parms_calls == 1
 

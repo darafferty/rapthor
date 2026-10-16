@@ -46,6 +46,11 @@ existing parsets and strategy files.
       :term:`fail_on_calibration_oom_risk` stops the run instead.
     - The calculation of the RMS noise of each facet no longer fails if a
       facet lies outside of the image.
+    - The calibration no longer writes the data back into its input MS when
+      direction-independent solutions are applied before the solves. In
+      earlier versions, the corrected data were written to the input MS (which
+      can be an original input MS), so later operations applied the
+      direction-independent corrections a second time.
 
 
 Version 2.1 (2025/12/04)
