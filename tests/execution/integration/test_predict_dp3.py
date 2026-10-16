@@ -36,8 +36,8 @@ def ms_info(test_ms):
     with pt.table(test_ms, ack=False) as table:
         times = np.unique(table.getcol("TIME"))
         interval = table.getcol("INTERVAL")[0]
-    with pt.table(f"{test_ms}/SPECTRAL_WINDOW", ack=False) as table:
-        frequencies = table.getcol("CHAN_FREQ")[0]
+    with pt.table(f"{test_ms}/SPECTRAL_WINDOW", ack=False) as spw_table:
+        frequencies = spw_table.getcol("CHAN_FREQ")[0]
     with pt.table(f"{test_ms}/FIELD", ack=False) as table:
         ra, dec = np.squeeze(table.getcol("PHASE_DIR"))
     with pt.table(f"{test_ms}/ANTENNA", ack=False) as table:
