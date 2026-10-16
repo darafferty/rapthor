@@ -60,6 +60,7 @@ The parset must explicitly set ``dir_working`` to an absolute path to a writable
 directory, rather than ``None``. The wrapper creates this directory if necessary.
 Paths may be unquoted or enclosed in matching single or double quotes. Input
 files must also use absolute paths to be included in the log archive.
+The wrapper reads these paths only from the parset's ``[global]`` section.
 
 Before running Rapthor, the wrapper sources
 ``/project/rapthor/Software/rapthor/etc/rapthor.rc``. To use another environment

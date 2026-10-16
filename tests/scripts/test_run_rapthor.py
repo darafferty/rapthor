@@ -48,7 +48,7 @@ class TestRunRapthor(unittest.TestCase):
 
     def write_parset(self, extra=""):
         # Exercise leading whitespace, tabs around '=', trailing whitespace, and spaces in paths.
-        self.parset.write_text(f"  dir_working\t=\t{self.work}   \n" + extra)
+        self.parset.write_text(f"[global]\n  dir_working\t=\t{self.work}   \n" + extra)
 
     def run_wrapper(self, *args):
         return subprocess.run(
@@ -122,6 +122,31 @@ class TestRunRapthor(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assert_archive(self.expected_archive())
 
+    def test_paths_in_other_sections_are_ignored(self):
+        inputs = {}
+        for name in ("input_skymodel", "apparent_skymodel", "strategy"):
+            path = self.root / name
+            path.write_text(f"{name} contents\n")
+            inputs[name] = path
+        misplaced = self.root / "misplaced"
+        misplaced.write_text("ignored\n")
+        other_options = f"dir_working = {self.root / 'wrong work'}\n" + "".join(
+            f"{name} = {misplaced}\n" for name in inputs
+        )
+        self.write_parset("".join(f"{name} = {path}\n" for name, path in inputs.items()))
+        self.parset.write_text(
+            "[calibration]\n" + other_options + self.parset.read_text()
+            + "[imaging]\n" + other_options
+        )
+        result = self.run_wrapper(self.parset)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("WARNING:", result.stderr)
+        self.assertFalse((self.root / "wrong work").exists())
+        self.assert_archive(
+            self.expected_archive()
+            | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
+        )
+
     def test_missing_optional_file_warns_and_still_archives(self):
         missing = self.root / "missing skymodel"
         self.write_parset(f"input_skymodel = {missing}\n")
@@ -172,9 +197,14 @@ class TestRunRapthor(unittest.TestCase):
                 "dir_working = None\n",
                 "Working directory invalid or not set",
             ),
+            (
+                [self.parset],
+                f"[imaging]\ndir_working = {self.work}\n",
+                "Working directory invalid or not set",
+            ),
         ):
             with self.subTest(contents=contents, args=args):
-                self.parset.write_text(contents)
+                self.parset.write_text("[global]\n" + contents)
                 result = self.run_wrapper(*args)
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn(message, result.stderr)

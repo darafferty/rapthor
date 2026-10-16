@@ -80,8 +80,17 @@ cleanup() {
 parset_path() {
   local value
   value=$(
-    sed -n "s,^[[:space:]]*${1}[[:space:]]*=[[:space:]]*,,p" "${PARSET}" |
-      sed 's,[[:space:]]*$,,'
+    awk -v option="${1}" '
+      /^[[:space:]]*\[/ {
+        in_global = ($0 ~ /^[[:space:]]*\[global\]/)
+        next
+      }
+      in_global && tolower($0) ~ "^[[:space:]]*" option "[[:space:]]*=" {
+        sub(/^[^=]*=[[:space:]]*/, "")
+        sub(/[[:space:]]*$/, "")
+        print
+      }
+    ' "${PARSET}"
   )
   case "${value}" in
     \"*\") value=${value:1:${#value}-2} ;;
