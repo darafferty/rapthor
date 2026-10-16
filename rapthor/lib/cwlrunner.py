@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Iterable
+from importlib.metadata import version
 from typing import TYPE_CHECKING, Optional
 
 import yaml
@@ -423,6 +424,9 @@ class ToilRunner(CWLRunner):
             self.args.extend(["--workDir", workdir])
         if self.operation.keep_temporary_files:
             self.args.extend(["--cleanWorkDir", "never"])
+            toil_version = tuple(int(part) for part in version("toil").split(".")[:2])
+            if toil_version >= (9, 3):
+                self.args.append("--leave-tmpdir")
         if self.operation.debug_workflow:
             self._add_debug_options()
 
