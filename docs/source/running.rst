@@ -56,10 +56,10 @@ the repository root, invoke it with exactly one argument, an existing parset:
 
     $ bash sbin/run-rapthor.sh /path/to/rapthor.parset
 
-The parset must explicitly set ``dir_working`` to a writable directory, rather
-than ``None``. The wrapper creates this directory if necessary. Use absolute
-paths for ``dir_working`` and input files to avoid depending on the launch
-working directory, especially when submitting a batch job.
+The parset must explicitly set ``dir_working`` to an absolute path to a writable
+directory, rather than ``None``. The wrapper creates this directory if necessary.
+Paths may be unquoted or enclosed in matching single or double quotes. Input
+files must also use absolute paths to be included in the log archive.
 
 Before running Rapthor, the wrapper sources
 ``/project/rapthor/Software/rapthor/etc/rapthor.rc``. To use another environment
@@ -90,15 +90,20 @@ Rapthor's own workflow scheduling separately in the parset (see
 :term:`batch_system`).
 
 After Rapthor finishes, the wrapper attempts to write
-``rapthor_logs_YYYYMMDD_HHMMSS.tar.gz`` in ``dir_working``. It includes the
-``logs`` directory if present, the parset, and available user files referenced
-by ``input_skymodel``, ``apparent_skymodel``, and ``strategy`` whose values contain
-a path separator. The wrapper may create or update symbolic links to these
-files in ``dir_working``; the archive includes their contents.
+``rapthor_logs_YYYYMMDD-HHMMSS.tar.gz`` in ``dir_working``. It stores the
+parset as ``parset``, the logs under ``logs/``, and files referenced by absolute
+paths in ``input_skymodel``, ``apparent_skymodel``, and ``strategy`` under those
+parameter names. Relative paths, ``None``, and built-in strategy names are
+omitted. Symbolic links are dereferenced so the archive contains file contents.
+Links are created in a temporary staging directory inside ``dir_working``;
+this directory is removed when the wrapper exits, leaving existing files and
+links untouched.
 
-Log collection is also attempted if Rapthor fails. When setup and archive
-creation succeed, the wrapper returns Rapthor's exit status. A setup or archive
-creation failure can instead terminate the wrapper with its own error status.
+Log collection is also attempted if Rapthor fails. A missing logs directory or
+missing referenced file produces a warning and may leave an incomplete archive.
+A failure of the ``tar`` command also produces a warning and preserves Rapthor's
+exit status. Setup failures or failures preparing the archive can instead
+terminate the wrapper with their own error status.
 
 
 .. _using_containers:

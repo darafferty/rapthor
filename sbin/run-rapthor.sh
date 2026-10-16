@@ -75,6 +75,23 @@ cleanup() {
   return "${status}"
 }
 
+# Read an absolute path, allowing matching single or double quotes around it.
+# Treat parset values as data; never evaluate them as shell expressions.
+parset_path() {
+  local value
+  value=$(
+    sed -n "s,^[[:space:]]*${1}[[:space:]]*=[[:space:]]*,,p" "${PARSET}" |
+      sed 's,[[:space:]]*$,,'
+  )
+  case "${value}" in
+    \"*\") value=${value:1:${#value}-2} ;;
+    \'*\') value=${value:1:${#value}-2} ;;
+  esac
+  if [[ ${value} == /* ]]; then
+    printf '%s\n' "${value}"
+  fi
+}
+
 # Check if the parset file exists and determine the working directory from
 # the parset file. Also load the rapthor environment.
 setup() {
@@ -92,10 +109,7 @@ setup() {
   PARSET=$(readlink -e "${parset}") || die "Parset file ${parset} not found!"
 
   # Extract the working directory from the parset file, path must be absolute
-  WORKING_DIR=$(
-    sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*/,/,p' "${PARSET}" |
-      sed 's,[[:space:]]*$,,'
-  )
+  WORKING_DIR=$(parset_path dir_working)
   [ -n "${WORKING_DIR}" ] || die "Working directory invalid or not set in ${PARSET}!"
 
   # Create working directory if it does not exist, and check if it is writable.
@@ -134,10 +148,7 @@ create_tarball() {
   tarball="${WORKING_DIR}/rapthor_logs_$(date +%Y%m%d-%H%M%S).tar.gz"
   ln -s "${PARSET}" "${STAGING_DIR}/parset"
   for name in input_skymodel apparent_skymodel strategy; do
-    target=$(
-      sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,/,p" "${PARSET}" |
-        sed 's,[[:space:]]*$,,'
-    )
+    target=$(parset_path "${name}")
     [ -n "${target}" ] && ln -s "${target}" "${STAGING_DIR}/${name}"
   done
   ln -s "${WORKING_DIR}/logs" "${STAGING_DIR}/logs"
