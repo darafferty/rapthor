@@ -58,17 +58,21 @@ error() {
   printf '\n%sERROR: %s%s\n\n' "$RED" "$*" "$RESET" >&2
 }
 
+die() {
+  local status=$?
+  error "$@"
+  exit "$((status == 0 ? 1 : status))"
+}
+
 # Cleanup function to remove the staging directory when the script exits,
 # regardless of whether it exits normally or due to an error.
 # shellcheck disable=SC2317
 cleanup() {
+  local status=$?
   [ -n "${STAGING_DIR-}" ] && rm -rf "${STAGING_DIR}"
-  if [ "${RAPTHOR_STATUS}" -eq 0 ]; then
-    info "Rapthor exited successfully"
-  else
-    error "Rapthor exited with non-zero status: ${RAPTHOR_STATUS}"
-  fi
-  return "${RAPTHOR_STATUS}"
+  [ "${status}" -eq 0 ] && info "Rapthor exited successfully"
+  [ "${status}" -ne 0 ] && error "Rapthor exited with non-zero status: ${status}"
+  return "${status}"
 }
 
 # Check if the parset file exists and determine the working directory from
@@ -78,29 +82,29 @@ setup() {
 
   # Load the rapthor environment
   # shellcheck disable=SC1090
-  . "${RAPTHOR_RC}" || error "Failed to source rapthor environment from ${RAPTHOR_RC}!"
+  . "${RAPTHOR_RC}" || die "Failed to source rapthor environment from ${RAPTHOR_RC}!"
 
   # Check if the parset file is provided as an argument
-  [ $# -ne 1 ] && error "Usage: $0 <parset-file>"
+  [ $# -ne 1 ] && die "Usage: $0 <parset-file>"
 
   # check if parset exists and make it an absolute path
   local parset=${1}
-  PARSET=$(readlink -e "${parset}") || error "Parset file ${parset} not found!"
+  PARSET=$(readlink -e "${parset}") || die "Parset file ${parset} not found!"
 
   # Extract the working directory from the parset file, path must be absolute
   WORKING_DIR=$(
     sed -n 's,^[[:space:]]*dir_working[[:space:]]*=[[:space:]]*/,/,p' "${PARSET}" |
       sed 's,[[:space:]]*$,,'
   )
-  [ -n "${WORKING_DIR}" ] || error "Working directory invalid or not set in ${PARSET}!"
+  [ -n "${WORKING_DIR}" ] || die "Working directory invalid or not set in ${PARSET}!"
 
   # Create working directory if it does not exist, and check if it is writable.
-  mkdir -p "${WORKING_DIR}" || error "Failed to create working directory ${WORKING_DIR}!"
-  [ -w "${WORKING_DIR}" ] || error "Working directory ${WORKING_DIR} is not writable!"
+  mkdir -p "${WORKING_DIR}" || die "Failed to create working directory ${WORKING_DIR}!"
+  [ -w "${WORKING_DIR}" ] || die "Working directory ${WORKING_DIR} is not writable!"
 
   # Create a staging directory for the tar-ball artifacts.
   STAGING_DIR="$(mktemp -d tmp.XXXXXX -p "${WORKING_DIR}")" ||
-    error "Failed to create staging directory in ${WORKING_DIR}!"
+    die "Failed to create staging directory in ${WORKING_DIR}!"
 
   # Print the software versions to the console for debugging purposes.
   info "**** C++ packages ****"
@@ -119,27 +123,6 @@ run_rapthor() {
   }
 }
 
-# Create a link to the given target with the given link name. Existing links
-# will be overwritten. If the link name is not provided, the link will be
-# created in the current working directory with the same name as the target.
-# Return a non-zero status if the target does not exist or the link could
-# not be created.
-make_symlink() {
-  local target=${1}
-  local link_name=${2}
-  local real_target
-  [ -n "${target}" ] || return 1
-  [ -n "${link_name}" ] || link_name=$(basename "${target}")
-  real_target=$(readlink -e "${target}") || {
-    warning "File ${target} does not exist; not creating symbolic link"
-    return 1
-  }
-  ln -sfn "${real_target}" "${link_name}" || {
-    warning "Failed to create symbolic link ${link_name} to target ${real_target}"
-    return 1
-  }
-}
-
 # Create a tar-ball of the logs, the parset file, and optionally the user-
 # supplied skymodel file(s) and processing strategy. The tar-ball will
 # be stored in the working directory, and its name will be of the form
@@ -149,19 +132,20 @@ create_tarball() {
   info "Creating tar-ball of logs and configuration files"
   local tarball target
   tarball="${WORKING_DIR}/rapthor_logs_$(date +%Y%m%d-%H%M%S).tar.gz"
-  make_symlink "${PARSET}" "${STAGING_DIR}/parset"
+  ln -s "${PARSET}" "${STAGING_DIR}/parset"
   for name in input_skymodel apparent_skymodel strategy; do
     target=$(
-      sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,/,p" "${PARSET}"
+      sed -n "s,^[[:space:]]*${name}[[:space:]]*=[[:space:]]*/,/,p" "${PARSET}" |
+        sed 's,[[:space:]]*$,,'
     )
-    make_symlink "${target}" "${STAGING_DIR}/${name}"
+    [ -n "${target}" ] && ln -s "${target}" "${STAGING_DIR}/${name}"
   done
-  make_symlink "${WORKING_DIR}/logs" "${STAGING_DIR}/logs"
+  ln -s "${WORKING_DIR}/logs" "${STAGING_DIR}/logs"
 
   if tar -C "${STAGING_DIR}" -chzf "${tarball}" .; then
     info "Tar-ball created successfully: ${tarball}"
   else
-    warning "Errors occurred while creating tar-ball: ${tarball} may be incomplete"
+    warning "Errors occurred while creating ${tarball}: tar-ball may be incomplete"
   fi
 }
 
