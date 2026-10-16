@@ -3,6 +3,7 @@
 import os
 import shlex
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -29,7 +30,11 @@ class TestRunRapthor(unittest.TestCase):
             f"export PATH={shlex.quote(str(self.bin))}:$PATH\n"
         )
         self.env = dict(os.environ, RAPTHOR_RC=str(self.rc), TEST_WORK=str(self.work))
-        self.write_command("python", "exit 0\n")
+        self.write_command(
+            "python",
+            'if [[ "$1" == -m ]]; then exit 0; fi\n'
+            f'exec {shlex.quote(sys.executable)} "$@"\n',
+        )
         self.write_command(
             "rapthor",
             'printf "%s\\n" "$@" > "$TEST_ARGUMENTS"\n'
@@ -233,7 +238,11 @@ class TestRunRapthor(unittest.TestCase):
                 self.assertEqual(list(self.work.glob("tmp.*")), [])
 
     def test_setup_failure_cleans_staging(self):
-        self.write_command("python", "exit 23\n")
+        self.write_command(
+            "python",
+            'if [[ "$1" == -m ]]; then exit 23; fi\n'
+            f'exec {shlex.quote(sys.executable)} "$@"\n',
+        )
         self.write_parset()
         result = self.run_wrapper(self.parset)
         self.assertEqual(result.returncode, 23, result.stderr)
@@ -268,6 +277,33 @@ class TestRunRapthor(unittest.TestCase):
             self.expected_archive()
             | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
         )
+
+    def test_escaped_quoted_paths(self):
+        for quote in ("'", '"'):
+            with self.subTest(quote=quote):
+                self.work = self.root / f"working {quote} directory\\with\ttab"
+                self.env["TEST_WORK"] = str(self.work)
+                inputs = {}
+                for name in ("input_skymodel", "apparent_skymodel", "strategy"):
+                    path = self.root / f"{name} {quote} file\\with\ttab"
+                    path.write_text(f"{name} contents\n")
+                    inputs[name] = path
+                options = {"dir_working": self.work} | inputs
+                self.parset.write_text(
+                    "[global]\n" + "".join(
+                        f"{name} = {quote}"
+                        + str(path).encode("unicode_escape").decode().replace(quote, "\\" + quote)
+                        + f"{quote}\n"
+                        for name, path in options.items()
+                    )
+                )
+                result = self.run_wrapper(self.parset)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("WARNING:", result.stderr)
+                self.assert_archive(
+                    self.expected_archive()
+                    | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
+                )
 
     def test_quoted_absolute_paths(self):
         inputs = {}
