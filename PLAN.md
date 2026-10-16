@@ -137,7 +137,7 @@ restart unreliable. Items marked *regression* behave correctly on master.
 | --- | --- | --- | --- |
 | P0-BUG-01 | Prediction normalization never reaches the written visibilities; affects every DD subtraction after the default cycle-1 normalization. **Fixed 2026-10-14** (real-DP3 test added). | Yes | S / Medium |
 | P0-BUG-02 | Slow-gain solves ignore the normalization h5parm; WSClean prediction drops DI pre-application. Default path after cycle 1. **Fixed 2026-10-15** (real-DP3 test added). | Yes | M / High |
-| P0-BUG-09 | A DD calibration chain with the stand-alone `applycal` step and `msout=` makes DP3 write the DI-corrected DATA back into the calibration input MS, which can be an original input MS. Any strategy with DI solves. | No (also on master) | S / Medium |
+| P0-BUG-09 | A DD calibration chain with the stand-alone `applycal` step and `msout=` makes DP3 write the DI-corrected DATA back into the calibration input MS, which can be an original input MS. Any strategy with DI solves. **Fixed 2026-10-16** (real-DP3 test added). | No (also on master) | S / Medium |
 | P0-BUG-03 | DD amplitudes stop being applied after a DI solve in the same run. **Fixed 2026-10-15.** | Yes | M / Medium |
 | P0-BUG-04 | A strategy cycle that omits `calibration_strategy` silently reuses the previous cycle's solves; first-cycle default differs from master. | Yes | M / Medium |
 | P0-BUG-05 | Restart accepts partial MS directories as complete and fails on already-compressed images. | New (Toil handled restart) | L / High |
@@ -377,8 +377,26 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 
 #### P0-BUG-09. Stop the pre-apply calibration chain from rewriting its input MS
 
-- [ ] **Release blocker; also present on master. Size S, complexity Medium. Found
-  2026-10-15 while writing the developer guide.**
+- [x] **Release blocker; also present on master. Size S, complexity Medium. Found
+  2026-10-15 while writing the developer guide. Fixed 2026-10-16 on
+  `gec-664-fix-calibrate-input-ms-rewrite` (stacked on
+  `gec-670-fix-amplitude-state-and-phase-application`).**
+- **Resolved (2026-10-16):** `build_calibration_dp3_steps()` in
+  `rapthor/operations/calibrate/plan.py` now appends the `null` step to every
+  chain it builds (plain, pre-apply, BDA, WSClean and image-based), not only
+  the BDA chain; `build_calibration_solve_command()` already emitted
+  `null.type=null` for chains containing the step. The DI chains
+  (`_apply_solve_plan_inputs()` default and the full-Jones `[solve1]`) are
+  DDECal-only and were left unchanged, since DDECal does not make DP3 append
+  the in-place updater. Tests: a parametrized check in
+  `tests/operations/test_calibrate.py` that every chain shape ends with a
+  single `null`; the operation-run flow tests assert the new chains; and
+  `tests/execution/integration/test_calibrate_dp3.py::test_preapply_chain_leaves_the_input_ms_unchanged`
+  runs `run_calibrate_chunk()` with a DI amplitude of 2 pre-applied through the
+  stand-alone `applycal` step on a copy of the model MS and asserts the DATA
+  column is unchanged (before the fix it came back divided by 4) while the
+  slow-gain amplitudes are 0.5, so the solve did see the corrected data. A
+  changelog entry records the behaviour change.
 - **Verified (2026-10-15, DP3 6.6 probe on a fresh copy of the test MS):**
   `steps=[applycal,solve1]` with `msout=` and a DI amplitude of 2 left the
   input MS with DATA divided by 4; `steps=[solve1]` left it unchanged;
