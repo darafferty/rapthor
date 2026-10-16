@@ -70,8 +70,8 @@ die() {
 cleanup() {
   local status=$?
   [ -n "${STAGING_DIR-}" ] && rm -rf "${STAGING_DIR}"
-  [ "${status}" -eq 0 ] && info "Rapthor exited successfully"
-  [ "${status}" -ne 0 ] && error "Rapthor exited with non-zero status: ${status}"
+  [ "${status}" -eq 0 ] && info "run-rapthor.sh exited successfully"
+  [ "${status}" -ne 0 ] && error "run-rapthor.sh exited with non-zero status: ${status}"
   return "${status}"
 }
 

@@ -162,6 +162,7 @@ class TestRunRapthor(unittest.TestCase):
         result = self.run_wrapper(self.parset)
         self.assertEqual(result.returncode, 37, result.stdout + result.stderr)
         self.assertIn("Rapthor execution failed, exit code: 37", result.stderr)
+        self.assertIn("run-rapthor.sh exited with non-zero status: 37", result.stderr)
         self.assert_archive(self.expected_archive())
 
     def test_archive_without_logs(self):
@@ -208,6 +209,8 @@ class TestRunRapthor(unittest.TestCase):
                 result = self.run_wrapper(*args)
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn(message, result.stderr)
+                self.assertIn("run-rapthor.sh exited with non-zero status: 1", result.stderr)
+                self.assertNotIn("Rapthor exited", result.stderr)
                 self.assertFalse(self.arguments.exists())
                 self.assertFalse(self.work.exists())
 
@@ -234,6 +237,8 @@ class TestRunRapthor(unittest.TestCase):
         self.write_parset()
         result = self.run_wrapper(self.parset)
         self.assertEqual(result.returncode, 23, result.stderr)
+        self.assertIn("run-rapthor.sh exited with non-zero status: 23", result.stderr)
+        self.assertNotIn("Rapthor exited", result.stderr)
         self.assertFalse(self.arguments.exists())
         self.assertEqual(list(self.work.iterdir()), [])
 
@@ -243,6 +248,8 @@ class TestRunRapthor(unittest.TestCase):
         result = self.run_wrapper(self.parset)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Failed to source rapthor environment", result.stderr)
+        self.assertIn("run-rapthor.sh exited with non-zero status:", result.stderr)
+        self.assertNotIn("Rapthor exited", result.stderr)
         self.assertFalse(self.arguments.exists())
         self.assertFalse(self.work.exists())
 
