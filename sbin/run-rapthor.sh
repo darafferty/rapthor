@@ -75,7 +75,9 @@ cleanup() {
   return "${status}"
 }
 
-# Read an absolute path, allowing matching single or double quotes around it.
+# Read the named option ($1) only from the parset's [global] section.
+# Match option names case-insensitively, trim surrounding whitespace, and remove
+# matching single or double quotes. Print only absolute paths; otherwise print nothing.
 # Treat parset values as data; never evaluate them as shell expressions.
 parset_path() {
   local value
