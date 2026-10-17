@@ -73,12 +73,12 @@ a parset that defines the parameters of the run. E.g.:
 The parset defines the input and working directories, various options, etc. For details,
 please see the example parset in the examples directory.
 
-For environment setup, verbose execution, and log collection, use the repository
-wrapper with one parset argument:
+For debugging purposes, a convenience script `run-rapthor.sh` is available. It
+sets up the runtime environment for `rapthor`, and collects logs and input
+artefacts in a tar-ball when `rapthor` finishes.
 
-```bash
-RAPTHOR_RC=/path/to/rapthor.rc bash sbin/run-rapthor.sh /path/to/rapthor.parset
-```
+    $ RAPTHOR_RC=/path/to/rapthor.rc run-rapthor.sh /path/to/rapthor.parset
+
 
 See the [run wrapper documentation](https://rapthor.readthedocs.io/en/latest/running.html#run-rapthor-wrapper)
 for environment requirements, working-directory settings, and Slurm submission.
