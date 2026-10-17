@@ -243,13 +243,13 @@ def predict(
     tmpdir = os.path.dirname(sky_model)
     model_images = list()
     model_counter = 0
+    err_code = 0
     for freqs, chans in zip(freq_chunks, chan_chunks):
         if len(freqs) > 1:
             chunk_bandwidth = freqs[-1] - freqs[0] + (chan_freq[1] - chan_freq[0])
         else:
             chunk_bandwidth = bandwidth
         chunk_freq = np.mean(freqs)
-        err_code = 0
         # only one spectral term is created
         # output will be $(model_name)-term-0.fits
         model_name = os.path.join(tmpdir, f"predict-{model_counter:04d}")
