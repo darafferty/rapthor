@@ -12,6 +12,10 @@ requirements:
     coresMin: $(inputs.numthreads)
     coresMax: $(inputs.numthreads)
 
+arguments:
+  - valueFrom: '$(runtime.tmpdir)'
+    prefix: --tempdir
+
 inputs:
   - id: region_file
     label: DS9 region file
@@ -103,6 +107,38 @@ inputs:
     type: boolean
     inputBinding:
       prefix: --time_freq_smearing
+
+  - id: timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done.
+    type: float?
+    inputBinding:
+      prefix: --bda_timebase
+
+  - id: frequencybase
+    label: BDA frequencybase
+    doc: |
+      The baseline length (in meters) below which BDA frequency averaging is done.
+    type: float?
+    inputBinding:
+      prefix: --bda_frequencybase
+
+  - id: maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in sec) over which BDA time averaging is done.
+    type: float?
+    inputBinding:
+      prefix: --bda_maxinterval
+
+  - id: minchannels
+    label: BDA minchannels
+    doc: |
+      The minimum number of channels remaining after BDA frequency averaging is done.
+    type: int?
+    inputBinding:
+      prefix: --bda_minchannels
 
 outputs:
   - id: msout

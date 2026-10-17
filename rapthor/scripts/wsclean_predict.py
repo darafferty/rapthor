@@ -25,17 +25,48 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def make_writable(msfile):
+def make_writable(
+    msfile, tmpdir, bda_timebase=0.0, bda_frequencybase=0.0, bda_maxinterval=0.0, bda_minchannels=0
+):
     """
     Always create a writable copy
     and return it as output
+    msfile: input MS
+    bda_* : BDA parameters
+    if all BDA parameters are zero, only copy the input MS,
+    otherwise run DP3 to create an averaged MS
     """
 
     # get base dir to create files
-    tmpdir = "$(runtime.tmpdir)"
     newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
-    # copy msfile to newms (TBD: use DP3 to average data if needed)
-    shutil.copytree(msfile, newms, dirs_exist_ok=True)
+    if (
+        bda_timebase == 0
+        and bda_frequencybase == 0
+        and bda_maxinterval == 0
+        and bda_minchannels == 0
+    ):
+        # copy msfile to newms
+        # get params from bdaavg step: timebase, frequencybase, maxinterval, minchannels
+        shutil.copytree(msfile, newms, dirs_exist_ok=True)
+    else:
+        # run DP3
+        cmd = [
+            "DP3",
+            f"msin={msfile}",
+            f"msout={newms}",
+            "steps=[avg]",
+            "avg.type=bdaaverager",
+            f"avg.maxinterval={bda_maxinterval}",
+            f"avg.frequencybase={bda_frequencybase}",
+            f"avg.timebase={bda_timebase}",
+            f"avg.minchannels={bda_minchannels}",
+        ]
+        try:
+            subprocess.run(cmd, check=True).returncode
+        except subprocess.CalledProcessError as err:
+            print(err, file=sys.stderr)
+            err_code = err.returncode
+
     # change root dir +rwx
     current_mode = os.stat(newms).st_mode
     os.chmod(
@@ -81,12 +112,47 @@ def remove_columns_from_ms(msfile, ds9_region_file):
     tt.close()
 
 
-def optimal_rendering_parameters(msname, skymodel, ra, dec):
+def extract_metadata(msname):
+    """
+    Extract metadata from the msfile
+
+    Parameters
+    ----------
+    msname: MS name
+
+    out: metadata:
+     channel frequencies array (Hz)
+     max uv and w (wavelengths)
+    """
+
+    freq = ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ").squeeze()
+    uvw = ct.table(msname).getcol("UVW")
+    max_u = np.argmax(uvw[:, 0])
+    max_v = np.argmax(uvw[:, 1])
+    max_w = np.argmax(uvw[:, 2])
+    max_uv = max(uvw[max_u, 0], uvw[max_v, 1])
+    max_w = uvw[max_w, 2]
+    max_f = np.argmax(freq)
+    max_freq = freq[max_f]
+
+    # convert uvw to wavelengths
+    max_uv *= max_freq / constants.c
+    max_w *= max_freq / constants.c
+
+    return freq, max_uv, max_w
+
+
+def optimal_rendering_parameters(max_uv, max_w, skymodel, ra, dec):
     """
     Return optimal image parameters (n_pixels, cell_size (rad))
     for sky model rendering
     For more details,
     see section: Sky Model Resampling on the wsclean manual
+
+    parameters:
+    max_uv,max_w: max uv and w in wavelengths
+    skymodel: skymodel name
+    ra,dec: center coordinates (rad)
     """
 
     # window size used in -sinc-window-size
@@ -101,23 +167,6 @@ def optimal_rendering_parameters(msname, skymodel, ra, dec):
     # Sin projection to get l,m distance
     max_lm = math.sin(math.radians(distances[max_dist]))
     d0 = max_lm
-
-    # determine max values of u,v,w in the data (m)
-    uvw = ct.table(msname).getcol("UVW")
-    max_u = np.argmax(uvw[:, 0])
-    max_v = np.argmax(uvw[:, 1])
-    max_w = np.argmax(uvw[:, 2])
-    max_uv = max(uvw[max_u, 0], uvw[max_v, 1])
-    max_w = uvw[max_w, 2]
-
-    # determine the max frequency Hz (done also in predict, could be combined)
-    freq = ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-    max_f = np.argmax(freq[0, :])
-    max_freq = freq[0, max_f]
-
-    # convert uvw to wavelengths
-    max_uv *= max_freq / constants.c
-    max_w *= max_freq / constants.c
 
     # base cell size
     s0 = 1 / (2 * max_uv)
@@ -144,6 +193,7 @@ def predict(
     storage_manager,
     predict_bandwidth,
     beam_interval,
+    chan_freq,
     n_threads,
 ):
     """
@@ -164,15 +214,14 @@ def predict(
     storage_manager: storage manager to use 'default'
     predict_bandwidth: bandwidth of prediction, channels will be split into groups
     beam_interval: facet beam update inverval (s)
+    chan_freq: channel frequency array (Hz)
     n_threads: max threads to use
 
     """
-    # get channel frequencies
-    freq_list = ct.table(msfile + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-    freq_list = freq_list[0]
-    n_chan = freq_list.size
+    # get number of channels
+    n_chan = chan_freq.size
     if n_chan > 1:
-        bandwidth = freq_list[-1] - freq_list[0] + (freq_list[1] - freq_list[0])
+        bandwidth = chan_freq[-1] - chan_freq[0] + (chan_freq[1] - chan_freq[0])
     else:
         bandwidth = float(frequency_bandwidth[1])
     # split channels into chunks of predict_bandwidth
@@ -181,7 +230,7 @@ def predict(
     else:
         n_chunks = 1
     chan_list = np.arange(n_chan)
-    freq_chunks = np.array_split(freq_list, n_chunks)
+    freq_chunks = np.array_split(chan_freq, n_chunks)
     chan_chunks = np.array_split(chan_list, n_chunks)
 
     # extract region names
@@ -196,7 +245,7 @@ def predict(
     model_counter = 0
     for freqs, chans in zip(freq_chunks, chan_chunks):
         if len(freqs) > 1:
-            chunk_bandwidth = freqs[-1] - freqs[0] + (freq_list[1] - freq_list[0])
+            chunk_bandwidth = freqs[-1] - freqs[0] + (chan_freq[1] - chan_freq[0])
         else:
             chunk_bandwidth = bandwidth
         chunk_freq = np.mean(freqs)
@@ -322,6 +371,7 @@ def main():
     parser.add_argument(
         "--msin", help="Input/Output measurement set", nargs="+", type=str, default=[]
     )
+    parser.add_argument("--tempdir", help="Temp directory", type=str, default="/tmp")
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
     parser.add_argument("--skymodel", help="Sky model", type=str, default="")
     parser.add_argument(
@@ -355,6 +405,10 @@ def main():
     parser.add_argument(
         "--beam_interval", help="Facet beam update interval (s)", type=float, default=120
     )
+    parser.add_argument("--bda_timebase", help="BDA timebase", type=float, default=0)
+    parser.add_argument("--bda_frequencybase", help="BDA frequencybase", type=float, default=0)
+    parser.add_argument("--bda_maxinterval", help="BDA maxinterval", type=float, default=0)
+    parser.add_argument("--bda_minchannels", help="BDA maxinterval", type=int, default=0)
     args = parser.parse_args()
     # Note: the output file name should match file read in CWL step
     output_info = "msout_names.json"
@@ -396,14 +450,24 @@ def main():
 
     # Always create a copy of msin to work with,
     # return this as output
-    msname = make_writable(args.msin[0])
+    msname = make_writable(
+        args.msin[0],
+        args.tempdir,
+        args.bda_timebase,
+        args.bda_frequencybase,
+        args.bda_maxinterval,
+        args.bda_minchannels,
+    )
     out_dict = {"msout": msname, "patches": facet_names}
     with open(output_info, "w") as f:
         json.dump(out_dict, f)
 
+    # extract metadata from original ms
+    freqs, max_uv, max_w = extract_metadata(args.msin[0])
+
     # determine optimal parameters for model image rendering
     n_pix, cell_size = optimal_rendering_parameters(
-        msname, args.skymodel, args.ra_dec[0], args.ra_dec[1]
+        max_uv, max_w, args.skymodel, args.ra_dec[0], args.ra_dec[1]
     )
     # override provided imsize and cellsize
     max_npix = max(args.imsize[0], args.imsize[1])
@@ -432,6 +496,7 @@ def main():
         args.storage_manager,
         args.predict_bandwidth,
         args.beam_interval,
+        freqs,
         args.threads,
     )
 

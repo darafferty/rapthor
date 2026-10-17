@@ -1007,7 +1007,15 @@ steps:
       - id: time_freq_smearing
         source: [correctfreqsmearing, correcttimesmearing]
         valueFrom: $(self[0] || self[1])
-    scatter: [msin]
+      - id: timebase
+        source: bda_timebase
+      - id: maxinterval
+        source: bda_maxinterval
+      - id: frequencybase
+        source: bda_frequencybase
+      - id: minchannels
+        source: bda_minchannels
+    scatter: [msin, maxinterval, minchannels]
     scatterMethod: dotproduct
     out:
       - id: msout
