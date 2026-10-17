@@ -85,8 +85,8 @@ parset_path() {
       in_global = (tolower($0) ~ /^[[:space:]]*\[global\]/)
       next
     }
-    in_global && tolower($0) ~ "^[[:space:]]*" option "[[:space:]]*=" {
-      sub(/^[^=]*=[[:space:]]*/, "")
+    in_global && tolower($0) ~ "^[[:space:]]*" option "[[:space:]]*[:=]" {
+      sub(/^[^=:]*[:=][[:space:]]*/, "")
       sub(/[[:space:]]*$/, "")
       if (/^".*"$/ || /^\047.*\047$/)
         $0 = substr($0, 2, length($0) - 2)

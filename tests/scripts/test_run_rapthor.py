@@ -109,6 +109,24 @@ class TestRunRapthor(unittest.TestCase):
         self.assertFalse(strategy.is_symlink())
         self.assert_archive(self.expected_archive() | {"./strategy": strategy.read_bytes()})
 
+    def test_colon_delimited_paths_are_used_and_archived(self):
+        inputs = {}
+        for name in ("input_skymodel", "apparent_skymodel", "strategy"):
+            path = self.root / f"{name}:file=value"
+            path.write_text(f"{name} contents\n")
+            inputs[name] = path
+        self.parset.write_text(
+            f"[global]\n  dir_working\t:\t{self.work}   \n"
+            + "".join(f"  {name}\t: {path}   \n" for name, path in inputs.items())
+        )
+        result = self.run_wrapper(self.parset)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.arguments.read_text().splitlines(), ["-v", str(self.parset)])
+        self.assert_archive(
+            self.expected_archive()
+            | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
+        )
+
     def test_optional_inputs_can_be_absent_none_or_builtin(self):
         for extra in (
             "",
