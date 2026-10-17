@@ -279,6 +279,7 @@ def predict(
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
             err_code = err.returncode
+            break
         model_counter += 1
 
     n_models = len(model_images)
@@ -302,7 +303,6 @@ def predict(
         except FileExistsError:
             raise
 
-    err_code = 0
     first_facet = 1
     model_name = os.path.join(tmpdir, "predict")
     for facet in facet_names:
