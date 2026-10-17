@@ -188,11 +188,18 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
     with caplog.at_level("WARNING"):
         check_and_adjust_parameters(field, strategy_steps)
 
-    assert (
-        f"Parameter {missing_parameter!r} is not defined in the strategy "
-        f"for cycle 1. Using the default value of {getattr(field, missing_parameter)!r}."
-        in caplog.text
-    )
+    if missing_parameter == "calibration_strategy":
+        assert (
+            f"Parameter {missing_parameter!r} is not defined in the strategy "
+            "for cycle 1. Falling back to using the values of do_slowgain_solve "
+            "and do_fulljones_solve to set the calibration steps." in caplog.text
+        )
+    else:
+        assert (
+            f"Parameter {missing_parameter!r} is not defined in the strategy "
+            f"for cycle 1. Using the default value of {getattr(field, missing_parameter)!r}."
+            in caplog.text
+        )
 
 
 @pytest.mark.parametrize(

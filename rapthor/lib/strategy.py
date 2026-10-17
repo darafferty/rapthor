@@ -366,13 +366,23 @@ def check_and_adjust_parameters(field, strategy_steps):
                 for secondary in secondary_parameters:
                     if secondary not in strategy_steps[i]:
                         if hasattr(field, secondary):
-                            log.warning(
-                                "Parameter %r is not defined in the strategy "
-                                "for cycle %i. Using the default value of %r.",
-                                secondary,
-                                i + 1,
-                                getattr(field, secondary),
-                            )
+                            if secondary == "calibration_strategy":
+                                log.warning(
+                                    "Parameter %r is not defined in the strategy "
+                                    "for cycle %i. Falling back to using the values "
+                                    "of do_slowgain_solve and do_fulljones_solve to "
+                                    "set the calibration steps.",
+                                    secondary,
+                                    i + 1,
+                                )
+                            else:
+                                log.warning(
+                                    "Parameter %r is not defined in the strategy "
+                                    "for cycle %i. Using the default value of %r.",
+                                    secondary,
+                                    i + 1,
+                                    getattr(field, secondary),
+                                )
                         else:
                             raise ValueError(
                                 f'Required parameter "{secondary}" is not '
