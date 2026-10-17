@@ -46,10 +46,10 @@ def make_writable(
         and bda_minchannels == 0
     ):
         # copy msfile to newms
-        # get params from bdaavg step: timebase, frequencybase, maxinterval, minchannels
         shutil.copytree(msfile, newms, dirs_exist_ok=True)
     else:
         # run DP3
+        # get params from bdaavg step: timebase, frequencybase, maxinterval, minchannels
         cmd = [
             "DP3",
             f"msin={msfile}",
@@ -124,7 +124,7 @@ def extract_metadata(msname):
      max uv and w (wavelengths)
     """
 
-    freq = ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ").squeeze()
+    freq = np.sort(ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ").squeeze())
     uvw = ct.table(msname).getcol("UVW")
     max_u = np.argmax(uvw[:, 0])
     max_v = np.argmax(uvw[:, 1])
