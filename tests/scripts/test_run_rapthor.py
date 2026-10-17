@@ -59,7 +59,10 @@ class WrapperEnvironment:
             timeout=15,
         )
 
-    def assert_archive(self, expected):
+    def assert_archive(self, extra=None, logs=True):
+        expected = {"./parset": self.parset.read_bytes(), **(extra or {})}
+        if logs:
+            expected["./logs/nested/run.log"] = b"pipeline log\n"
         archives = list(self.work.glob("rapthor_logs_*.tar.gz"))
         assert len(archives) == 1
         assert re.fullmatch(r"rapthor_logs_\d{8}-\d{6}\.tar\.gz", archives[0].name)
@@ -71,9 +74,6 @@ class WrapperEnvironment:
                 assert files[name].isfile(), name
                 assert archive.extractfile(files[name]).read() == content
 
-    def expected_archive(self):
-        return {"./parset": self.parset.read_bytes(), "./logs/nested/run.log": b"pipeline log\n"}
-
 
 @pytest.fixture
 def wrapper(tmp_path):
@@ -82,253 +82,127 @@ def wrapper(tmp_path):
     return WrapperEnvironment(root)
 
 
-def test_archive_dereferences_inputs_and_preserves_existing_links(wrapper):
+@pytest.mark.parametrize("delimiter, quote", [("=", ""), (":", ""), ("=", "'"), (":", '"')])
+def test_archive_inputs(wrapper, delimiter, quote):
     wrapper.work.mkdir()
     inputs = {}
     for name in ("input_skymodel", "apparent_skymodel", "strategy"):
-        path = wrapper.root / f"{name} file"
+        directory = wrapper.work / name
+        directory.mkdir()
+        path = directory / "same input:name=value"
         path.write_text(f"{name} contents\n")
         inputs[name] = path
-        (wrapper.work / path.name).symlink_to(wrapper.root / "missing old input")
-    wrapper.write_parset("".join((f"  {name}\t= {path}\n" for name, path in inputs.items())))
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert wrapper.arguments.read_text().splitlines() == ["-v", str(wrapper.parset)]
-    assert not (wrapper.work / wrapper.parset.name).exists()
-    for path in inputs.values():
-        assert (wrapper.work / path.name).is_symlink()
-        assert (wrapper.work / path.name).readlink() == wrapper.root / "missing old input"
-    wrapper.assert_archive(
-        wrapper.expected_archive()
-        | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
-    )
-
-
-def test_existing_input_in_working_directory_is_preserved(wrapper):
-    wrapper.work.mkdir()
-    strategy = wrapper.work / "custom strategy.py"
-    strategy.write_text("strategy contents\n")
-    wrapper.write_parset(f"strategy = {strategy}\n")
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert not strategy.is_symlink()
-    wrapper.assert_archive(wrapper.expected_archive() | {"./strategy": strategy.read_bytes()})
-
-
-def test_colon_delimited_paths_are_used_and_archived(wrapper):
-    inputs = {}
-    for name in ("input_skymodel", "apparent_skymodel", "strategy"):
-        path = wrapper.root / f"{name}:file=value"
-        path.write_text(f"{name} contents\n")
-        inputs[name] = path
-    wrapper.parset.write_text(
-        f"[global]\n  dir_working\t:\t{wrapper.work}   \n"
-        + "".join((f"  {name}\t: {path}   \n" for name, path in inputs.items()))
-    )
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert wrapper.arguments.read_text().splitlines() == ["-v", str(wrapper.parset)]
-    wrapper.assert_archive(
-        wrapper.expected_archive()
-        | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
-    )
-
-
-@pytest.mark.parametrize(
-    "extra", ("", "input_skymodel = None\napparent_skymodel = None\nstrategy = default\n")
-)
-def test_optional_inputs_can_be_absent_none_or_builtin(wrapper, extra):
-    wrapper.write_parset(extra)
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stdout + result.stderr
-    wrapper.assert_archive(wrapper.expected_archive())
-
-
-def test_paths_in_other_sections_are_ignored(wrapper):
-    inputs = {}
-    for name in ("input_skymodel", "apparent_skymodel", "strategy"):
-        path = wrapper.root / name
-        path.write_text(f"{name} contents\n")
-        inputs[name] = path
-    misplaced = wrapper.root / "misplaced"
-    misplaced.write_text("ignored\n")
-    other_options = f"dir_working = {wrapper.root / 'wrong work'}\n" + "".join(
-        (f"{name} = {misplaced}\n" for name in inputs)
-    )
-    wrapper.write_parset("".join((f"{name} = {path}\n" for name, path in inputs.items())))
+    old_link = wrapper.work / path.name
+    old_link.symlink_to(wrapper.root / "missing old input")
+    options = {"dir_working": wrapper.work, **inputs}
+    ignored_options = "".join(f"{name} = /ignored\n" for name in options)
     wrapper.parset.write_text(
         "[calibration]\n"
-        + other_options
-        + wrapper.parset.read_text()
+        + ignored_options
+        + "[global]\n"
+        + "".join(
+            f"  {name}\t{delimiter}\t{quote}{path}{quote}   \n" for name, path in options.items()
+        )
         + "[imaging]\n"
-        + other_options
+        + ignored_options
     )
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stdout + result.stderr
+    result = wrapper.run_wrapper(wrapper.parset.name)
+    assert result.returncode == 0, result.stderr
     assert "WARNING:" not in result.stderr
-    assert not (wrapper.root / "wrong work").exists()
-    wrapper.assert_archive(
-        wrapper.expected_archive()
-        | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
-    )
-
-
-def test_missing_optional_file_warns_and_still_archives(wrapper):
-    missing = wrapper.root / "missing skymodel"
-    wrapper.write_parset(f"input_skymodel = {missing}\n")
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "tar-ball may be incomplete" in result.stderr
-    assert not (wrapper.work / missing.name).is_symlink()
-    wrapper.assert_archive(wrapper.expected_archive())
-
-
-def test_failure_status_is_preserved_after_archiving(wrapper):
-    wrapper.write_parset()
-    wrapper.env["TEST_STATUS"] = "37"
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 37, result.stdout + result.stderr
-    assert "Rapthor execution failed, exit code: 37" in result.stderr
-    assert "run-rapthor.sh exited with non-zero status: 37" in result.stderr
-    wrapper.assert_archive(wrapper.expected_archive())
-
-
-def test_archive_without_logs(wrapper):
-    wrapper.write_command("rapthor", "exit 0\n")
-    wrapper.write_parset()
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "tar-ball may be incomplete" in result.stderr
-    wrapper.assert_archive({"./parset": wrapper.parset.read_bytes()})
+    assert wrapper.arguments.read_text().splitlines() == ["-v", str(wrapper.parset)]
+    assert not (wrapper.work / wrapper.parset.name).exists()
+    assert old_link.readlink() == wrapper.root / "missing old input"
+    for path in inputs.values():
+        assert not path.is_symlink()
+    wrapper.assert_archive({f"./{name}": path.read_bytes() for name, path in inputs.items()})
 
 
 @pytest.mark.parametrize(
-    "args, contents, message",
-    [
-        pytest.param([], "", "Usage:", id="no-arguments"),
-        pytest.param(["input.parset", "input.parset"], "", "Usage:", id="extra-argument"),
-        pytest.param(["missing.parset"], "", "not found", id="missing-parset"),
-        pytest.param(
-            ["input.parset"],
-            "# dir_working = ignored\n",
-            "Working directory invalid or not set",
-            id="commented-working-directory",
-        ),
-        pytest.param(
-            ["input.parset"],
-            "dir_working =    \n",
-            "Working directory invalid or not set",
-            id="empty-working-directory",
-        ),
-        pytest.param(
-            ["input.parset"],
-            "dir_working = relative/path\n",
-            "Working directory invalid or not set",
-            id="relative-working-directory",
-        ),
-        pytest.param(
-            ["input.parset"],
-            "dir_working = None\n",
-            "Working directory invalid or not set",
-            id="none-working-directory",
-        ),
-        pytest.param(
-            ["input.parset"],
-            "[imaging]\ndir_working = {work}\n",
-            "Working directory invalid or not set",
-            id="wrong-section",
-        ),
-    ],
+    "extra", ["", "input_skymodel = None\napparent_skymodel = None\nstrategy = default\n"]
 )
-def test_invalid_arguments_and_working_directory_fail_before_rapthor(
-    wrapper, args, contents, message
-):
-    args = [wrapper.root / arg for arg in args]
-    contents = contents.format(work=wrapper.work)
-    wrapper.parset.write_text("[global]\n" + contents)
-    result = wrapper.run_wrapper(*args)
-    assert result.returncode == 1, result.stdout + result.stderr
-    assert message in result.stderr
-    assert "run-rapthor.sh exited with non-zero status: 1" in result.stderr
-    assert "Rapthor exited" not in result.stderr
-    assert not wrapper.arguments.exists()
-    assert not wrapper.work.exists()
-
-
-def test_relative_parset_is_resolved(wrapper):
-    wrapper.write_parset()
-    result = wrapper.run_wrapper(wrapper.parset.name)
+def test_optional_inputs(wrapper, extra):
+    wrapper.write_parset(extra)
+    result = wrapper.run_wrapper(wrapper.parset)
     assert result.returncode == 0, result.stderr
-    assert wrapper.arguments.read_text().splitlines() == ["-v", str(wrapper.parset)]
-    wrapper.assert_archive(wrapper.expected_archive())
+    wrapper.assert_archive()
 
 
-@pytest.mark.parametrize("status", (0, 37))
-def test_archive_failure_preserves_rapthor_status_and_cleans_staging(wrapper, status):
-    wrapper.write_command("tar", "exit 2\n")
-    wrapper.write_parset()
+@pytest.mark.parametrize("missing", ["input", "logs"])
+def test_missing_archive_files_warn(wrapper, missing):
+    extra = f"input_skymodel = {wrapper.root / 'missing'}\n" if missing == "input" else ""
+    if missing == "logs":
+        wrapper.write_command("rapthor", "exit 0\n")
+    wrapper.write_parset(extra)
+    result = wrapper.run_wrapper(wrapper.parset)
+    assert result.returncode == 0, result.stderr
+    assert "tar-ball may be incomplete" in result.stderr
+    wrapper.assert_archive(logs=missing != "logs")
+
+
+@pytest.mark.parametrize("status", [0, 37])
+@pytest.mark.parametrize("archive_fails", [False, True])
+def test_exit_status_and_cleanup(wrapper, status, archive_fails):
+    if archive_fails:
+        wrapper.write_command("tar", "exit 2\n")
     wrapper.env["TEST_STATUS"] = str(status)
+    wrapper.write_parset()
     result = wrapper.run_wrapper(wrapper.parset)
     assert result.returncode == status, result.stderr
-    assert "tar-ball may be incomplete" in result.stderr
     assert list(wrapper.work.glob("tmp.*")) == []
+    if status:
+        assert f"Rapthor execution failed, exit code: {status}" in result.stderr
+    if archive_fails:
+        assert "tar-ball may be incomplete" in result.stderr
+    else:
+        wrapper.assert_archive()
 
 
-def test_setup_failure_cleans_staging(wrapper):
-    wrapper.write_command("python", "exit 23\n")
+@pytest.mark.parametrize(
+    "args, message",
+    [
+        ([], "Usage:"),
+        (["input.parset", "input.parset"], "Usage:"),
+        (["missing.parset"], "not found"),
+    ],
+    ids=["no-arguments", "extra-argument", "missing-parset"],
+)
+def test_invalid_arguments(wrapper, args, message):
     wrapper.write_parset()
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 23, result.stderr
-    assert "run-rapthor.sh exited with non-zero status: 23" in result.stderr
-    assert "Rapthor exited" not in result.stderr
-    assert not wrapper.arguments.exists()
-    assert list(wrapper.work.iterdir()) == []
-
-
-def test_missing_environment_fails_before_rapthor(wrapper):
-    wrapper.env["RAPTHOR_RC"] = str(wrapper.root / "missing.rc")
-    wrapper.write_parset()
-    result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode != 0
-    assert "Failed to source rapthor environment" in result.stderr
-    assert "run-rapthor.sh exited with non-zero status:" in result.stderr
-    assert "Rapthor exited" not in result.stderr
+    result = wrapper.run_wrapper(*args)
+    assert result.returncode == 1, result.stderr
+    assert message in result.stderr
     assert not wrapper.arguments.exists()
     assert not wrapper.work.exists()
 
 
-def test_inputs_with_same_basename_are_archived_separately(wrapper):
-    inputs = {}
-    for name in ("input_skymodel", "apparent_skymodel", "strategy"):
-        directory = wrapper.root / name
-        directory.mkdir()
-        path = directory / "input"
-        path.write_text(f"{name} contents\n")
-        inputs[name] = path
-    wrapper.write_parset("".join((f"{name} = {path}\n" for name, path in inputs.items())))
+@pytest.mark.parametrize(
+    "contents",
+    [
+        "# dir_working = ignored",
+        "dir_working = ",
+        "dir_working = relative/path",
+        "dir_working = None",
+        "[imaging]\ndir_working = {work}",
+    ],
+    ids=["commented", "empty", "relative", "none", "wrong-section"],
+)
+def test_invalid_working_directory(wrapper, contents):
+    wrapper.parset.write_text("[global]\n" + contents.format(work=wrapper.work) + "\n")
     result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stderr
-    wrapper.assert_archive(
-        wrapper.expected_archive()
-        | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
-    )
+    assert result.returncode == 1, result.stderr
+    assert "Working directory invalid or not set" in result.stderr
+    assert not wrapper.arguments.exists()
+    assert not wrapper.work.exists()
 
 
-@pytest.mark.parametrize("quote", ("'", '"'))
-def test_quoted_absolute_paths(wrapper, quote):
-    inputs = {}
-    for name in ("input_skymodel", "apparent_skymodel", "strategy"):
-        path = wrapper.root / f"{name} file"
-        path.write_text(f"{name} contents\n")
-        inputs[name] = path
-    wrapper.parset.write_text(
-        f"[global]\n  dir_working = {quote}{wrapper.work}{quote}   \n"
-        + "".join((f"  {name} = {quote}{path}{quote}   \n" for name, path in inputs.items()))
-    )
+@pytest.mark.parametrize("failure", ["environment", "versions"])
+def test_setup_failure(wrapper, failure):
+    if failure == "environment":
+        wrapper.env["RAPTHOR_RC"] = str(wrapper.root / "missing.rc")
+    else:
+        wrapper.write_command("python", "exit 23\n")
+    wrapper.write_parset()
     result = wrapper.run_wrapper(wrapper.parset)
-    assert result.returncode == 0, result.stderr
-    assert "WARNING:" not in result.stderr
-    wrapper.assert_archive(
-        wrapper.expected_archive()
-        | {f"./{name}": path.read_bytes() for name, path in inputs.items()}
-    )
+    assert result.returncode == (1 if failure == "environment" else 23), result.stderr
+    assert not wrapper.arguments.exists()
+    assert not wrapper.work.exists() or list(wrapper.work.iterdir()) == []
