@@ -65,7 +65,6 @@ def make_writable(
             subprocess.run(cmd, check=True).returncode
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
-            err_code = err.returncode
 
     # change root dir +rwx
     current_mode = os.stat(newms).st_mode
