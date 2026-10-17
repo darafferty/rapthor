@@ -59,10 +59,10 @@ existing parset:
 
     $ run-rapthor.sh /path/to/rapthor.parset
 
-The parset must be a valid Raphtor parset. The wrapper will create the
+The parset must be a valid Rapthor parset. The wrapper will create the
 ``dir_working`` directory if necessary. Note that all paths in the parset's
-``[global]`` section must be absolute, and may enclosed in matching single or
-double quotes (see :ref:`rapthor_parset`).
+``[global]`` section must be absolute, and may be enclosed in matching single
+or double quotes (see :ref:`rapthor_parset`).
 
 Before running Rapthor, the wrapper sources
 ``/project/rapthor/Software/rapthor/etc/rapthor.rc``. To use another environment
