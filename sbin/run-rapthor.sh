@@ -80,27 +80,22 @@ cleanup() {
 # matching single or double quotes. Print only absolute paths; otherwise print nothing.
 # Treat parset values as data; never evaluate them as shell expressions.
 parset_path() {
-  local value
-  value=$(
-    awk -v option="${1}" '
-      /^[[:space:]]*\[/ {
-        in_global = ($0 ~ /^[[:space:]]*\[global\]/)
-        next
-      }
-      in_global && tolower($0) ~ "^[[:space:]]*" option "[[:space:]]*=" {
-        sub(/^[^=]*=[[:space:]]*/, "")
-        sub(/[[:space:]]*$/, "")
+  awk -v option="${1,,}" '
+    /^[[:space:]]*\[/ {
+      in_global = (tolower($0) ~ /^[[:space:]]*\[global\]/)
+      next
+    }
+    in_global && tolower($0) ~ "^[[:space:]]*" option "[[:space:]]*=" {
+      sub(/^[^=]*=[[:space:]]*/, "")
+      sub(/[[:space:]]*$/, "")
+      if (/^".*"$/ || /^\047.*\047$/)
+        $0 = substr($0, 2, length($0) - 2)
+      if (/^\//) {
         print
+        exit
       }
-    ' "${PARSET}"
-  )
-  case "${value}" in
-  \"*\") value=${value:1:${#value}-2} ;;
-  \'*\') value=${value:1:${#value}-2} ;;
-  esac
-  if [[ ${value} == /* ]]; then
-    printf '%s\n' "${value}"
-  fi
+    }
+  ' "${PARSET}"
 }
 
 # Check if the parset file exists and determine the working directory from
