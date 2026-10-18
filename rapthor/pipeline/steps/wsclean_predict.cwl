@@ -15,6 +15,8 @@ requirements:
 arguments:
   - valueFrom: '$(runtime.tmpdir)'
     prefix: --tempdir
+  - valueFrom: 'default'
+    prefix: --storage_manager
 
 inputs:
   - id: region_file
