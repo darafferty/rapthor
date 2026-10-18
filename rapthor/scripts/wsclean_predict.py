@@ -36,17 +36,13 @@ def make_writable(
     if all BDA parameters are zero, only copy the input MS,
     otherwise run DP3 to create an averaged MS
     """
-
-    # get base dir to create files
-    # newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
-    newms = os.path.basename(msfile) + "_" + str(uuid.uuid4())
-    # bda_timebase=bda_frequencybase=bda_maxinterval=bda_minchannels=0
     if (
         bda_timebase == 0
         and bda_frequencybase == 0
         and bda_maxinterval == 0
         and bda_minchannels == 0
     ):
+        newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
         # copy msfile to newms
         shutil.copytree(msfile, newms, dirs_exist_ok=True)
         # change root dir +rwx
@@ -72,7 +68,7 @@ def make_writable(
                 os.chmod(file_p, current_mode | stat.S_IWUSR | stat.S_IWGRP)
     else:
         # run DP3
-        # get params from bdaavg step: timebase, frequencybase, maxinterval, minchannels
+        newms = os.path.basename(msfile) + "_" + str(uuid.uuid4())
         cmd = [
             "DP3",
             f"msin={msfile}",
