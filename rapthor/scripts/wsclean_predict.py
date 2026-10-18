@@ -38,7 +38,9 @@ def make_writable(
     """
 
     # get base dir to create files
-    newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
+    # newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
+    newms = os.path.basename(msfile) + "_" + str(uuid.uuid4())
+    # bda_timebase=bda_frequencybase=bda_maxinterval=bda_minchannels=0
     if (
         bda_timebase == 0
         and bda_frequencybase == 0
@@ -446,6 +448,8 @@ def main():
             raise ValueError(f"Invalid frequency and bandwidth {args.frequency_bandwidth!r}")
         if len(args.imsize) != 2:
             raise ValueError(f"Invalid image size {args.imsize!r}")
+    # extract metadata from original ms
+    freqs, max_uv, max_w = extract_metadata(args.msin[0])
 
     # Always create a copy of msin to work with,
     # return this as output
@@ -460,9 +464,6 @@ def main():
     out_dict = {"msout": msname, "patches": facet_names}
     with open(output_info, "w") as f:
         json.dump(out_dict, f)
-
-    # extract metadata from original ms
-    freqs, max_uv, max_w = extract_metadata(args.msin[0])
 
     # determine optimal parameters for model image rendering
     n_pix, cell_size = optimal_rendering_parameters(
