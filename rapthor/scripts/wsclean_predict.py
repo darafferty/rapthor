@@ -47,6 +47,27 @@ def make_writable(
     ):
         # copy msfile to newms
         shutil.copytree(msfile, newms, dirs_exist_ok=True)
+        # change root dir +rwx
+        current_mode = os.stat(newms).st_mode
+        os.chmod(
+            newms,
+            current_mode | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IWOTH | stat.S_IXOTH,
+        )
+
+        # Walk through the directory tree
+        for root, dirs, files in os.walk(newms):
+            # Update permissions for subdirectories
+            for d in dirs:
+                dir_p = os.path.join(root, d)
+                current_mode = os.stat(dir_p).st_mode
+                # +rwx
+                os.chmod(dir_p, current_mode | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR)
+            # Update permissions for files
+            for f in files:
+                file_p = os.path.join(root, f)
+                current_mode = os.stat(file_p).st_mode
+                # +rw
+                os.chmod(file_p, current_mode | stat.S_IWUSR | stat.S_IWGRP)
     else:
         # run DP3
         # get params from bdaavg step: timebase, frequencybase, maxinterval, minchannels
@@ -65,28 +86,6 @@ def make_writable(
             subprocess.run(cmd, check=True).returncode
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
-
-    # change root dir +rwx
-    current_mode = os.stat(newms).st_mode
-    os.chmod(
-        newms,
-        current_mode | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IWOTH | stat.S_IXOTH,
-    )
-
-    # Walk through the directory tree
-    for root, dirs, files in os.walk(newms):
-        # Update permissions for subdirectories
-        for d in dirs:
-            dir_p = os.path.join(root, d)
-            current_mode = os.stat(dir_p).st_mode
-            # +rwx
-            os.chmod(dir_p, current_mode | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR)
-        # Update permissions for files
-        for f in files:
-            file_p = os.path.join(root, f)
-            current_mode = os.stat(file_p).st_mode
-            # +rw
-            os.chmod(file_p, current_mode | stat.S_IWUSR | stat.S_IWGRP)
 
     return newms
 
@@ -339,10 +338,10 @@ def predict(
             # re-direct error messages to stdout
             subprocess.run(cmd, check=True, stderr=subprocess.STDOUT).returncode
         except subprocess.CalledProcessError as err:
-            #temporarily disable stderr output until Measures warning fixed
-            #print(err, file=sys.stderr)
+            # temporarily disable stderr output until Measures warning fixed
+            # print(err, file=sys.stderr)
             err_code = err.returncode
-            #break
+            # break
 
     return err_code
 
