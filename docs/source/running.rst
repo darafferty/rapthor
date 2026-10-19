@@ -43,6 +43,73 @@ operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
 
+.. _run_rapthor_wrapper:
+
+Using the run wrapper
+---------------------
+
+The Rapthor run wrapper ``run-rapthor.sh`` is a convenience script that sets
+up the environment prior to running Rapthor. When Rapthor finishes, it collects
+logs, and additionally skymodel files and strategy files if they are specified
+in the parset. It is not required to use the wrapper script, but it is
+recommended for debugging purposes. Invoke the script with one argument, an
+existing parset:
+
+.. code-block:: console
+
+    $ run-rapthor.sh /path/to/rapthor.parset
+
+The parset must be a valid Rapthor parset. The wrapper will create the
+``dir_working`` directory if necessary. Note that all paths in the parset's
+``[global]`` section must be absolute, and may be enclosed in matching single
+or double quotes (see :ref:`rapthor_parset`).
+
+Before running Rapthor, the wrapper sources
+``/project/rapthor/Software/rapthor/etc/rapthor.rc``. To use another environment
+configuration, set ``RAPTHOR_RC``:
+
+.. code-block:: console
+
+    $ RAPTHOR_RC=/path/to/rapthor.rc run-rapthor.sh /path/to/rapthor.parset
+
+This configuration file must be readable, make ``rapthor`` and ``python``
+available, set ``PATH`` and ``LD_LIBRARY_PATH`` to the C++ executables and
+libraries that Rapthor uses, and set ``RAPTHOR_INSTALL_DIR`` to an installation
+directory containing ``sw-versions.txt``. The wrapper prints that file and the
+installed Python packages to help diagnose the runtime environment.
+
+To submit the wrapper to Slurm, use ``sbatch`` and pass the parset after the
+script path. For example, with a custom environment configuration:
+
+.. code-block:: console
+
+    $ RAPTHOR_RC=/path/to/rapthor.rc sbatch --export=ALL run-rapthor.sh /path/to/rapthor.parset
+
+The script requests 16 CPUs per task and the ``amd`` node constraint. Adjust
+these for your cluster with ``sbatch`` options such as ``--cpus-per-task`` and
+``--constraint``, and supply any required partition, account, or time limit.
+The ``#SBATCH`` directives only apply when submitting through Slurm; they do
+not allocate resources when running the script directly with Bash. Configure
+Rapthor's own workflow scheduling separately in the parset (see
+:term:`batch_system`).
+
+After Rapthor finishes, the wrapper attempts to write
+``rapthor_logs_YYYYMMDD-HHMMSS.tar.gz`` in ``dir_working``. It stores the
+parset as ``parset``, the logs under ``logs/``, and files referenced by absolute
+paths in ``input_skymodel``, ``apparent_skymodel``, and ``strategy`` under those
+parameter names. Relative paths, ``None``, and built-in strategy names are
+omitted. Symbolic links are dereferenced so the archive contains file contents.
+Links are created in a temporary staging directory inside ``dir_working``;
+this directory is removed when the wrapper exits, leaving existing files and
+links untouched.
+
+Log collection is also attempted if Rapthor fails. A missing logs directory or
+missing referenced file produces a warning and may leave an incomplete archive.
+A failure of the ``tar`` command also produces a warning and preserves Rapthor's
+exit status. Setup failures or failures preparing the archive can instead
+terminate the wrapper with their own error status.
+
+
 .. _using_containers:
 
 Using a (u)Docker/Singularity image

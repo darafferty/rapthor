@@ -92,6 +92,7 @@ script-files = [
     "bin/concat_linc_files",
     "bin/plotrapthor",
     "bin/rapthor",
+    "sbin/run-rapthor.sh",
     "rapthor/scripts/add_sector_models.py",
     "rapthor/scripts/adjust_h5parm_sources.py",
     "rapthor/scripts/blank_image.py",
