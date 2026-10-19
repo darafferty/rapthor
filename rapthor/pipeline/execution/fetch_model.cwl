@@ -42,4 +42,4 @@ requirements:
 
 hints:
   - class: DockerRequirement
-    dockerPull: astronrd/rapthor:2.2
+    dockerPull: astronrd/rapthor
