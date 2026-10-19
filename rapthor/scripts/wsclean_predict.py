@@ -121,7 +121,7 @@ def extract_metadata(msname):
      max uv and w (wavelengths)
     """
 
-    freq = np.sort(ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ").squeeze())
+    freq = np.sort(ct.table(msname + "::SPECTRAL_WINDOW").getcol("CHAN_FREQ")[0])
     uvw = ct.table(msname).getcol("UVW")
     max_u = np.argmax(uvw[:, 0])
     max_v = np.argmax(uvw[:, 1])
@@ -447,15 +447,23 @@ def main():
     # extract metadata from original ms
     freqs, max_uv, max_w = extract_metadata(args.msin[0])
 
+    # check for case where BDA is not possible
+    bda_possible = True
+    if freqs.size == 1:
+        bda_possible = False
+    elif freqs.size > 2:
+        fdiff = np.diff(freqs)
+        bda_possible = np.allclose(fdiff, fdiff[0])
+
     # Always create a copy of msin to work with,
     # return this as output
     msname = make_writable(
         args.msin[0],
         args.tempdir,
-        args.bda_timebase,
-        args.bda_frequencybase,
-        args.bda_maxinterval,
-        args.bda_minchannels,
+        args.bda_timebase if bda_possible else 0,
+        args.bda_frequencybase if bda_possible else 0,
+        args.bda_maxinterval if bda_possible else 0,
+        args.bda_minchannels if bda_possible else 0,
     )
     out_dict = {"msout": msname, "patches": facet_names}
     with open(output_info, "w") as f:
