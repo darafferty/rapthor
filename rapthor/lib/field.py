@@ -916,7 +916,7 @@ class Field(object):
         target_flux=None,
         target_number=None,
         calibrator_max_dist_deg=None,
-        combine_current_and_intial=False,
+        combine_current_and_initial=False,
     ):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
@@ -935,7 +935,7 @@ class Field(object):
             Target number of patches for grouping
         calibrator_max_dist_deg : float, optional
             Maximum distance in degrees from phase center for grouping
-        combine_current_and_intial : bool, optional
+        combine_current_and_initial : bool, optional
             If True, combine the initial and current sky models (needed for the final
             calibration in order to include potential outlier sources)
         """
@@ -1080,7 +1080,7 @@ class Field(object):
             # must be subtracted, since we have to go back to the original input MS files
             # for which no subtraction has been done) or if all sources (and not only the
             # imaged sources) are to be used in calibration
-            if combine_current_and_intial or not self.imaged_sources_only:
+            if combine_current_and_initial or not self.imaged_sources_only:
                 # Load starting sky model and regroup to one patch per entry to ensure
                 # any existing patches are removed (otherwise they may propagate to
                 # the DD calibrator direction determination, leading to unexpected results)
@@ -1145,7 +1145,7 @@ class Field(object):
             # Plot an overview of the field for this cycle, showing the calibration facets
             # (patches)
             self.log.info("Plotting field overview with calibration patches...")
-            if index == 1 or combine_current_and_intial:
+            if index == 1 or combine_current_and_initial:
                 # Check the sky model bounds, as they may differ from the sector ones
                 check_skymodel_bounds = True
             else:
@@ -2032,7 +2032,7 @@ class Field(object):
             target_flux=target_flux,
             target_number=target_number,
             calibrator_max_dist_deg=calibrator_max_dist_deg,
-            combine_current_and_intial=(final_cycle_number == 1),
+            combine_current_and_initial=(final_cycle_number == 1),
         )
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
