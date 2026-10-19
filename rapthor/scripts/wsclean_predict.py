@@ -26,12 +26,19 @@ logger = logging.getLogger(__name__)
 
 
 def make_writable(
-    msfile, tmpdir, bda_timebase=0.0, bda_frequencybase=0.0, bda_maxinterval=0.0, bda_minchannels=0
+    msfile,
+    datacol,
+    tmpdir,
+    bda_timebase=0.0,
+    bda_frequencybase=0.0,
+    bda_maxinterval=0.0,
+    bda_minchannels=0,
 ):
     """
     Always create a writable copy
     and return it as output
     msfile: input MS
+    datacol: column name of input/output data
     bda_* : BDA parameters
     if all BDA parameters are zero, only copy the input MS,
     otherwise run DP3 to create an averaged MS
@@ -73,6 +80,8 @@ def make_writable(
             "DP3",
             f"msin={msfile}",
             f"msout={newms}",
+            f"msin.datacolumn={datacol}",
+            f"msout.datacolumn={datacol}",
             "steps=[avg]",
             "avg.type=bdaaverager",
             f"avg.maxinterval={bda_maxinterval}",
@@ -369,6 +378,9 @@ def main():
     parser.add_argument(
         "--msin", help="Input/Output measurement set", nargs="+", type=str, default=[]
     )
+    parser.add_argument(
+        "--data_colname", help="Data column used as input", type=str, default="DATA"
+    )
     parser.add_argument("--tempdir", help="Temp directory", type=str, default="/tmp")
     parser.add_argument("--region", help="DS9 region file", type=str, default="")
     parser.add_argument("--skymodel", help="Sky model", type=str, default="")
@@ -458,6 +470,7 @@ def main():
     # return this as output
     msname = make_writable(
         args.msin[0],
+        args.data_colname,
         args.tempdir,
         args.bda_timebase if bda_possible else 0,
         args.bda_frequencybase if bda_possible else 0,

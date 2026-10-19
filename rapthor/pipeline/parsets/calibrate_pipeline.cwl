@@ -986,6 +986,8 @@ steps:
     in:
       - id: msin
         source: timechunk_filename
+      - id: data_colname
+        source: data_colname
       - id: region_file
         source: make_predict_region_file/region_file
       - id: skymodel

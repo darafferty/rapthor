@@ -36,6 +36,14 @@ inputs:
     inputBinding:
       prefix: --msin
 
+  - id: data_colname
+    label: Input MS data column
+    doc: |
+      The data column to be read from the MS files (length = 1).
+    type: string
+    inputBinding:
+      prefix: --data_colname
+
   - id: skymodel
     label: Filename of input sky model
     doc: |
