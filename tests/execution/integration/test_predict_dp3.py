@@ -54,10 +54,10 @@ def ms_info(test_ms):
         antenna2 = table.getcol("ANTENNA2")
     with pt.table(f"{test_ms}/SPECTRAL_WINDOW", ack=False) as spw_table:
         frequencies = spw_table.getcol("CHAN_FREQ")[0]
-    with pt.table(f"{test_ms}/FIELD", ack=False) as table:
-        ra, dec = np.squeeze(table.getcol("PHASE_DIR"))
-    with pt.table(f"{test_ms}/ANTENNA", ack=False) as table:
-        antennas = list(table.getcol("NAME"))
+    with pt.table(f"{test_ms}/FIELD", ack=False) as field_table:
+        ra, dec = np.squeeze(field_table.getcol("PHASE_DIR"))
+    with pt.table(f"{test_ms}/ANTENNA", ack=False) as antenna_table:
+        antennas = list(antenna_table.getcol("NAME"))
     return {
         # Start just before the first sample, as Observation does.
         "starttime": misc.convert_mjd2mvt(times[0] - interval / 100),
