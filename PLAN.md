@@ -1,6 +1,6 @@
 # Post-Merge Development Plan
 
-Updated: 2026-10-14.
+Updated: 2026-10-19.
 
 ## Scope and Review Baseline
 
@@ -12,39 +12,43 @@ in production branches.
 
 - **Part A: missing master functionality and bug fixes.** These are identified
   gaps, verified review findings, missing regression coverage, and explicit
-  compatibility decisions. Part A is organised into workstreams that touch
-  disjoint code so that different people or agents can work in parallel.
+  compatibility decisions. Part A groups related code into workstreams and
+  records overlaps so that independent tasks can proceed in parallel.
 - **Part B: future improvements.** These extend or improve the resulting
   Prefect/Dask pipeline; they are not missing ports from master.
 
-### Branch state at the 2026-10-14 recheck
+### Branch state at the 2026-10-19 recheck
 
 | Branch | Revision | Notes |
 | --- | --- | --- |
-| `main` | `d0e7e148` (review baseline); `aff26023` since 2026-10-15 | Squashed migration `c6196cb4` (GEC-468) plus `d0e7e148` (reduced frequency-BDA default, closes review task P06). `aff26023` adds the `use_array_beam` option (see P2-PORT-01); it touches no open P0 task. |
-| `master` | `76a7ff2f` | Tagged `v2.2rc1` at `b9c98086`. 69 commits since the common ancestor `2e21be62`. |
+| `main` / `origin/main` | `d3f236dc` | Includes the migration, reduced frequency-BDA default, `use_array_beam`, and both GEC-669 normalization fixes (`83f056c7`, `d3f236dc`). P0-BUG-01 and P0-BUG-02 are merged. |
+| `origin/master`, `origin/rapthor-cwl`, `origin/releases/v2.2` | `b83cf9bc` | CWL release line; `0dc29c7d` prepares v2.2, followed by Docker-tag updates. |
+| `gec-664-update-plan` | `c50639b7` plus this working-tree update | Seven local plan commits beyond `origin/gec-664-update-plan` (`c1339479`). This branch's code is not the release baseline; inspect `origin/main` and the feature refs explicitly. |
 
-Master gained five commits after the previous plan baseline `ff1f29d9`. Three
-are CWL-only (Docker tag churn in CWL steps, `76a7ff2f` Toil tmpdir option) and
-do not apply. `b9c98086` is release preparation. `9fc97dc3` (GEC-656, sky model
-download error handling) is already present on `main` in
-`rapthor/execution/image/diagnostic_calculation.py:safe_load_skymodel`, which is
-the same plain function returning `None` on `OSError`; only master's new tests
-have no counterpart. No further master changes need porting beyond the tasks
-below.
+The five CWL commits since the 2026-10-14 baseline `76a7ff2f` are accounted for:
+`7511e4a1` improves the missing-strategy warning (input to P0-BUG-04),
+`6052b19d` adds the run/log-collection wrapper (new P3-PORT-04), `0dc29c7d`
+records the v2.2 dependency tuple (input to P3-DEC-02/build validation), and
+`b15d0897`/`b83cf9bc` only change CWL Docker tags. Earlier GEC-656 download
+error handling remains covered; its extra test cases remain part of P3-TEST-02.
 
-Because master is at `v2.2rc1`, the first Prefect release is a major version.
+With the CWL line now released as v2.2, the first Prefect release is a major version.
 The [upgrade guide](docs/source/upgrading.rst) is the migration document and
 must record every behaviour change accepted in Part A.
 
 ### Verification status
 
-Every Part A finding was rechecked by source inspection on `main` at `d0e7e148`
-on 2026-10-14 (see the verification record at the end). All remain present
-except review task P06 (BDA default), which has moved to the "already covered" table. One correction: the
-P0-BUG-02 payload gap is narrower than previously described. The stand-alone
-`applycal` step is wired; it is the DDECal-internal normalization on the
-slow-gain solve that is missing.
+The 2026-10-19 review reconciles fetched branch tips, source changes and test
+definitions. It does not rerun CI, DP3, imaging, or cluster tests. Earlier
+dated runtime evidence below is retained as historical evidence, not a claim
+about tests passing on today's branch tips.
+
+Completed checkboxes mean **merged on `main`**. An implementation on a feature
+branch stays unchecked until it lands and its acceptance evidence is reviewed.
+The full source audit was on 2026-10-14; unchanged task owners retain that
+baseline. The current delta closes P0-BUG-01/P0-BUG-02, while P0-BUG-03,
+P0-BUG-06 and P0-BUG-09 are implemented but unmerged. The phase-only DD
+selection decision P1-DEC-01 remains open even after GEC-670.
 
 The earlier audit compared `master` at `ff1f29d9` with migration HEAD
 `b5884ade`, and the 2026-10-09 follow-up reconciled the two MR-473 reviews
@@ -54,6 +58,45 @@ The review IDs (R01–R16, E01–E05) are mapped to the current task IDs in the
 [task identifier table](#task-identifiers) below.
 These are source reviews with isolated real-tool probes, not a new scientific
 equivalence run.
+
+### Recent branches and remaining integration work
+
+| Branch / reviewed tip | Disposition | Work still needed |
+| --- | --- | --- |
+| `gec-669-fix-normalization-and-preapply` (`7b4738a1`) | Merged as `83f056c7`; endpoint trees are identical. Closes P0-BUG-01. | Retain real-DP3 regression coverage and the documented SageCal limitation. |
+| `gec-669-fix-normalisation-and-preapply-calibrate` (`d2749c0c`) | Merged as `d3f236dc`; endpoint trees are identical. Closes P0-BUG-02. | Retain the documented WSClean model-column normalization limitation. |
+| `gec-670-fix-amplitude-state-and-phase-application` (`818f34cb`) | Four commits rebased onto `d3f236dc`; implements P0-BUG-03/P0-BUG-06. Local and remote tips agree. | Review/merge, confirm focused and real-DP3 tests, and record the application changes in release/upgrade notes. Does not resolve P1-DEC-01 or P2-BUG-01. |
+| `gec-678-fix-calibrate-input-ms-rewrite` (`aa390fc9`) | Implements P0-BUG-09; still contains the old GEC-669/GEC-670 stack ending at `8cc1c52e`. | After GEC-670, rebase only its four own commits (`8cc1c52e..aa390fc9`), check formatting and run input-DATA/FLAG protection tests. Do not replay the already-covered prerequisites. |
+| `correct-calibration-beam-application` (`37215146`) | Carries `use_array_beam` into DDECal and removes the forced array-only solve mode when false. | Review/rebase on current `main`; validate both settings and prediction modes. Partial P2-PORT-01 work, not the full WSClean beam port. |
+| `RAP-1392-skip-outlier-subtraction` (`21657525`) | Adds final-cycle numbering, reuses peeled data on repetitions, and extends reset enumeration. | P2-BUG-03: add repeated-cycle peeling/reset regressions; verify all state-file formats and early selfcal termination. Coordinates with WS-B/WS-C edits to `Field.update()`. |
+| `RAP-1444-get-BDA-parms-no_cal` (`5102840d`) | Derives solution time intervals from supplied h5parms during initial scanning. | Reconcile with GEC-670's per-product scan; cover single-sample/irregular time axes and image-only averaging. Related work under P2-BUG-01; not a direction-layout fix. |
+| `fix-references-to-master-branch` (`8c451a08`) | Updates README/parset/strategy links to `main`. | Merge after review; only part of P3-PORT-03. It does not fix the remaining `data_colname` or docstring issues. |
+| `use-local-git-mirror` (`0e318a61`) | Switches external dependency clone/resolver URLs to Astron mirrors. | Coordinate with build/CI work in WS-G; verify mirror refs and reproducible build inputs. Does not fix NumPy/Ubuntu packaging gaps. |
+| `RAP1418-enable-averaging` (`5792ec62`, CWL) | Develops averaging before WSClean prediction and returns the averaged MS to calibration. | Source for P2-DEC-02/P3-PORT-01; adapt to Prefect payloads, records, scratch and restart, and validate real products. No tests are added by this branch delta. |
+| `add-multi-sector-tests` (`b7537329`, CWL) | Adds two-sector fixtures and per-sector image-input/output assertions. | Adapt useful assertions under P3-TEST-03/B4; do not port CWL mocks. It does not close runtime/output-ownership findings. |
+| `skip_warning_for_missing_calibration_strategy` (`ebedebe9`, CWL) | Merged on the CWL line as `7511e4a1`. | Adapt the diagnostic under P0-BUG-04 once the Prefect fallback semantics are decided. |
+| `RAP-1405_add-run-script` (`bfb06c9f`, CWL) | Merged on the CWL line as `6052b19d`. | P3-PORT-04: adapt/install the wrapper and test Prefect log collection. |
+
+Older `gec-669-fix-amplitude-state-and-phase-application` (`03f14d83`) is a
+superseded branch name, not another fix to merge. Resource branches are mapped
+in B1; the local Hebog variants are mapped in B5. Their pre-squash history or
+experimental status must not be mistaken for missing production commits.
+
+### Next actions
+
+1. Land GEC-670, then rebase/validate/land GEC-678. These cover three of the
+   seven P0 items still absent from `main`.
+2. Implement the remaining four P0 items: independent final strategy state
+   (P0-BUG-07), per-cycle strategy fallback (P0-BUG-04), partial-product restart
+   safety (P0-BUG-05), and implement/retire the ineffective retries option
+   (P0-BUG-08; real retries depend on safe restart).
+3. Resolve P1-DEC-01 with finalization/product evidence; the single-application
+   fix in GEC-670 does not select the missing medium-phase contribution.
+4. Complete the in-scope P1 runtime, multi-chunk, container and cluster gates
+   below. None is closed by the recent branch work.
+5. Integrate the partial P2/P3 branches against their acceptance criteria,
+   finish release/upgrade notes, and keep Part B improvements separate from
+   release blockers.
 
 ## Task Identifiers
 
@@ -81,9 +124,9 @@ were the previous plan's port, decision and limitation tasks.
 
 | Task ID | Review ID | Title | Workstream | Effort |
 | --- | --- | --- | --- | --- |
-| P0-BUG-01 | R16 | Prediction normalization never reaches written visibilities | WS-A | S / Medium |
+| P0-BUG-01 | R16 | Prediction normalization (merged `83f056c7`) | WS-A | S / Medium |
 | P0-BUG-09 | new (2026-10-15) | DD calibration with a pre-apply step rewrites its input MS in place | WS-A | S / Medium |
-| P0-BUG-02 | R03 | Slow-gain normalization and WSClean pre-application wiring | WS-A | M / High |
+| P0-BUG-02 | R03 | Calibration normalization/pre-application (merged `d3f236dc`) | WS-A | M / High |
 | P0-BUG-03 | R11 | DD and DI amplitude-application state | WS-B | M / Medium |
 | P0-BUG-04 | R02 | Per-cycle semantics for an omitted `calibration_strategy` | WS-C | M / Medium |
 | P0-BUG-05 | R12 | Partial-product restart checks | WS-D | L / High |
@@ -100,7 +143,7 @@ were the previous plan's port, decision and limitation tasks.
 | P1-TEST-01 | R05 | Shared Prefect API and MPI placement on external Dask | WS-E | L / High |
 | P2-BUG-01 | R01 | Solution directions in image-only cycles | WS-B | L / High |
 | P2-BUG-02 | R14 | Calibration plot output ownership | WS-D | S / Low |
-| P2-BUG-03 | E04 | Repeated final cycles in reset discovery | WS-D | S / Low |
+| P2-BUG-03 | E04 + RAP-1392 | Repeated final-cycle peeling and reset discovery | WS-D | M / Medium |
 | P2-BUG-04 | R08 | Reset of scratch workspaces and log attempts | WS-D | M / Medium |
 | P2-BUG-05 | R10 | Astrometry-offset JSON products | WS-D | S / Low |
 | P2-BUG-06 | R09 | Empty model mosaics | WS-D | M / Medium |
@@ -120,6 +163,7 @@ were the previous plan's port, decision and limitation tasks.
 | P3-PORT-01 | P02 | WSClean model rendering and reordered-data reuse | WS-F1 | L / High |
 | P3-PORT-02 | P13 | Docker dependency-version inspection helper | WS-G | S / Low |
 | P3-PORT-03 | P17 | Remaining documentation fixes | WS-G | S / Low |
+| P3-PORT-04 | RAP-1405 | Run wrapper and log-collection archive | WS-G | M / Medium |
 | P3-DEC-01 | D02 | Named facet-region formats | WS-F1 | M / Medium |
 | P3-DEC-02 | D03 | SageCal/libdirac source pin | WS-G | M / Medium |
 | P3-TEST-01 | P12 | Astron/SKA CI and balanced test execution | WS-G | L / Medium |
@@ -130,20 +174,20 @@ were the previous plan's port, decision and limitation tasks.
 
 ### Release blockers
 
-These change calibration results on default or commonly used paths, or make
-restart unreliable. Items marked *regression* behave correctly on master.
+P0-BUG-01 and P0-BUG-02 are merged. Seven P0 items remain absent from `main`:
+three have feature-branch implementations and four still need implementation
+or an explicit option-retirement decision. Items marked *regression* behave
+correctly on master.
 
-| Task | Why it blocks | Regression? | Effort |
-| --- | --- | --- | --- |
-| P0-BUG-01 | Prediction normalization never reaches the written visibilities; affects every DD subtraction after the default cycle-1 normalization. **Fixed 2026-10-14** (real-DP3 test added). | Yes | S / Medium |
-| P0-BUG-02 | Slow-gain solves ignore the normalization h5parm; WSClean prediction drops DI pre-application. Default path after cycle 1. **Fixed 2026-10-15** (real-DP3 test added). | Yes | M / High |
-| P0-BUG-09 | A DD calibration chain with the stand-alone `applycal` step and `msout=` makes DP3 write the DI-corrected DATA back into the calibration input MS, which can be an original input MS. Any strategy with DI solves. **Fixed 2026-10-16** (real-DP3 test added). | No (also on master) | S / Medium |
-| P0-BUG-03 | DD amplitudes stop being applied after a DI solve in the same run. **Fixed 2026-10-15.** | Yes | M / Medium |
-| P0-BUG-04 | A strategy cycle that omits `calibration_strategy` silently reuses the previous cycle's solves; first-cycle default differs from master. | Yes | M / Medium |
-| P0-BUG-05 | Restart accepts partial MS directories as complete and fails on already-compressed images. | New (Toil handled restart) | L / High |
-| P0-BUG-06 | `dde_method = single` applies the combined phase correction twice. Cheap to fix. **Fixed 2026-10-15** (real-DP3 test added). | No (also on master) | S / Low |
-| P0-BUG-07 | The built-in final step aliases the last selfcal step. Cheap to fix. | No (also on master) | S / Low |
-| P0-BUG-08 | `prefect_retries` is accepted but does nothing. Retire or document before release. | New | S / Low |
+| Task | Status | Why it blocks | Regression? | Effort |
+| --- | --- | --- | --- | --- |
+| P0-BUG-03 | Implemented in GEC-670; merge pending | DD amplitudes stop being applied after a DI solve in the same run. | Yes | M / Medium |
+| P0-BUG-06 | Implemented in GEC-670; merge pending | `dde_method = single` applies the combined phase correction twice. | No (also on master) | S / Low |
+| P0-BUG-09 | Implemented in GEC-678; rebase/merge pending | Non-BDA DD pre-application can rewrite input DATA/FLAG, causing later operations to apply corrections twice. | No (also on master) | S / Medium |
+| P0-BUG-04 | Open | An omitted `calibration_strategy` carries over the previous cycle's solves; first-cycle fallback differs from master. | Yes | M / Medium |
+| P0-BUG-05 | Open | Restart accepts partial MS directories and fails on already-compressed images. | New (Toil handled restart) | L / High |
+| P0-BUG-07 | Open | The built-in final step aliases the last selfcal step. | No (also on master) | S / Low |
+| P0-BUG-08 | Open | `prefect_retries` is accepted but does nothing. Implement safely or retire/document it. | New | S / Low |
 
 ### Fix before release if the feature is in scope
 
@@ -183,31 +227,34 @@ Complexity: **Low** is mechanical; **Medium** needs design or a real-tool check;
 
 ## Workstreams for Parallel Work
 
-Each workstream owns a disjoint set of files. Tasks inside a workstream share
-code and should be done by one person or in sequence. Cross-workstream file
-overlaps are listed so that rebases are planned, not discovered.
+Each workstream groups related owners. Tasks inside a workstream often share
+code and should be done in sequence. Cross-workstream file overlaps are listed
+so that rebases are planned, not discovered.
 
 | Workstream | Tasks (suggested order) | Owned code | Overlaps to coordinate |
 | --- | --- | --- | --- |
-| **WS-A Normalization and pre-application wiring** | P0-BUG-01, P0-BUG-02, P0-BUG-09 | `rapthor/execution/predict/commands.py`, `rapthor/execution/calibrate/solves.py`, `rapthor/execution/calibrate/commands.py`, `rapthor/operations/calibrate/plan.py`, `Calibrate._build_applycal()` in `rapthor/operations/calibrate/base.py` | WS-F1 also edits `calibrate/commands.py` and `plan.py` (beam mode). Land WS-A first. |
+| **WS-A Normalization and pre-application wiring** | P0-BUG-09; P0-BUG-01/P0-BUG-02 are merged | `rapthor/execution/predict/commands.py`, `rapthor/execution/calibrate/solves.py`, `rapthor/execution/calibrate/commands.py`, `rapthor/operations/calibrate/plan.py`, `Calibrate._build_applycal()` in `rapthor/operations/calibrate/base.py` | GEC-678 is stacked on WS-B's GEC-670. Land that stack before WS-F1 edits the same calibration builders. |
 | **WS-B Solution state and application** | P0-BUG-03, P0-BUG-06, P1-DEC-01, P2-BUG-01 | `Field.scan_h5parms()` in `rapthor/lib/field.py`, `Calibrate.finalize()`/`_dd_active_solution()` in `rapthor/operations/calibrate/base.py`, `rapthor/operations/image/plan.py`, `rapthor/operations/image/base.py`, `rapthor/operations/predict.py`, `rapthor/execution/image/commands.py` | WS-A edits other functions in `operations/calibrate/base.py`. WS-C edits `Field.update()`. |
 | **WS-C Strategy semantics** | P0-BUG-07, P0-BUG-04, P2-DEC-01 | `rapthor/lib/strategy.py`, `Field.update()`/`set_calibration_strategy()` in `rapthor/lib/field.py`, `docs/source/strategy.rst`, `docs/source/upgrading.rst` | WS-B edits `Field.scan_h5parms()`. |
-| **WS-D Restart, reset and output ownership** | P0-BUG-05, P0-BUG-08, P1-BUG-04, P2-BUG-02, P2-BUG-03, P2-BUG-04, P2-BUG-05, P2-BUG-06 | `rapthor/execution/image/preparation.py`, `rapthor/execution/image/outputs.py`, `rapthor/execution/concatenate/flow.py`, `rapthor/execution/mosaic/`, `rapthor/execution/calibrate/collection.py`, `rapthor/execution/predict/flow.py`, `rapthor/modifystate.py`, `Image.finalize()` | WS-E edits `rapthor/execution/pipeline/flow.py` for publication; P0-BUG-08 touches `execution/config.py` (also WS-E). |
+| **WS-D Restart, reset and output ownership** | P0-BUG-05, P0-BUG-08, P1-BUG-04, P2-BUG-02, P2-BUG-03, P2-BUG-04, P2-BUG-05, P2-BUG-06 | `rapthor/execution/image/preparation.py`, `rapthor/execution/image/outputs.py`, `rapthor/execution/concatenate/flow.py`, `rapthor/execution/mosaic/`, `rapthor/execution/calibrate/collection.py`, `rapthor/execution/predict/flow.py`, `rapthor/modifystate.py`, `Image.finalize()` | Repeated final cycles also touch `Field.update()` (WS-B/WS-C) and `pipeline/flow.py` (WS-E). P0-BUG-08 touches `execution/config.py` (also WS-E). |
 | **WS-E Runtime, cluster and diagnostics** | P1-BUG-01, P1-BUG-02, P1-BUG-03, P2-PORT-05, P2-PORT-06, P1-TEST-01 | `rapthor/execution/shell.py`, `rapthor/execution/runtime_bootstrap.py`, `rapthor/execution/slurm.py`, `rapthor/execution/capabilities.py`, `rapthor/execution/config.py`, `rapthor/execution/artifacts.py`, `rapthor/execution/pipeline/flow.py`, `rapthor/_logging.py`, `rapthor/execution/prefect_logging.py`, `docs/source/running.rst` | WS-D's P0-BUG-08 in `config.py`. |
 | **WS-F1 WSClean prediction ports** | P2-PORT-01, P2-DEC-02, P3-DEC-01, P3-PORT-01 | `rapthor/execution/calibrate/prediction.py`, `rapthor/execution/calibrate/builders.py`, WSClean command builders in `rapthor/execution/calibrate/commands.py`, `rapthor/execution/regions.py`, `rapthor/lib/parset.py` | Start after WS-A lands in `calibrate/commands.py` and `plan.py`. |
 | **WS-F2 Data layout and normalization inputs** | P2-PORT-02, P2-PORT-03, P2-PORT-04 | `rapthor/execution/image/flux_normalization.py`, station handling in `rapthor/lib/field.py`, `rapthor/execution/image/preparation.py` (MS list), `rapthor/execution/image/builders.py`, `pyproject.toml` entry point | P2-PORT-03 edits `preparation.py` after WS-D's P0-BUG-05. |
-| **WS-G Build, packaging, CI, tests and docs** | P2-PORT-07, P1-PORT-01, P2-PORT-08, P2-TEST-01, P3-TEST-01, P3-PORT-02, P3-TEST-02, P3-TEST-03, P2-TEST-02, P3-PORT-03, P3-DEC-02, P1-DEC-02, P3-BUG-01 | `Docker/`, `ci/`, `.gitlab-ci.yml`, `pyproject.toml`, `tests/`, `docs/` | None in production code except `np.NaN` in `execution/predict/sector_model_subtraction.py`. |
+| **WS-G Build, packaging, CI, tests and docs** | P2-PORT-07, P1-PORT-01, P2-PORT-08, P2-TEST-01, P3-TEST-01, P3-PORT-02, P3-TEST-02, P3-TEST-03, P2-TEST-02, P3-PORT-03, P3-PORT-04, P3-DEC-02, P1-DEC-02, P3-BUG-01 | `Docker/`, `ci/`, `.gitlab-ci.yml`, `pyproject.toml`, `sbin/run-rapthor.sh`, `tests/`, `docs/` | WS-E for run/log collection and running docs; `np.NaN` in `execution/predict/sector_model_subtraction.py`. |
 
-Suggested sequencing for a release: start WS-A, WS-B, WS-C, WS-D and WS-E at
-once; they are independent. WS-F1 waits for WS-A. WS-G runs throughout. The
-release blockers are P0-BUG-01, P0-BUG-02 (WS-A), P0-BUG-03, P0-BUG-06 (WS-B), P0-BUG-04, P0-BUG-07 (WS-C), P0-BUG-05,
-P0-BUG-08 (WS-D).
+Suggested sequencing for a release: land GEC-670 (WS-B), then its GEC-678
+follow-up (WS-A). WS-C, the restart/retry work in WS-D and WS-E can proceed
+alongside that stack, coordinating the overlaps above. WS-F1 follows the
+calibration changes; WS-G runs throughout. The seven remaining P0 blockers
+are P0-BUG-09 (WS-A), P0-BUG-03/P0-BUG-06 (WS-B), P0-BUG-04/P0-BUG-07
+(WS-C), and P0-BUG-05/P0-BUG-08 (WS-D).
 
 ## Part A — Missing Functionality, Bug Fixes and Regression Coverage
 
-Unchecked tasks were outstanding at `main` `d0e7e148`. Master references name
-the file and function on `master` at `76a7ff2f` that implements the behaviour
-correctly, so inspect them with `git show master:<path>`. Where master relies
+The status baseline is `main` `d3f236dc`, with the scope of today's source
+recheck defined above. Unless separately dated, detailed findings retain the
+2026-10-14 audit at `d0e7e148`; CWL references name the file and function at
+`76a7ff2f`, so inspect them with `git show 76a7ff2f:<path>`. Where master relies
 on Toil/CWL (restart, process management, Slurm), there is no portable code and
 the task is new work. Port behaviour into the current execution owners, using
 plain serializable payloads and the current output/finalizer/restart contracts.
@@ -215,172 +262,22 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 
 ### WS-A. Normalization and Pre-Application Wiring
 
-#### P0-BUG-01. Apply prediction normalization to the predicted visibility buffer
-
-- [x] **Release blocker; regression. Size S, complexity Medium. Fixed 2026-10-14.**
-- **Resolved (2026-10-14):** `build_predict_model_data_command()` now runs a
-  single `predict` step and applies the normalization through
-  `predict.applycal.steps`, with `predict.applycal.normalization.parmdb`,
-  `.correction=amplitude000` and `.solset=sol000` emitted whenever a
-  normalization h5parm is given (master only emitted the last two when a
-  solution h5parm was also present). The stand-alone `applycal` step and
-  `usemodeldata` are gone. `tests/execution/test_predict_dp3.py` runs real DP3
-  on the test MS with the production h5parm layout from
-  `create_normalization_h5parm()` (one amplitude per frequency, no antenna or
-  direction axis) and checks a visibility ratio of 4 for a normalization of 4,
-  for both `predict` and `h5parmpredict` with a unit DD h5parm; against the old
-  command the same tests give a ratio of 1. Token tests in
-  `tests/execution/test_predict_flow.py` cover DI and DD predictions with and
-  without a DD h5parm and the SageCal predictor. SageCal probe: DP3's
-  `SagecalPredict` rejects `predict.directions` without an h5parm and accepts
-  at most two `applycal` sub-steps, so it cannot combine fast-phase, slow-gain
-  and normalization corrections. This limit is shared with master and is now
-  noted under `sagecalpredict` in `docs/source/parset.rst`.
-- **Origin (git history, 2026-10-14):** the first Prefect port (`70859094` on
-  `gec-468-ai-migrate-to-prefect-backup`) copied the CWL step exactly,
-  including master's gating of `predict.applycal.normalization.correction` and
-  `.solset` on a solution h5parm being present. The four-cycle benchmark
-  strategy added on 2026-07-09 (cycle 1 DI phases with `do_normalize`, cycle 4
-  DI full-Jones) produced a DI prediction with a normalization h5parm and no
-  solution h5parm, which DP3 rejects with `Key predict.applycal.correction
-  unknown` (reproduced with DP3 6.6; master emits the same command shape, so by
-  source it has the same latent failure). Commit `5a6b8620` ("Fix bug in apply
-  normalization solutions during di predict") worked around the error by moving
-  the normalization into a stand-alone `applycal` step with `usemodeldata=True`
-  and `invert=False`, and rewrote the command tests to expect those tokens. The
-  step corrected an empty model buffer because `predict.operation=replace`
-  writes to the data buffer. The 2026-07-06 option-matrix normalization
-  scenario was a single cycle with one sector, no peeling and no reweighting,
-  so no prediction ever consumed the normalization h5parm and the
-  branch-vs-master gate (rerun as `0cb3c11b`) could not expose the no-op. The
-  benchmark that triggered the workaround measured timing and task structure,
-  not outputs. The current fix emits the normalization correction and solset
-  whenever a normalization h5parm is given, which closes both the branch no-op
-  and master's missing-key crash on the DI path.
-- **Verified (2026-10-14):** `build_predict_command()` in
-  `rapthor/execution/predict/commands.py` runs `steps=[predict,applycal]` with
-  `predict.operation=replace` and a stand-alone `applycal` step whose
-  `applycal.normalization.usemodeldata=True`. With `operation=replace` the
-  prediction is written to the data buffer, not the model buffer, so the
-  normalization is applied to an empty model buffer and the output is
-  unchanged. A DP3 `v6.6-136-g2cf52e0f` probe with a constant amplitude of 2
-  gave a visibility ratio of 1 instead of 4; `usemodeldata=False` gave 4.
-  The existing test checks command tokens only.
-- **Master reference:** `rapthor/pipeline/steps/predict_model_data.cwl` has a
-  single `predict` step and applies normalization inside the predict step's own
-  applycal: `predict.applycal.steps` includes `normalization`, with
-  `predict.applycal.normalization.parmdb`, `.correction=amplitude000` and
-  `.solset=sol000`. `Predict._get_dp3_applycal_steps()` in
-  `rapthor/operations/predict.py` appends `"normalization"` to the step list
-  when `field.apply_normalizations` is set and passes `normalize_h5parm`
-  separately. Master does not use a second `applycal` step or
-  `usemodeldata`.
-- **Change:** move normalization back into `predict.applycal.steps` and supply
-  `predict.applycal.normalization.parmdb`, as master does. Remove the
-  stand-alone `applycal` step from the predict command. Check the sign
-  convention: DP3's predict-internal applycal corrupts the model with the
-  (non-inverted) solutions, which is the intended direction for a normalization
-  stored as an amplitude correction. Keep this distinct from P0-BUG-02's solve-time
-  model corrections.
-- **Done when:** a real DP3 test predicts with and without a normalization
-  h5parm and shows the expected amplitude ratio for the production h5parm
-  layout (one amplitude per frequency); command tests cover DI and DD
-  predictions with and without a DD h5parm; the SageCal predictor path is
-  checked or explicitly excluded. All met; see **Resolved** above.
-
-#### P0-BUG-02. Restore missing DI/normalization wiring in calibration commands
-
-- [x] **Release blocker; regression. Size M, complexity High. Fixed 2026-10-15
-  on `gec-669-fix-normalisation-and-preapply-calibrate`.**
-- **Resolved (2026-10-15):** gap 1: `build_calibration_dp3_steps()` keeps the
-  stand-alone `applycal` step for WSClean prediction (only DP3 image-based
-  prediction moves it after `predict`/`applybeam`). A DP3 probe confirmed the
-  step corrects the data only and leaves model data columns untouched, so the
-  WSClean model columns are not corrected twice. Gap 2:
-  `calibration_applycal_steps` now has a distinct meaning, the DDECal-internal
-  model corrections (`[normalization]` or `None`, from the new
-  `build_calibration_solve_applycal_steps()` and `DDECAL_MODEL_APPLYCAL_STEPS`
-  in `rapthor/lib/calibration.py`); it is forwarded through the payload,
-  validated in `builders.py`, and `_solve_slots_for_chunk()` attaches it with
-  `normalize_h5parm` to the solve that predicts the model. The real-DP3 test
-  `tests/execution/test_calibrate_dp3.py` runs `run_calibrate_chunk()` with a
-  fast-phase plus slow-gain chunk on data equal to the predicted model and gets
-  slow-gain amplitudes of 1.0 without and 0.5 with a normalization of 4, with
-  unchanged phases; the old wiring gives 1.0 in both cases.
-- **Deviation from master, with evidence (DP3 6.6.0, fresh MS copy per case):**
-  DDECal applies its `applycal` sub-steps only to the model it predicts itself.
-  Normalization on a sourcedb solve gives amplitude 0.5; on a solve that reuses
-  the kept model (`reusemodel=[solve1.*]`) it gives 1.0, that is no effect; on a
-  solve reading model data columns 1.0. Normalization on the predicting solve1
-  alone propagates through the kept model to solve3 (0.5), and on both solves it
-  is not applied twice (0.5). Master wires `solve1.keepmodel=True`,
-  `solve3.reusemodel=[solve1.*]` and the normalization on `solve3` only, which
-  is exactly the no-op case. DP3's source agrees: the solve-internal applycal
-  is part of `OnePredict`, the per-direction predictor built from the sky
-  model, and is applied right after prediction, before the buffer reaches
-  DDECal or is kept; reused models and model data columns never pass through
-  it. The stand-alone
-  `applycal.normalization.usemodeldata=True` sub-step changes neither the data
-  nor model data columns (1.0 in every probe); per DP3's `OneApplyCal` it acts
-  only on named direction buffers from a DP3 predict step, which is the
-  image-based path. Consequently the flux-scale normalization cannot reach
-  WSClean model columns in DP3 6.6: the Calibrate adapter logs a warning and
-  `docs/source/parset.rst` documents it under `use_wsclean_predict`. The DI
-  calibrate block keeps `normalize_h5parm=None` as on master; the DI predict
-  (P0-BUG-01) already normalizes the DI model columns.
-- **Verified (2026-10-14), two separate gaps:**
-  1. `build_calibration_dp3_steps()` in `rapthor/operations/calibrate/plan.py`
-     prepends `applycal` only when `preapply_solutions` is set *and* neither
-     image-based nor WSClean prediction is active (`plan.py:206`). The WSClean
-     prediction path therefore never applies DI or full-Jones solutions to the
-     data before a DD solve.
-  2. `CALIBRATION_SOLVE_ARGUMENTS` in `rapthor/execution/calibrate/commands.py`
-     already emits `solveN.applycal.normalization.correction/solset` constants,
-     and `SOLVE_SLOT_ARGUMENTS` maps slot keys `applycal_steps` and
-     `normalize_h5parm` to `solveN.applycal.steps` and
-     `solveN.applycal.normalization.parmdb`. But `_solve_slots_for_chunk()` in
-     `rapthor/execution/calibrate/solves.py` never puts those keys into the
-     slot dictionaries, and `Calibrate._build_applycal()` computes
-     `calibration_applycal_steps` that nothing consumes. The slow-gain solve
-     therefore solves against an un-normalized model.
-- **Master reference:**
-  - Gap 1: `Calibrate._get_dp3_steps()` in `rapthor/operations/calibrate.py`
-    (around line 680) uses `if preapply_solutions and not
-    self.field.use_image_based_predict: common_steps = ["applycal",
-    *common_steps]`. WSClean prediction keeps the `applycal` step because the
-    model columns are already predicted and only the data needs correcting.
-  - Gap 2: `rapthor/pipeline/parsets/calibrate_pipeline.cwl` (around line
-    1347) passes `solve3_normalize_h5parm: normalize_h5parm` and
-    `solve3_applycal_steps: ddecal_applycal_steps` to the slow-gain solve only.
-    `rapthor/pipeline/steps/ddecal_solve.cwl` lines 39–52 define the constant
-    `solveN.applycal.normalization.correction/solset` for all four solves, and
-    `Calibrate._build_applycal()` (line 705) returns `ddecal_applycal_steps`
-    alongside `applycal_steps`. Phase solves do not receive the normalization
-    because the phase-only model is not affected by a scalar amplitude scale.
-- **Change:** for gap 1, drop the `use_wsclean_predict` exclusion in
-  `build_calibration_dp3_steps()` and confirm the WSClean model columns are not
-  corrected a second time. For gap 2, forward `calibration_applycal_steps` and
-  `normalize_h5parm` into the slow-gain slot in `_solve_slots_for_chunk()` (and
-  the DI slow-gain slot if DI slow gains are supported), matching master's
-  solve3-only wiring. Trace data and model corrections through the DP3,
-  image-based and WSClean prediction paths to ensure nothing is applied twice.
-- **Done when:** command tests show `solveN.applycal.steps` and
-  `solveN.applycal.normalization.parmdb` on the solve that predicts the model
-  and on no other solve (changed from "the slow-gain solve" after the DP3
-  probes above); a real-tool comparison of normalized slow-gain amplitudes
-  against a known reference agrees within tolerance; WSClean-prediction
-  commands include the `applycal` step when `preapply_solutions` is true.
-  All met; see **Resolved** above. Coordinate with WS-F1
-  (P2-PORT-01/P3-PORT-01) which edits the same command builders afterwards.
-
-### WS-B. Solution State and Application
+P0-BUG-01 and P0-BUG-02 are merged on `main`; their implementation and
+historical test evidence are retained under Tracking and Evidence. The
+remaining task in this workstream is input-MS protection.
 
 #### P0-BUG-09. Stop the pre-apply calibration chain from rewriting its input MS
 
-- [x] **Release blocker; also present on master. Size S, complexity Medium. Found
-  2026-10-15 while writing the developer guide. Fixed 2026-10-16 on
-  `gec-678-fix-calibrate-input-ms-rewrite` (stacked on
-  `gec-670-fix-amplitude-state-and-phase-application`).**
+- [ ] **Implemented; not merged. Release blocker; also present on master.
+  Size S, complexity Medium. `gec-678-fix-calibrate-input-ms-rewrite`
+  (`aa390fc9`) is stacked on the pre-rebase GEC-670 tip `8cc1c52e`.**
+- **Remaining (2026-10-19):** rebase the four GEC-678-only commits after GEC-670,
+  format/check the added integration-test imports, and run the focused
+  command/adapter and real-tool input-integrity tests before merging. New
+  assertions in `tests/integration/test_di_calibration.py` and
+  `test_focused_scenarios.py` compare input DATA and FLAG even if the run fails;
+  the latter explicitly disables calibration BDA. These test definitions and
+  the updated changelog were inspected; they were not rerun in this review.
 - **Resolved (2026-10-16):** `build_calibration_dp3_steps()` in
   `rapthor/operations/calibrate/plan.py` now appends the `null` step to every
   chain it builds (plain, pre-apply, BDA, WSClean and image-based), not only
@@ -427,11 +324,17 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   "do not modify original input Measurement Sets" is covered by a test for
   the calibrate operation.
 
+### WS-B. Solution State and Application
+
 #### P0-BUG-03. Keep DI and DD amplitude-application state separate
 
-- [x] **Release blocker; regression. Size M, complexity Medium. Fixed 2026-10-15
-  on `gec-670-fix-amplitude-state-and-phase-application` (stacked on the two
-  normalization branches).**
+- [ ] **Implemented; not merged. Release blocker; regression. Size M,
+  complexity Medium. `gec-670-fix-amplitude-state-and-phase-application`
+  (`818f34cb`) is now based directly on `main` (`d3f236dc`).**
+- **Remaining (2026-10-19):** review/merge the branch, confirm the focused
+  state/adapter checks on the rebased tip, and add release/upgrade notes.
+  The four replayed patches and final tree match the pre-rebase branch; this
+  is Git evidence, not a fresh test run. P2-BUG-01 and P1-DEC-01 remain open.
 - **Resolved (2026-10-15):** `Field.scan_h5parms()` now scans
   `dd_h5parm_filename` and `di_h5parm_filename` separately through a new
   `_scan_scalar_h5parm()` and keeps `dd_apply_amplitudes` and
@@ -472,13 +375,17 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 - **Done when:** tests run both mode orders (DD then DI, DI then DD) with
   different soltab contents and assert the imaging applycal steps and predict
   h5parm selection; a DD-amplitude/DI-phase run applies `slowgain` in the
-  prepare-imaging command and the DD h5parm in DD prediction. All met; see
-  **Resolved** above.
+  prepare-imaging command and the DD h5parm in DD prediction. Historical
+  implementation evidence is above; review the rebased branch and merge it
+  before closing this release blocker.
 
 #### P0-BUG-06. Apply combined phases once with `dde_method = single`
 
-- [x] **Release blocker (cheap); also present on master. Size S, complexity Low.
-  Fixed 2026-10-15 on `gec-670-fix-amplitude-state-and-phase-application`.**
+- [ ] **Implemented; not merged. Release blocker; also present on master.
+  Size S, complexity Low. Included in GEC-670 at `818f34cb`.**
+- **Remaining (2026-10-19):** confirm the real-DP3 phase-only and
+  phase-plus-amplitude cases on the rebased branch, document the change from
+  CWL behaviour, and merge with P0-BUG-03.
 - **Resolved (2026-10-15):** `SOLVE_TYPE_TO_APPLYCAL_STEP` in
   `rapthor/operations/image/plan.py` maps `medium_phase` to `fastphase`, so all
   phase solves of a mode share one step and `slowgain` is added only when the
@@ -511,40 +418,72 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   `amplitude000`), as the DI branch already does. Update the affected tests.
 - **Done when:** a real DP3 test shows one phase application for a combined
   phase-only product and for a phase-plus-amplitude product with
-  `dde_method = single`; facet application is unchanged. All met; see
-  **Resolved** above.
+  `dde_method = single`; facet application is unchanged. Historical
+  implementation evidence is above; review the rebased branch and merge it
+  before closing this release blocker.
 
 #### P1-DEC-01. Resolve the discarded medium-phase result in phase-only DD cycles
 
 - [ ] **Decision needed before release; also present on master. Size S for
   code, M including verification; complexity Medium.**
+- **Source recheck (2026-10-19):** the selector is unchanged on `main`
+  (`d3f236dc`) and GEC-670 (`818f34cb`). GEC-670 prevents applying a combined
+  phase table twice; it does not change which DD product is selected here.
 - **Verified (2026-10-14):** `Calibrate._dd_active_solution()` in
   `rapthor/operations/calibrate/base.py:1013` returns the combined product only
   when both a phase and a slow-gain solve are present; for
   `[fast_phase, medium_phase]` it returns `_dd_collected_h5parm(solve_plan[0])`,
   which is the fast-phase h5parm. The medium-phase solve runs and its product
-  is kept, but it is never applied. The DI branch (`_di_combined_solution()`)
-  combines phases. The built-in strategy's early phase-only cycles use this
-  sequence, and the product documentation describes combined solves.
-- **Master reference:** master applies only the fast phases in this case as
-  well (`rapthor/operations/calibrate.py:278`, which selects
-  `field.fast_phases_h5parm_filename` for the phase-only product). Master's CWL
-  does produce `combined_fast_medium1_phases.h5parm` (`calibrate.py:215`) but
-  does not apply it. There is therefore no "correct" master behaviour to port;
-  this is a scientific decision.
+  is produced, but its contribution is absent from the selected DD product.
+  This concerns applied corrections, not reuse as optimizer seeds. The DI
+  branch (`_di_combined_solution()`) selects combined phases. The built-in
+  strategy's early phase-only cycles use this sequence, and the product
+  documentation describes combined solves.
+- **Master recheck (2026-10-16):** remote `master` was confirmed at `7511e4a1`.
+  Its `rapthor/pipeline/parsets/calibrate_pipeline.cwl` step
+  `combine_fast_medium1_h5parms` sums the phases with `p1p2_scalar` and exposes
+  the result through `combined_solutions`. However,
+  `Calibrate._dd_active_solution()` in `rapthor/operations/calibrate.py:1118`
+  selects the combined file only for screens or a slow-gain solve in slot 3;
+  otherwise it selects the first solve's file. `_copy_dd_solutions()` copies
+  that selection to `field-solutions.h5`, the active DD product. Thus
+  `[fast_phase, medium_phase]` loses the medium-phase contribution on master
+  too; this is not a Prefect migration regression or a SAGECal-specific issue.
+  The earlier `calibrate.py:278` reference was to optimizer seeds, not this
+  finalizer selection.
+- **Verification / scope (2026-10-16):** isolated probes of the actual selector
+  methods from master `7511e4a1` and the prediction-fix branch `d866d48c`
+  returned `fast_phases.h5parm` for `[fast_phase, medium_phase]` and
+  `combined_solutions.h5` for `[fast_phase, medium_phase, slow_gains]`.
+  No calibration or DP3 run was performed in this recheck. In the latter path
+  on the prediction-fix branch, medium phases are already included in the
+  combined `phase000`; the prediction step named `fastphase` reads that table,
+  so medium phases do not require another SAGECal applycal step. The existing
+  prediction integration tests start with prepared solution files and cannot
+  catch incorrect selection during calibration finalization.
 - **Change:** decide whether phase-only cycles should apply the combined
   fast-plus-medium phases (then make `_dd_active_solution()` return the
   combined product) or whether the medium solve should be omitted in those
   cycles (then change `dd_calibration_strategy(include_slow_gains=False)` in
   `rapthor/lib/strategy.py`). Update `docs/source/products.rst` and the
   science reference to match.
-- **Done when:** phase values in the applied h5parm match the decision; imaging
-  products are compared for one phase-only cycle; the initial-model-dependent
-  phase-only cycles are retained.
+- **Done when:** a finalization regression test uses distinguishable fast and
+  medium phase values and checks the contents of the selected
+  `field-solutions.h5`, including restoration on restart. Cover fast-only,
+  fast-plus-medium and phase-plus-slow-gain sequences; if combined phases are
+  selected, verify that prediction and imaging consume that combined product.
+  Compare imaging products for one phase-only cycle and retain the
+  initial-model-dependent phase-only cycles.
 
 #### P2-BUG-01. Carry solution directions consistently into image-only cycles
 
 - [ ] **Can ship with a documented limitation. Size L, complexity High.**
+- **Related branch (2026-10-19):** `RAP-1444-get-BDA-parms-no_cal`
+  (`5102840d`) derives averaging intervals from supplied h5parm time axes on
+  the initial scan. It does not fix the direction/layout ownership below.
+  Reconcile its `scan_h5parms()` changes with GEC-670 and test single-time
+  samples, irregular time axes, phase/amplitude products and image-only
+  averaging before adopting it; the branch adds no tests.
 - **Verified (2026-10-14):** `Field.update()` in `rapthor/lib/field.py:1963`
   always calls `update_skymodels()`, regrouping the sky model even in image-only
   cycles. `Predict._get_applycal_h5parm_filename()` in
@@ -591,6 +530,10 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P0-BUG-04. Define per-cycle semantics for an omitted calibration strategy
 
 - [ ] **Release blocker; regression. Size M, complexity Medium.**
+- **Recent CWL change:** `skip_warning_for_missing_calibration_strategy`
+  (`ebedebe9`, merged as `7511e4a1`) clarifies the legacy-flag fallback
+  warning. It does not fix Prefect's stale per-cycle state or decide its
+  default; adapt the warning only after settling those semantics.
 - **Verified (2026-10-14):** `Field.update()` in `rapthor/lib/field.py:1983`
   does `self.__dict__.update(step_dict)` and then `set_calibration_strategy()`,
   which only substitutes `default_calibration_strategy()` when the attribute is
@@ -716,18 +659,33 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 - **Done when:** overlapping solves and reruns each retain exactly one copy of
   every expected plot; publication (P1-BUG-03) uses the manifest.
 
-#### P2-BUG-03. Include repeated final cycles in reset discovery
+#### P2-BUG-03. Preserve peeling state and reset repeated final cycles
 
-- [ ] **Size S, complexity Low. Also present on master.**
+- [ ] **Partial implementation on an unmerged branch. Size M, complexity Medium.**
+- **Branch (2026-10-19):** `RAP-1392-skip-outlier-subtraction` (`21657525`)
+  passes a final-cycle number, resets outlier-subtraction state only on the
+  first final pass and retains the peeled-data/sky-model state on repetitions.
+  It also extends reset enumeration by `ntimes_to_repeat_final_cycle`.
+  The branch adjusts existing tests but adds no focused repeated-peeling or
+  repeated-cycle reset regression; the reset fixture still has zero repeats.
 - **Verified (2026-10-14):** `modifystate.run()` in `rapthor/modifystate.py:59`
   enumerates `strategy_steps` only, while `rapthor/execution/pipeline/flow.py:169`
   runs `ntimes_to_repeat_final_cycle + 1` final cycles.
 - **Master reference:** none; `rapthor/modifystate.py:59` on master has the
   same loop.
-- **Change:** discover `pipelines/<operation>_<index>` directories beyond the
-  strategy length and order them by index.
-- **Done when:** resetting a repeated final cycle removes that cycle and every
-  later operation and retains earlier completed work. Coordinate with P2-BUG-04.
+- **Remaining:** verify peeled data are reused across final passes without
+  repeating outlier subtraction. Discover actual
+  `pipelines/<operation>_<index>` directories and order them by index; a bound
+  derived from today's strategy/repeat count can miss products left by an
+  earlier configuration. Reconcile `Field.update()`/pipeline edits with WS-B
+  and WS-C. Check both `pipeline_outputs.json` (workflow output records) and
+  `.outputs.json` (operation restart state), rather than replacing one fixture
+  with the other.
+- **Done when:** tests assert the selected MS and sky model on successive final
+  passes, including early selfcal termination. Resetting a repeated final cycle
+  removes that cycle and every later operation and retains earlier completed
+  work, including after the configured repeat count changes. Coordinate with
+  P2-BUG-04.
 
 #### P2-BUG-04. Reset owned scratch workspaces and distinguish log attempts
 
@@ -898,6 +856,13 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P2-PORT-01. Apply the full beam during WSClean prediction
 
 - [ ] **Port `23ed80e9`. Size M, complexity Medium.**
+- **Partial branch (2026-10-19):** `correct-calibration-beam-application`
+  (`37215146`) propagates `use_array_beam` into solve options and emits
+  `solve1.beammode=array_factor` only when enabled, otherwise relying on DP3's
+  full-beam default. It retains `applybeam.beammode=array_factor` for DP3
+  image-based prediction and adds neither the WSClean beam interval nor
+  `-apply-facet-beam`. Review both prediction paths and both option values;
+  merging this branch alone does not complete this task.
 - **Update (2026-10-15):** `main` commit `aff26023` adds `use_array_beam`, which
   makes the predict and concatenate beam mode a command option; the calibrate
   solve still hard-codes `solve1.beammode=array_factor`, so the WSClean half of
@@ -927,6 +892,12 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P2-DEC-02. WSClean prediction disables solve BDA (Medium review)
 
 - [ ] **Decision. Size M, complexity Medium.**
+- **Candidate (2026-10-19):** CWL branch `RAP1418-enable-averaging`
+  (`5792ec62`) averages before prediction and returns the resulting MS to
+  calibration, with data-column, frequency-layout and storage-manager handling.
+  It adds no tests. Adapt it alongside P3-PORT-01; establish data/model row and
+  channel alignment, beam behavior, input-MS preservation, output records,
+  scratch lifetime and restart before removing the Prefect guards.
 - `Parset.__check_and_adjust()` in `rapthor/lib/parset.py:336` and
   `build_calibration_dp3_steps()` disable time and frequency BDA for WSClean
   prediction. Master's `_get_dp3_steps()` also drops the `bdaavg` step for
@@ -948,6 +919,10 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P3-PORT-01. Port improved WSClean model rendering and reordered-data reuse
 
 - [ ] **Adapt `d587eec5`. Size L, complexity High.**
+- **Related branch:** review `RAP1418-enable-averaging` (`5792ec62`) together
+  with P2-DEC-02. Its returned averaged-MS path must become an explicit
+  serializable output consumed by calibration, with cleanup after all readers
+  finish; copying the CWL script alone is insufficient.
 - **Gap:** `main` uses the supplied image geometry and predicts each frequency
   group/facet separately with `-no-reorder`.
 - **Master reference:** `rapthor/scripts/wsclean_predict.py` after `d587eec5`
@@ -1022,6 +997,12 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 
 ### WS-G. Build, Packaging, CI, Tests and Documentation
 
+The unmerged `use-local-git-mirror` branch (`0e318a61`) changes dependency
+clone/resolver URLs in the Docker and CI builds. Integrate it with the work
+below, checking that mirrors contain the intended refs and that resolved
+versions reach labels/cache keys. Changing the host does not pin upstream
+`HEAD`, fix Ubuntu APT handling or align the NumPy build/runtime.
+
 #### P2-PORT-07. Fix Ubuntu 24.04 APT source rewriting in all image stages
 
 - [ ] **Port from `a39e517b`/`d1fd7249`. Size S, complexity Low.**
@@ -1086,6 +1067,10 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   complexity Low.**
 - Real-tool matrix for task counts 1/2, full/single DDE modes and serial/MPI
   routing, inspecting `commands.jsonl`. Respect P3-TEST-01's CPU limits.
+- Adapt the two-sector fixtures and per-sector input/output assertions from
+  CWL branch `add-multi-sector-tests` (`b7537329`); keep single-sector
+  initial-image/normalization cases explicit. Replace CWL-specific mocks with
+  Prefect payload/record assertions and retain real-tool checks.
 
 #### P2-TEST-02. Reset flags and weights in the synthetic normalization MS
 
@@ -1096,9 +1081,29 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
 #### P3-PORT-03. Port remaining applicable documentation fixes
 
 - [ ] **Apply the remaining parts of `ff1f29d9`. Size S, complexity Low.**
+- `fix-references-to-master-branch` (`8c451a08`) updates README, parset and
+  strategy links to `main`; review/merge those changes. It does not address
+  the preparation guidance or docstring below.
 - `docs/source/preparation.rst` still says initial DI calibration must be in
   `DATA` rather than `data_colname`; `Sector.set_imaging_parameters()` lacks
   the literal-block markup for its expected keys.
+
+#### P3-PORT-04. Adapt the run and log-collection wrapper
+
+- [ ] **New CWL port from `6052b19d` (RAP-1405). Size M, complexity Medium.**
+- The CWL release installs `sbin/run-rapthor.sh`, documents it and tests its
+  log archive and failure handling. It sources an optional environment file,
+  reports dependency versions, runs Rapthor and collects logs plus the parset,
+  strategy and supplied sky model. This wrapper is absent from `main`.
+- Adapt its environment setup for supported deployments rather than requiring
+  the Spider-specific default. Document its Bash/GNU utility requirements.
+  Collect Prefect operation/worker logs and `commands.jsonl`/`tasks.jsonl`
+  wherever the run writes them, while excluding Measurement Sets and other
+  large products. Preserve the original Rapthor exit status if collection fails.
+- **Done when:** an installed wrapper works for success and failure, paths
+  containing spaces/colons, missing optional inputs and partial logs. Tests
+  inspect archive contents and ensure original input MS data are neither
+  modified nor included. Update running/container documentation.
 
 #### P3-DEC-02. SageCal/libdirac source compatibility
 
@@ -1107,6 +1112,11 @@ Do not transplant old CWL workflows or merge an older migration snapshot.
   `Docker/fetch_commit_hashes.sh`; `main` resolves upstream `HEAD`. Build and
   test the intended tuple before deciding; keep resolver, labels and cache key
   consistent.
+- CWL v2.2 adds `Docker/dependencies-v2.2` (`0dc29c7d`) with a recorded
+  DP3/EveryBeam/WSClean/SageCal tuple. Use that as a comparison point, not
+  evidence that the Prefect stack has been validated. Coordinate mirror
+  changes with this pinning decision and retain the SageCal normalization
+  exclusion recorded under P0-BUG-01.
 
 #### P1-DEC-02. SKA-Low configuration compatibility (Extra review)
 
@@ -1130,9 +1140,12 @@ This table records source-review findings, not fresh runtime validation.
 
 | Master change | Evidence / disposition on `main` |
 | --- | --- |
+| Prediction normalization, P0-BUG-01 | GEC-669 merged as `83f056c7`; its tree matches `7b4738a1`. Real-DP3 regression definitions and the SageCal limitation are retained; implementation history is below. |
+| Calibration normalization/pre-apply, P0-BUG-02 | GEC-669 merged as `d3f236dc`; its tree matches `d2749c0c`. WSClean model-column normalization remains a documented limitation. Input-MS protection is the separate, unmerged P0-BUG-09. |
 | Reduced frequency-BDA default (`a998d5f7`, former review task P06) | `d0e7e148` on `main` sets `bda_frequencybase = 5000.0` for calibration and imaging in both `defaults.parset` and `defaults.json`. Verified 2026-10-14. |
 | Sky model download error handling (`9fc97dc3`, GEC-656) | `rapthor/execution/image/diagnostic_calculation.py:safe_load_skymodel` is already the plain function returning `None` on `OSError`, with the corrected log message. Master's new tests in `tests/scripts/test_calculate_image_diagnostics.py` have no counterpart; add equivalents under P3-TEST-02 if desired. |
 | Release preparation and CWL Docker tags (`b9c98086`, `f432c66d`, `ef76dd5c`), Toil tmpdir option (`76a7ff2f`) | CWL/Toil-only or version bookkeeping; not applicable. |
+| CWL v2.2 Docker tags (`b15d0897`, `b83cf9bc`) | Version bookkeeping only. The associated dependency tuple (`0dc29c7d`) is still relevant to build validation/P3-DEC-02; the run wrapper (`6052b19d`) is P3-PORT-04. |
 | Balanced observation chunking (`b8312075`) | Ported by `e74be379`. The chunking methods in `rapthor/lib/observation.py` match master; lifecycle wiring and real-MS boundary tests are present. Do not reapply older GEC-629 chunking patches. |
 | LSMTool release dependency/API (`70b561e5`, `9fa90768`) | `2168c1c6` sets `lsmtool>=1.9.0`; field/region helpers use `read_from_skymodel`. |
 | Example strategies and initial-model documentation (`302714f8`, `4d62d3a8`) | The four updated custom/default calibration/imaging example files already match master. The strategy docs explain the initial-model-dependent phase-only cycles. |
@@ -1163,9 +1176,11 @@ Part A where a port changes the same execution path or test environment.
 
 Use the dedicated resource and WSClean configuration branches listed in B1 as
 the sources for this work. They separate these changes from the temporary CLI
-overlays, which can be retired after comparison testing. Integrate the dedicated
-changes onto merged master. The GEC-629 filtering/WSClean environment fixes and
-newer chunking implementation are already on this branch.
+overlays, which can be retired after comparison testing. Reapply only the
+focused changes onto current `main`; these resource branches predate the
+migration squash and their full histories must not be replayed. The GEC-629
+filtering/WSClean environment fixes and newer chunking implementation are
+already on `main`.
 
 ### B1. Resource Allocation and Safe Concurrency
 
@@ -1291,6 +1306,8 @@ and multiple workers before adopting a concurrency change.
   equivalence evidence covers selected LOFAR HBA paths.
 - **Multi-sector mosaic:** maintain targeted smoke/product coverage. Give it
   lower priority than common imaging unless a failure affects shared contracts.
+  Use `add-multi-sector-tests` (`b7537329`) as a source of two-sector cases
+  alongside P3-TEST-03; its CWL test changes have not landed on `main`.
 - **Legacy strategies:** document the transition to `calibration_strategy` and
   schedule removal of the `do_slowgain_solve`/`do_fulljones_solve` translation.
   Replace deprecated flags with an actionable error after the documented
@@ -1305,13 +1322,32 @@ and multiple workers before adopting a concurrency change.
   tests. Current pytest conversions and repository-wide formatting already
   cover the corresponding master changes.
 
+### B5. Optional Source-Finder Backend Qualification
+
+The local Hebog work is experimental, separate from missing CWL ports:
+`add-hebog-source-finder` (`5e5d9dcd`) adds the native optional backend,
+`hebog-continuum-default` (`632f6211`) builds on it with a continuum preset
+and Hebog >=0.23, and `feat/hebog-native-task` (`d830c1c8`) is an earlier
+alternative. The remote `add-hebog-source-finder` ref still points at the
+pre-feature base. Select one implementation/preset before integration; these
+are not three independent features to merge.
+
+Keep PyBDSF as the default until an explicit scientific/default decision.
+Validate mask and catalog contracts, apparent/true-sky model handling, source
+selection, flux scale and selfcal convergence on representative data. Check
+optional dependency installation and supported Python versions, resource limits, serializable task boundaries,
+restart and failure behavior. Measure elapsed time and memory alongside
+scientific products before claiming an improvement. Coordinate with B1/B3
+and the NumPy/build work; these branches do not close a Part A release gate.
+
 ## Tracking and Evidence
 
 Use one issue/merge request per focused task. Record its source commits, chosen
 behavior, dependencies and verification; split a task if its parts can be
-reviewed independently. Close a Part A item only when its acceptance checks pass
-or a deliberate compatibility decision is recorded. Remove completed tasks as
-work lands and keep new improvements in Part B.
+reviewed independently. Close a Part A item only after it lands on `main` and
+its acceptance checks pass, or a deliberate compatibility decision is merged.
+Move completed tasks out of the active backlog, retaining their IDs and dated
+evidence for traceability, and keep new improvements in Part B.
 
 Follow [TESTING.md](TESTING.md). Scientific, default or scheduling changes need
 product comparisons against the recorded baseline. Update both applicable
@@ -1323,6 +1359,27 @@ Manual testing supersedes the historical migration equivalence reports. The
 [upgrade guide](docs/source/upgrading.rst) records intentional behavior and
 output differences. Keep new verification results with the relevant issue or
 merge request, without committing large Measurement Sets or raw products.
+
+### Branch Reconciliation (2026-10-19)
+
+- Fetched `origin` and compared branch tips against `main` (`d3f236dc`) and
+  the CWL release line (`b83cf9bc`). Compared focused branch deltas rather
+  than treating all pre-squash commits as unmerged changes.
+- Confirmed identical trees for prediction GEC-669 `7b4738a1` / `83f056c7`
+  and calibration GEC-669 `d2749c0c` / `d3f236dc`. Both fixes are merged even
+  though their original commit IDs are not ancestors of `main`.
+- GEC-670 has four commits on current `main`; its rebase preserved patches
+  and the final tree. GEC-678 still has the old stack below its four own
+  commits (`8cc1c52e..aa390fc9`). Source/test definitions establish their
+  implementation status, not fresh runtime success.
+- Reconciled the calibration beam, repeated-final-cycle, supplied-h5parm
+  averaging, reference-link and mirror branches; mapped CWL averaging,
+  multi-sector coverage, warning and wrapper work to remaining tasks.
+  Reviewed the focused resource commits and local Hebog variants separately
+  as Part B work. Preserved the existing phase-only DD selection clarification.
+- This update changes only `PLAN.md`. Validation is documentation-only:
+  whitespace, task IDs, local links/paths and preservation of existing edits.
+  No CI, DP3, WSClean, scientific-equivalence or cluster runs were performed.
 
 ### MR-473 Follow-Up Verification (2026-10-09)
 
@@ -1435,3 +1492,176 @@ were run; the 2026-10-09 probe results above remain the runtime evidence.
 - **Master references added:** each Part A task now names the master file and
   function implementing the correct behaviour where one exists. For P0-BUG-05, P1-BUG-01,
   P1-BUG-02, P1-TEST-01, P1-BUG-03 and P0-BUG-08 master relied on Toil/CWL and there is no portable code.
+
+### Merged Normalization Fixes — Implementation History
+
+#### P0-BUG-01. Apply prediction normalization to the predicted visibility buffer
+
+- [x] **Release blocker; regression. Size S, complexity Medium. Merged on
+  `main` as `83f056c7` (2026-10-19).**
+- **Merge recheck (2026-10-19):** the feature tip `7b4738a1` and merge commit
+  `83f056c7` have identical trees. The real-tool tests now live in
+  `tests/execution/integration/test_predict_dp3.py`. Subsequent branch work
+  orders SageCal amplitude before phase and documents a broader limitation:
+  SageCal ignores per-step normalization files, so flux normalization remains
+  unsupported even with only two applycal steps. Strict expected-failure tests
+  record that limitation; use `sagecalpredict = False` for normalization.
+  The all-zero SageCal probe below predates this ordering correction.
+- **Resolved (2026-10-14):** `build_predict_model_data_command()` now runs a
+  single `predict` step and applies the normalization through
+  `predict.applycal.steps`, with `predict.applycal.normalization.parmdb`,
+  `.correction=amplitude000` and `.solset=sol000` emitted whenever a
+  normalization h5parm is given (master only emitted the last two when a
+  solution h5parm was also present). The stand-alone `applycal` step and
+  `usemodeldata` are gone. `tests/execution/test_predict_dp3.py` runs real DP3
+  on the test MS with the production h5parm layout from
+  `create_normalization_h5parm()` (one amplitude per frequency, no antenna or
+  direction axis) and checks a visibility ratio of 4 for a normalization of 4,
+  for both `predict` and `h5parmpredict` with a unit DD h5parm; against the old
+  command the same tests give a ratio of 1. Token tests in
+  `tests/execution/test_predict_flow.py` cover DI and DD predictions with and
+  without a DD h5parm and the SageCal predictor. SageCal probe: DP3's
+  `SagecalPredict` rejects `predict.directions` without an h5parm and accepts
+  at most two `applycal` sub-steps, so it cannot combine fast-phase, slow-gain
+  and normalization corrections. This limit is shared with master and is now
+  noted under `sagecalpredict` in `docs/source/parset.rst`.
+- **Origin (git history, 2026-10-14):** the first Prefect port (`70859094` on
+  `gec-468-ai-migrate-to-prefect-backup`) copied the CWL step exactly,
+  including master's gating of `predict.applycal.normalization.correction` and
+  `.solset` on a solution h5parm being present. The four-cycle benchmark
+  strategy added on 2026-07-09 (cycle 1 DI phases with `do_normalize`, cycle 4
+  DI full-Jones) produced a DI prediction with a normalization h5parm and no
+  solution h5parm, which DP3 rejects with `Key predict.applycal.correction
+  unknown` (reproduced with DP3 6.6; master emits the same command shape, so by
+  source it has the same latent failure). Commit `5a6b8620` ("Fix bug in apply
+  normalization solutions during di predict") worked around the error by moving
+  the normalization into a stand-alone `applycal` step with `usemodeldata=True`
+  and `invert=False`, and rewrote the command tests to expect those tokens. The
+  step corrected an empty model buffer because `predict.operation=replace`
+  writes to the data buffer. The 2026-07-06 option-matrix normalization
+  scenario was a single cycle with one sector, no peeling and no reweighting,
+  so no prediction ever consumed the normalization h5parm and the
+  branch-vs-master gate (rerun as `0cb3c11b`) could not expose the no-op. The
+  benchmark that triggered the workaround measured timing and task structure,
+  not outputs. The current fix emits the normalization correction and solset
+  whenever a normalization h5parm is given, which closes both the branch no-op
+  and master's missing-key crash on the DI path.
+- **Verified (2026-10-14):** `build_predict_command()` in
+  `rapthor/execution/predict/commands.py` runs `steps=[predict,applycal]` with
+  `predict.operation=replace` and a stand-alone `applycal` step whose
+  `applycal.normalization.usemodeldata=True`. With `operation=replace` the
+  prediction is written to the data buffer, not the model buffer, so the
+  normalization is applied to an empty model buffer and the output is
+  unchanged. A DP3 `v6.6-136-g2cf52e0f` probe with a constant amplitude of 2
+  gave a visibility ratio of 1 instead of 4; `usemodeldata=False` gave 4.
+  The existing test checks command tokens only.
+- **Master reference:** `rapthor/pipeline/steps/predict_model_data.cwl` has a
+  single `predict` step and applies normalization inside the predict step's own
+  applycal: `predict.applycal.steps` includes `normalization`, with
+  `predict.applycal.normalization.parmdb`, `.correction=amplitude000` and
+  `.solset=sol000`. `Predict._get_dp3_applycal_steps()` in
+  `rapthor/operations/predict.py` appends `"normalization"` to the step list
+  when `field.apply_normalizations` is set and passes `normalize_h5parm`
+  separately. Master does not use a second `applycal` step or
+  `usemodeldata`.
+- **Change:** move normalization back into `predict.applycal.steps` and supply
+  `predict.applycal.normalization.parmdb`, as master does. Remove the
+  stand-alone `applycal` step from the predict command. Check the sign
+  convention: DP3's predict-internal applycal corrupts the model with the
+  (non-inverted) solutions, which is the intended direction for a normalization
+  stored as an amplitude correction. Keep this distinct from P0-BUG-02's solve-time
+  model corrections.
+- **Done when:** a real DP3 test predicts with and without a normalization
+  h5parm and shows the expected amplitude ratio for the production h5parm
+  layout (one amplitude per frequency); command tests cover DI and DD
+  predictions with and without a DD h5parm; the SageCal predictor path is
+  checked or explicitly excluded. All met; see **Resolved** above.
+
+#### P0-BUG-02. Restore missing DI/normalization wiring in calibration commands
+
+- [x] **Release blocker; regression. Size M, complexity High. Merged on `main` as
+  `d3f236dc` (2026-10-19).**
+- **Merge recheck (2026-10-19):** feature tip `d2749c0c` and merge commit
+  `d3f236dc` have identical trees. Real-tool coverage now lives in
+  `tests/execution/integration/test_calibrate_dp3.py`. The predicting solve
+  receives normalization and reused models inherit it. The warning/documented
+  limitation for WSClean model columns remains; P0-BUG-09 separately protects
+  input MS data from the stand-alone pre-apply chain.
+- **Resolved (2026-10-15):** gap 1: `build_calibration_dp3_steps()` keeps the
+  stand-alone `applycal` step for WSClean prediction (only DP3 image-based
+  prediction moves it after `predict`/`applybeam`). A DP3 probe confirmed the
+  step corrects the data only and leaves model data columns untouched, so the
+  WSClean model columns are not corrected twice. Gap 2:
+  `calibration_applycal_steps` now has a distinct meaning, the DDECal-internal
+  model corrections (`[normalization]` or `None`, from the new
+  `build_calibration_solve_applycal_steps()` and `DDECAL_MODEL_APPLYCAL_STEPS`
+  in `rapthor/lib/calibration.py`); it is forwarded through the payload,
+  validated in `builders.py`, and `_solve_slots_for_chunk()` attaches it with
+  `normalize_h5parm` to the solve that predicts the model. The real-DP3 test
+  `tests/execution/test_calibrate_dp3.py` runs `run_calibrate_chunk()` with a
+  fast-phase plus slow-gain chunk on data equal to the predicted model and gets
+  slow-gain amplitudes of 1.0 without and 0.5 with a normalization of 4, with
+  unchanged phases; the old wiring gives 1.0 in both cases.
+- **Deviation from master, with evidence (DP3 6.6.0, fresh MS copy per case):**
+  DDECal applies its `applycal` sub-steps only to the model it predicts itself.
+  Normalization on a sourcedb solve gives amplitude 0.5; on a solve that reuses
+  the kept model (`reusemodel=[solve1.*]`) it gives 1.0, that is no effect; on a
+  solve reading model data columns 1.0. Normalization on the predicting solve1
+  alone propagates through the kept model to solve3 (0.5), and on both solves it
+  is not applied twice (0.5). Master wires `solve1.keepmodel=True`,
+  `solve3.reusemodel=[solve1.*]` and the normalization on `solve3` only, which
+  is exactly the no-op case. DP3's source agrees: the solve-internal applycal
+  is part of `OnePredict`, the per-direction predictor built from the sky
+  model, and is applied right after prediction, before the buffer reaches
+  DDECal or is kept; reused models and model data columns never pass through
+  it. The stand-alone
+  `applycal.normalization.usemodeldata=True` sub-step changes neither the data
+  nor model data columns (1.0 in every probe); per DP3's `OneApplyCal` it acts
+  only on named direction buffers from a DP3 predict step, which is the
+  image-based path. Consequently the flux-scale normalization cannot reach
+  WSClean model columns in DP3 6.6: the Calibrate adapter logs a warning and
+  `docs/source/parset.rst` documents it under `use_wsclean_predict`. The DI
+  calibrate block keeps `normalize_h5parm=None` as on master; the DI predict
+  (P0-BUG-01) already normalizes the DI model columns.
+- **Verified (2026-10-14), two separate gaps:**
+  1. `build_calibration_dp3_steps()` in `rapthor/operations/calibrate/plan.py`
+     prepends `applycal` only when `preapply_solutions` is set *and* neither
+     image-based nor WSClean prediction is active (`plan.py:206`). The WSClean
+     prediction path therefore never applies DI or full-Jones solutions to the
+     data before a DD solve.
+  2. `CALIBRATION_SOLVE_ARGUMENTS` in `rapthor/execution/calibrate/commands.py`
+     already emits `solveN.applycal.normalization.correction/solset` constants,
+     and `SOLVE_SLOT_ARGUMENTS` maps slot keys `applycal_steps` and
+     `normalize_h5parm` to `solveN.applycal.steps` and
+     `solveN.applycal.normalization.parmdb`. But `_solve_slots_for_chunk()` in
+     `rapthor/execution/calibrate/solves.py` never puts those keys into the
+     slot dictionaries, and `Calibrate._build_applycal()` computes
+     `calibration_applycal_steps` that nothing consumes. The slow-gain solve
+     therefore solves against an un-normalized model.
+- **Master reference:**
+  - Gap 1: `Calibrate._get_dp3_steps()` in `rapthor/operations/calibrate.py`
+    (around line 680) uses `if preapply_solutions and not
+    self.field.use_image_based_predict: common_steps = ["applycal",
+    *common_steps]`. WSClean prediction keeps the `applycal` step because the
+    model columns are already predicted and only the data needs correcting.
+  - Gap 2: `rapthor/pipeline/parsets/calibrate_pipeline.cwl` (around line
+    1347) passes `solve3_normalize_h5parm: normalize_h5parm` and
+    `solve3_applycal_steps: ddecal_applycal_steps` to the slow-gain solve only.
+    `rapthor/pipeline/steps/ddecal_solve.cwl` lines 39–52 define the constant
+    `solveN.applycal.normalization.correction/solset` for all four solves, and
+    `Calibrate._build_applycal()` (line 705) returns `ddecal_applycal_steps`
+    alongside `applycal_steps`. Phase solves do not receive the normalization
+    because the phase-only model is not affected by a scalar amplitude scale.
+- **Implemented change:** retain stand-alone DI pre-application for WSClean
+  model-column calibration; pass `calibration_applycal_steps` and
+  `normalize_h5parm` to the solve that predicts the DD model. Reused models
+  inherit normalization. Master's solve3-only proposal was rejected after the
+  real-DP3 probes above; DI prediction handles normalization separately.
+- **Done when:** command tests show `solveN.applycal.steps` and
+  `solveN.applycal.normalization.parmdb` on the solve that predicts the model
+  and on no other solve (changed from "the slow-gain solve" after the DP3
+  probes above); a real-tool comparison of normalized slow-gain amplitudes
+  against a known reference agrees within tolerance; WSClean-prediction
+  commands include the `applycal` step when `preapply_solutions` is true.
+  All met; see **Resolved** above. Coordinate with WS-F1
+  (P2-PORT-01/P3-PORT-01) which edits the same command builders afterwards.
