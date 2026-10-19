@@ -84,6 +84,7 @@ def make_writable(
             subprocess.run(cmd, check=True).returncode
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
+            raise
 
     return newms
 
@@ -447,11 +448,9 @@ def main():
     # extract metadata from original ms
     freqs, max_uv, max_w = extract_metadata(args.msin[0])
 
-    # check for case where BDA is not possible
+    # check for case where BDA is not possible (even for 1 channel)
     bda_possible = True
-    if freqs.size == 1:
-        bda_possible = False
-    elif freqs.size > 2:
+    if freqs.size > 2:
         fdiff = np.diff(freqs)
         bda_possible = np.allclose(fdiff, fdiff[0])
 
