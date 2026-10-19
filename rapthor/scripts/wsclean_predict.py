@@ -285,6 +285,7 @@ def predict(
         except subprocess.CalledProcessError as err:
             print(err, file=sys.stderr)
             err_code = err.returncode
+            break
         model_counter += 1
 
     n_models = len(model_images)
@@ -343,13 +344,12 @@ def predict(
         cmd.append("-save-reordered")
         cmd.append(msfile)
         try:
-            # re-direct error messages to stdout
+            # re-direct casacore measures error messages to stdout
             subprocess.run(cmd, check=True, stderr=subprocess.STDOUT).returncode
         except subprocess.CalledProcessError as err:
-            # temporarily disable stderr output until Measures warning fixed
-            # print(err, file=sys.stderr)
+            print(err, file=sys.stderr)
             err_code = err.returncode
-            # break
+            break
 
     return err_code
 
