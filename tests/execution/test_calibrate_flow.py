@@ -358,6 +358,7 @@ class CalibrateFieldStub:
         }
         self.observations = [CalibrateObservationStub(), CalibrateObservationStub()]
         self.ntimechunks = 2
+        self.use_array_beam = True
         self.calibration_diagnostics = []
         self.calibration_skymodel_file = str(tmp_path / "calibration.skymodel")
         Path(self.calibration_skymodel_file).write_text("skymodel")
