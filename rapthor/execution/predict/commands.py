@@ -25,29 +25,74 @@ def build_predict_model_data_command(
 ) -> list[str]:
     """Build the DP3 prediction command for one sector/observation pair.
 
-    ``applycal_steps`` is an ordered list of correction step names serialized
-    as a bracketed, comma-separated string, e.g.
-    ``"[fastphase,slowgain,normalization]"``. The predict operation creates this
-    string before building the execution payload. For SAGECal, this builder
-    orders the fast-phase/slow-gain pair as amplitude then phase, as required
-    by DP3's two-soltab reader. ``None`` omits ``predict.applycal.steps``.
+    Parameters
+    ----------
+    msin :
+        Input measurement set.
+    data_colname :
+        Name of the data column to use.
+    msout :
+        Output measurement set.
+    starttime :
+        Start time for the prediction.
+    ntimes :
+        Number of time samples to predict.
+    onebeamperpatch :
+        Whether to use one beam per patch.
+    correctfreqsmearing :
+        Whether to correct for frequency smearing.
+    correcttimesmearing :
+        Whether to correct for time smearing.
+    sagecalpredict :
+        Whether to use SAGECal for prediction.
+    sourcedb :
+        Sky model file.
+    directions :
+        List of directions to predict.
+    use_array_beam :
+        Whether to use the array beam.
+    numthreads :
+        Number of threads to use.
+    h5parm :
+        H5parm with the calibration solutions to apply to the model, or
+        ``None`` to predict without corrections.
+    applycal_steps :
+        Ordered correction step names serialized as a bracketed,
+        comma-separated string, e.g. ``"[fastphase,slowgain,normalization]"``.
+        The predict operation creates this string before building the
+        execution payload. ``None`` omits ``predict.applycal.steps``. For
+        SAGECal the fast-phase/slow-gain pair is reordered to amplitude then
+        phase; see Notes.
+    normalize_h5parm :
+        H5parm with the flux-scale normalization solutions, or ``None`` to
+        skip normalization.
 
-    DP3's SAGECal predictor accepts at most two applycal substeps and reads their
-    soltabs from ``predict.applycal.parmdb``. It ignores the per-step file
-    ``predict.applycal.normalization.parmdb``: even with amplitude-first ordering,
-    a phase/normalization pair reads the amplitude from the main solutions file
-    instead. Adding normalization to the phase/slow-gain pair exceeds the two-step
-    limit and is rejected. The ordering workaround does not enable normalization;
-    these limitations are covered by strict xfails in ``test_predict_dp3.py``.
+    Returns
+    -------
+    list[str]
+        The DP3 command line as a list of arguments.
 
+    Notes
+    -----
     With the default DP3 predictors, all corrections, including flux-scale
     normalization, are applied by the predict step's own applycal substeps.
-    With ``predict.operation=replace``
-    the prediction is written to the data buffer, so a separate ``applycal``
-    step with ``usemodeldata=True`` would act on an empty model buffer and
-    leave the written visibilities unchanged. The predict-internal applycal
-    corrupts the model with the non-inverted solutions, which maps the model
-    from the normalized flux scale back onto the scale of the observed data.
+    With ``predict.operation=replace`` the prediction is written to the data
+    buffer, so a separate ``applycal`` step with ``usemodeldata=True`` would act
+    on an empty model buffer and leave the written visibilities unchanged. The
+    predict-internal applycal corrupts the model with the non-inverted
+    solutions, which maps the model from the normalized flux scale back onto
+    the scale of the observed data.
+
+    DP3's SAGECal predictor reads the soltabs of its applycal substeps from
+    ``predict.applycal.parmdb`` and requires the amplitude soltab before the
+    phase soltab, so this builder orders the fast-phase/slow-gain pair as
+    amplitude then phase. The predictor accepts at most two applycal substeps
+    and ignores the per-step file ``predict.applycal.normalization.parmdb``:
+    even with amplitude-first ordering, a phase/normalization pair reads the
+    amplitude from the main solutions file instead, and adding normalization to
+    the phase/slow-gain pair exceeds the two-step limit and is rejected. The
+    ordering workaround therefore does not enable normalization with SAGECal;
+    these limitations are covered by strict xfails in ``test_predict_dp3.py``.
     """
     command = [
         "DP3",
