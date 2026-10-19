@@ -63,6 +63,8 @@ def predict_field(operation_parset):
             self.normalize_h5parm = "norm.h5"
             self.reweight = False
             self.apply_amplitudes = False
+            self.dd_apply_amplitudes = False
+            self.di_apply_amplitudes = False
             self.apply_normalizations = False
             self.onebeamperpatch = True
             self.use_array_beam = True
@@ -184,6 +186,37 @@ class TestPredict:
         else:
             assert normalize_h5parm is None
 
+    def test_get_dp3_applycal_steps_uses_the_dd_amplitude_flag_for_the_dd_product(
+        self, predict_field
+    ):
+        """The DD product's own amplitude state decides the slowgain step, not the latest product's."""
+        predict_field.h5parm_filename = "di-solutions.h5"
+        predict_field.apply_amplitudes = False
+        predict_field.dd_h5parm_filename = "dd-solutions.h5"
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.dd_apply_amplitudes = True
+
+        predict = Predict("dd", predict_field, index=1)
+        steps, _, h5parm_filename = predict._get_dp3_applycal_steps()
+
+        assert h5parm_filename == "dd-solutions.h5"
+        assert steps == ["fastphase", "slowgain"]
+
+    def test_get_dp3_applycal_steps_ignores_the_di_amplitude_flag_for_the_dd_product(
+        self, predict_field
+    ):
+        predict_field.h5parm_filename = "dd-solutions.h5"
+        predict_field.apply_amplitudes = False
+        predict_field.dd_h5parm_filename = "dd-solutions.h5"
+        predict_field.dd_h5parm_cycle_number = 1
+        predict_field.dd_apply_amplitudes = False
+        predict_field.di_apply_amplitudes = True
+
+        predict = Predict("dd", predict_field, index=1)
+        steps, _, _ = predict._get_dp3_applycal_steps()
+
+        assert steps == ["fastphase"]
+
     def test_get_dp3_applycal_steps_prefers_current_cycle_dd_h5parm_for_di_predict(
         self, predict_field
     ):
@@ -205,7 +238,7 @@ class TestPredict:
         h5parm_file.touch()
         predict_field.dd_h5parm_filename = str(h5parm_file)
         predict_field.dd_h5parm_cycle_number = 1
-        predict_field.apply_amplitudes = True
+        predict_field.dd_apply_amplitudes = True
 
         predict = Predict("di", predict_field, index=1)
         monkeypatch.setattr(

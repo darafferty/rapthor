@@ -11,35 +11,13 @@ import pytest
 from losoto.h5parm import h5parm
 
 from rapthor.execution.calibrate.solves import run_calibrate_chunk
-from rapthor.execution.predict.flow import run_predict_model_data
 from tests.execution.conftest import TEST_DIRECTION_NAME, TEST_NORMALIZATION, requires_dp3
-from tests.execution.payload_factories import representative_predict_payload
 
 pytestmark = [pytest.mark.integration, requires_dp3]
 
 # Diagonal gains solved against unscaled data come out at 1 / sqrt(normalization)
 # when the model has been scaled by the normalization.
 EXPECTED_NORMALIZED_AMPLITUDE = 1.0 / np.sqrt(TEST_NORMALIZATION)
-
-
-@pytest.fixture(scope="module")
-def model_ms(test_ms, test_ms_info, point_source_skymodel, tmp_path_factory):
-    """Return an MS whose DATA column holds the predicted sky model."""
-    workdir = tmp_path_factory.mktemp("model_ms")
-    task = representative_predict_payload(workdir)["predict_tasks"][0]
-    task.update(
-        {
-            "msin": test_ms,
-            "msout": "model.ms",
-            "msout_path": (workdir / "model.ms").as_posix(),
-            "starttime": test_ms_info["starttime"],
-            "ntimes": 0,
-            "sourcedb": point_source_skymodel,
-            "directions": [TEST_DIRECTION_NAME],
-            "numthreads": 2,
-        }
-    )
-    return run_predict_model_data(task, workdir.as_posix())["path"]
 
 
 def _solve_slot(slot, solve_type, mode, h5parm_path, **overrides):
@@ -77,7 +55,7 @@ def _solution_values(h5parm_path, soltab_name):
 
 
 @pytest.fixture(scope="module")
-def calibrate(model_ms, test_ms_info, point_source_skymodel, tmp_path_factory):
+def calibrate(predicted_model_ms, test_ms_info, point_source_skymodel, tmp_path_factory):
     """Return a function that runs a fast-phase plus slow-gain chunk with DP3.
 
     The function takes a name and the normalization h5parm (or None) and returns
@@ -123,7 +101,7 @@ def calibrate(model_ms, test_ms_info, point_source_skymodel, tmp_path_factory):
             "calibration_applycal_steps": None if normalize_h5parm is None else "[normalization]",
         }
         chunk = {
-            "msin": model_ms,
+            "msin": predicted_model_ms,
             "starttime": test_ms_info["starttime"],
             "ntimes": 0,
             "solve_slots": [
