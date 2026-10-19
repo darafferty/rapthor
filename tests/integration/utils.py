@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+from losoto.h5parm import h5parm
+
 from rapthor.execution.commands import normalize_command
 
 COMMAND_LOG_FILENAME = "commands.jsonl"
@@ -30,6 +33,30 @@ class CommandRecord:
     @property
     def arguments(self):
         return parse_command_arguments(self.command)
+
+
+def assert_h5parm_has_solutions(h5parm_path, *, max_flagged_fraction=0.5):
+    """Assert that every soltab of an h5parm holds mostly valid solutions.
+
+    A solve on degenerate data, or solution processing that flags everything,
+    leaves a product whose values are all NaN with zero weights. Later operations
+    then run on fully flagged data without any error, so the pipeline tests
+    check the products they depend on.
+    """
+    solutions = h5parm(str(h5parm_path), readonly=True)
+    try:
+        for solset_name in solutions.getSolsetNames():
+            solset = solutions.getSolset(solset_name)
+            for soltab in solset.getSoltabs():
+                values = soltab.getValues(retAxesVals=False)
+                weights = soltab.getValues(weight=True, retAxesVals=False)
+                flagged = (weights == 0) | ~np.isfinite(values)
+                assert flagged.mean() <= max_flagged_fraction, (
+                    f"{flagged.mean():.0%} of {solset_name}/{soltab.name} in "
+                    f"{h5parm_path} is flagged"
+                )
+    finally:
+        solutions.close()
 
 
 def get_working_dir_from_parset(parset_path):

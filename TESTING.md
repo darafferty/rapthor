@@ -114,8 +114,12 @@ in [AGENTS.md](AGENTS.md).
 
 Use an environment with DP3, WSClean, EveryBeam, IDG, PyBDSF and Casacore as required
 by the scenario. Some fixtures download the small test Measurement Set on first
-use; prepare its cache before an offline run. Ordinary unit tests should not
-introduce network dependencies.
+use; prepare its cache before an offline run. The `test_ms` fixture hands tests a
+session copy whose DATA column is scaled by `TEST_MS_DATA_SCALE` (see
+`tests/conftest.py`), because the downloaded visibilities are far too faint for
+the test sky models and the solved gains would otherwise be flagged away. Point a
+demo parset at the downloaded MS only if the gain level does not matter. Ordinary
+unit tests should not introduce network dependencies.
 
 ```bash
 RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
