@@ -16,10 +16,6 @@ PLOT_SOLUTIONS_MODULE = "rapthor.execution.calibrate.plotting_cli"
 
 CALIBRATION_SOLVE_ARGUMENTS = [
     "msout=",
-    "applybeam.type=applybeam",
-    "applybeam.beammode=array_factor",
-    "applybeam.usemodeldata=True",
-    "applybeam.invert=False",
     "applycal.type=applycal",
     "applycal.correction=phase000",
     "applycal.fastphase.correction=phase000",
@@ -38,7 +34,6 @@ CALIBRATION_SOLVE_ARGUMENTS = [
     "solve1.type=ddecal",
     "solve1.usebeammodel=True",
     "solve1.beam_interval=120",
-    "solve1.beammode=array_factor",
     "solve1.initialsolutions.missingantennabehavior=unit",
     "solve1.applycal.normalization.correction=amplitude000",
     "solve1.applycal.normalization.solset=sol000",
@@ -148,6 +143,7 @@ class CalibrationSolveOptions:
     directions: Optional[list[str]] = None
     predict_regions: Optional[str] = None
     predict_images: Optional[list[str]] = None
+    use_array_beam: bool = True
 
 
 @dataclass(frozen=True)
@@ -199,6 +195,8 @@ class WscleanPredictOptions:
 def build_calibration_solve_command(options: CalibrationSolveOptions) -> list[str]:
     """Build the DP3 calibration solve command for one calibration chunk."""
     command = ["DP3", *CALIBRATION_SOLVE_ARGUMENTS]
+    if options.use_array_beam:
+        command.append("solve1.beammode=array_factor")
     if "null" in parse_steps(options.steps):
         command.append("null.type=null")
     common_options = [

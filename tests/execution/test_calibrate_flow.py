@@ -1313,6 +1313,7 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["calibration_di_fulljones"]
     )
+
     assert (
         normalize_command(
             build_collect_h5parms_command(
@@ -1438,6 +1439,12 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["idgcal_solve_phase_and_gain"]
     )
+
+
+def test_calibration_solve_command_only_sets_array_factor_for_array_beam():
+    command = build_calibration_solve_command(_calibration_solve_options(use_array_beam=False))
+
+    assert "solve1.beammode=array_factor" not in command
 
 
 @pytest.mark.parametrize(

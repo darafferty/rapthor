@@ -88,6 +88,7 @@ def calibrate_payload_from_inputs(
 
         payload: CalibratePayload = {
             "mode": mode,
+            "use_array_beam": bool(input_parms.get("use_array_beam", True)),
             "calibration_kind": calibration_kind,
             "pipeline_working_dir": pipeline_dir,
             "image_based_predict": True,
@@ -237,6 +238,7 @@ def calibrate_payload_from_inputs(
 
     payload: CalibratePayload = {
         "mode": mode,
+        "use_array_beam": bool(input_parms.get("use_array_beam", True)),
         "calibration_kind": calibration_kind,
         "pipeline_working_dir": pipeline_dir,
         "data_colname": str(input_parms["data_colname"]),
