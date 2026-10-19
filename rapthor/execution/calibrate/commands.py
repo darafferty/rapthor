@@ -16,6 +16,10 @@ PLOT_SOLUTIONS_MODULE = "rapthor.execution.calibrate.plotting_cli"
 
 CALIBRATION_SOLVE_ARGUMENTS = [
     "msout=",
+    "applybeam.type=applybeam",
+    "applybeam.beammode=array_factor",
+    "applybeam.usemodeldata=True",
+    "applybeam.invert=False",
     "applycal.type=applycal",
     "applycal.correction=phase000",
     "applycal.fastphase.correction=phase000",
