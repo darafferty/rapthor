@@ -48,8 +48,13 @@ existing parsets and strategy files.
       facet lies outside of the image.
     - The calibration no longer writes the data back into its input MS when
       direction-independent solutions are applied before the solves. In
-      earlier versions, the corrected data were written to the input MS (which
-      can be an original input MS), so later operations applied the
+      earlier versions, this happened whenever baseline-dependent averaging was
+      not used for the solves (for example, with
+      :term:`bda_timebase <bda_timebase (calibration)>` and
+      :term:`bda_frequencybase <bda_frequencybase (calibration)>` set to 0,
+      with irregular channels, or with WSClean or image-based prediction). The
+      corrected data and flags were then written to the input MS (which can be
+      an original input MS), so later operations applied the
       direction-independent corrections a second time.
 
 
