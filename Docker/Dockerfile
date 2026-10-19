@@ -84,7 +84,7 @@ RUN mkdir -p /usr/local/share/casacore/data \
     && rm WSRT_Measures.ztar
 
 # Install Casacore
-RUN git clone --no-checkout https://github.com/casacore/casacore.git
+RUN git clone --no-checkout https://git.astron.nl/mirror/casacore/casacore.git
 RUN git -C casacore checkout ${CASACORE_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
@@ -126,7 +126,7 @@ RUN cmake \
 RUN ninja -C /src/EveryBeam/build install
 
 # Install AOFlagger
-RUN git clone --no-checkout https://gitlab.com/aroffringa/aoflagger.git
+RUN git clone --no-checkout https://git.astron.nl/mirror/aroffringa/aoflagger.git
 RUN git -C aoflagger checkout ${AOFLAGGER_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
@@ -139,7 +139,7 @@ RUN cmake \
 RUN ninja -C /src/aoflagger/build install
 
 # Install WSClean
-RUN git clone --no-checkout https://gitlab.com/aroffringa/wsclean.git
+RUN git clone --no-checkout https://git.astron.nl/mirror/aroffringa/wsclean.git
 RUN git -C wsclean checkout ${WSCLEAN_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
@@ -152,7 +152,7 @@ RUN cmake \
 RUN ninja -C /src/wsclean/build install
 
 # Install SAGECal libdirac
-RUN git clone --no-checkout https://github.com/nlesc-dirac/sagecal.git
+RUN git clone --no-checkout https://git.astron.nl/mirror/nlesc-dirac/sagecal.git
 RUN git -C sagecal checkout ${SAGECAL_COMMIT}
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
@@ -178,7 +178,7 @@ RUN cmake \
 RUN ninja -C /src/DP3/build install
 
 # Install python-casacore
-RUN git clone --no-checkout https://github.com/casacore/python-casacore.git
+RUN git clone --no-checkout https://git.astron.nl/mirror/casacore/python-casacore.git
 RUN git -C python-casacore checkout ${PYTHONCASACORE_COMMIT}
 RUN CASACORE_DATA=/usr/local/share/casacore/data \
     pip install -v /src/python-casacore
