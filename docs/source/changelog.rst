@@ -27,10 +27,9 @@ This minor release includes the following improvements:
       normalization, and internet access can be explicitly controlled.
       Local comparison sky models can also be supplied for photometry and
       astrometry diagnostics, and existing flux-normalization solutions can
-      be supplied for imaging. Image diagnostics are skipped, when a
       be supplied for imaging. Photometry and astrometry checks that require
-      an unavailable comparison sky model are skipped; other image diagnostics
-      are still saved.
+      a sky model for comparison are skipped if that model is not available;
+      other image diagnostics are still saved.
     - Pre-flight and pre-cycle memory checks and logging help identify
       out-of-memory risks before calibration jobs are started.
     - Workflow error handling, logging, restart behavior, and handling of
