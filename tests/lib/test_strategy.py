@@ -138,7 +138,7 @@ def test_check_and_adjust_parameters_corrects_deprecated(field, custom_strategy,
         step["slow_timestep_joint_sec"] = 3.0
         step["slow_timestep_separate_sec"] = 0.5
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
 
     for i, step in enumerate(strategy_steps_updated):
@@ -197,7 +197,7 @@ def test_check_and_adjust_parameters_translates_legacy_solve_flags(
         step["do_slowgain_solve"] = do_slowgain_solve
         step["do_fulljones_solve"] = do_fulljones_solve
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
 
     for i, step in enumerate(strategy_steps_updated):
@@ -247,7 +247,7 @@ def test_check_and_adjust_parameters_leaves_explicit_calibration_strategy_alone(
     strategy_steps = set_user_strategy(field)
     original = [dict(step["calibration_strategy"]) for step in strategy_steps]
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
 
     for step, expected in zip(strategy_steps_updated, original):
@@ -301,7 +301,7 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
         # Remove the parameter to test that the default value is used and a warning is raised
         del strategy_steps[0][missing_parameter]
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         check_and_adjust_parameters(field, strategy_steps)
 
     assert (
@@ -356,7 +356,7 @@ def test_validate_strategy_logs_warning_for_do_normalize_in_non_first_cycle(
         f"do_normalize is True in cycle {cycle + 1} but it is usually True only in the first cycle."
     )
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         validate_strategy(strategy_steps, parset)
         if cycle:
             assert expected_log_string in caplog.text

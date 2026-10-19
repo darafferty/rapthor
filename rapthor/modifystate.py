@@ -7,12 +7,32 @@ import logging
 import os
 import shutil
 import sys
+from contextlib import contextmanager
 
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
 
 log = logging.getLogger("rapthor:state")
+
+
+@contextmanager
+def _suppressed_loggers(*names, level=logging.ERROR):
+    """Raise the level of the named loggers and restore it afterwards.
+
+    Loggers are process-wide, so the previous levels are restored even when the
+    block exits through ``sys.exit``. Otherwise the suppression would leak into
+    the rest of the process, for example into tests that run afterwards.
+    """
+    loggers = [logging.getLogger(name) for name in names]
+    previous_levels = [logger.level for logger in loggers]
+    for logger in loggers:
+        logger.setLevel(level)
+    try:
+        yield
+    finally:
+        for logger, previous_level in zip(loggers, previous_levels):
+            logger.setLevel(previous_level)
 
 
 def run(parset_file):
@@ -24,10 +44,13 @@ def run(parset_file):
     parset_file : str
         Filename of parset containing processing parameters
     """
-    # Set logging level to suppress unnecessary messages
-    logging.getLogger("rapthor:parset").setLevel(logging.ERROR)
-    logging.getLogger("rapthor:strategy").setLevel(logging.ERROR)
+    # The parset and strategy messages were already shown when the run started,
+    # so suppress them while the state is read and modified.
+    with _suppressed_loggers("rapthor:parset", "rapthor:strategy"):
+        _run(parset_file)
 
+
+def _run(parset_file):
     # Read parset
     log.info("Reading parset and checking state...")
     parset = parset_read(parset_file, use_log_file=False)

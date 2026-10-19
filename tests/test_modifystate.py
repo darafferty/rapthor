@@ -3,6 +3,7 @@ Test cases for the `rapthor.modifystate` module.
 """
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -112,6 +113,20 @@ def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state
     assert not downstream_mosaic.exists()
     assert not downstream_images.exists()
     assert not downstream_logs.exists()
+
+
+def test_run_restores_logger_levels_after_exit(tmp_path, monkeypatch):
+    """Suppressing the parset and strategy loggers must not leak out of run()."""
+    _patch_modifystate_lifecycle(monkeypatch, tmp_path)
+    loggers = [logging.getLogger(name) for name in ("rapthor:parset", "rapthor:strategy")]
+    for logger in loggers:
+        monkeypatch.setattr(logger, "level", logging.INFO)
+
+    # Without any pipeline directory there is nothing to reset and run() exits.
+    with pytest.raises(SystemExit):
+        modifystate.run("input.parset")
+
+    assert [logger.level for logger in loggers] == [logging.INFO, logging.INFO]
 
 
 def test_run_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch, capsys):
