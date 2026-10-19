@@ -6,30 +6,18 @@ that the requested corrections are actually applied to the visibilities written
 to the output measurement set.
 """
 
-import shutil
-
 import casacore.tables as pt
 import numpy as np
 import pytest
-from astropy.coordinates import SkyCoord
 from losoto.h5parm import h5parm
 
-from rapthor.execution.image.flux_normalization import create_normalization_h5parm
 from rapthor.execution.predict.commands import build_predict_model_data_command
 from rapthor.execution.predict.flow import run_predict_model_data
 from rapthor.execution.shell import ShellCommandError
-from rapthor.lib import miscellaneous as misc
+from tests.execution.conftest import TEST_DIRECTION_NAME, TEST_NORMALIZATION, requires_dp3
 from tests.execution.payload_factories import representative_predict_payload
 
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skipif(shutil.which("DP3") is None, reason="DP3 is not available"),
-]
-
-PATCH_NAME = "Patch_0"
-DIRECTION_NAME = f"[{PATCH_NAME}]"
-# Normalization factor for the normalize_h5parm fixture
-NORMALIZATION = 4.0
+pytestmark = [pytest.mark.integration, requires_dp3]
 
 
 class _SagecalNormalizationNotApplied(RuntimeError):
@@ -45,98 +33,41 @@ class _SagecalRequiresAmplitudeFirst(RuntimeError):
 
 
 @pytest.fixture(scope="module")
-def ms_info(test_ms):
-    """Return the MS quantities needed to build sky models and h5parms."""
-    with pt.table(test_ms, ack=False) as table:
-        times = np.unique(table.getcol("TIME"))
-        interval = table.getcol("INTERVAL")[0]
-        antenna1 = table.getcol("ANTENNA1")
-        antenna2 = table.getcol("ANTENNA2")
-    with pt.table(f"{test_ms}/SPECTRAL_WINDOW", ack=False) as spw_table:
-        frequencies = spw_table.getcol("CHAN_FREQ")[0]
-    with pt.table(f"{test_ms}/FIELD", ack=False) as field_table:
-        ra, dec = np.squeeze(field_table.getcol("PHASE_DIR"))
-    with pt.table(f"{test_ms}/ANTENNA", ack=False) as antenna_table:
-        antennas = list(antenna_table.getcol("NAME"))
-    return {
-        # Start just before the first sample, as Observation does.
-        "starttime": misc.convert_mjd2mvt(times[0] - interval / 100),
-        "times": times,
-        "frequencies": frequencies,
-        "ra": ra,
-        "dec": dec,
-        "antennas": antennas,
-        "antenna1": antenna1,
-        "antenna2": antenna2,
-    }
-
-
-@pytest.fixture(scope="module")
-def skymodel(ms_info, tmp_path_factory):
-    """Write a one-patch sky model with a single point source at the phase centre."""
-    coord = SkyCoord(ms_info["ra"], ms_info["dec"], unit="rad")
-    ra = coord.ra.to_string(unit="hourangle", sep=":", precision=4)
-    dec = coord.dec.to_string(unit="deg", sep=".", precision=4, alwayssign=True)
-    path = tmp_path_factory.mktemp("skymodel") / "sector_1.skymodel"
-    path.write_text(
-        "FORMAT = Name, Type, Patch, Ra, Dec, I, SpectralIndex='[]', LogarithmicSI, "
-        "ReferenceFrequency='134000000.0', MajorAxis, MinorAxis, Orientation\n"
-        f" , , {PATCH_NAME}, {ra}, {dec}\n"
-        f"source_0, POINT, {PATCH_NAME}, {ra}, {dec}, 1.0, [], false, 134000000.0, , , \n"
-    )
-    return path.as_posix()
-
-
-@pytest.fixture(scope="module")
-def normalize_h5parm(test_ms, ms_info, tmp_path_factory):
-    """Write a normalization h5parm in the production layout (one amplitude per frequency)."""
-    path = tmp_path_factory.mktemp("normalize") / "normalize.h5"
-    create_normalization_h5parm(
-        antenna_file=f"{test_ms}/ANTENNA",
-        field_file=f"{test_ms}/FIELD",
-        h5parm_file=path.as_posix(),
-        frequencies=ms_info["frequencies"],
-        normalizations=np.full(len(ms_info["frequencies"]), NORMALIZATION),
-    )
-    return path.as_posix()
-
-
-@pytest.fixture(scope="module")
-def unity_dd_h5parm(ms_info, tmp_path_factory):
+def unity_dd_h5parm(test_ms_info, tmp_path_factory):
     """Write a direction-dependent h5parm with zero phases and unit amplitudes."""
     path = tmp_path_factory.mktemp("solutions") / "solutions.h5"
-    gains = np.ones((len(ms_info["antennas"]), 2), dtype=complex)
-    return _write_dd_h5parm(path, ms_info, gains)
+    gains = np.ones((len(test_ms_info["antennas"]), 2), dtype=complex)
+    return _write_dd_h5parm(path, test_ms_info, gains)
 
 
 @pytest.fixture(scope="module")
-def diagonal_dd_solutions(ms_info, tmp_path_factory):
+def diagonal_dd_solutions(test_ms_info, tmp_path_factory):
     """Give each antenna and polarization a distinct amplitude and phase."""
     path = tmp_path_factory.mktemp("diagonal_solutions") / "solutions.h5"
-    nant = len(ms_info["antennas"])
+    nant = len(test_ms_info["antennas"])
     amplitudes = np.linspace(1.1, 1.9, nant)[:, None] * [1.0, 1.2]
     phases = np.linspace(-0.4, 0.6, nant)[:, None] + [0.0, 0.3]
     gains = amplitudes * np.exp(1j * phases)
-    return _write_dd_h5parm(path, ms_info, gains), gains
+    return _write_dd_h5parm(path, test_ms_info, gains), gains
 
 
-def _write_dd_h5parm(path, ms_info, gains):
+def _write_dd_h5parm(path, test_ms_info, gains):
     """Write diagonal gains that are constant in time and frequency."""
     axes = {
-        "time": ms_info["times"],
-        "freq": ms_info["frequencies"],
-        "ant": ms_info["antennas"],
-        "dir": [DIRECTION_NAME],
+        "time": test_ms_info["times"],
+        "freq": test_ms_info["frequencies"],
+        "ant": test_ms_info["antennas"],
+        "dir": [TEST_DIRECTION_NAME],
         "pol": ["XX", "YY"],
     }
     shape = tuple(len(values) for values in axes.values())
     with h5parm(path.as_posix(), readonly=False) as output:
         solset = output.makeSolset("sol000")
         solset.obj._f_get_child("source").append(
-            [(DIRECTION_NAME, (ms_info["ra"], ms_info["dec"]))]
+            [(TEST_DIRECTION_NAME, (test_ms_info["ra"], test_ms_info["dec"]))]
         )
         solset.obj._f_get_child("antenna").append(
-            [(name, np.zeros(3)) for name in ms_info["antennas"]]
+            [(name, np.zeros(3)) for name in test_ms_info["antennas"]]
         )
         for soltype, values in [("phase", np.angle(gains)), ("amplitude", np.abs(gains))]:
             solset.makeSoltab(
@@ -151,7 +82,7 @@ def _write_dd_h5parm(path, ms_info, gains):
 
 
 @pytest.fixture(scope="module")
-def predict(test_ms, ms_info, skymodel, tmp_path_factory):
+def predict(test_ms, test_ms_info, point_source_skymodel, tmp_path_factory):
     """Return a function that runs one production predict task with DP3.
 
     The function takes the output MS name and any optional task fields, runs
@@ -171,10 +102,10 @@ def predict(test_ms, ms_info, skymodel, tmp_path_factory):
                 "msin": test_ms,
                 "msout": msout,
                 "msout_path": (workdir / msout).as_posix(),
-                "starttime": ms_info["starttime"],
+                "starttime": test_ms_info["starttime"],
                 "ntimes": 0,
-                "sourcedb": skymodel,
-                "directions": [DIRECTION_NAME],
+                "sourcedb": point_source_skymodel,
+                "directions": [TEST_DIRECTION_NAME],
                 "numthreads": 2,
                 **task_overrides,
             }
@@ -228,20 +159,20 @@ def _assert_ratio(numerator, denominator, expected):
 
 
 def test_predict_normalization_scales_written_visibilities(
-    predict, plain_prediction, normalize_h5parm
+    predict, plain_prediction, normalization_h5parm
 ):
     """A DI prediction with a normalization h5parm scales the model by the normalization."""
     normalized = predict(
         "di_normalized",
         applycal_steps="[normalization]",
-        normalize_h5parm=normalize_h5parm,
+        normalize_h5parm=normalization_h5parm,
     )
 
-    _assert_ratio(normalized, plain_prediction, NORMALIZATION)
+    _assert_ratio(normalized, plain_prediction, TEST_NORMALIZATION)
 
 
 def test_h5parmpredict_normalization_scales_written_visibilities(
-    predict, plain_prediction, normalize_h5parm, unity_dd_h5parm
+    predict, plain_prediction, normalization_h5parm, unity_dd_h5parm
 ):
     """A DD prediction applies the normalization alongside the DD solutions."""
     corrupted = predict(
@@ -253,13 +184,13 @@ def test_h5parmpredict_normalization_scales_written_visibilities(
         "dd_normalized",
         h5parm=unity_dd_h5parm,
         applycal_steps="[fastphase,slowgain,normalization]",
-        normalize_h5parm=normalize_h5parm,
+        normalize_h5parm=normalization_h5parm,
     )
 
     # Unit DD solutions must leave the prediction unchanged; adding the
     # normalization must scale it.
     _assert_ratio(corrupted, plain_prediction, 1.0)
-    _assert_ratio(normalized, plain_prediction, NORMALIZATION)
+    _assert_ratio(normalized, plain_prediction, TEST_NORMALIZATION)
 
 
 @pytest.mark.parametrize(
@@ -284,7 +215,7 @@ def test_sagecalpredict_unity_solutions_preserve_visibilities(
 
 
 def test_sagecalpredict_applies_diagonal_amplitude_and_phase(
-    predict, sagecal_prediction, diagonal_dd_solutions, ms_info
+    predict, sagecal_prediction, diagonal_dd_solutions, test_ms_info
 ):
     """The production step order must apply both parts of each complex gain."""
     solutions, gains = diagonal_dd_solutions
@@ -297,7 +228,7 @@ def test_sagecalpredict_applies_diagonal_amplitude_and_phase(
 
     # V_pq = G_p V G_q^H, in the test MS's XX, XY, YX, YY correlation order.
     baseline_gains = (
-        gains[ms_info["antenna1"], :, None] * gains[ms_info["antenna2"], None, :].conj()
+        gains[test_ms_info["antenna1"], :, None] * gains[test_ms_info["antenna2"], None, :].conj()
     )
     expected = sagecal_prediction * baseline_gains.reshape(-1, 1, 4)
     _assert_ratio(corrupted, expected, 1.0)
@@ -346,7 +277,7 @@ def test_dp3_sagecalpredict_accepts_phase_first_soltabs(
     reason="DP3 SAGECalPredict rejects more than two applycal steps.",
 )
 def test_sagecalpredict_normalization_scales_written_visibilities(
-    predict, sagecal_prediction, normalize_h5parm, unity_dd_h5parm, caplog
+    predict, sagecal_prediction, normalization_h5parm, unity_dd_h5parm, caplog
 ):
     """SAGECal should apply normalization alongside fast-phase and slow-gain solutions."""
     caplog.set_level("INFO", logger="rapthor:shell")
@@ -356,7 +287,7 @@ def test_sagecalpredict_normalization_scales_written_visibilities(
             sagecalpredict=True,
             h5parm=unity_dd_h5parm,
             applycal_steps="[fastphase,slowgain,normalization]",
-            normalize_h5parm=normalize_h5parm,
+            normalize_h5parm=normalization_h5parm,
         )
     except ShellCommandError as error:
         # Only the known DP3 limitation should be treated as an expected failure.
@@ -365,7 +296,7 @@ def test_sagecalpredict_normalization_scales_written_visibilities(
             raise _SagecalApplycalStepLimit(message) from error
         raise
 
-    _assert_ratio(normalized, sagecal_prediction, NORMALIZATION)
+    _assert_ratio(normalized, sagecal_prediction, TEST_NORMALIZATION)
 
 
 @pytest.mark.xfail(
@@ -374,7 +305,7 @@ def test_sagecalpredict_normalization_scales_written_visibilities(
     reason="DP3 SAGECalPredict ignores the separate normalization H5parm in a two-step prediction.",
 )
 def test_sagecalpredict_normalization_uses_separate_h5parm(
-    predict, sagecal_prediction, normalize_h5parm, unity_dd_h5parm
+    predict, sagecal_prediction, normalization_h5parm, unity_dd_h5parm
 ):
     """The normalization must come from its own file, not the main solutions file."""
     # Use the amplitude-first order required by DP3's SAGECal reader to isolate
@@ -385,7 +316,7 @@ def test_sagecalpredict_normalization_uses_separate_h5parm(
         sagecalpredict=True,
         h5parm=unity_dd_h5parm,
         applycal_steps="[normalization,fastphase]",
-        normalize_h5parm=normalize_h5parm,
+        normalize_h5parm=normalization_h5parm,
     )
 
     ratio = _visibility_ratio(normalized, sagecal_prediction)
@@ -394,4 +325,4 @@ def test_sagecalpredict_normalization_uses_separate_h5parm(
     # Zero output, missing samples and other incorrect ratios must fail normally.
     if np.allclose(ratio, 1.0, rtol=1e-4, atol=0):
         raise _SagecalNormalizationNotApplied("SAGECal ignored the normalization H5parm")
-    np.testing.assert_allclose(ratio, NORMALIZATION, rtol=1e-4, atol=0)
+    np.testing.assert_allclose(ratio, TEST_NORMALIZATION, rtol=1e-4, atol=0)

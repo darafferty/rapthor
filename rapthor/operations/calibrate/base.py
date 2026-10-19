@@ -17,6 +17,7 @@ from rapthor.operations.calibrate.plan import (
     build_calibration_core_stations,
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,
+    build_calibration_solve_applycal_steps,
     build_calibration_solve_plan,
     build_calibration_solve_slot_inputs,
     requested_calibration_solves,
@@ -115,6 +116,14 @@ class Calibrate(FlowOperation):
             self.solve_plan = solve_plan
             has_slow_gain_solve = self._solve_plan_has_slow_gain(solve_plan)
             applycal_inputs = self._build_applycal(field)
+            if self.use_wsclean_predict and applycal_inputs["calibration_applycal_steps"]:
+                # DP3 cannot apply corrections to model data columns, neither in
+                # the stand-alone applycal step nor inside DDECal, so the WSClean
+                # model keeps the normalized flux scale.
+                self.log.warning(
+                    "Flux-scale normalization is not applied to WSClean-predicted model "
+                    "columns; the slow-gain amplitudes will absorb the normalization"
+                )
 
             # --- DP3 pipeline steps ---
             dp3_steps = self._build_dp3_steps(
@@ -662,6 +671,12 @@ class Calibrate(FlowOperation):
         ``mediumphase`` application belongs to the imaging prepare-data stage,
         where separate final calibration products may be applied to imaging
         visibilities.
+
+        ``applycal_steps`` drives the stand-alone applycal step that corrects the
+        data. ``calibration_applycal_steps`` holds the subset that a DDECal solve
+        applies to the model it predicts (the flux-scale normalization), so that
+        the slow-gain amplitudes are solved against a model on the flux scale of
+        the data.
         """
         di_h5parm = self._current_cycle_solution_path(
             getattr(field, "di_h5parm_filename", None),
@@ -685,9 +700,11 @@ class Calibrate(FlowOperation):
             calibration_strategy=getattr(field, "calibration_strategy", None),
         )
         applycal_steps = f"[{','.join(steps)}]" if steps else None
+        solve_steps = build_calibration_solve_applycal_steps(steps)
+        calibration_applycal_steps = f"[{','.join(solve_steps)}]" if solve_steps else None
         return {
             "normalize_h5parm": self._to_file_record_if_exists(field.normalize_h5parm),
-            "calibration_applycal_steps": applycal_steps,
+            "calibration_applycal_steps": calibration_applycal_steps,
             "applycal_steps": applycal_steps,
             "applycal_h5parm": applycal_h5parm,
             "fulljones_h5parm": fulljones_h5parm,
