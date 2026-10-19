@@ -3,10 +3,10 @@
 Changelog
 =========
 
-Version 2.2rc1 (2026/10/09)
-------------------------------
+Version 2.2 (2026/10/19)
+------------------------
 
-This release candidate for version 2.2 includes the following improvements:
+This minor release includes the following improvements:
 
     - Calibration strategies are now more configurable, including support for
       user-defined calibration strategy options.
@@ -27,11 +27,14 @@ This release candidate for version 2.2 includes the following improvements:
       normalization, and internet access can be explicitly controlled.
       Local comparison sky models can also be supplied for photometry and
       astrometry diagnostics, and existing flux-normalization solutions can
-      be supplied for imaging.
+      be supplied for imaging. Image diagnostics are skipped, when a
+      comparison sky model cannot be downloaded.
     - Pre-flight and pre-cycle memory checks and logging help identify
       out-of-memory risks before calibration jobs are started.
     - Workflow error handling, logging, restart behavior, and handling of
       temporary and output files have been improved.
+    - A new convenience script ``run-rapthor.sh`` runs Rapthor and collects
+      the relevant inputs and logs in a tarball once processing has finished.
     - Prediction and calibration workflows have received performance
       improvements, including better reuse of prediction ordering and parallel
       gridding support.
