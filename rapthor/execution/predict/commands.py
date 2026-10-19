@@ -23,16 +23,81 @@ def build_predict_model_data_command(
     applycal_steps: Optional[str] = None,
     normalize_h5parm: Optional[str] = None,
 ) -> list[str]:
-    """Build the DP3 prediction command for one sector/observation pair."""
-    applycal_step_names = _applycal_step_names(applycal_steps)
-    predict_applycal_steps = [step for step in applycal_step_names if step != "normalization"]
-    dp3_steps = ["predict"]
-    if normalize_h5parm is not None:
-        dp3_steps.append("applycal")
+    """Build the DP3 prediction command for one sector/observation pair.
+
+    Parameters
+    ----------
+    msin :
+        Input measurement set.
+    data_colname :
+        Name of the data column to use.
+    msout :
+        Output measurement set.
+    starttime :
+        Start time for the prediction.
+    ntimes :
+        Number of time samples to predict.
+    onebeamperpatch :
+        Whether to use one beam per patch.
+    correctfreqsmearing :
+        Whether to correct for frequency smearing.
+    correcttimesmearing :
+        Whether to correct for time smearing.
+    sagecalpredict :
+        Whether to use SAGECal for prediction.
+    sourcedb :
+        Sky model file.
+    directions :
+        List of directions to predict.
+    use_array_beam :
+        Whether to use the array beam.
+    numthreads :
+        Number of threads to use.
+    h5parm :
+        H5parm with the calibration solutions to apply to the model, or
+        ``None`` to predict without corrections.
+    applycal_steps :
+        Ordered correction step names serialized as a bracketed,
+        comma-separated string, e.g. ``"[fastphase,slowgain,normalization]"``.
+        The predict operation creates this string before building the
+        execution payload. ``None`` omits ``predict.applycal.steps``. For
+        SAGECal the fast-phase/slow-gain pair is reordered to amplitude then
+        phase; see Notes.
+    normalize_h5parm :
+        H5parm with the flux-scale normalization solutions, or ``None`` to
+        skip normalization.
+
+    Returns
+    -------
+    list[str]
+        The DP3 command line as a list of arguments.
+
+    Notes
+    -----
+    With the default DP3 predictors, all corrections, including flux-scale
+    normalization, are applied by the predict step's own applycal substeps.
+    With ``predict.operation=replace`` the prediction is written to the data
+    buffer, so a separate ``applycal`` step with ``usemodeldata=True`` would act
+    on an empty model buffer and leave the written visibilities unchanged. The
+    predict-internal applycal corrupts the model with the non-inverted
+    solutions, which maps the model from the normalized flux scale back onto
+    the scale of the observed data.
+
+    DP3's SAGECal predictor reads the soltabs of its applycal substeps from
+    ``predict.applycal.parmdb`` and requires the amplitude soltab before the
+    phase soltab, so this builder orders the fast-phase/slow-gain pair as
+    amplitude then phase. The predictor accepts at most two applycal substeps
+    and ignores the per-step file ``predict.applycal.normalization.parmdb``:
+    even with amplitude-first ordering, a phase/normalization pair reads the
+    amplitude from the main solutions file instead, and adding normalization to
+    the phase/slow-gain pair exceeds the two-step limit and is rejected. The
+    ordering workaround therefore does not enable normalization with SAGECal;
+    these limitations are covered by strict xfails in ``test_predict_dp3.py``.
+    """
     command = [
         "DP3",
         "msout.overwrite=True",
-        f"steps={bracketed_list_token(dp3_steps)}",
+        "steps=[predict]",
         "predict.operation=replace",
     ]
     if h5parm is not None:
@@ -48,12 +113,8 @@ def build_predict_model_data_command(
     if normalize_h5parm is not None:
         command.extend(
             [
-                "applycal.type=applycal",
-                "applycal.steps=[normalization]",
-                "applycal.normalization.correction=amplitude000",
-                "applycal.normalization.solset=sol000",
-                "applycal.normalization.usemodeldata=True",
-                "applycal.normalization.invert=False",
+                "predict.applycal.normalization.correction=amplitude000",
+                "predict.applycal.normalization.solset=sol000",
             ]
         )
     # If calibration with the array beam is requested, make sure to only predict the array beam.
@@ -84,12 +145,19 @@ def build_predict_model_data_command(
             f"predict.type={_predict_type(sagecalpredict, h5parm)}",
         ]
     )
-    if predict_applycal_steps:
-        command.append(f"predict.applycal.steps={bracketed_list_token(predict_applycal_steps)}")
+    if applycal_steps is not None:
+        if sagecalpredict:
+            steps = [step.strip() for step in applycal_steps.strip().strip("[]").split(",")]
+            # DP3's SagecalPredict reads two soltabs positionally as amplitude
+            # and phase without checking their types. Reorder this gain pair
+            # only; separate normalization files remain unsupported.
+            if steps == ["fastphase", "slowgain"]:
+                applycal_steps = "[slowgain,fastphase]"
+        command.append(f"predict.applycal.steps={applycal_steps}")
     if h5parm is not None:
         command.append(f"predict.applycal.parmdb={h5parm}")
     if normalize_h5parm is not None:
-        command.append(f"applycal.normalization.parmdb={normalize_h5parm}")
+        command.append(f"predict.applycal.normalization.parmdb={normalize_h5parm}")
     command.extend(
         [
             f"predict.sourcedb={sourcedb}",
@@ -106,13 +174,3 @@ def _predict_type(sagecalpredict: bool, h5parm: Optional[str]) -> str:
     if h5parm is None:
         return "predict"
     return "h5parmpredict"
-
-
-def _applycal_step_names(applycal_steps: Optional[str]) -> list[str]:
-    """Return DP3 applycal step names from a bracketed parset token."""
-    if applycal_steps is None:
-        return []
-    steps = applycal_steps.strip()
-    if steps.startswith("[") and steps.endswith("]"):
-        steps = steps[1:-1]
-    return [step.strip() for step in steps.split(",") if step.strip()]

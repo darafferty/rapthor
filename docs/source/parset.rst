@@ -266,8 +266,13 @@ The available options are described below under their respective sections.
         directions (default = ``False``).
 
     sagecalpredict
-        Use SAGECal for model calculation, both in predict and calibration (default =
+        Use SAGECal for model calculation during prediction and calibration (default =
         ``False``).
+
+        Flux-scale normalization is not supported with this predictor. Keep
+        ``sagecalpredict=False`` if your strategy enables :term:`do_normalize` or
+        you supply :term:`input_normalization_h5parm`. Combining these settings can
+        cause prediction to fail or produce an incorrect flux scale.
 
     fast_datause
         This parameter sets the visibilities mode used during the fast-phase solves  (one
