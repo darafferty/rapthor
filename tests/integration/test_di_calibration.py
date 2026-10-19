@@ -3,9 +3,9 @@ import subprocess
 import pytest
 
 from .utils import (
+    assert_visibilities_unchanged,
     first_command_arguments,
     get_working_dir_from_parset,
-    assert_visibilities_unchanged,
     read_visibilities,
     update_parset_path,
 )

@@ -18,10 +18,10 @@ from rapthor.execution.image.commands import (
 from rapthor.lib.miscellaneous import convert_mjd2mvt
 
 from .utils import (
+    assert_visibilities_unchanged,
     find_command_records,
     first_command_arguments,
     get_working_dir_from_parset,
-    assert_visibilities_unchanged,
     read_visibilities,
     update_parset_path,
 )
