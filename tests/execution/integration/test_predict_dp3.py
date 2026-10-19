@@ -1,7 +1,7 @@
 """Integration tests for the model data prediction task.
 
 Tests for the pipeline's predict task (``run_predict_model_data``), which
-builds the DP3 command, runs DP3 and validates the output. Checks ensure
+build the DP3 command, run DP3 and validate the output. Checks ensure
 that the requested corrections are actually applied to the visibilities written
 to the output measurement set.
 """
