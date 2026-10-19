@@ -28,7 +28,9 @@ This minor release includes the following improvements:
       Local comparison sky models can also be supplied for photometry and
       astrometry diagnostics, and existing flux-normalization solutions can
       be supplied for imaging. Image diagnostics are skipped, when a
-      comparison sky model cannot be downloaded.
+      be supplied for imaging. Photometry and astrometry checks that require
+      an unavailable comparison sky model are skipped; other image diagnostics
+      are still saved.
     - Pre-flight and pre-cycle memory checks and logging help identify
       out-of-memory risks before calibration jobs are started.
     - Workflow error handling, logging, restart behavior, and handling of
