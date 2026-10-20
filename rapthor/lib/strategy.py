@@ -2,6 +2,7 @@
 Module that holds all strategy-related functions
 """
 
+import copy
 import logging
 import os
 import runpy
@@ -222,10 +223,13 @@ def set_selfcal_strategy(field):
             strategy_steps[i]["divergence_ratio"] = 1.1
             strategy_steps[i]["failure_ratio"] = 10.0
 
-    # Set a final step as a duplicate of the last selfcal one, except that
-    # the target output imaging channel width is smaller
+    # Set a final step as a copy of the last selfcal one, except that the
+    # target output imaging channel width is smaller. The copy must be
+    # independent: appending the same dictionary would also set the last
+    # selfcal cycle to 4 MHz and make the final step compare equal to it when
+    # the final pass is decided on
     if strategy_steps:
-        strategy_steps.append(strategy_steps[-1])
+        strategy_steps.append(copy.deepcopy(strategy_steps[-1]))
         strategy_steps[-1]["channel_width_hz"] = 4e6
 
     return strategy_steps

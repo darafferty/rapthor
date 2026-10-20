@@ -94,7 +94,8 @@ cycle.
     If the strategy performs self calibration, the last entry in ``strategy_steps`` can be
     used to specify parameters specific to the final cycle (which is performed after
     self calibration finishes). In the default self calibration strategy, the parameters
-    for the final cycle are set to those of the last cycle of selfcal.
+    for the final cycle are set to those of the last cycle of selfcal, except for the
+    output channel width, which is reduced from 8 MHz to 4 MHz for the final cycle.
 
 .. note::
 

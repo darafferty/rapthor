@@ -95,6 +95,28 @@ def test_set_selfcal_strategy(field, generate_initial_skymodel):
         )
 
 
+@pytest.mark.parametrize("generate_initial_skymodel", [True, False])
+def test_set_selfcal_strategy_final_step_is_independent(field, generate_initial_skymodel):
+    """The final step is a copy of the last selfcal step, not the same dictionary."""
+    field.parset["strategy"] = "selfcal"
+    field.parset["generate_initial_skymodel"] = generate_initial_skymodel
+    strategy_steps = set_selfcal_strategy(field)
+    last_selfcal_step, final_step = strategy_steps[-2], strategy_steps[-1]
+
+    assert final_step is not last_selfcal_step
+    assert last_selfcal_step["channel_width_hz"] == 8e6
+    assert final_step["channel_width_hz"] == 4e6
+    without_width = lambda step: {k: v for k, v in step.items() if k != "channel_width_hz"}  # noqa: E731
+    assert without_width(final_step) == without_width(last_selfcal_step)
+
+    # The nested solve lists must be independent as well
+    final_step["calibration_strategy"]["dd"].append("full_jones")
+    assert last_selfcal_step["calibration_strategy"] == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+
+
 def test_set_image_strategy(field):
     field.parset["strategy"] = "image"
     strategy_steps = set_image_strategy(field)

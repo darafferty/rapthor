@@ -56,6 +56,12 @@ existing parsets and strategy files.
       corrected data and flags were then written to the input MS (which can be
       an original input MS), so later operations applied the
       direction-independent corrections a second time.
+    - In the ``selfcal`` strategy, the final cycle no longer shares its
+      parameters with the last cycle of selfcal. In earlier versions, setting
+      the output channel width of the final cycle to 4 MHz also changed the
+      last selfcal cycle from 8 MHz to 4 MHz, and the two cycles then compared
+      as identical, so the final cycle was skipped when the selfcal and final
+      data fractions were equal.
 
 
 Version 2.1 (2025/12/04)
