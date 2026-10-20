@@ -172,6 +172,10 @@ deps = [
     "pytest-mock",
     "pytest-socket",
 ]
+# EveryBeam looks for its coefficient files under $VIRTUAL_ENV/share/everybeam
+# when EVERYBEAM_DATADIR is unset, and tox points VIRTUAL_ENV at its own
+# environment, so pass the image's setting through to DP3 and WSClean.
+pass_env = ["EVERYBEAM_DATADIR"]
 commands = [
     # Tests marked `serial` launch Python subprocesses that start their own Prefect
     # server and Dask cluster. Run them first, on their own, because under the
@@ -214,6 +218,7 @@ pass_env = [
     "CI_PROJECT_DIR",
     "CI_NODE_INDEX",
     "CI_NODE_TOTAL",
+    "EVERYBEAM_DATADIR",  # see env_run_base
     "BLIS_NUM_THREADS",
     "MKL_NUM_THREADS",
     "NUMEXPR_MAX_THREADS",

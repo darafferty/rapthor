@@ -126,7 +126,9 @@ RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
 ```
 
 Alternatively use `tox -e test_integration`; CI can split that lane with
-`CI_NODE_TOTAL` and `CI_NODE_INDEX`. pytest-split balances the nodes with the
+`CI_NODE_TOTAL` and `CI_NODE_INDEX`. The tox environments pass `EVERYBEAM_DATADIR`
+through because tox sets `VIRTUAL_ENV`, which EveryBeam otherwise uses to locate
+its coefficient files. pytest-split balances the nodes with the
 per-test timings in [.test_durations](.test_durations); a test without an entry
 is assumed to take the average time. Refresh the file after adding, removing or
 substantially changing integration tests by running the lane once with
