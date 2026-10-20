@@ -1,12 +1,11 @@
 """
-Script that defines the default user processing strategy for HBA data when the
-initial sky model is generated from the input data. Specifying this file as the
-strategy in the Rapthor parset causes Rapthor to use the default self-
-calibration behaviour, which is equal to specifying no specific calibration
-strategy when Rapthor generates the initial sky model. Phase-only cycles are
-never run by this strategy file, whereas the built-in strategy runs them when
-the initial sky model is downloaded or supplied by the user. See the strategy
-documentation for details.
+Example processing strategy for HBA data with the full DD solve sequence in
+every cycle. It sets calibration_strategy explicitly and never runs phase-only
+cycles, regardless of how the initial sky model was obtained. The built-in
+"selfcal" strategy instead includes early phase-only cycles when that model is
+downloaded or supplied by the user, and adjusts its cycle limits and imaging
+settings accordingly. This file is a template, not an exact copy of the built-in
+strategy. See the strategy documentation for details.
 
 This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.

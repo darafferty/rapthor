@@ -27,7 +27,9 @@ Problematic fields
     might pose problems for self calibration. For example, it is recommended that fields
     with very bright sources (> 20 Jy) use a processing strategy that starts with at least
     three rounds of phase-only calibration before moving to amplitude calibration (cf. the
-    default strategy, which uses two rounds of phase-only calibration). The information
+    built-in strategy, which uses two rounds of phase-only calibration when the
+    initial sky model is supplied or downloaded, and skips them when it is
+    generated from the data). The information
     here will be updated as further testing on a variety of field is done and our
     understanding of the sub-optimal cases improves.
 

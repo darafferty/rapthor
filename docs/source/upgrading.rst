@@ -82,11 +82,15 @@ direction-independent ("di") parts of the calibration:
     }
 
 The ``do_slowgain_solve`` and ``do_fulljones_solve`` parameters are deprecated.
-A strategy file that uses them still works: Rapthor replaces them with the
-equivalent ``calibration_strategy`` and logs a warning that names the
-replacement. A cycle that sets both one of these parameters and
-``calibration_strategy`` is an error, as it is then unclear which solves are
-wanted.
+When ``calibration_strategy`` is absent, ``None`` or ``{}``, Rapthor translates
+any legacy flags present in that cycle into an explicit strategy and logs a
+deprecation warning naming the replacement. A missing companion flag is treated
+as ``False``. An explicitly ``False`` flag still triggers translation; it is
+not equivalent to omitting both flags.
+
+A nonempty ``calibration_strategy`` dictionary cannot be combined with either
+legacy flag, even if the flag is ``False``. See :ref:`legacy_calibration_flags`
+for the mapping from flags to solves.
 
 
 .. _migration_behavior_differences:
@@ -120,12 +124,20 @@ Final cycle of the ``selfcal`` strategy
     Related documentation: :ref:`custom_strategy` describes the final cycle.
 
 Omitted calibration strategy
-    A cycle that calibrates without :term:`calibration_strategy` uses the
-    default sequence of solves. ``None`` and an empty dictionary also request
-    this default. In version 2, such a cycle repeated the sequence of the
-    previous cycle. Cycles without calibration preserve the previous sequence
-    unless they explicitly supply a nonempty strategy dictionary, so that
-    imaging can apply the previous solutions.
+    A calibrating cycle with neither :term:`calibration_strategy` nor legacy
+    solve flags uses the full DD sequence, including slow gains, and no DI
+    solves. ``None`` and ``{}`` count as an unspecified strategy. The default is
+    resolved independently for each calibrating cycle.
+
+    The CWL version instead resolved an unspecified strategy from its legacy
+    flag values. With both flags ``False``, it ran phase-only DD solves. To
+    request that behavior explicitly, set
+    ``calibration_strategy = {"dd": ["fast_phase", "medium_phase"], "di": []}``.
+
+    Image-only cycles with neither a strategy nor legacy flags preserve the
+    previous sequence, so that imaging can apply the previous solutions. An
+    explicit strategy or translated legacy flags override it. The CWL version
+    instead rebuilt the sequence from the legacy flags in these cycles too.
 
     Related documentation: :term:`calibration_strategy`.
 
