@@ -191,11 +191,30 @@ def _prepare_prefect_home(config):
     _set_prefect_home(worker_id, force=worker_id != "main")
 
 
+def _prefetch_test_ms(config):
+    """Fetch the shared test MS once, before any xdist worker needs it.
+
+    A worker would otherwise download it from the first fixture that asks for
+    it, which fails when that test carries the ``disable_socket`` marker.
+    """
+    if _xdist_worker_id(config) != "main":
+        return
+    try:
+        ensure_test_ms(RESOURCE_DIR)
+    except (OSError, requests.RequestException) as error:
+        # The tests that need the MS fail with the cause; the others still run.
+        config.issue_config_time_warning(
+            pytest.PytestWarning(f"Could not fetch the shared test MS: {error}"),
+            stacklevel=2,
+        )
+
+
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
     _quiet_async_runtime_loggers()
     _prepare_local_test_run_root(config)
     _prepare_prefect_home(config)
+    _prefetch_test_ms(config)
 
 
 @pytest.fixture(autouse=True)

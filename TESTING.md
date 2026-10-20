@@ -126,9 +126,10 @@ in [AGENTS.md](AGENTS.md).
 ## External-tool integration and demo
 
 Use an environment with DP3, WSClean, EveryBeam, IDG, PyBDSF and Casacore as required
-by the scenario. Some fixtures download the small test Measurement Set on first
-use; prepare its cache before an offline run. Ordinary unit tests should not
-introduce network dependencies.
+by the scenario. pytest downloads the small test Measurement Set into
+`tests/resources/` at startup if it is missing, so that no socket-blocked test
+has to fetch it; prepare that cache before an offline run. Ordinary unit tests
+should not introduce network dependencies.
 
 ```bash
 RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
