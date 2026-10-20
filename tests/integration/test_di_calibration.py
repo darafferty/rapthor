@@ -1,8 +1,7 @@
 import subprocess
+from pathlib import Path
 
 import pytest
-
-from pathlib import Path
 
 from .utils import (
     assert_h5parm_has_solutions,
