@@ -157,6 +157,19 @@ ignore = ["E501"]  # line-too-long
 ]
 
 
+[tool.coverage.run]
+# Follow the `rapthor` subprocesses and Dask workers that the tests start.
+# `subprocess` starts coverage in every Python child and implies one data file
+# per process; `_exit` saves the data of multiprocessing children, which leave
+# through os._exit. Dask nannies stop their workers with SIGTERM.
+patch = ["subprocess", "_exit"]
+sigterm = true
+
+[tool.coverage.paths]
+# tox measures the package it installs into its environment. Map it back onto
+# the checkout so data from the test lanes combine and report in another job.
+source = ["rapthor/", "*/site-packages/rapthor/"]
+
 [tool.tox]
 requires = ["tox>4"]
 envlist = ["lint", "format", "py3{9,10,11,12,13}", "test_integration"]
@@ -205,6 +218,9 @@ commands = [
 [tool.tox.env_run_base.set_env]
 # Use the faster coverage core on Python 3.12+; older Pythons fall back.
 COVERAGE_CORE = "sysmon"
+# Give every measured process the same absolute data file; CI sets one name
+# per lane and node so the coverage_report job can combine them.
+COVERAGE_FILE = "{env:COVERAGE_FILE:{toxinidir}/.coverage}"
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"
@@ -237,6 +253,10 @@ commands = [
         # Balance CI nodes by stored timings, assigning longest tests first.
         "--splitting-algorithm", "least_duration",
         "--durations-path", "{toxinidir}/.test_durations",
+        # Collect coverage for the combined CI report; a report of one node's
+        # share of the tests alone would be misleading, so print none here.
+        "--cov=rapthor",
+        "--cov-report=",
         "tests/integration",
         "tests/operations/integration",
         "tests/execution/integration",

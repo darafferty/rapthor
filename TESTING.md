@@ -78,6 +78,23 @@ python -m pytest -m "not integration and not serial" -n auto --dist worksteal te
   multiple Python versions. Select a specific available Python environment when
   that is sufficient; the command above uses the prepared environment.
 
+## Coverage
+
+`tox -e py` and `tox -e test_integration` both collect coverage. CI combines the
+unit lane with the eight integration nodes in the `coverage_report` job, so the
+reported figure includes code that only the end-to-end runs reach. Coverage
+follows the `rapthor` subprocesses and Dask workers through the `patch` settings
+under `[tool.coverage.run]` in [pyproject.toml](pyproject.toml), and
+`[tool.coverage.paths]` maps the package tox installs back onto the checkout.
+To reproduce the combined report locally, give each lane its own data file:
+
+```bash
+COVERAGE_FILE=.coverage.unit tox -e py
+COVERAGE_FILE=.coverage.integration tox -e test_integration
+coverage combine .coverage.unit .coverage.integration
+coverage report
+```
+
 ## Markers and test helpers
 
 | Marker | Meaning |

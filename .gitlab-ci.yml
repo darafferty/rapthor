@@ -20,6 +20,7 @@ stages:
   - install
   - run_tests
   - run_integration_tests
+  - coverage
   - docs
   - deploy
   - finalize
@@ -235,10 +236,15 @@ install_rapthor:
 run_tests:
   extends: .run_tests
   script:
+    # Keep this lane's coverage data for the coverage_report job.
+    - export COVERAGE_FILE="$CI_PROJECT_DIR/ci/coverage/.coverage.unit"
+    - mkdir -p "$CI_PROJECT_DIR/ci/coverage"
     # The image already contains Rapthor's dependencies, so let the tox
     # environment reuse them instead of downloading and installing them again.
     - tox -e py -x tool.tox.env_run_base.system_site_packages=true
-  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    paths:
+      - ci/coverage/
 
 ### Stage: run_integration_tests
 
@@ -252,11 +258,11 @@ run_tests:
     OMP_NUM_THREADS: "1"
     OPENBLAS_NUM_THREADS: "1"
     VECLIB_MAXIMUM_THREADS: "1"
-  coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     when: always
     paths:
       - ci/i/**/work/logs/**/*
+      - ci/coverage/
 
 run_integration_tests:
   extends: .run_integration_tests
@@ -265,8 +271,38 @@ run_integration_tests:
     - export RAPTHOR_TEST_RUN_ROOT="$CI_PROJECT_DIR/ci/i/node-$CI_NODE_INDEX"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/node-$CI_NODE_INDEX"
     - mkdir -p "$RAPTHOR_TEST_RUN_ROOT" "$PREFECT_HOME"
+    # One coverage data file per node for the coverage_report job.
+    - export COVERAGE_FILE="$CI_PROJECT_DIR/ci/coverage/.coverage.integration-$CI_NODE_INDEX"
+    - mkdir -p "$CI_PROJECT_DIR/ci/coverage"
     # Reuse the image's packages here too; see run_tests.
     - tox -e test_integration -x tool.tox.env_run_base.system_site_packages=true
+
+
+### Stage: coverage
+
+# Combine the unit lane with every integration node, so the reported coverage
+# includes the code that only the end-to-end runs reach. [tool.coverage.paths]
+# in pyproject.toml maps the package tox installed back onto this checkout.
+coverage_report:
+  stage: coverage
+  image: python:3.13
+  needs:
+    - run_tests
+    - run_integration_tests
+  before_script:
+    - pip install coverage
+  script:
+    - coverage combine ci/coverage
+    - coverage report
+    - coverage xml -o coverage.xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    paths:
+      - coverage.xml
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 
 ### Stage: docs
