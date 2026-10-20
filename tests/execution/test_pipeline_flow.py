@@ -1,5 +1,6 @@
 import copy
 import json
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -19,6 +20,8 @@ from rapthor.execution.pipeline.plan import (
     SUPPORTED_PIPELINE_FEATURES,
     collect_pipeline_features,
 )
+from rapthor.execution.working_dir_lock import WorkingDirectoryInUse, working_directory_lock
+from tests.conftest import _get_test_run_root
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 REPO_ROOT = Path(__file__).parents[2]
@@ -304,6 +307,8 @@ def _image_step(**updates):
 
 def _pipeline_parset(**updates):
     parset = {
+        # The pipeline locks its working directory, so each test needs its own
+        "dir_working": tempfile.mkdtemp(prefix="pipeline-flow-", dir=_get_test_run_root()),
         "strategy": "test-strategy",
         "generate_initial_skymodel": False,
         "download_initial_skymodel": False,
@@ -875,6 +880,21 @@ def test_run_pipeline_repeats_final_cycle_on_the_data_of_the_cycle_before():
     assert chunks == [parset["selfcal_data_fraction"], parset["final_data_fraction"]]
     calibrated = [event["index"] for event in field.events if event["operation"] == "calibrate"]
     assert calibrated == [1, 2, 3, 4]
+
+
+def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory():
+    parset = _pipeline_parset()
+    lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
+
+    with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
+        with pytest.raises(WorkingDirectoryInUse, match="in use by a Rapthor reset"):
+            run_pipeline(
+                "input.parset",
+                operation_factories=RECORDING_FACTORIES,
+                lifecycle_hooks=lifecycle.hooks(),
+            )
+
+    assert lifecycle.field is None
 
 
 def test_run_pipeline_publishes_plot_artifacts_after_operations_and_report(monkeypatch):

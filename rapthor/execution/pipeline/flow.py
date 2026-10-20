@@ -20,6 +20,7 @@ from rapthor.execution.pipeline.plan import (
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.task_runner import run_flow_with_task_runner
+from rapthor.execution.working_dir_lock import working_directory_lock
 from rapthor.lib.calibration_memory import check_calibration_memory
 
 log = logging.getLogger("rapthor")
@@ -106,6 +107,20 @@ def run_pipeline(
     hooks = lifecycle_hooks or default_pipeline_lifecycle_hooks()
 
     parset = hooks.read_parset(parset_file)
+    # Keep resets and other runs out of the working directory (for the CLI and
+    # direct calls alike)
+    with working_directory_lock(parset["dir_working"], "a Rapthor run"):
+        return _run_locked_pipeline(parset, logging_level, factories, hooks, execution_config)
+
+
+def _run_locked_pipeline(
+    parset: dict,
+    logging_level: str,
+    factories: PipelineOperationFactories,
+    hooks: PipelineLifecycleHooks,
+    execution_config: Optional[ExecutionConfig],
+) -> Optional[object]:
+    """Run the pipeline lifecycle while this process holds the working directory."""
     config = execution_config or ExecutionConfig.from_parset(parset)
     _sync_execution_config_to_parset(parset, config)
 
