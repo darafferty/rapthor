@@ -17,6 +17,7 @@ from rapthor.operations.calibrate.plan import (
     build_calibration_core_stations,
     build_calibration_dp3_steps,
     build_calibration_preapply_steps,
+    build_calibration_solve_applycal_steps,
     build_calibration_solve_plan,
     build_calibration_solve_slot_inputs,
     requested_calibration_solves,
@@ -115,6 +116,14 @@ class Calibrate(FlowOperation):
             self.solve_plan = solve_plan
             has_slow_gain_solve = self._solve_plan_has_slow_gain(solve_plan)
             applycal_inputs = self._build_applycal(field)
+            if self.use_wsclean_predict and applycal_inputs["calibration_applycal_steps"]:
+                # DP3 cannot apply corrections to model data columns, neither in
+                # the stand-alone applycal step nor inside DDECal, so the WSClean
+                # model keeps the normalized flux scale.
+                self.log.warning(
+                    "Flux-scale normalization is not applied to WSClean-predicted model "
+                    "columns; the slow-gain amplitudes will absorb the normalization"
+                )
 
             # --- DP3 pipeline steps ---
             dp3_steps = self._build_dp3_steps(
@@ -628,8 +637,9 @@ class Calibrate(FlowOperation):
     ):
         """
         Set the calibration steps depending on whether baseline-dependent averaging is
-        activated (and supported) or not. If BDA is used, a "null" step is also added to
-        prevent the writing of the BDA data
+        activated (and supported) or not and whether solutions are pre-applied. Every
+        chain ends with a "null" step so that DP3 never writes the averaged or
+        corrected data back into the input MS.
 
         TODO: image-based predict doesn't yet work with BDA; once it does,
         the restriction on this mode should be removed
@@ -662,6 +672,12 @@ class Calibrate(FlowOperation):
         ``mediumphase`` application belongs to the imaging prepare-data stage,
         where separate final calibration products may be applied to imaging
         visibilities.
+
+        ``applycal_steps`` drives the stand-alone applycal step that corrects the
+        data. ``calibration_applycal_steps`` holds the subset that a DDECal solve
+        applies to the model it predicts (the flux-scale normalization), so that
+        the slow-gain amplitudes are solved against a model on the flux scale of
+        the data.
         """
         di_h5parm = self._current_cycle_solution_path(
             getattr(field, "di_h5parm_filename", None),
@@ -680,14 +696,16 @@ class Calibrate(FlowOperation):
             self.mode,
             has_di_h5parm=applycal_h5parm is not None,
             has_fulljones_h5parm=fulljones_h5parm is not None,
-            apply_amplitudes=getattr(field, "apply_amplitudes", False),
+            apply_amplitudes=getattr(field, "di_apply_amplitudes", False),
             apply_normalizations=getattr(field, "apply_normalizations", False),
             calibration_strategy=getattr(field, "calibration_strategy", None),
         )
         applycal_steps = f"[{','.join(steps)}]" if steps else None
+        solve_steps = build_calibration_solve_applycal_steps(steps)
+        calibration_applycal_steps = f"[{','.join(solve_steps)}]" if solve_steps else None
         return {
             "normalize_h5parm": self._to_file_record_if_exists(field.normalize_h5parm),
-            "calibration_applycal_steps": applycal_steps,
+            "calibration_applycal_steps": calibration_applycal_steps,
             "applycal_steps": applycal_steps,
             "applycal_h5parm": applycal_h5parm,
             "fulljones_h5parm": fulljones_h5parm,
@@ -923,10 +941,8 @@ class Calibrate(FlowOperation):
             non_fulljones_solves = [
                 solve for solve in solve_plan if solve.solve_type != "full_jones"
             ]
-            field.di_apply_amplitudes = any(
-                solve.solve_type == "slow_gains" for solve in non_fulljones_solves
-            )
-
+            # di_apply_amplitudes is derived from the copied product by
+            # Field.scan_h5parms() below, not from the solve plan.
             if fulljones_solve is not None:
                 field.fulljones_h5parm_filename = os.path.join(dst_dir, "fulljones-solutions.h5")
                 field.fulljones_h5parm_cycle_number = self.index

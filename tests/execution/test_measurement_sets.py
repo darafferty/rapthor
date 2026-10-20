@@ -53,19 +53,27 @@ def test_concat_ms_rejects_existing_output_without_overwrite(test_ms, tmp_path):
         concat_ms([test_ms], output_file.as_posix(), overwrite=False)
 
 
-def test_concat_freq_command_uses_real_measurement_set_metadata(test_ms):
-    command = concat_freq_command([test_ms], "DATA", "output.ms")
+def test_concat_freq_command_applies_beam_when_array_beam_disabled(test_ms):
+    command = concat_freq_command([test_ms], "DATA", "output.ms", use_array_beam=False)
 
     assert command == [
         "DP3",
         f"msin=[{test_ms}]",
         "msin.datacolumn=DATA",
         "msout=output.ms",
-        "steps=[]",
+        "steps=[applybeam]",
         "msin.orderms=False",
         "msin.missingdata=True",
         "msout.storagemanager=Dysco",
+        "applybeam.beammode=None",
     ]
+
+
+def test_concat_freq_command_omits_applybeam_when_array_beam_enabled(test_ms):
+    command = concat_freq_command([test_ms], "DATA", "output.ms", use_array_beam=True)
+
+    assert "steps=[]" in command
+    assert "applybeam.beammode=None" not in command
 
 
 def test_select_concatenation_command_copies_single_measurement_set(test_ms, tmp_path):

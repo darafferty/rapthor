@@ -80,6 +80,7 @@ def test_set_input_parameters_builds_multi_epoch_inputs(tmp_path):
             DirectoryRecord(["epoch_0_input_0.ms", "epoch_0_input_1.ms"]).to_json(),
         ],
         "data_colname": "CORRECTED_DATA",
+        "use_array_beam": True,
         "output_filenames": ["epoch_0_concatenated.ms"],
     }
     assert operation.final_filenames == [str(expected_output), "epoch_1_single.ms"]

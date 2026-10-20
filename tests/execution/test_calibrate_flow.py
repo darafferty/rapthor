@@ -402,6 +402,8 @@ class CalibrateFieldStub:
         self._calibration_strategy_defaulted = False
         self.apply_diagonal_solutions = False
         self.apply_amplitudes = False
+        self.dd_apply_amplitudes = False
+        self.di_apply_amplitudes = False
         self.generate_screens = False
         self.use_image_based_predict = False
         self.use_wsclean_predict = False
@@ -537,7 +539,8 @@ def _configure_dd_preapply_products(field, tmp_path):
     field.di_h5parm_filename = str(di_h5parm)
     field.fulljones_h5parm_filename = str(fulljones_h5parm)
     field.normalize_h5parm = str(normalize_h5parm)
-    field.apply_amplitudes = True
+    # The DI product carries slow gains; the DI pre-apply follows its own flag.
+    field.di_apply_amplitudes = True
     field.apply_normalizations = True
     return di_h5parm, fulljones_h5parm, normalize_h5parm
 
@@ -1993,6 +1996,127 @@ def test_calibrate_payload_from_inputs_builds_dd_preapply_payload(tmp_path):
     assert payload["applycal_h5parm"] == "/solutions/di_solutions.h5"
     assert payload["fulljones_h5parm"] == "/solutions/fulljones_solutions.h5"
     assert payload["normalize_h5parm"] == "/solutions/normalize_solutions.h5"
+
+
+def _dd_with_slow_preapply_input_parms():
+    """Default fast/medium/slow/medium chain with DI pre-application and normalization."""
+    input_parms = _dd_with_slow_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[applycal,solve1,solve2,solve3,solve4]",
+            "applycal_steps": "[fastphase,normalization]",
+            "calibration_applycal_steps": "[normalization]",
+            "applycal_h5parm": file_record("/solutions/di_solutions.h5"),
+            "normalize_h5parm": file_record("/solutions/normalize_solutions.h5"),
+        }
+    )
+    return _add_explicit_solve_metadata(input_parms)
+
+
+def _solve_applycal_tokens(command):
+    """Return the DDECal-internal applycal tokens (solveN.applycal.*) of a command."""
+    return [
+        token
+        for token in command
+        if token.startswith("solve")
+        and ".applycal." in token
+        and not token.endswith(("correction=amplitude000", "solset=sol000"))
+    ]
+
+
+def test_calibrate_payload_from_inputs_forwards_solve_model_applycal_steps(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_with_slow_preapply_input_parms(), tmp_path)
+
+    assert payload["applycal_steps"] == "[fastphase,normalization]"
+    assert payload["calibration_applycal_steps"] == "[normalization]"
+    assert payload["normalize_h5parm"] == "/solutions/normalize_solutions.h5"
+
+
+def test_calibrate_commands_normalize_model_in_the_predicting_solve_only(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_with_slow_preapply_input_parms(), tmp_path)
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    # The data is corrected by the stand-alone applycal step.
+    assert "steps=[applycal,solve1,solve2,solve3,solve4]" in command
+    assert "applycal.steps=[fastphase,normalization]" in command
+    assert "applycal.normalization.parmdb=/solutions/normalize_solutions.h5" in command
+    # The model is normalized where DP3 predicts it: solve1. DP3 does not apply
+    # DDECal applycal steps to a reused model, so the later solves inherit the
+    # kept model and get no applycal settings of their own.
+    assert "solve1.keepmodel=True" in command
+    assert "solve3.reusemodel=[solve1.*]" in command
+    assert sorted(_solve_applycal_tokens(command)) == [
+        "solve1.applycal.normalization.parmdb=/solutions/normalize_solutions.h5",
+        "solve1.applycal.steps=[normalization]",
+    ]
+
+
+def test_calibrate_commands_omit_solve_model_applycal_without_normalization(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_preapply_input_parms(), tmp_path)
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in command
+    assert _solve_applycal_tokens(command) == []
+
+
+def test_calibrate_commands_omit_solve_model_applycal_for_external_prediction(tmp_path):
+    input_parms = _dd_image_predict_preapply_input_parms()
+    input_parms["calibration_applycal_steps"] = "[normalization]"
+    payload = calibrate_payload_from_inputs(
+        "dd", _add_explicit_solve_metadata(input_parms), tmp_path
+    )
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    # The DP3 predict step owns the model buffers; the stand-alone applycal
+    # with usemodeldata corrects them, so no solve applies corrections itself.
+    assert "steps=[predict,applybeam,applycal,solve1,solve2]" in command
+    assert "solve1.reusemodel=[predict.*]" in command
+    assert _solve_applycal_tokens(command) == []
+
+
+def test_calibrate_payload_from_inputs_builds_dd_wsclean_predict_preapply_payload(tmp_path):
+    input_parms = _dd_wsclean_predict_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[applycal,solve1,solve2]",
+            "applycal_steps": "[fastphase]",
+            "applycal_h5parm": file_record("/solutions/di_solutions.h5"),
+        }
+    )
+    payload = calibrate_payload_from_inputs(
+        "dd", _add_explicit_solve_metadata(input_parms), tmp_path
+    )
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    assert payload["wsclean_predict"] is True
+    assert "steps=[applycal,solve1,solve2]" in command
+    assert "applycal.steps=[fastphase]" in command
+    assert "applycal.parmdb=/solutions/di_solutions.h5" in command
+    assert _solve_applycal_tokens(command) == []
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({"calibration_applycal_steps": "[fastphase]"}, "Unsupported DDECal model applycal step"),
+        (
+            {"calibration_applycal_steps": "[normalization]", "normalize_h5parm": None},
+            "requires normalize_h5parm",
+        ),
+    ],
+)
+def test_calibrate_payload_from_inputs_rejects_invalid_solve_model_applycal(
+    tmp_path, overrides, message
+):
+    input_parms = _dd_fast_medium_input_parms()
+    input_parms.update(overrides)
+
+    with pytest.raises(ValueError, match=message):
+        calibrate_payload_from_inputs("dd", _add_explicit_solve_metadata(input_parms), tmp_path)
 
 
 def test_calibrate_payload_from_inputs_builds_dd_image_predict_payload(tmp_path):
@@ -3610,7 +3734,7 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
-    assert "steps=[applycal,solve1,solve2]" in commands[0]
+    assert "steps=[applycal,solve1,solve2,null]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
     assert f"applycal.parmdb={di_h5parm}" in commands[0]
     assert f"applycal.fulljones.parmdb={fulljones_h5parm}" in commands[0]
@@ -3667,7 +3791,7 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
         "-scale",
         "0.001",
     ]
-    assert "steps=[predict,applybeam,solve1,solve2]" in commands[1]
+    assert "steps=[predict,applybeam,solve1,solve2,null]" in commands[1]
     assert f"predict.regions={pipeline_dir / 'field_facets_ds9.reg'}" in commands[1]
     assert f"predict.images=[{pipeline_dir / 'calibration_model-term-0.fits'}]" in commands[1]
     assert "solve1.reusemodel=[predict.*]" in commands[1]
@@ -3784,7 +3908,7 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2, 1)
-    assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
+    assert "steps=[solve1,solve2,solve3,solve4,null]" in commands[0]
     assert "solve3.h5parm=slow_gain_0.h5parm" in commands[0]
     assert field.scan_h5parms_calls == 1
 

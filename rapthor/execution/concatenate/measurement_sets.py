@@ -45,6 +45,7 @@ def concat_ms(
     data_colname: str = "DATA",
     concat_property: str = "frequency",
     overwrite: bool = False,
+    use_array_beam: bool = True,
 ) -> int:
     """
     Concatenate one or more Measurement Sets into ``output_file``.
@@ -58,6 +59,7 @@ def concat_ms(
         data_colname=data_colname,
         concat_property=concat_property,
         overwrite=overwrite,
+        use_array_beam=use_array_beam,
     )
 
     try:
@@ -73,6 +75,7 @@ def select_concatenation_command(
     data_colname: str = "DATA",
     concat_property: str = "frequency",
     overwrite: bool = False,
+    use_array_beam: bool = True,
 ) -> list[str]:
     """
     Validate inputs and choose the external command for Measurement Set concatenation.
@@ -85,7 +88,12 @@ def select_concatenation_command(
     if len(msfiles) == 1:
         return copy_measurement_set_command(msfiles[0], output_file)
     if concat_property.lower() == "frequency":
-        return concat_freq_command(msfiles, data_colname, output_file)
+        return concat_freq_command(
+            msfiles,
+            data_colname,
+            output_file,
+            use_array_beam=use_array_beam,
+        )
     return concat_time_command(msfiles, output_file)
 
 
@@ -94,6 +102,7 @@ def concat_freq_command(
     data_colname: str,
     output_file: str,
     make_dummies: bool = True,
+    use_array_beam: bool = True,
 ) -> list[str]:
     """
     Build the DP3 command used to concatenate Measurement Sets in frequency.
@@ -105,16 +114,24 @@ def concat_freq_command(
     if make_dummies:
         mslist = _insert_dummy_ms_for_frequency_gaps(msfiles, mslist)
 
-    return [
+    # The data is assumed to be corrected for the element beam at the target direction.
+    # Therefore, if the array beam is to be used in calibration, we do not have to do
+    # anything. However, if calibration uses the full beam, the array beam should be
+    # undone.
+    steps = "[]" if use_array_beam else "[applybeam]"
+    command = [
         "DP3",
         f"msin=[{','.join(mslist)}]",
         f"msin.datacolumn={data_colname}",
         f"msout={output_file}",
-        "steps=[]",
+        f"steps={steps}",
         "msin.orderms=False",
         "msin.missingdata=True",
         "msout.storagemanager=Dysco",
     ]
+    if not use_array_beam:
+        command.append("applybeam.beammode=None")
+    return command
 
 
 def concat_time_command(msfiles: list[str], output_file: str) -> list[str]:

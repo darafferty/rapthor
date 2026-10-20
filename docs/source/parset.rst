@@ -224,7 +224,11 @@ The available options are described below under their respective sections.
         (default = ``False``)? This is an alternative image-based prediction path for
         large sky models. It is mutually exclusive with :term:`use_image_based_predict`;
         if both are enabled, Rapthor keeps ``use_wsclean_predict`` and disables
-        ``use_image_based_predict``.
+        ``use_image_based_predict``. Direction-independent solutions are still applied
+        to the data before the solves. Note that DP3 cannot apply the flux-scale
+        normalization to model data columns, so with this option the slow-gain
+        amplitudes absorb the normalization instead; Rapthor logs a warning when this
+        happens.
 
     wsclean_predict_bw
         Bandwidth in Hz for each model image drawn during WSClean-based prediction
@@ -254,13 +258,25 @@ The available options are described below under their respective sections.
         patch. Setting this to ``True`` can speed up calibration and prediction, but can
         also reduce the quality when the patches are large.
 
+    use_array_beam
+        Use the DP3 array-factor beam mode during prediction (default = ``True``)? When
+        disabled, DP3 uses the full beam mode. When only the array beam is used, a small
+        beam error remains in the data, caused by not correcting for the differential
+        element beam. Use of the array beam leads to four times faster predict compared to
+        using the full beam.
+
     parallelbaselines
         Parallelize model calculation over baselines, instead of parallelizing over
         directions (default = ``False``).
 
     sagecalpredict
-        Use SAGECal for model calculation, both in predict and calibration (default =
+        Use SAGECal for model calculation during prediction and calibration (default =
         ``False``).
+
+        Flux-scale normalization is not supported with this predictor. Keep
+        ``sagecalpredict=False`` if your strategy enables :term:`do_normalize` or
+        you supply :term:`input_normalization_h5parm`. Combining these settings can
+        cause prediction to fail or produce an incorrect flux scale.
 
     fast_datause
         This parameter sets the visibilities mode used during the fast-phase solves  (one

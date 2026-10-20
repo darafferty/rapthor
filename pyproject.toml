@@ -236,6 +236,7 @@ commands = [
         "--group", "{env:CI_NODE_INDEX:1}",
         "tests/integration",
         "tests/operations/integration",
+        "tests/execution/integration",
     ]
 ]
 

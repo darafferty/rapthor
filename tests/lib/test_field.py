@@ -5,10 +5,12 @@ import casacore.tables as pt
 import lsmtool
 import numpy as np
 import pytest
+from losoto.h5parm import h5parm
 from matplotlib import pyplot as plt
 
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
 from rapthor.lib.observation import Observation
+from tests.conftest import write_scalar_h5parm
 
 
 @pytest.fixture
@@ -506,3 +508,103 @@ def test_set_calibration_strategy_preserves_order_of_solves(
             user_provided_strategy[key]
         )
     assert calibration_strategy_field.calibration_strategy == user_provided_strategy
+
+
+@pytest.fixture
+def solution_state_field():
+    """A bare Field with only the solution-file attributes that scan_h5parms reads."""
+    field = Field.__new__(Field)
+    field.h5parm_filename = None
+    field.dd_h5parm_filename = None
+    field.di_h5parm_filename = None
+    field.fulljones_h5parm_filename = None
+    field.apply_amplitudes = False
+    field.dd_apply_amplitudes = False
+    field.di_apply_amplitudes = False
+    return field
+
+
+ANTENNAS = ["CS001HBA0", "CS002HBA0"]
+
+
+def test_scan_h5parms_keeps_dd_amplitudes_after_a_phase_only_di_product(
+    solution_state_field, tmp_path
+):
+    """DD slow gains stay applied when a later DI phase solve becomes the current product."""
+    field = solution_state_field
+    field.dd_h5parm_filename = write_scalar_h5parm(
+        tmp_path / "dd.h5", ANTENNAS, with_amplitudes=True
+    )
+    field.di_h5parm_filename = write_scalar_h5parm(tmp_path / "di.h5", ANTENNAS)
+    # Calibrate.finalize() points h5parm_filename at the most recent product.
+    field.h5parm_filename = field.di_h5parm_filename
+
+    field.scan_h5parms()
+
+    assert field.dd_apply_amplitudes is True
+    assert field.di_apply_amplitudes is False
+    assert field.apply_amplitudes is False
+
+
+def test_scan_h5parms_keeps_di_amplitudes_after_a_phase_only_dd_product(
+    solution_state_field, tmp_path
+):
+    field = solution_state_field
+    field.dd_h5parm_filename = write_scalar_h5parm(tmp_path / "dd.h5", ANTENNAS)
+    field.di_h5parm_filename = write_scalar_h5parm(
+        tmp_path / "di.h5", ANTENNAS, with_amplitudes=True
+    )
+    field.h5parm_filename = field.dd_h5parm_filename
+
+    field.scan_h5parms()
+
+    assert field.dd_apply_amplitudes is False
+    assert field.di_apply_amplitudes is True
+    assert field.apply_amplitudes is False
+
+
+def test_scan_h5parms_treats_a_lone_supplied_h5parm_as_the_dd_product(
+    solution_state_field, tmp_path
+):
+    """An input h5parm without DI or DD ownership keeps the legacy single-flag behaviour."""
+    field = solution_state_field
+    field.h5parm_filename = write_scalar_h5parm(
+        tmp_path / "input.h5", ANTENNAS, with_amplitudes=True
+    )
+
+    field.scan_h5parms()
+
+    assert field.apply_amplitudes is True
+    assert field.dd_apply_amplitudes is True
+    assert field.di_apply_amplitudes is False
+
+
+def test_scan_h5parms_resets_flags_when_products_are_cleared(solution_state_field, tmp_path):
+    field = solution_state_field
+    field.dd_apply_amplitudes = True
+    field.di_apply_amplitudes = True
+    field.apply_amplitudes = True
+
+    field.scan_h5parms()
+
+    assert field.apply_amplitudes is False
+    assert field.dd_apply_amplitudes is False
+    assert field.di_apply_amplitudes is False
+
+
+def test_scan_h5parms_rejects_a_scalar_product_without_phases(solution_state_field, tmp_path):
+    path = tmp_path / "amplitudes_only.h5"
+    with h5parm(str(path), readonly=False) as solutions:
+        solset = solutions.makeSolset("sol000")
+        solset.makeSoltab(
+            "amplitude",
+            "amplitude000",
+            axesNames=["ant"],
+            axesVals=[ANTENNAS],
+            vals=np.ones(len(ANTENNAS)),
+            weights=np.ones(len(ANTENNAS)),
+        )
+    solution_state_field.dd_h5parm_filename = str(path)
+
+    with pytest.raises(ValueError, match="phase000"):
+        solution_state_field.scan_h5parms()

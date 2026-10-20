@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import casacore.tables as pt
+import numpy as np
+
 from rapthor.execution.commands import normalize_command
 
 COMMAND_LOG_FILENAME = "commands.jsonl"
@@ -30,6 +33,27 @@ class CommandRecord:
     @property
     def arguments(self):
         return parse_command_arguments(self.command)
+
+
+def read_from_ms(ms_path, columns=("DATA", "FLAG")):
+    """Return the DATA and FLAG columns of a Measurement Set by name.
+
+    Pipeline tests take this snapshot before a run and compare it afterwards to
+    check that no operation writes back into the input MS.
+    """
+    with pt.table(str(ms_path), ack=False) as table:
+        return {column: table.getcol(column) for column in columns}
+
+
+def assert_ms_data_and_flags_unchanged(ms_path, snapshot, *, what="The calibration"):
+    """Assert that the DATA and FLAG columns still match an earlier snapshot."""
+    current = read_from_ms(ms_path)
+    for column in ("DATA", "FLAG"):
+        np.testing.assert_array_equal(
+            current[column],
+            snapshot[column],
+            err_msg=f"{what} wrote the {column} column of the input MS",
+        )
 
 
 def get_working_dir_from_parset(parset_path):
