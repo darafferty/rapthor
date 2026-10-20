@@ -218,41 +218,17 @@ def di_slow_dd_fast_then_image_only_strategy_path(tmp_path):
     return strategy_path
 
 
-@pytest.fixture(
-    params=[True, False],
-    ids=["peel_bright_sources_enabled", "peel_bright_sources_disabled"],
-)
-def single_loop_strategy_path_peel_bright_sources(request, tmp_path):
+@pytest.fixture
+def single_loop_strategy_path_peel_bright_sources(tmp_path):
     """
     Fixture to generate a strategy file for a single self-calibration loop
-    with bright sources peeling enabled or disabled.
-
-    Returns a tuple of (strategy_path, peel_bright_sources) so the test can
-    branch its assertions accordingly.
+    with bright-source peeling enabled.
     """
-    peel = request.param
     strategy_steps = [
-        make_strategy_step(do_calibrate=True, do_image=True, peel_bright_sources=peel)
+        make_strategy_step(do_calibrate=True, do_image=True, peel_bright_sources=True)
     ]
     strategy_content = f"strategy_steps = {strategy_steps}"
     strategy_path = tmp_path / "single_loop_strategy.py"
-    strategy_path.write_text(strategy_content)
-    return strategy_path, peel
-
-
-@pytest.fixture
-def single_loop_strategy_path_calibrate_di(tmp_path):
-    """Fixture to generate a strategy file for a single self-calibration loop with DI calibration."""
-    strategy_steps = [
-        make_strategy_step(
-            do_calibrate=True,
-            do_image=True,
-            calibration_strategy={"di": ["full_jones"]},
-        )
-    ]
-
-    strategy_content = f"strategy_steps = {strategy_steps}"
-    strategy_path = tmp_path / "single_loop_strategy_calibrate_di.py"
     strategy_path.write_text(strategy_content)
     return strategy_path
 

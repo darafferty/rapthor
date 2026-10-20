@@ -3,6 +3,7 @@ import subprocess
 import pytest
 
 from .utils import (
+    find_command_records,
     first_command_arguments,
     get_working_dir_from_parset,
     update_parset_path,
@@ -23,7 +24,11 @@ from .utils import (
 )
 def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_loop_strategy_path):
     """Test a single selfcal loop with DP3.
-    DD calibration fast gains and medium gains are performed
+    DD calibration fast gains and medium gains are performed.
+
+    This is the default single-loop run (peel_bright_sources off and
+    shared_facet_rw off), so it also checks that bright-source peeling does
+    not run; keep it the only test with these default settings.
     """
 
     updated_parset_path = update_parset_path(
@@ -62,6 +67,16 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     assert "scalarphase" == dp3_arguments["solve1.mode"]
     assert "scalarphase" == dp3_arguments["solve2.mode"]
     assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
+
+    restore_commands = find_command_records(
+        working_dir,
+        operation="image_1",
+        executable="wsclean",
+        contains="-restore-list",
+    )
+    assert restore_commands == [], (
+        "WSClean restore commands should not run when bright-source peeling is disabled"
+    )
 
 
 @pytest.mark.integration

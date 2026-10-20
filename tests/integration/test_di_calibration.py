@@ -273,7 +273,7 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
 ):
     """Test a single selfcal loop with DP3 when only full-Jones
     direction-independent calibration is specified in the
-    strategy.
+    strategy, and that all operations of the loop complete.
     """
 
     updated_parset_path = update_parset_path(
@@ -291,7 +291,12 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+    assert "Operation predict_di_1 completed" in output
     assert "Operation calibrate_di_1 completed" in output
+    assert "Operation predict_1 completed" in output
+    assert "Operation image_1 completed" in output
+    assert "Operation mosaic_1 completed" in output
+    assert "Rapthor has finished :)" in output
 
     dp3_arguments = first_command_arguments(
         working_dir,
