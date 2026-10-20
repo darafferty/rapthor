@@ -233,7 +233,12 @@ def test_update_sets_skymodel_flags_in_repeated_final_cycles(field, monkeypatch)
 
     field.update(
         {
+            "do_calibrate": False,
             "regroup_model": False,
+            "peel_bright_sources": False,
+            "peel_outliers": False,
+            "reweight": False,
+            "compress_selfcal_images": False,
         },
         index=2,
         final_cycle_number=1,
@@ -248,7 +253,12 @@ def test_update_sets_skymodel_flags_in_repeated_final_cycles(field, monkeypatch)
 
     field.update(
         {
+            "do_calibrate": False,
             "regroup_model": False,
+            "peel_bright_sources": False,
+            "peel_outliers": False,
+            "reweight": False,
+            "compress_selfcal_images": False,
         },
         index=3,
         final_cycle_number=2,
