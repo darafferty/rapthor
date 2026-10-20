@@ -803,7 +803,12 @@ class TestCalibrate:
     @pytest.mark.parametrize(
         "bda_time, bda_freq, calibration_strategy, expected_dp3_steps",
         [
-            (0, 0, {"dd": ["fast_phase", "medium_phase"], "di": []}, ["solve1", "solve2"]),
+            (
+                0,
+                0,
+                {"dd": ["fast_phase", "medium_phase"], "di": []},
+                ["solve1", "solve2", "null"],
+            ),
             (
                 1,
                 1,
@@ -848,8 +853,8 @@ class TestCalibrate:
     @pytest.mark.parametrize(
         "preapply_solutions, expected_steps",
         [
-            (False, ["predict", "applybeam", "solve1", "solve2"]),
-            (True, ["predict", "applybeam", "applycal", "solve1", "solve2"]),
+            (False, ["predict", "applybeam", "solve1", "solve2", "null"]),
+            (True, ["predict", "applybeam", "applycal", "solve1", "solve2", "null"]),
         ],
     )
     def test_build_calibration_dp3_steps_image_based_predict(
@@ -871,10 +876,10 @@ class TestCalibrate:
     @pytest.mark.parametrize(
         "preapply_solutions, expected_steps",
         [
-            (False, ["solve1", "solve2"]),
+            (False, ["solve1", "solve2", "null"]),
             # WSClean writes the model columns outside DP3, so the data still
             # needs the stand-alone applycal; only BDA is skipped.
-            (True, ["applycal", "solve1", "solve2"]),
+            (True, ["applycal", "solve1", "solve2", "null"]),
         ],
     )
     def test_build_calibration_dp3_steps_wsclean_predict_keeps_applycal_without_bda(
@@ -893,6 +898,46 @@ class TestCalibrate:
             )
             == expected_steps
         )
+
+    @pytest.mark.parametrize(
+        "chain_options",
+        [
+            pytest.param({}, id="solves_only"),
+            pytest.param({"preapply_solutions": True}, id="preapply"),
+            pytest.param({"bda_timebase": 10, "bda_frequencybase": 10}, id="bda"),
+            pytest.param(
+                {"bda_timebase": 10, "bda_frequencybase": 10, "preapply_solutions": True},
+                id="bda_preapply",
+            ),
+            pytest.param(
+                {"use_wsclean_predict": True, "preapply_solutions": True}, id="wsclean_preapply"
+            ),
+            pytest.param({"use_image_based_predict": True}, id="image_based"),
+            pytest.param(
+                {"use_image_based_predict": True, "preapply_solutions": True},
+                id="image_based_preapply",
+            ),
+        ],
+    )
+    def test_build_calibration_dp3_steps_ends_every_chain_with_null(self, chain_options):
+        """
+        DP3 rewrites msin in place when msout is empty and a step provides data
+        (avg, applycal, applybeam, predict). The trailing null step prevents
+        that, so every chain shape must end with it, not only the BDA chain.
+        """
+        options = {
+            "all_channels_regular": True,
+            "use_image_based_predict": False,
+            "solve_steps": ["solve1", "solve2"],
+        }
+        options.update(chain_options)
+        bda_timebase = options.pop("bda_timebase", 0)
+        bda_frequencybase = options.pop("bda_frequencybase", 0)
+
+        steps = build_calibration_dp3_steps(bda_timebase, bda_frequencybase, **options)
+
+        assert steps[-1] == "null"
+        assert steps.count("null") == 1
 
     @pytest.mark.parametrize(
         "preapply_steps, expected_steps",
@@ -1165,7 +1210,7 @@ class TestCalibrate:
         calibrate = Calibrate("dd", field=calibrate_field, index=1)
         calibrate.set_input_parameters()
 
-        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1"]
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "null"]
         assert calibrate.input_parms["solve1_mode"] == "diagonal"
         assert calibrate.input_parms["output_solve1_h5parm"] == [
             "slow_gain_0.h5parm",
@@ -1208,7 +1253,7 @@ class TestCalibrate:
         calibrate.set_input_parameters()
 
         antenna_constraint = "[[CS001HBA0,CS002HBA0,RS106HBA0]]"
-        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2"]
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2", "null"]
         assert calibrate.input_parms["solve1_mode"] == "diagonal"
         assert calibrate.input_parms["solve1_antennaconstraint"] == "[]"
         assert calibrate.input_parms["output_solve2_h5parm"] == [
@@ -1563,7 +1608,7 @@ class TestCalibrate:
         calibrate = Calibrate("dd", field=calibrate_field, index=2)
         calibrate.set_input_parameters()
 
-        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2"]
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2", "null"]
         assert calibrate.input_parms["applycal_steps"] is None
         assert calibrate.input_parms["calibration_applycal_steps"] is None
         assert calibrate.input_parms["applycal_h5parm"] is None
@@ -1621,7 +1666,7 @@ class TestCalibrate:
 
         for command in commands:
             command_string = " ".join(command)
-            assert "steps=[solve1,solve2]" in command
+            assert "steps=[solve1,solve2,null]" in command
             assert not any(token.startswith("applycal.steps=") for token in command)
             assert not any(token.startswith("applycal.parmdb=") for token in command)
             assert not any(token.startswith("applycal.fulljones.parmdb=") for token in command)

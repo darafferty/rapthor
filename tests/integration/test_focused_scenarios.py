@@ -18,9 +18,11 @@ from rapthor.execution.image.commands import (
 from rapthor.lib.miscellaneous import convert_mjd2mvt
 
 from .utils import (
+    assert_ms_data_and_flags_unchanged,
     find_command_records,
     first_command_arguments,
     get_working_dir_from_parset,
+    read_from_ms,
     update_parset_path,
 )
 
@@ -42,6 +44,21 @@ def _read_parset(parset_path):
     parset = configparser.ConfigParser()
     parset.read(parset_path)
     return parset
+
+
+def _disable_calibration_bda(parset_path):
+    """Turn off baseline-dependent averaging for the calibration solves.
+
+    The integration template only sets the imaging BDA options, so the solves run
+    with the default calibration BDA. Without BDA the DD solve chain has no
+    averaging step, and the trailing null step is the only thing that stops DP3
+    from writing pre-applied data back into the input MS.
+    """
+    parset = _read_parset(parset_path)
+    parset["calibration"]["bda_timebase"] = "0.0"
+    parset["calibration"]["bda_frequencybase"] = "0.0"
+    with Path(parset_path).open("w") as fp:
+        parset.write(fp)
 
 
 def _copy_ms_with_shifted_frequency(source_ms, target_ms):
@@ -471,6 +488,7 @@ def test_rapthor_run_final_image_only_applies_dd_slow_gains_on_the_fly(
 def test_rapthor_run_final_image_only_preapplies_di_slow_and_images_with_dd(
     generated_parset_path,
     di_slow_dd_fast_then_image_only_strategy_path,
+    test_ms,
 ):
     """DI slow gains are pre-applied before WSClean applies DD gains on the fly."""
     updated_parset_path = update_parset_path(
@@ -481,8 +499,15 @@ def test_rapthor_run_final_image_only_preapplies_di_slow_and_images_with_dd(
             "reweight": "False",
         },
     )
+    _disable_calibration_bda(updated_parset_path)
+    input_ms_before = read_from_ms(test_ms)
 
-    output = _run_rapthor(updated_parset_path)
+    try:
+        output = _run_rapthor(updated_parset_path)
+    finally:
+        # Check the input MS even when the run fails: a DD solve that writes the
+        # pre-applied data back into it breaks the later operations as well.
+        assert_ms_data_and_flags_unchanged(test_ms, input_ms_before, what="The DD calibration")
 
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation calibrate_1 completed" in output
@@ -509,6 +534,19 @@ def test_rapthor_run_final_image_only_preapplies_di_slow_and_images_with_dd(
     assert dp3_arguments["applycal.steps"] == "[slowgain]"
     assert Path(dp3_arguments["applycal.parmdb"]).resolve() == di_h5parm.resolve()
     _assert_wsclean_applies_h5parm(working_dir, "image_2", dd_h5parm)
+
+    # The DD solve pre-applies the DI slow gains with a stand-alone applycal step
+    # and runs DP3 with an empty msout. Without a trailing null step DP3 writes
+    # the corrected visibilities back into the input MS, which the imaging
+    # operation above then corrects a second time.
+    solve_arguments = first_command_arguments(
+        working_dir,
+        operation="calibrate_1",
+        executable="DP3",
+        contains="applycal.steps",
+    )
+    assert "slowgain" in solve_arguments["applycal.steps"]
+    assert solve_arguments["steps"].endswith(",null]")
 
 
 @pytest.mark.integration

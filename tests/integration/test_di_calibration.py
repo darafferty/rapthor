@@ -3,8 +3,10 @@ import subprocess
 import pytest
 
 from .utils import (
+    assert_ms_data_and_flags_unchanged,
     first_command_arguments,
     get_working_dir_from_parset,
+    read_from_ms,
     update_parset_path,
 )
 
@@ -67,9 +69,6 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "solve4" not in dp3_arguments["steps"]
     assert "avg" not in dp3_arguments["steps"]
     assert "scalarphase" in dp3_arguments["solve1.mode"]
-
-
-# fast medium slow for DI
 
 
 @pytest.mark.integration
@@ -339,6 +338,7 @@ def test_rapthor_run_mixed_di_dd_order(
     generated_parset_path,
     single_loop_strategy_with_calibration_strategy,
     expected_order,
+    test_ms,
 ):
     """Test mixed DI/DD calibration order and branch-to-branch solution application."""
 
@@ -352,9 +352,15 @@ def test_rapthor_run_mixed_di_dd_order(
 
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
+    input_ms_before = read_from_ms(test_ms)
 
     command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+    finally:
+        # Check the input MS even when the run fails: a solve that writes the
+        # pre-applied data back into it breaks the later operations as well.
+        assert_ms_data_and_flags_unchanged(test_ms, input_ms_before)
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     for operation in expected_order:
@@ -375,6 +381,9 @@ def test_rapthor_run_mixed_di_dd_order(
         )
         assert "applycal" in dp3_arguments["steps"]
         assert "fulljones" in dp3_arguments["applycal.steps"]
+        # The pre-apply runs DP3 with an empty msout, so the chain must end with
+        # a null step or DP3 writes the corrected visibilities into the input MS.
+        assert dp3_arguments["steps"].endswith(",null]")
     else:
         dp3_arguments = first_command_arguments(
             working_dir,

@@ -637,8 +637,9 @@ class Calibrate(FlowOperation):
     ):
         """
         Set the calibration steps depending on whether baseline-dependent averaging is
-        activated (and supported) or not. If BDA is used, a "null" step is also added to
-        prevent the writing of the BDA data
+        activated (and supported) or not and whether solutions are pre-applied. Every
+        chain ends with a "null" step so that DP3 never writes the averaged or
+        corrected data back into the input MS.
 
         TODO: image-based predict doesn't yet work with BDA; once it does,
         the restriction on this mode should be removed
