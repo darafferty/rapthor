@@ -183,18 +183,27 @@ def test_rapthor_run_dd_slow_gains(
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "generated_parset_path",
+    "generated_parset_path,bda_timebase,bda_frequencybase",
     [
         (
             "tests/resources/integration_template.parset",
             "tests/resources/integration_true_sky.txt",
             "tests/resources/integration_apparent_sky.txt",
-        )
+            0,
+            0,
+        ),
+        (
+            "tests/resources/integration_template.parset",
+            "tests/resources/integration_true_sky.txt",
+            "tests/resources/integration_apparent_sky.txt",
+            10000,
+            10000,
+        ),
     ],
     indirect=True,
 )
 def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
-    generated_parset_path, single_loop_strategy_path
+    generated_parset_path, bda_timebase, bda_frequencybase, single_loop_strategy_path
 ):
     """Test a single selfcal loop with DP3.
     ddecal fast_gains and medium gains are performed
@@ -205,6 +214,8 @@ def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
         {
             "allow_internet_access": "False",
             "use_wsclean_predict": "True",
+            "bda_timebase": str(bda_timebase),
+            "bda_frequencybase": str(bda_frequencybase),
             "strategy": str(single_loop_strategy_path),
         },
     )
