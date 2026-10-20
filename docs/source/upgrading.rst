@@ -109,6 +109,16 @@ Calibration carried between cycles
 
     Related documentation: :ref:`calibration_strategy_details`.
 
+Final cycle of the ``selfcal`` strategy
+    The last selfcal cycle now images with the 8 MHz output channel width of
+    the other selfcal cycles, and only the final cycle uses 4 MHz. Because the
+    final cycle now differs from the last selfcal cycle, it is run even when
+    :term:`final_data_fraction` equals :term:`selfcal_data_fraction`. In
+    version 2, the two cycles shared their parameters, so both imaged at 4 MHz
+    and the final cycle was skipped in that case.
+
+    Related documentation: :ref:`custom_strategy` describes the final cycle.
+
 Slow-gain amplitudes
     The combined ``field-solutions.h5`` retains the slow-gain amplitudes when
     those solves were requested. The old CWL combination path could report
