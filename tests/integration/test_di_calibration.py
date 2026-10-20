@@ -136,7 +136,8 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     # The processed DI product is what later operations pre-apply, so it must
     # hold real gains rather than solutions flagged away by the processing.
     assert_h5parm_has_solutions(
-        Path(working_dir) / "solutions" / "calibrate_di_1" / "di-solutions.h5"
+        Path(working_dir) / "solutions" / "calibrate_di_1" / "di-solutions.h5",
+        expected_soltabs=("amplitude000", "phase000"),
     )
 
 

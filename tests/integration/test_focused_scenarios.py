@@ -520,8 +520,8 @@ def test_rapthor_run_final_image_only_preapplies_di_slow_and_images_with_dd(
     assert dd_h5parm.is_file(), f"No DD calibration h5parm was produced in {working_dir}"
     # The DD solve pre-applies the DI gains, so both products must hold real
     # solutions rather than values flagged away by the slow-gain processing.
-    assert_h5parm_has_solutions(di_h5parm)
-    assert_h5parm_has_solutions(dd_h5parm)
+    assert_h5parm_has_solutions(di_h5parm, expected_soltabs=("amplitude000", "phase000"))
+    assert_h5parm_has_solutions(dd_h5parm, expected_soltabs=("phase000",))
 
     image_inputs = _image_pipeline_inputs(working_dir, "image_2")
     assert image_inputs["prepare_data_applycal_steps"] == "[slowgain]"

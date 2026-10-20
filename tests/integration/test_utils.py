@@ -3,9 +3,14 @@
 import configparser
 import json
 
+import numpy as np
 import pytest
+from losoto.h5parm import h5parm
+
+from tests.conftest import write_scalar_h5parm
 
 from .utils import (
+    assert_h5parm_has_solutions,
     collect_command_records,
     find_command_records,
     first_command_arguments,
@@ -123,3 +128,36 @@ def test_parse_command_arguments_accepts_shell_string():
         "msin": "input.ms",
         "steps": "[solve1]",
     }
+
+
+def test_assert_h5parm_has_solutions_accepts_valid_solutions(tmp_path):
+    path = write_scalar_h5parm(
+        tmp_path / "valid.h5", ["CS001HBA0", "CS002HBA0"], with_amplitudes=True
+    )
+
+    assert_h5parm_has_solutions(path, expected_soltabs=("amplitude000", "phase000"))
+
+
+def test_assert_h5parm_has_solutions_rejects_a_product_without_soltabs(tmp_path):
+    path = tmp_path / "empty.h5"
+    with h5parm(str(path), readonly=False) as solutions:
+        solutions.makeSolset("sol000")
+
+    with pytest.raises(AssertionError, match="contains no solution tables"):
+        assert_h5parm_has_solutions(path)
+
+
+def test_assert_h5parm_has_solutions_rejects_a_missing_expected_soltab(tmp_path):
+    path = write_scalar_h5parm(tmp_path / "phase_only.h5", ["CS001HBA0", "CS002HBA0"])
+
+    with pytest.raises(AssertionError, match=r"lacks the solution tables \['amplitude000'\]"):
+        assert_h5parm_has_solutions(path, expected_soltabs=("amplitude000", "phase000"))
+
+
+def test_assert_h5parm_has_solutions_rejects_flagged_solutions(tmp_path):
+    path = write_scalar_h5parm(
+        tmp_path / "flagged.h5", ["CS001HBA0", "CS002HBA0"], with_amplitudes=True, amplitudes=np.nan
+    )
+
+    with pytest.raises(AssertionError, match="100% of sol000/amplitude000"):
+        assert_h5parm_has_solutions(path)

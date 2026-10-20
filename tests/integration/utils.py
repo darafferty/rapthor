@@ -57,19 +57,22 @@ def assert_ms_data_and_flags_unchanged(ms_path, snapshot, *, what="The calibrati
         )
 
 
-def assert_h5parm_has_solutions(h5parm_path, *, max_flagged_fraction=0.5):
-    """Assert that every soltab of an h5parm holds mostly valid solutions.
+def assert_h5parm_has_solutions(h5parm_path, *, expected_soltabs=(), max_flagged_fraction=0.5):
+    """Assert that an h5parm holds solution tables with mostly valid solutions.
 
     A solve on degenerate data, or solution processing that flags everything,
     leaves a product whose values are all NaN with zero weights. Later operations
     then run on fully flagged data without any error, so the pipeline tests
-    check the products they depend on.
+    check the products they depend on. ``expected_soltabs`` names tables that
+    must be present; a product without any solution table always fails.
     """
     solutions = h5parm(str(h5parm_path), readonly=True)
     try:
+        checked_soltabs = []
         for solset_name in solutions.getSolsetNames():
             solset = solutions.getSolset(solset_name)
             for soltab in solset.getSoltabs():
+                checked_soltabs.append(soltab.name)
                 values = soltab.getValues(retAxesVals=False)
                 weights = soltab.getValues(weight=True, retAxesVals=False)
                 flagged = (weights == 0) | ~np.isfinite(values)
@@ -79,6 +82,9 @@ def assert_h5parm_has_solutions(h5parm_path, *, max_flagged_fraction=0.5):
                 )
     finally:
         solutions.close()
+    assert checked_soltabs, f"{h5parm_path} contains no solution tables"
+    missing_soltabs = sorted(set(expected_soltabs) - set(checked_soltabs))
+    assert not missing_soltabs, f"{h5parm_path} lacks the solution tables {missing_soltabs}"
 
 
 def get_working_dir_from_parset(parset_path):
