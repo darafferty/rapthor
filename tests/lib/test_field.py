@@ -211,6 +211,50 @@ def test_update_allows_target_number_without_target_flux(field, monkeypatch):
     assert captured["target_number"] == 1
 
 
+def test_update_sets_skymodel_flags_in_repeated_final_cycles(field, monkeypatch):
+    captured = {}
+
+    def fake_update_skymodels(index, regroup_model, **kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(field, "update_skymodels", fake_update_skymodels)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+
+    class Sector:
+        name = "sector_1"
+
+    # Set one imaging sector and one outlier sector to simluate
+    # the first final cycle
+    field.imaging_sectors = [Sector()]
+    field.outlier_sectors = [Sector()]
+
+    field.update(
+        {
+            "regroup_model": False,
+        },
+        index=2,
+        final_cycle_number=1,
+    )
+
+    assert captured["combine_current_and_initial"] is True
+    assert field.imaged_sources_only is False
+
+    # Remove the outlier sector to simluate the removal done by the predict
+    # operation (in the first final cycle) before the second final cycle starts
+    field.outlier_sectors = []
+
+    field.update(
+        {
+            "regroup_model": False,
+        },
+        index=3,
+        final_cycle_number=2,
+    )
+
+    assert captured["combine_current_and_initial"] is False
+    assert field.imaged_sources_only is True
+
+
 def test_update_skymodels_allows_target_number_without_target_flux(parset_for_field_test):
     field = Field(parset_for_field_test)
 
