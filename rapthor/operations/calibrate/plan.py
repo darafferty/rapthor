@@ -215,11 +215,8 @@ def build_calibration_dp3_steps(
         )
         common_steps = preprocessing_steps + common_steps
 
-    # The solve command runs with an empty msout. DP3 then writes the processed
-    # visibilities back into msin whenever a step provides data (avg, applycal,
-    # applybeam, predict), which would overwrite the calibration input MS with
-    # averaged or corrected data. A trailing null step prevents that, so every
-    # chain ends with it and the solves only ever read the input.
+    # Adding a "null" step prevents updating the input MS, which would happen
+    # whenever a step provides data (avg, applycal, applybeam, predict).
     return [*common_steps, "null"]
 
 
