@@ -164,6 +164,13 @@ ignore = ["E501"]  # line-too-long
 # through os._exit. Dask nannies stop their workers with SIGTERM.
 patch = ["subprocess", "_exit"]
 sigterm = true
+# setuptools_scm writes this file into the build only; the coverage_report job
+# runs on a plain checkout, where it does not exist.
+omit = ["*/rapthor/_version.py"]
+
+[tool.coverage.report]
+# Also drop it from data that was measured before the run omit applied.
+omit = ["*/rapthor/_version.py"]
 
 [tool.coverage.paths]
 # tox measures the package it installs into its environment. Map it back onto
