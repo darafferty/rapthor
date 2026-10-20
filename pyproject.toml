@@ -110,7 +110,8 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks test as integration tests",
     "internet: marks tests that require internet access",
-    "prefect: marks tests that start or share a Prefect test server"
+    "prefect: marks tests that start or share a Prefect test server",
+    "serial: marks tests that start their own Prefect and Dask processes and must run outside the parallel pool"
 ]
 
 
@@ -172,15 +173,25 @@ deps = [
     "pytest-socket",
 ]
 commands = [
-    # Run the non-integration suite with the worker count selected by pytest-xdist.
-    # Flow tests share one Prefect test server per worker through the
-    # `prefect_server` fixture, so they no longer need a serial lane.
+    # Tests marked `serial` launch Python subprocesses that start their own Prefect
+    # server and Dask cluster. Run them first, on their own, because under the
+    # parallel run's CPU load they can exceed their subprocess timeouts.
     [
         "python", "-m", "pytest",
-        "-m", "not integration",
+        "-m", "not integration and serial",
+        "--cov=rapthor",
+        "tests/{posargs}",
+    ],
+    # Run the rest of the non-integration suite with the worker count selected by
+    # pytest-xdist and add to the coverage from the run above. Flow tests share
+    # one Prefect test server per worker through the `prefect_server` fixture.
+    [
+        "python", "-m", "pytest",
+        "-m", "not integration and not serial",
         "-n", "auto",
         "--dist", "worksteal",
         "--cov=rapthor",
+        "--cov-append",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
         "--cov-report", "html",

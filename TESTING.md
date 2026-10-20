@@ -59,12 +59,13 @@ Run one focused file during development:
 python -m pytest tests/operations/test_image.py
 ```
 
-For the complete non-integration suite, run one parallel pytest invocation,
-which mirrors the `tox -e py` command:
+For the complete non-integration suite, run the `serial` tests on their own and
+then everything else in parallel, which mirrors the `tox -e py` commands:
 
 ```bash
-RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-unit \
-  python -m pytest -m "not integration" -n auto --dist worksteal tests
+export RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-unit
+python -m pytest -m "not integration and serial" tests
+python -m pytest -m "not integration and not serial" -n auto --dist worksteal tests
 ```
 
 - Choose `-n <count>` instead of `-n auto` when resource limits require fewer
@@ -84,6 +85,7 @@ RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-unit \
 | `integration` | External-tool or end-to-end tests, excluded from the commands above. |
 | `internet` | Network-dependent tests; require network access or deselect explicitly. |
 | `prefect` | Tests that start or share a Prefect test server. |
+| `serial` | Tests that launch their own Prefect and Dask processes; run outside the parallel pool. |
 | `slow` | Tests that can be explicitly deselected for a faster run. |
 
 Tests that run a Prefect flow request the session-scoped `prefect_server`
@@ -91,7 +93,10 @@ fixture from the [execution conftest](tests/execution/conftest.py). It starts on
 Prefect test server per pytest process (one per xdist worker) because every
 server start costs several seconds. `tests/conftest.py` marks tests that use the
 fixture, or `prefect_test_harness` directly, as `prefect`. Add `prefect`
-explicitly for tests that start a server in a subprocess.
+explicitly for tests that start a server in a subprocess. Also mark such a test
+`serial` when the subprocess starts its own Prefect server or Dask cluster:
+startup is CPU-bound, and alongside a fully loaded parallel run it can take
+several times longer and exceed the subprocess timeout.
 
 Use `run_flow_for_test` in the execution conftest for production flow wiring
 with optional fake shell operations. It defaults to the `sync` task runner and

@@ -135,6 +135,7 @@ print("RESULT " + json.dumps(result, sort_keys=True))
 
 
 @pytest.mark.prefect
+@pytest.mark.serial
 @pytest.mark.parametrize(
     "scenario",
     [
