@@ -201,7 +201,7 @@ The following processing parameters can be set for each cycle:
         - "slow_gains": run the slow (diagonal) solve.
         - "full_jones": run the full-Jones solve.
 
-        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles. If this parameter is not set for a cycle in which calibration is done, Rapthor logs a warning and uses the sequence of the example above (i.e., the full direction-dependent sequence and no direction-independent solves). See :ref:`calibration_strategy_details` for the combinations of solves that can be used and for how the resulting solutions are applied.
+        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles. If this parameter is not set for a cycle in which calibration is done, Rapthor logs a warning and uses the sequence of the example above (i.e., the full direction-dependent sequence and no direction-independent solves). This default is applied to each such cycle on its own: a sequence given for an earlier cycle does not carry over to a later cycle that omits it. A cycle without calibration keeps the sequence of the last cycle that calibrated, so that imaging applies the solutions that cycle produced. The sequence used in each cycle is written to the log. See :ref:`calibration_strategy_details` for the combinations of solves that can be used and for how the resulting solutions are applied.
 
 
 .. _calibration_strategy_details:

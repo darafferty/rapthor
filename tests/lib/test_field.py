@@ -357,6 +357,89 @@ def test_plot_overview_initial_near_pole(field):
     assert plt.get_fignums() == []
 
 
+def _update_field(field, monkeypatch, index, **step):
+    """Run Field.update() for one cycle without touching sky models."""
+    monkeypatch.setattr(field, "update_skymodels", lambda *args, **kwargs: None)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+    field.lofar_to_true_flux_ratio = 1.0
+    field.lofar_to_true_flux_std = 0.1
+    field.apply_normalizations = False
+    step_dict = {
+        "do_calibrate": True,
+        "regroup_model": False,
+        "target_flux": None,
+        "max_directions": 1,
+        "max_distance": None,
+        "peel_bright_sources": False,
+        "peel_outliers": False,
+        "reweight": False,
+        "compress_selfcal_images": False,
+        "compress_final_images": False,
+    }
+    step_dict.update(step)
+    field.update(step_dict, index=index)
+
+
+def test_update_resolves_omitted_calibration_strategy_for_each_cycle(field, monkeypatch, caplog):
+    """A cycle that omits the strategy gets the default, whatever earlier cycles used."""
+    explicit_strategy = {"di": ["fast_phase"], "dd": []}
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 2)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+    assert "Calibration strategy for cycle 2 (default): DI solves [], DD solves" in caplog.text
+
+    _update_field(field, monkeypatch, 3, calibration_strategy=explicit_strategy)
+    assert field.calibration_strategy == explicit_strategy
+    assert field._calibration_strategy_defaulted is False
+
+    # Omitted again: the explicit strategy of cycle 3 must not carry over
+    _update_field(field, monkeypatch, 4)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+
+    # An explicit None counts as omitted
+    _update_field(field, monkeypatch, 5, calibration_strategy=None)
+    assert field._calibration_strategy_defaulted is True
+
+
+def test_update_ignores_legacy_solve_flags_without_calibration_strategy(field, monkeypatch):
+    """Legacy flags are translated when the strategy is loaded, not by Field.update()."""
+    _update_field(field, monkeypatch, 2, do_slowgain_solve=False, do_fulljones_solve=True)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+
+
+def test_update_keeps_last_calibration_strategy_for_image_only_cycle(field, monkeypatch):
+    """An image-only cycle applies the solutions of the last calibration."""
+    explicit_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
+    _update_field(field, monkeypatch, 2, calibration_strategy=explicit_strategy)
+
+    _update_field(field, monkeypatch, 3, do_calibrate=False)
+    assert field.calibration_strategy == explicit_strategy
+    assert field._calibration_strategy_defaulted is False
+
+    # A later calibrating cycle without a strategy starts afresh from the default
+    _update_field(field, monkeypatch, 4)
+    assert field._calibration_strategy_defaulted is True
+    assert field.calibration_strategy["dd"] == [
+        "fast_phase",
+        "medium_phase",
+        "slow_gains",
+        "medium_phase",
+    ]
+
+
 def test_set_calibration_strategy_default(calibration_strategy_field):
     """The default calibration strategy is explicit and ignores legacy flags."""
     calibration_strategy_field.__dict__.update(

@@ -119,6 +119,15 @@ Final cycle of the ``selfcal`` strategy
 
     Related documentation: :ref:`custom_strategy` describes the final cycle.
 
+Omitted calibration strategy
+    A cycle that calibrates without :term:`calibration_strategy` uses the
+    default sequence of solves. In version 2, such a cycle repeated the
+    sequence of the previous cycle. Cycles without calibration keep the
+    sequence of the last calibrating cycle, so that imaging applies the
+    solutions that cycle produced.
+
+    Related documentation: :term:`calibration_strategy`.
+
 Slow-gain amplitudes
     The combined ``field-solutions.h5`` retains the slow-gain amplitudes when
     those solves were requested. The old CWL combination path could report

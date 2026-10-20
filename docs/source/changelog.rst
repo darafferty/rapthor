@@ -62,6 +62,10 @@ existing parsets and strategy files.
       last selfcal cycle from 8 MHz to 4 MHz, and the two cycles then compared
       as identical, so the final cycle was skipped when the selfcal and final
       data fractions were equal.
+    - A cycle that calibrates without a :term:`calibration_strategy` now uses
+      the default sequence of solves, whatever earlier cycles used. In earlier
+      versions, such a cycle silently repeated the sequence of the previous
+      cycle. The sequence used in each cycle is now written to the log.
 
 
 Version 2.1 (2025/12/04)

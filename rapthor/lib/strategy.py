@@ -430,6 +430,23 @@ def check_and_adjust_parameters(field, strategy_steps):
                     )
                 strategy_steps[i].pop(deprecated)
 
+    # A calibrating cycle that omits "calibration_strategy" (or sets it to None)
+    # gets the default explicit strategy written into its step. The omission is
+    # thereby resolved for each cycle on its own and the resolved solves are
+    # logged; otherwise a later cycle would silently inherit whatever solves the
+    # previous cycle ran
+    for i in range(len(strategy_steps)):
+        if strategy_steps[i].get("do_calibrate") and not strategy_steps[i].get(
+            "calibration_strategy"
+        ):
+            strategy_steps[i]["calibration_strategy"] = default_calibration_strategy()
+            log.warning(
+                "Parameter 'calibration_strategy' is not defined in the strategy "
+                "for cycle %i. Using the default value of %r.",
+                i + 1,
+                strategy_steps[i]["calibration_strategy"],
+            )
+
     # Check for required parameters. If any are missing, either print a warning if the
     # parameter has a default defined or raise an error if not
     for primary, secondary_parameters in required_parameters.items():
