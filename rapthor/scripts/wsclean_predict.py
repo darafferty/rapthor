@@ -43,12 +43,7 @@ def make_writable(
     if all BDA parameters are zero, only copy the input MS,
     otherwise run DP3 to create an averaged MS
     """
-    if (
-        bda_timebase == 0
-        and bda_frequencybase == 0
-        and bda_maxinterval == 0
-        and bda_minchannels == 0
-    ):
+    if bda_timebase == 0 and bda_frequencybase == 0:
         newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
         # copy msfile to newms
         shutil.copytree(msfile, newms, dirs_exist_ok=True)
