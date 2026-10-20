@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 def make_writable(
     msfile,
     datacol,
-    tmpdir,
     bda_timebase=0.0,
     bda_frequencybase=0.0,
     bda_maxinterval=0.0,
@@ -43,8 +42,8 @@ def make_writable(
     if all BDA parameters are zero, only copy the input MS,
     otherwise run DP3 to create an averaged MS
     """
+    newms = os.path.basename(msfile) + "_" + str(uuid.uuid4())
     if bda_timebase == 0 and bda_frequencybase == 0:
-        newms = os.path.join(tmpdir, os.path.basename(msfile) + "_" + str(uuid.uuid4()))
         # copy msfile to newms
         shutil.copytree(msfile, newms, dirs_exist_ok=True)
         # change root dir +rwx
@@ -70,7 +69,6 @@ def make_writable(
                 os.chmod(file_p, current_mode | stat.S_IWUSR | stat.S_IWGRP)
     else:
         # run DP3
-        newms = os.path.basename(msfile) + "_" + str(uuid.uuid4())
         cmd = [
             "DP3",
             f"msin={msfile}",
@@ -466,7 +464,6 @@ def main():
     msname = make_writable(
         args.msin[0],
         args.data_colname,
-        args.tempdir,
         args.bda_timebase if bda_possible else 0,
         args.bda_frequencybase if bda_possible else 0,
         args.bda_maxinterval if bda_possible else 0,
