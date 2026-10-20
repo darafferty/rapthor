@@ -231,6 +231,8 @@ commands = [
         "--durations=0",
         "--splits", "{env:CI_NODE_TOTAL:1}",
         "--group", "{env:CI_NODE_INDEX:1}",
+        # Balance the CI nodes with the stored per-test timings; see TESTING.md.
+        "--durations-path", "{toxinidir}/.test_durations",
         "tests/integration",
         "tests/operations/integration",
         "tests/execution/integration",

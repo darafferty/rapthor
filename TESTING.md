@@ -126,7 +126,11 @@ RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
 ```
 
 Alternatively use `tox -e test_integration`; CI can split that lane with
-`CI_NODE_TOTAL` and `CI_NODE_INDEX`. The lane collects only the three
+`CI_NODE_TOTAL` and `CI_NODE_INDEX`. pytest-split balances the nodes with the
+per-test timings in [.test_durations](.test_durations); a test without an entry
+is assumed to take the average time. Refresh the file after adding, removing or
+substantially changing integration tests by running the lane once with
+`--store-durations` and committing the result. The lane collects only the three
 directories above, so a test marked `integration` must live in one of them or
 CI never runs it. Real-tool checks of one execution owner (for example DP3
 runs of a command builder) belong in `tests/execution/integration/`.
