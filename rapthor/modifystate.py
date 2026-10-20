@@ -3,12 +3,17 @@ Module that modifies the state of the pipeline
 """
 
 import filecmp
+import glob
+import json
 import logging
 import os
 import re
 import shutil
 import sys
+import tempfile
+from collections import Counter
 from contextlib import contextmanager
+from datetime import datetime, timezone
 
 from rapthor.execution.workspace import remove_operation_workspace
 from rapthor.lib.parset import parset_read
@@ -31,6 +36,9 @@ OPERATION_ORDER = (
 # The DI and DD calibration operations of a cycle run in the order set by its
 # calibration strategy and use each other's solutions, so they are reset together
 CALIBRATION_OPERATIONS = {"predict_nc", "calibrate", "predict_di", "calibrate_di"}
+# Logs with one JSON record per line, each naming its operation
+OPERATION_RECORD_LOGS = ("commands.jsonl", "tasks.jsonl")
+MAIN_LOG = "rapthor.log"
 _OPERATION_DIRECTORY = re.compile(r"(?P<operation>[a-z_]+?)(?:_(?P<index>[0-9]+))?")
 
 
@@ -110,6 +118,87 @@ def _reset_start(pipelines, selected):
     )
 
 
+def archive_reset_logs(logs_dir, operations, now=None):
+    """
+    Move the log records of reset operations to files named after the reset.
+
+    The records are moved from commands.jsonl and tasks.jsonl to, for example,
+    commands.reset-20250102T030405Z.jsonl, so that the logs only describe the work
+    whose products are kept. rapthor.log cannot be split by operation, so it is
+    renamed in the same way. Returns the name of the reset attempt, or None if
+    nothing was archived.
+    """
+    now = now or datetime.now(timezone.utc)
+    stamp = attempt = f"reset-{now:%Y%m%dT%H%M%SZ}"
+    number = 1
+    # Two resets within the same second get distinct names
+    while any(
+        os.path.exists(_archive_path(logs_dir, filename, attempt))
+        for filename in (*OPERATION_RECORD_LOGS, MAIN_LOG)
+    ):
+        number += 1
+        attempt = f"{stamp}-{number}"
+
+    archived_any = False
+    for filename in OPERATION_RECORD_LOGS:
+        path = os.path.join(logs_dir, filename)
+        if not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8") as log_file:
+            lines = log_file.readlines()
+        kept = [line for line in lines if _record_operation(line) not in operations]
+        if len(kept) == len(lines):
+            continue
+        # A reset that stopped after writing an archive but before replacing the
+        # log left its records in both. Each archived copy accounts for one line.
+        archived = Counter()
+        for archive in glob.glob(_archive_path(glob.escape(logs_dir), filename, "reset-*")):
+            with open(archive, encoding="utf-8") as archive_file:
+                archived.update(line.rstrip("\n") for line in archive_file)
+        moved = []
+        for line in lines:
+            if _record_operation(line) in operations:
+                record = line.rstrip("\n")
+                if archived[record] > 0:
+                    archived[record] -= 1
+                else:
+                    moved.append(record + "\n")
+        if moved:
+            with open(_archive_path(logs_dir, filename, attempt), "a", encoding="utf-8") as archive:
+                archive.writelines(moved)
+            archived_any = True
+        # Replace the log in one step, so it is never left partly written
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", dir=logs_dir, prefix=f".{filename}.", delete=False
+        ) as replacement:
+            replacement.writelines(kept)
+        try:
+            shutil.copymode(path, replacement.name)
+            os.replace(replacement.name, path)
+        except BaseException:
+            os.remove(replacement.name)
+            raise
+
+    main_log = os.path.join(logs_dir, MAIN_LOG)
+    if os.path.isfile(main_log):
+        os.replace(main_log, _archive_path(logs_dir, MAIN_LOG, attempt))
+        archived_any = True
+    return attempt if archived_any else None
+
+
+def _archive_path(logs_dir, filename, attempt):
+    stem, extension = os.path.splitext(filename)
+    return os.path.join(logs_dir, f"{stem}.{attempt}{extension}")
+
+
+def _record_operation(line):
+    try:
+        record = json.loads(line)
+    except ValueError:
+        return None
+    return record.get("operation") if isinstance(record, dict) else None
+
+
 def _run(parset_file):
     # Read parset
     log.info("Reading parset and checking state...")
@@ -173,6 +262,14 @@ def _run(parset_file):
         # Reset operation states as requested
         if answer.lower() == "y" or answer.lower() == "yes":
             print("Reseting state...")
+            # Move the logs of the reset work first, so that a reset that stops part
+            # way still lists the operations and can be repeated
+            logs_dir = os.path.join(parset["dir_working"], "logs")
+            if os.path.isdir(logs_dir):
+                attempt = archive_reset_logs(logs_dir, pipelines[start:])
+                if attempt is not None:
+                    print(f"Logs of the reset operations were moved to logs/*.{attempt}.*")
+
             for pipeline in pipelines[start:]:
                 # Remove the operation working directory to ensure files from previous
                 # runs are not kept and used in subsequent ones. Its shared scratch

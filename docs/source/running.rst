@@ -73,7 +73,9 @@ is in progress:
     the run finishes.
 
 These files do not depend on the dashboards described below. They are written
-when :term:`prefect_log_commands` is set, which is the default.
+when :term:`prefect_log_commands` is set, which is the default. A resumed run
+adds to them. When operations are reset, their entries are moved to separate
+files (see :ref:`resetting_rapthor`).
 
 
 Environment of commands
@@ -464,3 +466,11 @@ link to its workspace on the shared scratch disk, and a recovery record
 ``.<operation>.scratch``, in ``dir_working/pipelines``. A reset removes them
 together with the workspace, but does not delete the files behind a link that
 does not point to a scratch workspace of that operation.
+
+The entries of the reset operations in ``logs/commands.jsonl`` and
+``logs/tasks.jsonl`` are moved to files named after the UTC time of the reset,
+for example ``logs/commands.reset-20250102T030405Z.jsonl``, and
+``logs/rapthor.log`` is renamed in the same way, so the next run starts a new
+one. The remaining records therefore only describe the work whose products are
+kept; to include earlier attempts in run times or resource use, read the
+``*.reset-<time>.*`` files as well.
