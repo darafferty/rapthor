@@ -237,6 +237,10 @@ commands = [
         "--splits", "{env:CI_NODE_TOTAL:1}",
         "--group", "{env:CI_NODE_INDEX:1}",
         # Balance the CI nodes with the stored per-test timings; see TESTING.md.
+        # least_duration places the longest tests first, whereas the default
+        # algorithm cuts contiguous chunks of the collection order and leaves
+        # the remainder to the last node.
+        "--splitting-algorithm", "least_duration",
         "--durations-path", "{toxinidir}/.test_durations",
         "tests/integration",
         "tests/operations/integration",
