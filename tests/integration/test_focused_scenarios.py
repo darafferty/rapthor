@@ -18,11 +18,11 @@ from rapthor.execution.image.commands import (
 from rapthor.lib.miscellaneous import convert_mjd2mvt
 
 from .utils import (
-    assert_visibilities_unchanged,
+    assert_ms_data_and_flags_unchanged,
     find_command_records,
     first_command_arguments,
     get_working_dir_from_parset,
-    read_visibilities,
+    read_from_ms,
     update_parset_path,
 )
 
@@ -500,14 +500,14 @@ def test_rapthor_run_final_image_only_preapplies_di_slow_and_images_with_dd(
         },
     )
     _disable_calibration_bda(updated_parset_path)
-    input_ms_before = read_visibilities(test_ms)
+    input_ms_before = read_from_ms(test_ms)
 
     try:
         output = _run_rapthor(updated_parset_path)
     finally:
         # Check the input MS even when the run fails: a DD solve that writes the
         # pre-applied data back into it breaks the later operations as well.
-        assert_visibilities_unchanged(test_ms, input_ms_before, what="The DD calibration")
+        assert_ms_data_and_flags_unchanged(test_ms, input_ms_before, what="The DD calibration")
 
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation calibrate_1 completed" in output

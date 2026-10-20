@@ -35,23 +35,20 @@ class CommandRecord:
         return parse_command_arguments(self.command)
 
 
-VISIBILITY_COLUMNS = ("DATA", "FLAG")
-
-
-def read_visibilities(ms_path):
+def read_from_ms(ms_path, columns=("DATA", "FLAG")):
     """Return the DATA and FLAG columns of a Measurement Set by name.
 
     Pipeline tests take this snapshot before a run and compare it afterwards to
     check that no operation writes back into the input MS.
     """
     with pt.table(str(ms_path), ack=False) as table:
-        return {column: table.getcol(column) for column in VISIBILITY_COLUMNS}
+        return {column: table.getcol(column) for column in columns}
 
 
-def assert_visibilities_unchanged(ms_path, snapshot, *, what="The calibration"):
+def assert_ms_data_and_flags_unchanged(ms_path, snapshot, *, what="The calibration"):
     """Assert that the DATA and FLAG columns still match an earlier snapshot."""
-    current = read_visibilities(ms_path)
-    for column in VISIBILITY_COLUMNS:
+    current = read_from_ms(ms_path)
+    for column in ("DATA", "FLAG"):
         np.testing.assert_array_equal(
             current[column],
             snapshot[column],

@@ -3,10 +3,10 @@ import subprocess
 import pytest
 
 from .utils import (
-    assert_visibilities_unchanged,
+    assert_ms_data_and_flags_unchanged,
     first_command_arguments,
     get_working_dir_from_parset,
-    read_visibilities,
+    read_from_ms,
     update_parset_path,
 )
 
@@ -69,9 +69,6 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "solve4" not in dp3_arguments["steps"]
     assert "avg" not in dp3_arguments["steps"]
     assert "scalarphase" in dp3_arguments["solve1.mode"]
-
-
-# fast medium slow for DI
 
 
 @pytest.mark.integration
@@ -355,7 +352,7 @@ def test_rapthor_run_mixed_di_dd_order(
 
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
-    input_ms_before = read_visibilities(test_ms)
+    input_ms_before = read_from_ms(test_ms)
 
     command = ["rapthor", str(updated_parset_path)]
     try:
@@ -363,7 +360,7 @@ def test_rapthor_run_mixed_di_dd_order(
     finally:
         # Check the input MS even when the run fails: a solve that writes the
         # pre-applied data back into it breaks the later operations as well.
-        assert_visibilities_unchanged(test_ms, input_ms_before)
+        assert_ms_data_and_flags_unchanged(test_ms, input_ms_before)
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     for operation in expected_order:
