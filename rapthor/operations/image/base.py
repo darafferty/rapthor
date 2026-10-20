@@ -50,6 +50,7 @@ class Image(FlowOperation):
         self.dde_method = None
         self.use_facets = None
         self.save_source_list = None
+        self.save_filtered_model_image = None
         self.image_pol: Union[List[str], str, None] = None
         self.peel_bright_sources = None
         self.imaging_sectors = None
@@ -88,6 +89,12 @@ class Image(FlowOperation):
             self.image_pol = self.field.image_pol  # set by process-step orchestration
         if self.save_source_list is None:
             self.save_source_list = is_only_pol_I(self.image_pol)
+        if self.save_filtered_model_image is None:
+            # With Stokes QUV, WSClean writes no source list, so there is no
+            # filtered sky model to make the filtered model image from
+            self.save_filtered_model_image = self.field.parset["imaging_specific"][
+                "save_filtered_model_image"
+            ] and is_only_pol_I(self.image_pol)
         if self.preapply_dd_solutions is None:
             self.preapply_dd_solutions = self.dde_method == "single" and not self.apply_none
         if self.compress_images is None:
@@ -555,9 +562,7 @@ class Image(FlowOperation):
                 self.field.parset["cluster_specific"]["max_threads"],
             ),
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
-            "save_filtered_model_image": self.field.parset["imaging_specific"][
-                "save_filtered_model_image"
-            ],
+            "save_filtered_model_image": self.save_filtered_model_image,
             "make_residual_visibilities": self.make_residual_visibilities,
             "filtered_model_image_name": sector_inputs["filtered_model_image_name"],
             "allow_internet_access": self.allow_internet_access,
@@ -663,9 +668,12 @@ class Image(FlowOperation):
         if self.field.save_supplementary_images:
             file_list.append(self.outputs["source_filtering_mask"][index]["path"])
             leave_in_place.update({"source_filtering_mask"})
-        if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+        if self.save_filtered_model_image:
             file_list.append(self.outputs["sector_skymodel_image_fits"][index]["path"])
             leave_in_place.update({"sector_skymodel_image_fits"})
+        elif hasattr(sector, "filtered_model_file_apparent_sky"):
+            # Do not let the mosaic publish an earlier cycle's image as this one's
+            del sector.filtered_model_file_apparent_sky
 
         type_path_map = Image.find_in_file_list(file_list)
         for output_type, paths in type_path_map.items():
