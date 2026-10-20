@@ -46,7 +46,7 @@ ease of use):
     pip install --upgrade pip
     pip install git+https://git.astron.nl/RD/rapthor.git[@<branch|tag|hash>]
     ```
-    If the optional `@<branch|tag|hash>` is omitted, `HEAD` of the `master` branch will used.
+    If the optional `@<branch|tag|hash>` is omitted, `HEAD` of the `main` branch will used.
 
 3. Clone the git repository, and install from your working copy. This option is mostly used by developers who want to make local changes:
 
