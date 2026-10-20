@@ -4,6 +4,7 @@ Test cases for the `rapthor.modifystate` module.
 
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -81,6 +82,14 @@ def _reset(monkeypatch, *answers):
     with pytest.raises(SystemExit) as exc:
         modifystate.run("input.parset")
     return exc.value.code
+
+
+def _write_jsonl(path, records):
+    path.write_text("".join(json.dumps(record) + "\n" for record in records))
+
+
+def _read_jsonl(path):
+    return [json.loads(line) for line in path.read_text().splitlines()]
 
 
 def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state(
@@ -244,3 +253,102 @@ def test_run_resets_operations_with_their_scratch_workspaces(tmp_path, working_d
         "calibrate_1",
     ]
     assert list(scratch.iterdir()) == [kept_workspace.parent]
+
+
+RESET_TIME = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+
+
+def test_archive_reset_logs_moves_records_to_a_file_per_attempt(tmp_path):
+    commands = [{"operation": name} for name in ("calibrate_1", "image_1", "mosaic_1")]
+    _write_jsonl(tmp_path / "commands.jsonl", commands)
+    with open(tmp_path / "commands.jsonl", "a") as log_file:
+        log_file.write('not json\n{"operation": null}\n')
+    tasks = [{"operation": "calibrate_1"}, {"operation": "image_1"}]
+    _write_jsonl(tmp_path / "tasks.jsonl", tasks)
+    (tmp_path / "rapthor.log").write_text("attempt 1\n")
+
+    attempt = modifystate.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
+
+    assert attempt == "reset-20250102T030405Z"
+    assert (tmp_path / "commands.jsonl").read_text() == (
+        '{"operation": "calibrate_1"}\nnot json\n{"operation": null}\n'
+    )
+    assert _read_jsonl(tmp_path / f"commands.{attempt}.jsonl") == commands[1:]
+    assert _read_jsonl(tmp_path / "tasks.jsonl") == tasks[:1]
+    assert _read_jsonl(tmp_path / f"tasks.{attempt}.jsonl") == tasks[1:]
+    assert (tmp_path / f"rapthor.{attempt}.log").read_text() == "attempt 1\n"
+    assert not (tmp_path / "rapthor.log").exists()
+
+    # A second reset within the same second gets its own files
+    (tmp_path / "rapthor.log").write_text("attempt 2\n")
+    attempt = modifystate.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME)
+    assert attempt == "reset-20250102T030405Z-2"
+    assert (tmp_path / f"rapthor.{attempt}.log").read_text() == "attempt 2\n"
+    assert modifystate.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME) is None
+
+
+def test_archive_reset_logs_archives_each_record_once_after_an_interrupted_reset(
+    tmp_path, monkeypatch
+):
+    commands = [{"operation": name} for name in ("calibrate_1", "image_1", "mosaic_1")]
+    _write_jsonl(tmp_path / "commands.jsonl", commands)
+
+    def fail_to_replace(source, destination):
+        raise OSError("disk error")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(modifystate.os, "replace", fail_to_replace)
+        with pytest.raises(OSError, match="disk error"):
+            modifystate.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
+    assert _read_jsonl(tmp_path / "commands.jsonl") == commands
+
+    modifystate.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
+
+    assert sorted(path.name for path in tmp_path.iterdir()) == [
+        "commands.jsonl",
+        "commands.reset-20250102T030405Z.jsonl",
+    ]
+    assert _read_jsonl(tmp_path / "commands.reset-20250102T030405Z.jsonl") == commands[1:]
+    assert _read_jsonl(tmp_path / "commands.jsonl") == commands[:1]
+
+
+def test_archive_reset_logs_counts_each_archived_copy_of_a_record_once(tmp_path):
+    record = '{"operation": "image_1"}\n'
+    (tmp_path / "commands.reset-20250101T000000Z.jsonl").write_text(record)
+    (tmp_path / "commands.jsonl").write_text(record + record)
+
+    attempt = modifystate.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME)
+
+    assert (tmp_path / f"commands.{attempt}.jsonl").read_text() == record
+    assert (tmp_path / "commands.jsonl").read_text() == ""
+
+
+def test_run_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypatch, capsys):
+    operations = ("calibrate_1", "image_1", "mosaic_1")
+    for name in operations:
+        _write_prefect_operation_state(working_dir, name)
+    logs_dir = working_dir / "logs"
+    _write_jsonl(logs_dir / "commands.jsonl", [{"operation": name} for name in operations])
+    (logs_dir / "rapthor.log").write_text("first attempt\n")
+    remove_operation_workspace = modifystate.remove_operation_workspace
+
+    def fail_on_mosaic(path):
+        if path.endswith("mosaic_1"):
+            raise OSError("disk error")
+        remove_operation_workspace(path)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(modifystate, "remove_operation_workspace", fail_on_mosaic)
+        with pytest.raises(OSError, match="disk error"):
+            _reset(patch, "2", "y")
+    assert "Logs of the reset operations were moved to logs/*.reset-" in capsys.readouterr().out
+
+    # The retry still lists the operation that was not removed
+    assert _reset(monkeypatch, "2", "y", "q") == 0
+
+    assert "2) mosaic_1" in capsys.readouterr().out
+    assert sorted(path.name for path in (working_dir / "pipelines").iterdir()) == ["calibrate_1"]
+    assert _read_jsonl(logs_dir / "commands.jsonl") == [{"operation": "calibrate_1"}]
+    (archived_commands,) = logs_dir.glob("commands.reset-*.jsonl")
+    assert _read_jsonl(archived_commands) == [{"operation": "image_1"}, {"operation": "mosaic_1"}]
+    assert [path.read_text() for path in logs_dir.glob("rapthor*.log")] == ["first attempt\n"]
