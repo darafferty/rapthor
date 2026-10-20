@@ -7,6 +7,7 @@ import pytest
 from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.solves import build_calibrate_chunk_command
 from rapthor.lib.field import Field as RapthorField
+from rapthor.lib.records import file_record
 from rapthor.operations.calibrate.base import Calibrate
 from rapthor.operations.calibrate.plan import (
     build_calibration_core_stations,
@@ -244,15 +245,21 @@ def check_makedirs(mock_makedirs, *expected_paths):
 
 
 def finalize_prepare_plots(pipelines_path, plots_path):
-    """Helper function to prepare the plot files for the finalize() tests."""
-    # Create dummy plot files. finalize() should copy them to the plots directory.
+    """Helper function to prepare the plot files and their records for the finalize() tests."""
+    # Create dummy plot files. finalize() should copy the recorded ones to the plots directory.
     pipelines_path.mkdir(parents=True)
     (pipelines_path / "plot1.png").touch()
     (pipelines_path / "plot2.png").touch()
+    (pipelines_path / "stale.png").touch()
 
     # Simulate one existing plot in the plots directory. finalize() should remove it.
     plots_path.mkdir(parents=True)
     (plots_path / "plot2.png").touch()
+
+    return {
+        "fast_phase_plots": [file_record(pipelines_path / "plot1.png")],
+        "medium1_phase_plots": [file_record(pipelines_path / "plot2.png")],
+    }
 
 
 def parse_dp3(dp3_string):
@@ -447,7 +454,7 @@ class TestCalibrate:
 
         pipelines_path = workdir_path / "pipelines" / name
         plots_path = workdir_path / "plots" / name
-        finalize_prepare_plots(pipelines_path, plots_path)
+        plot_outputs = finalize_prepare_plots(pipelines_path, plots_path)
 
         # Setup the object itself
         if mode == "dd":
@@ -461,6 +468,7 @@ class TestCalibrate:
         field._calibration_strategy_defaulted = False
 
         calibrate = Calibrate(mode=mode, field=field, index=index)
+        calibrate.outputs = plot_outputs
 
         if mode == "dd":
             calibrate.combined_h5parms = "combined.test.h5"
@@ -565,9 +573,10 @@ class TestCalibrate:
 
         pipelines_path = workdir_path / "pipelines" / "calibrate_di_1"
         plots_path = workdir_path / "plots" / "calibrate_di_1"
-        finalize_prepare_plots(pipelines_path, plots_path)
+        plot_outputs = finalize_prepare_plots(pipelines_path, plots_path)
 
         calibrate = Calibrate(mode="di", field=field, index=1)
+        calibrate.outputs = plot_outputs
         mock_makedirs.reset_mock()
 
         calibrate.finalize()
@@ -630,9 +639,10 @@ class TestCalibrate:
 
         pipelines_path = workdir_path / "pipelines" / "calibrate_di_1"
         plots_path = workdir_path / "plots" / "calibrate_di_1"
-        finalize_prepare_plots(pipelines_path, plots_path)
+        plot_outputs = finalize_prepare_plots(pipelines_path, plots_path)
 
         calibrate = Calibrate(mode="di", field=field, index=1)
+        calibrate.outputs = plot_outputs
         mock_makedirs.reset_mock()
 
         calibrate.finalize()
@@ -702,9 +712,10 @@ class TestCalibrate:
 
         pipelines_path = workdir_path / "pipelines" / "calibrate_1"
         plots_path = workdir_path / "plots" / "calibrate_1"
-        finalize_prepare_plots(pipelines_path, plots_path)
+        plot_outputs = finalize_prepare_plots(pipelines_path, plots_path)
 
         calibrate = Calibrate(mode="dd", field=field, index=1)
+        calibrate.outputs = plot_outputs
         mock_makedirs.reset_mock()
 
         calibrate.finalize()

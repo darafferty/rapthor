@@ -1,6 +1,9 @@
 import json
 import os
 import shlex
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +12,11 @@ import pytest
 import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
 import rapthor.execution.calibrate.prediction as calibrate_prediction
+from rapthor.execution.artifacts import (
+    ArtifactWriters,
+    publish_plot_artifacts,
+    publish_plot_file_records,
+)
 from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
 from rapthor.execution.calibrate.commands import (
     PLOT_SOLUTIONS_MODULE,
@@ -53,6 +61,11 @@ def _plot_solutions_args(command: list[str]) -> list[str]:
     """Return plotting adapter arguments without the Python module prefix."""
     assert _is_plot_solutions_command(command)
     return command[len(PLOT_SOLUTIONS_COMMAND_PREFIX) :]
+
+
+def _plots(pipeline_dir: Path, plot_path: str) -> list[dict]:
+    """Return the records of a fake plot below the operation's plots directory."""
+    return [file_record(pipeline_dir / "plots" / plot_path)]
 
 
 def _command_name(command: list[str]) -> str:
@@ -158,11 +171,9 @@ def fake_calibrate_shell_operation_cls():
                 return "OK"
             if _is_plot_solutions_command(tokens):
                 plot_args = _plot_solutions_args(tokens)
-                root = next(
-                    (token.split("=", 1)[1] for token in plot_args if token.startswith("--root=")),
-                    f"{plot_args[1]}_",
-                )
-                output_path = cwd / f"{root}solutions.png"
+                options = dict(token.split("=", 1) for token in plot_args if "=" in token)
+                root = options.get("--root", f"{plot_args[1]}_")
+                output_path = Path(options["--output-dir"]) / f"{root}solutions.png"
                 output_path.write_text("plot")
                 return "OK"
             raise AssertionError(f"Unexpected command: {tokens[0]}")
@@ -464,7 +475,7 @@ def _expected_di_fulljones_operation_outputs(operation):
     return {
         "combined_solutions": solution,
         "fulljones_solutions": solution,
-        "fulljones_phase_plots": [file_record(pipeline_dir / "fulljones_phase_solutions.png")],
+        "fulljones_phase_plots": _plots(pipeline_dir, "solve1_phase/fulljones_phase_solutions.png"),
     }
 
 
@@ -474,8 +485,8 @@ def _expected_di_scalar_phase_operation_outputs(operation):
         "combined_solutions": file_record(pipeline_dir / "combined_solve1_solve2_di.h5parm"),
         "fast_phase_solutions": file_record(pipeline_dir / "fast_phases_di.h5parm"),
         "medium1_phase_solutions": file_record(pipeline_dir / "medium1_phases_di.h5parm"),
-        "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(pipeline_dir / "medium1_phase_solutions.png")],
+        "fast_phase_plots": _plots(pipeline_dir, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(pipeline_dir, "solve2_phase/medium1_phase_solutions.png"),
     }
 
 
@@ -485,8 +496,8 @@ def _expected_dd_fast_medium_operation_outputs(operation):
         "combined_solutions": file_record(pipeline_dir / "combined_fast_medium1_phases.h5parm"),
         "fast_phase_solutions": file_record(pipeline_dir / "fast_phases.h5parm"),
         "medium1_phase_solutions": file_record(pipeline_dir / "medium1_phases.h5parm"),
-        "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(pipeline_dir / "medium1_phase_solutions.png")],
+        "fast_phase_plots": _plots(pipeline_dir, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(pipeline_dir, "solve2_phase/medium1_phase_solutions.png"),
     }
 
 
@@ -498,11 +509,11 @@ def _expected_dd_slow_operation_outputs(operation):
         "medium1_phase_solutions": file_record(pipeline_dir / "medium1_phases.h5parm"),
         "slow_gain_solutions": file_record(pipeline_dir / "slow_gains.h5parm"),
         "medium2_phase_solutions": file_record(pipeline_dir / "medium2_phases.h5parm"),
-        "fast_phase_plots": [file_record(pipeline_dir / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(pipeline_dir / "medium1_phase_solutions.png")],
-        "slow_phase_plots": [file_record(pipeline_dir / "slow_phase_solutions.png")],
-        "slow_amp_plots": [file_record(pipeline_dir / "slow_amplitude_solutions.png")],
-        "medium2_phase_plots": [file_record(pipeline_dir / "medium2_phase_solutions.png")],
+        "fast_phase_plots": _plots(pipeline_dir, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(pipeline_dir, "solve2_phase/medium1_phase_solutions.png"),
+        "slow_phase_plots": _plots(pipeline_dir, "solve3_phase/slow_phase_solutions.png"),
+        "slow_amp_plots": _plots(pipeline_dir, "solve3_amplitude/slow_amplitude_solutions.png"),
+        "medium2_phase_plots": _plots(pipeline_dir, "solve4_phase/medium2_phase_solutions.png"),
     }
 
 
@@ -2394,48 +2405,121 @@ def test_calibrate_chunk_task_runs_with_mocked_shell(
     assert os.environ["MALLOC_TRIM_THRESHOLD_"] == "65536"
 
 
-def test_run_plot_solutions_returns_only_new_plots(tmp_path, fake_calibrate_shell_operation_cls):
-    h5parm = tmp_path / "solutions.h5parm"
-    h5parm.write_text("h5parm")
-    (tmp_path / "phase_solutions.png").write_text("existing")
-
-    plots = calibrate_collection.run_plot_solutions(
-        file_record(h5parm),
-        "phase",
-        str(tmp_path),
-        ExecutionConfig(task_runner="sync"),
-        shell_operation_cls=fake_calibrate_shell_operation_cls,
-    )
-
-    assert plots == []
-
-
-def test_run_plot_solutions_publishes_new_plot_artifacts(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+def test_run_plot_solutions_returns_only_its_own_plots(
+    tmp_path, fake_calibrate_shell_operation_cls
 ):
     h5parm = tmp_path / "solutions.h5parm"
     h5parm.write_text("h5parm")
-    published = []
-
-    def fake_publish(records, root_dir):
-        published.append((records, root_dir))
-        return []
-
-    monkeypatch.setattr(calibrate_collection, "publish_plot_file_records", fake_publish)
+    plot_dir = tmp_path / "plots" / "solve1_phase"
+    plot_dir.mkdir(parents=True)
+    # Left by an earlier attempt, e.g. for a direction that is no longer calibrated
+    (plot_dir / "stale.png").write_text("stale")
+    (plot_dir / "phase_solutions.png").write_text("stale")
 
     plots = calibrate_collection.run_plot_solutions(
         file_record(h5parm),
         "phase",
+        str(plot_dir),
         str(tmp_path),
         ExecutionConfig(task_runner="sync"),
         first_dir=True,
         shell_operation_cls=fake_calibrate_shell_operation_cls,
     )
 
-    assert plots == [file_record(tmp_path / "phase_solutions.png")]
-    assert published == [(plots, str(tmp_path))]
-    command = shlex.split(fake_calibrate_shell_operation_cls.instances[0].kwargs["commands"][-1])
+    assert plots == [file_record(plot_dir / "phase_solutions.png")]
+    assert not (plot_dir / "stale.png").exists()
+    assert (plot_dir / "phase_solutions.png").read_text() == "plot"
+    instance = fake_calibrate_shell_operation_cls.instances[0]
+    assert instance.kwargs["working_dir"] == str(tmp_path)
+    command = shlex.split(instance.kwargs["commands"][-1])
     assert "--first-dir" in command
+    assert f"--output-dir={plot_dir}" in command
+
+
+def test_concurrent_plot_tasks_return_only_their_own_plots(
+    tmp_path, fake_calibrate_shell_operation_cls
+):
+    h5parm = tmp_path / "solutions.h5parm"
+    h5parm.write_text("h5parm")
+    barrier = threading.Barrier(2)
+
+    class OverlappingShellOperation(fake_calibrate_shell_operation_cls):
+        def run(self):
+            # Both commands write their plots before either task lists its plots
+            result = super().run()
+            barrier.wait(timeout=30)
+            return result
+
+    def plot(slot, solve_type, solution_label):
+        solve_slot = {"slot": slot, "solve_type": solve_type, "solution_label": solution_label}
+        return calibrate_collection.plot_processed_solve_product(
+            {"pipeline_working_dir": str(tmp_path), "mode": "dd"},
+            {
+                "solve_key": f"solve{slot}",
+                "solve_slot": solve_slot,
+                "combine_record": file_record(h5parm),
+            },
+            ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=OverlappingShellOperation,
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        fast = executor.submit(plot, 1, "fast_phase", "fast")
+        medium = executor.submit(plot, 2, "medium_phase", "medium1")
+        results = [fast.result(timeout=60), medium.result(timeout=60)]
+
+    assert results == [
+        {
+            "solve_key": "solve1",
+            "plots": {"fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png")},
+        },
+        {
+            "solve_key": "solve2",
+            "plots": {
+                "medium1_phase_plots": _plots(tmp_path, "solve2_phase/medium1_phase_solutions.png")
+            },
+        },
+    ]
+
+
+def test_plot_task_and_operation_publish_each_plot_under_one_artifact_key(
+    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    # A plot is published by its plot task and again from plots/calibrate_1/
+    # after the operation is finalized. Both must update the same artifact.
+    keys = []
+
+    def write(**kwargs):
+        keys.append(kwargs["key"])
+
+    publish_options = {
+        "artifact_writers": ArtifactWriters(image=write, link=write, markdown=write),
+        "in_run_context": lambda: True,
+    }
+    monkeypatch.setattr(
+        calibrate_collection,
+        "publish_plot_file_records",
+        partial(publish_plot_file_records, **publish_options),
+    )
+    pipeline_dir = tmp_path / "pipelines" / "calibrate_1"
+    pipeline_dir.mkdir(parents=True)
+    h5parm = pipeline_dir / "solutions.h5parm"
+    h5parm.write_text("h5parm")
+
+    plots = calibrate_collection.run_plot_solutions(
+        file_record(h5parm),
+        "phase",
+        str(pipeline_dir / "plots" / "solve1_phase"),
+        str(pipeline_dir),
+        ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_calibrate_shell_operation_cls,
+    )
+    Calibrate._copy_plots([plot["path"] for plot in plots], tmp_path / "plots" / "calibrate_1")
+    records = publish_plot_artifacts(tmp_path / "plots", publish_index=False, **publish_options)
+
+    assert [record["relative_path"] for record in records] == ["calibrate_1/phase_solutions.png"]
+    assert len(keys) == 2
+    assert keys[0] == keys[1]
 
 
 def test_run_calibrate_flow_supports_di_fulljones(
@@ -2461,12 +2545,12 @@ def test_run_calibrate_flow_supports_di_fulljones(
     assert outputs == {
         "combined_solutions": expected_solution,
         "fulljones_solutions": expected_solution,
-        "fulljones_phase_plots": [file_record(tmp_path / "fulljones_phase_solutions.png")],
+        "fulljones_phase_plots": _plots(tmp_path, "solve1_phase/fulljones_phase_solutions.png"),
     }
     for value in outputs.values():
         validate_output_record(value)
     assert Path(expected_solution["path"]).is_file()
-    assert (tmp_path / "fulljones_phase_solutions.png").is_file()
+    assert Path(outputs["fulljones_phase_plots"][0]["path"]).is_file()
     for index in range(2):
         assert not (tmp_path / f"fulljones_gain_{index}.h5parm").exists()
         assert (tmp_path / f"input_chunk_{index}.ms").is_dir()
@@ -2536,8 +2620,8 @@ def test_run_calibrate_flow_supports_di_scalar_phase(
         "combined_solutions": file_record(tmp_path / "combined_solve1_solve2_di.h5parm"),
         "fast_phase_solutions": file_record(tmp_path / "fast_phases_di.h5parm"),
         "medium1_phase_solutions": file_record(tmp_path / "medium1_phases_di.h5parm"),
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+        "fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(tmp_path, "solve2_phase/medium1_phase_solutions.png"),
     }
     for value in outputs.values():
         validate_output_record(value)
@@ -2572,7 +2656,7 @@ def test_run_calibrate_flow_supports_di_fast_phase(
     assert outputs == {
         "combined_solutions": expected_solution,
         "fast_phase_solutions": expected_solution,
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+        "fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png"),
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == [
@@ -2602,8 +2686,8 @@ def test_run_calibrate_flow_supports_di_slow(
     assert outputs == {
         "combined_solutions": expected_solution,
         "slow_gain_solutions": expected_solution,
-        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
-        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
+        "slow_phase_plots": _plots(tmp_path, "solve1_phase/slow_phase_solutions.png"),
+        "slow_amp_plots": _plots(tmp_path, "solve1_amplitude/slow_amplitude_solutions.png"),
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == [
@@ -2637,7 +2721,9 @@ def test_run_calibrate_flow_supports_di_phase_slow(
     assert outputs["fast_phase_solutions"] == file_record(tmp_path / "fast_phases_di.h5parm")
     assert outputs["medium1_phase_solutions"] == file_record(tmp_path / "medium1_phases_di.h5parm")
     assert outputs["slow_gain_solutions"] == file_record(tmp_path / "slow_gains_di.h5parm")
-    assert outputs["slow_amp_plots"] == [file_record(tmp_path / "slow_amplitude_solutions.png")]
+    assert outputs["slow_amp_plots"] == _plots(
+        tmp_path, "solve3_amplitude/slow_amplitude_solutions.png"
+    )
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2)
@@ -2671,11 +2757,11 @@ def test_run_calibrate_flow_supports_mixed_di_strategy(
         "medium1_phase_solutions": file_record(tmp_path / "medium1_phases_di.h5parm"),
         "slow_gain_solutions": file_record(tmp_path / "slow_gains_di.h5parm"),
         "fulljones_solutions": file_record(tmp_path / "fulljones_solutions.h5"),
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
-        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
-        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
-        "fulljones_phase_plots": [file_record(tmp_path / "fulljones_phase_solutions.png")],
+        "fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(tmp_path, "solve2_phase/medium1_phase_solutions.png"),
+        "slow_phase_plots": _plots(tmp_path, "solve3_phase/slow_phase_solutions.png"),
+        "slow_amp_plots": _plots(tmp_path, "solve3_amplitude/slow_amplitude_solutions.png"),
+        "fulljones_phase_plots": _plots(tmp_path, "solve4_phase/fulljones_phase_solutions.png"),
     }
 
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
@@ -2722,7 +2808,7 @@ def test_run_calibrate_flow_supports_dd_fast_phase(
     assert outputs == {
         "combined_solutions": expected_solution,
         "fast_phase_solutions": expected_solution,
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+        "fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png"),
     }
     for value in outputs.values():
         validate_output_record(value)
@@ -2765,8 +2851,8 @@ def test_run_calibrate_flow_supports_dd_slow(
     assert outputs == {
         "combined_solutions": expected_solution,
         "slow_gain_solutions": expected_solution,
-        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
-        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
+        "slow_phase_plots": _plots(tmp_path, "solve1_phase/slow_phase_solutions.png"),
+        "slow_amp_plots": _plots(tmp_path, "solve1_amplitude/slow_amplitude_solutions.png"),
     }
     for value in outputs.values():
         validate_output_record(value)
@@ -2806,9 +2892,9 @@ def test_run_calibrate_flow_supports_dd_slow_then_medium(
         "combined_solutions": file_record(tmp_path / "combined_solutions.h5"),
         "slow_gain_solutions": file_record(tmp_path / "slow_gains.h5parm"),
         "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
-        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
-        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
-        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+        "slow_phase_plots": _plots(tmp_path, "solve1_phase/slow_phase_solutions.png"),
+        "slow_amp_plots": _plots(tmp_path, "solve1_amplitude/slow_amplitude_solutions.png"),
+        "medium1_phase_plots": _plots(tmp_path, "solve2_phase/medium1_phase_solutions.png"),
     }
     for value in outputs.values():
         validate_output_record(value)
@@ -2839,8 +2925,8 @@ def test_run_calibrate_flow_supports_dd_fast_medium(
         "combined_solutions": file_record(tmp_path / "combined_fast_medium1_phases.h5parm"),
         "fast_phase_solutions": file_record(tmp_path / "fast_phases.h5parm"),
         "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
+        "fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(tmp_path, "solve2_phase/medium1_phase_solutions.png"),
     }
     for value in outputs.values():
         validate_output_record(value)
@@ -2871,8 +2957,8 @@ def test_run_calibrate_flow_supports_custom_dd_solve_order(
         "combined_solutions": file_record(tmp_path / "combined_fast_medium1_phases.h5parm"),
         "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
         "fast_phase_solutions": file_record(tmp_path / "fast_phases.h5parm"),
-        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
+        "medium1_phase_plots": _plots(tmp_path, "solve1_phase/medium1_phase_solutions.png"),
+        "fast_phase_plots": _plots(tmp_path, "solve2_phase/phase_solutions.png"),
     }
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
@@ -3307,11 +3393,11 @@ def test_run_calibrate_flow_supports_dd_with_slow(
         "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
         "slow_gain_solutions": file_record(tmp_path / "slow_gains.h5parm"),
         "medium2_phase_solutions": file_record(tmp_path / "medium2_phases.h5parm"),
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
-        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
-        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
-        "medium2_phase_plots": [file_record(tmp_path / "medium2_phase_solutions.png")],
+        "fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(tmp_path, "solve2_phase/medium1_phase_solutions.png"),
+        "slow_phase_plots": _plots(tmp_path, "solve3_phase/slow_phase_solutions.png"),
+        "slow_amp_plots": _plots(tmp_path, "solve3_amplitude/slow_amplitude_solutions.png"),
+        "medium2_phase_plots": _plots(tmp_path, "solve4_phase/medium2_phase_solutions.png"),
     }
     for value in outputs.values():
         validate_output_record(value)
@@ -3354,10 +3440,10 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
         "fast_phase_solutions": file_record(tmp_path / "fast_phases.h5parm"),
         "medium1_phase_solutions": file_record(tmp_path / "medium1_phases.h5parm"),
         "slow_gain_solutions": file_record(tmp_path / "slow_gains.h5parm"),
-        "fast_phase_plots": [file_record(tmp_path / "phase_solutions.png")],
-        "medium1_phase_plots": [file_record(tmp_path / "medium1_phase_solutions.png")],
-        "slow_phase_plots": [file_record(tmp_path / "slow_phase_solutions.png")],
-        "slow_amp_plots": [file_record(tmp_path / "slow_amplitude_solutions.png")],
+        "fast_phase_plots": _plots(tmp_path, "solve1_phase/phase_solutions.png"),
+        "medium1_phase_plots": _plots(tmp_path, "solve2_phase/medium1_phase_solutions.png"),
+        "slow_phase_plots": _plots(tmp_path, "solve3_phase/slow_phase_solutions.png"),
+        "slow_amp_plots": _plots(tmp_path, "solve3_amplitude/slow_amplitude_solutions.png"),
     }
 
     commands = [

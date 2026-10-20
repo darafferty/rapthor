@@ -22,6 +22,8 @@ Rapthor produces the following output inside the working directory:
 
     Each operation has its own subdirectory, which also holds the files that Rapthor uses to resume a run: ``pipeline_inputs.json`` and ``pipeline_outputs.json`` list the inputs and outputs of the operation, and ``.done`` and ``.outputs.json`` are written once the operation has finished. An operation with a ``.done`` file is skipped when the run is resumed (see :ref:`resuming_rapthor`).
 
+    A calibration operation writes the plots of each solve to its own subdirectory, for example ``pipelines/calibrate_1/plots/solve1_phase/``. Only the plots listed in the operation's outputs are copied to ``plots/``; a resumed run replaces the plots of an interrupted attempt.
+
 ``plots/``
     Directory containing the plots of the calibration solutions and images. See :ref:`calibrate` and :ref:`image` for a detailed description of the plots. Overview plots of the field, showing the coverage of the calibration model and the images for each cycle, are also placed here (``field_overview_X.png``, where ``X`` is the cycle number).
 
