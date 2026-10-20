@@ -15,6 +15,8 @@ Rapthor produces the following output inside the working directory:
     * ``tasks.jsonl`` - a list of every step that was run, with its run time.
     * ``diagnostics.txt`` - a summary of the selfcal, calibration, and image diagnostics of the run, written when the run finishes.
 
+    When operations are reset (see :ref:`resetting_rapthor`), their entries in ``commands.jsonl`` and ``tasks.jsonl`` are moved to ``commands.reset-<time>.jsonl`` and ``tasks.reset-<time>.jsonl``, and ``rapthor.log`` is renamed to ``rapthor.reset-<time>.log``, where ``<time>`` is the UTC time of the reset (for example ``20250102T030405Z``).
+
     See :ref:`monitoring_rapthor` for details.
 
 ``pipelines/``
