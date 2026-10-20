@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
 from rapthor.lib.observation import Observation
+from rapthor.lib.strategy import check_and_adjust_parameters, set_user_strategy
 from tests.conftest import write_scalar_h5parm
 
 
@@ -408,6 +409,26 @@ def test_update_resolves_omitted_calibration_strategy_for_each_cycle(field, monk
     # An explicit None counts as omitted
     _update_field(field, monkeypatch, 5, calibration_strategy=None)
     assert field._calibration_strategy_defaulted is True
+
+
+def test_update_marks_an_adjusted_omitted_strategy_as_default(
+    field, custom_strategy, monkeypatch, caplog
+):
+    """A step that went through check_and_adjust_parameters() still counts as defaulted."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    del strategy_steps[1]["calibration_strategy"]
+    adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 2, **adjusted_steps[1])
+
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+    assert "Calibration strategy for cycle 2 (default)" in caplog.text
 
 
 def test_update_ignores_legacy_solve_flags_without_calibration_strategy(field, monkeypatch):

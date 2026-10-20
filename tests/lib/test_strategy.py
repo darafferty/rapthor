@@ -338,10 +338,10 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
 
 
 @pytest.mark.parametrize("omission", ["missing", None, {}], ids=["missing", "None", "empty"])
-def test_check_and_adjust_parameters_fills_omitted_calibration_strategy(
+def test_check_and_adjust_parameters_warns_for_omitted_calibration_strategy(
     field, custom_strategy, omission, caplog
 ):
-    """A calibrating cycle without a calibration strategy gets the explicit default."""
+    """An omitted strategy is named in a warning but left for Field.update() to resolve."""
     field.parset["strategy"] = str(custom_strategy)
     strategy_steps = set_user_strategy(field)
     if omission == "missing":
@@ -352,10 +352,10 @@ def test_check_and_adjust_parameters_fills_omitted_calibration_strategy(
     with caplog.at_level("WARNING", logger="rapthor:strategy"):
         adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
 
-    assert adjusted_steps[1]["calibration_strategy"] == default_calibration_strategy()
-    assert (
-        adjusted_steps[1]["calibration_strategy"] is not adjusted_steps[0]["calibration_strategy"]
-    )
+    # The step is not filled in, so that Field.update() can tell the default apart
+    # from a strategy the user supplied
+    assert not adjusted_steps[1].get("calibration_strategy")
+    assert caplog.text.count("Parameter 'calibration_strategy' is not defined") == 1
     assert (
         "Parameter 'calibration_strategy' is not defined in the strategy for cycle 2. "
         f"Using the default value of {default_calibration_strategy()!r}." in caplog.text
