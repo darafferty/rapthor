@@ -195,7 +195,7 @@ def test_rapthor_run_dd_slow_gains(
 )
 @pytest.mark.parametrize("bda_baseval", (0, 10000.0))
 def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
-    generated_parset_path, bda_base, single_loop_strategy_path
+    generated_parset_path, bda_baseval, single_loop_strategy_path
 ):
     """Test a single selfcal loop with DP3.
     ddecal fast_gains and medium gains are performed
