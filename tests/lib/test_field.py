@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
 from rapthor.lib.observation import Observation
+from rapthor.lib.strategy import check_and_adjust_parameters, set_user_strategy
 from tests.conftest import write_scalar_h5parm
 
 
@@ -355,6 +356,146 @@ def test_plot_overview_initial_near_pole(field):
     field.plot_overview(plot_filename, show_initial_coverage=True)
     assert plot_path.exists()
     assert plt.get_fignums() == []
+
+
+def _update_field(field, monkeypatch, index, **step):
+    """Run Field.update() for one cycle without touching sky models."""
+    monkeypatch.setattr(field, "update_skymodels", lambda *args, **kwargs: None)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+    field.lofar_to_true_flux_ratio = 1.0
+    field.lofar_to_true_flux_std = 0.1
+    field.apply_normalizations = False
+    step_dict = {
+        "do_calibrate": True,
+        "regroup_model": False,
+        "target_flux": None,
+        "max_directions": 1,
+        "max_distance": None,
+        "peel_bright_sources": False,
+        "peel_outliers": False,
+        "reweight": False,
+        "compress_selfcal_images": False,
+        "compress_final_images": False,
+    }
+    step_dict.update(step)
+    field.update(step_dict, index=index)
+
+
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+def test_update_resolves_omitted_calibration_strategy_for_each_cycle(
+    field, monkeypatch, caplog, strategy_setting
+):
+    """A cycle that omits the strategy gets the default, whatever earlier cycles used."""
+    explicit_strategy = {"di": ["fast_phase"], "dd": []}
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 2)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+    assert (
+        f"Calibration strategy for cycle 2 (default): {field.calibration_strategy}" in caplog.text
+    )
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 3, calibration_strategy=explicit_strategy)
+    assert field.calibration_strategy == explicit_strategy
+    assert field._calibration_strategy_defaulted is False
+    assert (
+        f"Calibration strategy for cycle 3 (from the strategy): {explicit_strategy}" in caplog.text
+    )
+
+    # Omitted again: the explicit strategy of cycle 3 must not carry over
+    _update_field(field, monkeypatch, 4, **strategy_setting)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+
+    assert all(
+        sector.calibration_strategy == field.calibration_strategy
+        for sector in field.imaging_sectors
+    )
+
+
+def test_update_marks_an_adjusted_omitted_strategy_as_default(
+    field, custom_strategy, monkeypatch, caplog
+):
+    """A step that went through check_and_adjust_parameters() still counts as defaulted."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    del strategy_steps[1]["calibration_strategy"]
+    adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 2, **adjusted_steps[1])
+
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+    assert "Calibration strategy for cycle 2 (default)" in caplog.text
+
+
+def test_update_ignores_legacy_solve_flags_without_calibration_strategy(field, monkeypatch):
+    """Legacy flags are translated when the strategy is loaded, not by Field.update()."""
+    _update_field(field, monkeypatch, 2, do_slowgain_solve=False, do_fulljones_solve=True)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+
+
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+@pytest.mark.parametrize("defaulted", [False, True], ids=["explicit-previous", "default-previous"])
+def test_update_keeps_last_calibration_strategy_for_image_only_cycle(
+    field, monkeypatch, strategy_setting, defaulted
+):
+    """An image-only cycle applies the solutions of the last calibration."""
+    explicit_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
+    _update_field(
+        field, monkeypatch, 2, calibration_strategy=None if defaulted else explicit_strategy
+    )
+    previous_strategy = field.calibration_strategy
+
+    _update_field(field, monkeypatch, 3, do_calibrate=False, **strategy_setting)
+    assert field.calibration_strategy == previous_strategy
+    assert field._calibration_strategy_defaulted is defaulted
+    assert all(sector.calibration_strategy == previous_strategy for sector in field.imaging_sectors)
+
+    # A later calibrating cycle without a strategy starts afresh from the default
+    _update_field(field, monkeypatch, 4)
+    assert field._calibration_strategy_defaulted is True
+    assert field.calibration_strategy["dd"] == [
+        "fast_phase",
+        "medium_phase",
+        "slow_gains",
+        "medium_phase",
+    ]
+
+
+def test_update_allows_an_explicit_strategy_for_an_image_only_cycle(field, monkeypatch):
+    _update_field(field, monkeypatch, 2)
+    strategy = {"di": ["slow_gains"], "dd": []}
+
+    _update_field(field, monkeypatch, 3, do_calibrate=False, calibration_strategy=strategy)
+
+    assert field.calibration_strategy == strategy
+    assert field._calibration_strategy_defaulted is False
+    assert all(sector.calibration_strategy == strategy for sector in field.imaging_sectors)
 
 
 def test_set_calibration_strategy_default(calibration_strategy_field):

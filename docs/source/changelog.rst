@@ -62,6 +62,12 @@ existing parsets and strategy files.
       last selfcal cycle from 8 MHz to 4 MHz, and the two cycles then compared
       as identical, so the final cycle was skipped when the selfcal and final
       data fractions were equal.
+    - A calibrating cycle with neither :term:`calibration_strategy` nor legacy
+      solve flags now uses the full default DD sequence independently of earlier
+      cycles. Legacy flags, including explicitly ``False`` values, are translated
+      before this default is considered. Image-only cycles preserve the previous
+      strategy unless explicitly overridden. Each calibrating cycle logs its
+      resolved sequence in order and identifies whether it was defaulted.
 
 
 Version 2.1 (2025/12/04)

@@ -357,7 +357,6 @@ def check_and_adjust_parameters(field, strategy_steps):
             "fulljones_timestep_sec",
             "scale_normalization_delta",
             "max_directions",
-            "calibration_strategy",
         ],
         "do_normalize": [],
         "do_image": [
@@ -455,8 +454,18 @@ def check_and_adjust_parameters(field, strategy_steps):
                                 f'Required parameter "{secondary}" is not '
                                 f"defined in the strategy for cycle {i + 1}."
                             )
-    for i in range(len(strategy_steps)):
-        _validate_calibrate_strategy(strategy_steps[i].get("calibration_strategy", {}))
+    for index, step in enumerate(strategy_steps, start=1):
+        calibration_strategy = step.get("calibration_strategy")
+        if step["do_calibrate"] and not calibration_strategy:
+            # Leave the omission intact so Field.update() can record that this
+            # cycle used the default, rather than an explicit user strategy.
+            log.warning(
+                "Parameter 'calibration_strategy' is not defined in the strategy "
+                "for cycle %i. Using the default value of %r.",
+                index,
+                default_calibration_strategy(),
+            )
+        _validate_calibrate_strategy(calibration_strategy)
 
     return strategy_steps
 

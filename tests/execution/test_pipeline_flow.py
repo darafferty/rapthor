@@ -596,6 +596,33 @@ def test_collect_pipeline_features_describes_strategy_and_runtime_options():
     } <= features
 
 
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+def test_collect_pipeline_features_resolves_default_calibration_strategy(strategy_setting):
+    steps = [{"do_calibrate": True, **strategy_setting}]
+
+    features = collect_pipeline_features(RecordingField(), steps, {})
+
+    assert features == {
+        "calibration",
+        "calibration_dd",
+        "solve_dd_fast_phase",
+        "solve_dd_medium_phase",
+        "solve_dd_slow_gains",
+        "final_cycle",
+    }
+    assert steps == [{"do_calibrate": True, **strategy_setting}]
+
+
+def test_collect_pipeline_features_keeps_explicit_empty_solve_lists():
+    steps = [{"do_calibrate": True, "calibration_strategy": {"di": [], "dd": []}}]
+
+    assert collect_pipeline_features(RecordingField(), steps, {}) == {"calibration", "final_cycle"}
+
+
 def test_supported_merge_feature_matrix_entries_pass_process_preflight():
     matrix = _merge_feature_matrix()
 
