@@ -112,7 +112,7 @@ def _prepare_field_for_image(field, h5parm_filename="nonexisting_h5parm_file.h5"
     field.h5parm_filename = str(h5parm_filename)
     field.scan_observations()
     steps = set_selfcal_strategy(field)
-    field.update(steps[0], index=1, final=False)
+    field.update(steps[0], index=1, final_cycle_number=0)
     field.do_predict = False
     field.image_pol = "I"
     field.skip_final_major_iteration = True

@@ -917,7 +917,7 @@ class Field(object):
         target_flux=None,
         target_number=None,
         calibrator_max_dist_deg=None,
-        combine_current_and_intial=False,
+        combine_current_and_initial=False,
     ):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
@@ -936,7 +936,7 @@ class Field(object):
             Target number of patches for grouping
         calibrator_max_dist_deg : float, optional
             Maximum distance in degrees from phase center for grouping
-        combine_current_and_intial : bool, optional
+        combine_current_and_initial : bool, optional
             If True, combine the initial and current sky models (needed for the final
             calibration in order to include potential outlier sources)
         """
@@ -1081,7 +1081,7 @@ class Field(object):
             # must be subtracted, since we have to go back to the original input MS files
             # for which no subtraction has been done) or if all sources (and not only the
             # imaged sources) are to be used in calibration
-            if combine_current_and_intial or not self.imaged_sources_only:
+            if combine_current_and_initial or not self.imaged_sources_only:
                 # Load starting sky model and regroup to one patch per entry to ensure
                 # any existing patches are removed (otherwise they may propagate to
                 # the DD calibrator direction determination, leading to unexpected results)
@@ -1146,7 +1146,7 @@ class Field(object):
             # Plot an overview of the field for this cycle, showing the calibration facets
             # (patches)
             self.log.info("Plotting field overview with calibration patches...")
-            if index == 1 or combine_current_and_intial:
+            if index == 1 or combine_current_and_initial:
                 # Check the sky model bounds, as they may differ from the sector ones
                 check_skymodel_bounds = True
             else:
@@ -1988,7 +1988,7 @@ class Field(object):
             # Report not converged, not diverged, and not failed
             return SelfcalState(False, False, False)
 
-    def update(self, step_dict, index, final=False):
+    def update(self, step_dict, index, final_cycle_number=0):
         """
         Updates parameters, sky models, etc. for current cycle
 
@@ -1998,13 +1998,12 @@ class Field(object):
             Dict of parameter values for given processing cycle
         index : int
             Index of processing cycle (counting starts from 1)
-        final : bool, optional
-            If True, process as the final pass (needed for correct processing of
-            the sky models)
+        final_cycle_number : int, optional
+            Index of final processing cycle (counting starts from 1; 0 indicates a non-final cycle)
         """
-        # If this is set as a final pass, set some peeling/calibration options to
+        # If this is set as the initial final pass, set some peeling/calibration options to
         # the defaults
-        if final:
+        if final_cycle_number == 1:
             self.imaged_sources_only = False
 
         # Resolve before applying the step: an omitted or empty strategy in an
@@ -2069,7 +2068,7 @@ class Field(object):
             target_flux=target_flux,
             target_number=target_number,
             calibrator_max_dist_deg=calibrator_max_dist_deg,
-            combine_current_and_intial=final,
+            combine_current_and_initial=(final_cycle_number == 1),
         )
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
@@ -2104,7 +2103,9 @@ class Field(object):
             self.do_predict = False
 
         # check whether images are to be compressed
-        self.compress_images = self.compress_final_images if final else self.compress_selfcal_images
+        self.compress_images = (
+            self.compress_final_images if final_cycle_number > 0 else self.compress_selfcal_images
+        )
 
     def set_calibration_strategy(self, step_dict=None):
         """

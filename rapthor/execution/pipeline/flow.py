@@ -168,7 +168,11 @@ def run_pipeline(
     if field.do_final:
         for index in range(parset["ntimes_to_repeat_final_cycle"] + 1):
             if selfcal_steps:
-                final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
+                if index == 0:
+                    # For the initial final cycle, peel outliers if done during selfcal. Subsequent
+                    # repetitions of the final cycle will use the peeled datasets created in the
+                    # first cycle, so the peeling flag should not be reset for those repititions
+                    final_step["peel_outliers"] = selfcal_steps[0]["peel_outliers"]
                 log.info(
                     "Starting final cycle with a data fraction of %.2f",
                     parset["final_data_fraction"],
@@ -214,7 +218,9 @@ def run_pipeline(
             if index == 0:
                 hooks.chunk_observations(field, [final_step], parset["final_data_fraction"])
 
-            run_pipeline_steps(field, [final_step], final=True, operation_factories=factories)
+            run_pipeline_steps(
+                field, [final_step], final_cycle_number=index + 1, operation_factories=factories
+            )
 
     hooks.make_report(field)
     publish_plot_artifacts_for_field(field)
@@ -227,7 +233,7 @@ def run_pipeline(
 def run_pipeline_steps(
     field: object,
     steps: list[dict],
-    final: bool = False,
+    final_cycle_number: int = 0,
     operation_factories: Optional[PipelineOperationFactories] = None,
 ) -> object:
     """Run one group of pipeline steps using injectable operation factories.
@@ -237,10 +243,11 @@ def run_pipeline_steps(
     factories = operation_factories or default_pipeline_operation_factories()
     selfcal_state = None
     cycle_number = getattr(field, "cycle_number")
+    final = final_cycle_number > 0
 
     for index, step in enumerate(steps):
         cycle_number = index + field.cycle_number
-        field.update(step, cycle_number, final=final)
+        field.update(step, cycle_number, final_cycle_number=final_cycle_number)
 
         if field.do_calibrate:
             _prepare_calibration_cycle(field, cycle_number, final)

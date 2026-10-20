@@ -62,6 +62,7 @@ def _run(parset_file):
 
     # Get the processing strategy
     strategy_steps = set_strategy(field)
+    num_cycles = len(strategy_steps) + parset["ntimes_to_repeat_final_cycle"]
 
     # Check each operation for started pipelines (workflows)
     # Note: the order here should match the order in which the operations were run
@@ -79,7 +80,7 @@ def _run(parset_file):
     ]
     while True:
         pipelines = []
-        for index, step in enumerate(strategy_steps):
+        for index in range(num_cycles):
             for opname in operation_list:
                 if index == 0 and opname == "initial_image":
                     # Handle the initial sky model image operation separately, as it only
