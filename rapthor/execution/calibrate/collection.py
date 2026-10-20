@@ -2,6 +2,7 @@
 
 import glob
 import os
+import shutil
 from typing import Mapping, Optional
 
 from rapthor.execution.artifacts import publish_plot_file_records
@@ -105,6 +106,7 @@ def plot_processed_solve_product(
             plots[_plot_output_key(solve_slot, soltype)] = run_plot_solutions(
                 combine_record,
                 soltype,
+                _plot_dir(pipeline_working_dir, solve_slot, soltype),
                 pipeline_working_dir,
                 execution_config,
                 root=root,
@@ -115,6 +117,7 @@ def plot_processed_solve_product(
         plots[_plot_output_key(solve_slot, "phase")] = run_plot_solutions(
             combine_record,
             "phase",
+            _plot_dir(pipeline_working_dir, solve_slot, "phase"),
             pipeline_working_dir,
             execution_config,
             root=_phase_plot_root(solve_slot),
@@ -240,16 +243,25 @@ def finalize_processed_solution_products(
 def run_plot_solutions(
     h5parm_record: Mapping[str, str],
     soltype: str,
+    plot_dir: str,
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     root: Optional[str] = None,
     first_dir: bool = False,
     shell_operation_cls=None,
 ) -> list[dict]:
-    """Run solution plotting and return only newly created plot records."""
-    before_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
+    """Run solution plotting into ``plot_dir`` and return the plot records.
+
+    Each call owns ``plot_dir`` and clears it first, so concurrent plot tasks
+    and reruns return all and only their own plots.
+    """
+    # The command runs from the operation directory, so give it an absolute path
+    plot_dir = os.path.abspath(plot_dir)
+    if os.path.isdir(plot_dir):
+        shutil.rmtree(plot_dir)
+    os.makedirs(plot_dir)
     plot_command = build_plot_solutions_command(
-        h5parm_record["path"], soltype, root=root, first_dir=first_dir
+        h5parm_record["path"], soltype, root=root, first_dir=first_dir, output_dir=plot_dir
     )
     run_external_command(
         plot_command,
@@ -257,9 +269,13 @@ def run_plot_solutions(
         execution_config,
         shell_operation_cls=shell_operation_cls,
     )
-    after_plots = set(glob.glob(os.path.join(pipeline_working_dir, "*.png")))
-    plot_records = [file_record(path) for path in sorted(after_plots - before_plots)]
-    publish_plot_file_records(plot_records, pipeline_working_dir)
+    plot_records = [
+        file_record(path) for path in sorted(glob.glob(os.path.join(plot_dir, "*.png")))
+    ]
+    # Use the artifact keys of the copies that finalize() makes in plots/<operation>/
+    publish_plot_file_records(
+        plot_records, plot_dir, root_name=os.path.basename(os.path.normpath(pipeline_working_dir))
+    )
     return plot_records
 
 
@@ -415,6 +431,10 @@ def _phase_plot_root(solve_slot: Mapping[str, object]) -> Optional[str]:
     if _solve_type(solve_slot) == "full_jones":
         return "fulljones_phase_"
     return None
+
+
+def _plot_dir(pipeline_working_dir: str, solve_slot: Mapping[str, object], soltype: str) -> str:
+    return os.path.join(pipeline_working_dir, "plots", f"{_solve_key(solve_slot)}_{soltype}")
 
 
 def _plot_output_key(solve_slot: Mapping[str, object], soltype: str) -> str:

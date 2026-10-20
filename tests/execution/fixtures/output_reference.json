@@ -22,7 +22,7 @@
             "path": "${PIPELINE_WORKING_DIR}/fulljones_solutions.h5"
         },
         "fulljones_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/fulljones_phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve1_phase/fulljones_phase_solutions.png"}
         ]
     },
     "calibrate_di_scalar_phase": {
@@ -39,10 +39,10 @@
             "path": "${PIPELINE_WORKING_DIR}/medium1_phases_di.h5parm"
         },
         "fast_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve1_phase/phase_solutions.png"}
         ],
         "medium1_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium1_phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve2_phase/medium1_phase_solutions.png"}
         ]
     },
     "calibrate_dd_fast_phase": {
@@ -55,7 +55,7 @@
             "path": "${PIPELINE_WORKING_DIR}/fast_phases.h5parm"
         },
         "fast_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve1_phase/phase_solutions.png"}
         ]
     },
     "calibrate_dd_fast_medium": {
@@ -72,10 +72,10 @@
             "path": "${PIPELINE_WORKING_DIR}/medium1_phases.h5parm"
         },
         "fast_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve1_phase/phase_solutions.png"}
         ],
         "medium1_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium1_phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve2_phase/medium1_phase_solutions.png"}
         ]
     },
     "calibrate_dd_with_slow": {
@@ -100,19 +100,19 @@
             "path": "${PIPELINE_WORKING_DIR}/medium2_phases.h5parm"
         },
         "fast_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve1_phase/phase_solutions.png"}
         ],
         "medium1_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium1_phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve2_phase/medium1_phase_solutions.png"}
         ],
         "slow_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/slow_phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve3_phase/slow_phase_solutions.png"}
         ],
         "slow_amp_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/slow_amplitude_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve3_amplitude/slow_amplitude_solutions.png"}
         ],
         "medium2_phase_plots": [
-            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/medium2_phase_solutions.png"}
+            {"class": "File", "path": "${PIPELINE_WORKING_DIR}/plots/solve4_phase/medium2_phase_solutions.png"}
         ]
     },
     "image_no_dde": {

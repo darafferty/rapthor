@@ -45,6 +45,7 @@ def publish_file_artifacts(
     artifact_writers: Optional[ArtifactWriters] = None,
     in_run_context: Callable[[], bool] = in_prefect_run_context,
     publish_index: bool = False,
+    root_name: Optional[str] = None,
 ) -> list[dict]:
     """Publish plot files as Prefect artifacts."""
     files = sorted(Path(path) for path in file_paths if Path(path).is_file())
@@ -57,7 +58,7 @@ def publish_file_artifacts(
     records = []
     root_dir = Path(root_dir)
     for plot_file in files:
-        relative_path = _relative_artifact_path(plot_file, root_dir, include_root_name)
+        relative_path = _relative_artifact_path(plot_file, root_dir, include_root_name, root_name)
         artifact_key = _plot_artifact_key(relative_path)
         description = f"Rapthor plot output: {relative_path}"
         artifact_url = _data_url(plot_file)
@@ -271,8 +272,12 @@ def publish_plot_file_records(
     root_dir: Path,
     artifact_writers: Optional[ArtifactWriters] = None,
     in_run_context: Callable[[], bool] = in_prefect_run_context,
+    root_name: Optional[str] = None,
 ) -> list[dict]:
-    """Publish newly produced plot file records immediately."""
+    """Publish newly produced plot file records immediately.
+
+    Artifact paths start with ``root_name`` (default: the name of ``root_dir``).
+    """
     paths = _file_record_paths(file_records)
     return publish_file_artifacts(
         paths,
@@ -280,6 +285,7 @@ def publish_plot_file_records(
         include_root_name=True,
         artifact_writers=artifact_writers,
         in_run_context=in_run_context,
+        root_name=root_name,
     )
 
 
@@ -859,14 +865,17 @@ def _json_markdown(path: Path, relative_path: str) -> str:
     return f"# `{relative_path}`\n\n```json\n{content}\n```"
 
 
-def _relative_artifact_path(path: Path, root_dir: Path, include_root_name: bool) -> str:
+def _relative_artifact_path(
+    path: Path, root_dir: Path, include_root_name: bool, root_name: Optional[str] = None
+) -> str:
     try:
         relative_path = path.relative_to(root_dir).as_posix()
     except ValueError:
         relative_path = path.name
 
-    if include_root_name and root_dir.name:
-        return f"{root_dir.name}/{relative_path}"
+    root_name = root_name or root_dir.name
+    if include_root_name and root_name:
+        return f"{root_name}/{relative_path}"
     return relative_path
 
 
