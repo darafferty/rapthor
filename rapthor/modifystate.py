@@ -15,6 +15,7 @@ from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
+from rapthor.execution.working_dir_lock import WorkingDirectoryLockError, working_directory_lock
 from rapthor.execution.workspace import remove_operation_workspace
 from rapthor.lib.parset import parset_read
 
@@ -203,6 +204,17 @@ def _run(parset_file):
     # Read parset
     log.info("Reading parset and checking state...")
     parset = parset_read(parset_file, use_log_file=False)
+
+    # Hold the working directory while operations are listed and removed
+    try:
+        with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
+            _reset(parset)
+    except WorkingDirectoryLockError as error:
+        print(f"{error}\nNo reset can be done.")
+        sys.exit(1)
+
+
+def _reset(parset):
     pipelines_dir = os.path.join(parset["dir_working"], "pipelines")
 
     while True:

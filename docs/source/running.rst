@@ -487,3 +487,17 @@ for example ``logs/commands.reset-20250102T030405Z.jsonl``, and
 one. The remaining records therefore only describe the work whose products are
 kept; to include earlier attempts in run times or resource use, read the
 ``*.reset-<time>.*`` files as well.
+
+A run and a reset, or two runs, cannot use the same working directory at the
+same time. Each holds a lock on ``dir_working/.rapthor.lock``, and the one that
+starts second stops with a message naming the process that holds it. The lock
+is released when the process ends, even if it is killed. If the lock cannot be
+taken for another reason, for example because the file system does not support
+``flock``, a reset refuses to run, while a run logs a warning that reset
+protection is off and carries on. On a shared file system, the lock only keeps
+out processes on other machines if the mount provides cluster-wide locks (for
+example, NFS mounted without ``local_lock=flock``, or Lustre mounted with
+``flock`` rather than ``localflock``); Rapthor does not check this. With a Dask
+scheduler that you started yourself (see :term:`dask_scheduler`), make sure
+that its workers have stopped before you reset: they may still be writing to the
+working directory after Rapthor itself has been killed.
