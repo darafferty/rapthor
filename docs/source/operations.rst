@@ -161,6 +161,7 @@ Primary products:
         * ``sector_Y.positional_offsets_sky.pdf``, where ``Y`` is the image sector number -  scatter plot of the RA and Dec positional offsets.
         * ``sector_Y.astrometry_offsets.pdf``, where ``Y`` is the image sector number -  plot showing the mean RA and Dec positional offsets for each facet covered by the sector. Arrows indicate the magnitude and direction of the mean offsets.
         * ``sector_Y.image_diagnostics.json``, where ``Y`` is the image sector number - the image diagnostics described above, in JSON format.
+        * ``sector_Y.astrometry_offsets.json``, where ``Y`` is the image sector number - the RA and Dec positional offsets (mean and standard deviation, with and without sigma clipping) for each facet covered by the sector, in JSON format (made only if offsets were found). These offsets are used to correct the astrometry of the ``-pb-ast`` image.
 
         .. note::
 

@@ -5,7 +5,7 @@ Initial image operation adapter.
 import json
 import os
 
-from rapthor.operations.image.base import Image
+from rapthor.operations.image.base import SECTOR_DIAGNOSTICS_KEYS, Image
 from rapthor.operations.image.diagnostics import report_sector_diagnostics
 
 
@@ -97,20 +97,15 @@ class ImageInitial(Image):
         # Save the output PyBDSF source catalog
         self.copy_outputs_to(skymodel_dest_dir, include={"pybdsf_catalog"}, move=True)
 
-        # Save the astrometry and photometry plots and diagnostics file
+        # Save the astrometry and photometry plots, image diagnostics file, and astrometry
+        # offsets file (made only when offsets were found)
         diagnostics_dest_dir = os.path.join(
             os.path.join(self.parset["dir_working"], "plots", self.name)
         )
-        diagnotics = {"sector_diagnostics"}
-        if self.outputs["sector_diagnostic_plots"][0]:
-            diagnotics.update({"sector_diagnostic_plots"})
-        self.copy_outputs_to(diagnostics_dest_dir, include=diagnotics, move=True)
+        self._save_sector_diagnostics(diagnostics_dest_dir, 0)
 
         # Read in the image diagnostics and log a summary of them
-        diagnostics_file = os.path.join(
-            diagnostics_dest_dir,
-            os.path.basename(self.outputs["sector_diagnostics"][0]["path"]),
-        )
+        diagnostics_file = self.outputs["sector_diagnostics"][0]["path"]
         with open(diagnostics_file, "r") as f:
             diagnostics_dict = json.load(f)
         sector.diagnostics.append(diagnostics_dict)
@@ -119,7 +114,7 @@ class ImageInitial(Image):
         self.field.lofar_to_true_flux_std = std
 
         # Clean up other files
-        self.clean_outputs()
+        self.clean_outputs(exclude=SECTOR_DIAGNOSTICS_KEYS)
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
