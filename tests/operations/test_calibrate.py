@@ -21,6 +21,7 @@ from rapthor.operations.calibrate.plan import (
 CALIBRATE_COMMON_INPUT_KEYS = {
     "timechunk_filename",
     "data_colname",
+    "use_array_beam",
     "modeldatacolumn",
     "calibration_skymodel_file",
     "starttime",
@@ -169,6 +170,7 @@ def calibrate_field(operation_parset, mocker, single_source_sky_model):
             self.medium_smoothnessconstraint = 1.0
             self.slow_smoothnessconstraint = 1.0
             self.data_colname = "DATA"
+            self.use_array_beam = parset.get("calibration_specific", {}).get("use_array_beam", True)
 
             # Callables that need to be mocked
             self.scan_h5parms = mocker.MagicMock()
