@@ -14,6 +14,8 @@ WSClean and other astronomy tools.
   products out of version control. Do not modify original input Measurement Sets.
 - Format changed Python code and imports, then run checks appropriate to the
   change as described in [TESTING.md](TESTING.md). Report checks that could not run.
+- After any change, including documentation-only changes,
+  `python -m ruff check --select I` must pass when run from the repository root.
 - Update user documentation when behavior, options or runtime requirements change.
   Keep architecture diagrams aligned with ownership and execution changes.
 
