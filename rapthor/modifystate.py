@@ -10,6 +10,7 @@ import shutil
 import sys
 from contextlib import contextmanager
 
+from rapthor.execution.workspace import remove_operation_workspace
 from rapthor.lib.parset import parset_read
 
 log = logging.getLogger("rapthor:state")
@@ -88,7 +89,9 @@ def find_operations(pipelines_dir):
     """
     if not os.path.isdir(pipelines_dir):
         return []
-    names = os.listdir(pipelines_dir)
+    # An operation stopped while moving to or from shared scratch may only have
+    # its recovery record, ".<operation>.scratch"
+    names = {re.sub(r"^\.(.+)\.scratch$", r"\1", name) for name in os.listdir(pipelines_dir)}
     operations = {name: _parse_operation(name) for name in names}
     return sorted(
         (name for name, parsed in operations.items() if parsed),
@@ -172,10 +175,9 @@ def _run(parset_file):
             print("Reseting state...")
             for pipeline in pipelines[start:]:
                 # Remove the operation working directory to ensure files from previous
-                # runs are not kept and used in subsequent ones. Other associated
-                # files are removed as well.
-                path = os.path.join(pipelines_dir, pipeline)
-                shutil.rmtree(path, ignore_errors=True)
+                # runs are not kept and used in subsequent ones. Its shared scratch
+                # workspace and recovery record are removed as well.
+                remove_operation_workspace(os.path.join(pipelines_dir, pipeline))
 
             # Now remove any sub-directories in the other output directories, that
             # are _not_ present in the 'pipelines' directory.
