@@ -4,7 +4,6 @@ for this directory.
 """
 
 import configparser
-import inspect
 import logging
 import os
 import shutil
@@ -215,17 +214,9 @@ def close_rapthor_file_handlers():
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items):
-    """Mark tests that start or share a Prefect test server as ``prefect``."""
+    """Mark direct and indirect users of the shared Prefect server."""
     for item in items:
         if "prefect_server" in item.fixturenames:
-            item.add_marker(pytest.mark.prefect)
-            continue
-        try:
-            source = inspect.getsource(item.obj)
-        except (OSError, TypeError):
-            continue
-
-        if "prefect_test_harness" in source:
             item.add_marker(pytest.mark.prefect)
 
 

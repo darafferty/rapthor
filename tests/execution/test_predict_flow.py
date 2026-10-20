@@ -19,7 +19,6 @@ from rapthor.execution.predict.payloads import predict_payload_from_inputs, vali
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.predict import Predict
-from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -649,7 +648,7 @@ def test_predict_payload_from_inputs_rejects_non_basename_model_outputs(tmp_path
 
 
 def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
-    prefect_server, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
+    run_flow_for_test, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("di", _predict_input_parms(), tmp_path)
 
@@ -708,7 +707,7 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
 
 
 def test_run_predict_flow_rejects_invalid_prediction_directions(
-    prefect_server, tmp_path, fake_predict_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_predict_shell_operation_cls
 ):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
     payload["predict_tasks"][0]["directions"] = ["patch1", 7]
@@ -727,7 +726,7 @@ def test_run_predict_flow_rejects_invalid_prediction_directions(
 @pytest.mark.parametrize("mode", ["di", "dd"])
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_predict_flow_removes_modeldata_only_after_postprocessing_succeeds(
-    prefect_server,
+    run_flow_for_test,
     tmp_path,
     monkeypatch,
     fake_predict_shell_operation_cls,
@@ -786,7 +785,7 @@ def test_predict_flow_removes_modeldata_only_after_postprocessing_succeeds(
 
 
 def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
-    prefect_server, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
+    run_flow_for_test, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("dd", _dd_predict_input_parms(), tmp_path)
 
@@ -887,7 +886,7 @@ def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(
     assert len(fake_predict_shell_operation_cls.instances) == 1
 
 
-def test_run_predict_flow_propagates_shell_failures(prefect_server, tmp_path):
+def test_run_predict_flow_propagates_shell_failures(run_flow_for_test, tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(RuntimeError, match="predict failed"):
@@ -899,7 +898,7 @@ def test_run_predict_flow_propagates_shell_failures(prefect_server, tmp_path):
         )
 
 
-def test_run_predict_flow_fails_when_predicted_model_is_missing(prefect_server, tmp_path):
+def test_run_predict_flow_fails_when_predicted_model_is_missing(run_flow_for_test, tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="Predict output was not created"):
@@ -913,7 +912,7 @@ def test_run_predict_flow_fails_when_predicted_model_is_missing(prefect_server, 
 
 @pytest.mark.parametrize("mode", ["di", "dd"])
 def test_run_predict_flow_fails_when_postprocess_output_is_missing(
-    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode
+    run_flow_for_test, tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode
 ):
     helper_name = "add_sector_models" if mode == "di" else "subtract_sector_models"
     postprocess = getattr(predict_module, helper_name)
@@ -947,7 +946,7 @@ def test_predict_reference_output_fixtures_match_output_contract():
 
 
 def test_predict_finalizer_accepts_prefect_outputs(
-    prefect_server, tmp_path, fake_predict_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_predict_shell_operation_cls
 ):
     field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
     sector_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")

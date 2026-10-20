@@ -18,7 +18,6 @@ from rapthor.execution.mosaic.flow import (
 from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs, validate_mosaic_payload
 from rapthor.lib.records import file_record, validate_output_record
 from rapthor.operations.mosaic import Mosaic
-from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -390,7 +389,7 @@ def test_mosaic_task_run_name_uses_output_product_label(mosaic_filename, expecte
 
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
-    prefect_server,
+    run_flow_for_test,
     tmp_path,
     monkeypatch,
     fake_mosaic_shell_operation_cls,
@@ -489,7 +488,7 @@ def test_run_mosaic_flow_executes_python_helpers_and_returns_records(
 
 
 def test_run_mosaic_flow_builds_shared_template_once_for_multiple_mosaic_products(
-    prefect_server, tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+    run_flow_for_test, tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
 ):
     outputs = run_flow_for_test(
         mosaic_flow,
@@ -521,7 +520,7 @@ def test_run_mosaic_flow_builds_shared_template_once_for_multiple_mosaic_product
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 @pytest.mark.parametrize("compress_images", [False, True])
 def test_run_mosaic_flow_uses_wsclean_for_model_products_with_skymodels(
-    prefect_server,
+    run_flow_for_test,
     tmp_path,
     fake_mosaic_shell_operation_cls,
     fake_direct_mosaic_helpers,
@@ -590,7 +589,7 @@ def test_run_mosaic_flow_uses_wsclean_for_model_products_with_skymodels(
 
 
 def test_run_mosaic_flow_uses_sparse_regrid_for_model_products_without_skymodels(
-    prefect_server, tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+    run_flow_for_test, tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
 ):
     payload = _mosaic_payload(tmp_path)
     payload["mosaic_products"][0].update(
@@ -645,7 +644,7 @@ def test_run_mosaic_flow_uses_sparse_regrid_for_model_products_without_skymodels
 
 
 def test_run_mosaic_flow_can_skip_fits_preview_artifacts(
-    prefect_server, tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
+    run_flow_for_test, tmp_path, monkeypatch, fake_mosaic_shell_operation_cls
 ):
     published = []
 
@@ -671,7 +670,7 @@ def test_run_mosaic_flow_can_skip_fits_preview_artifacts(
 
 
 def test_run_mosaic_flow_rejects_invalid_mosaic_product_lists(
-    prefect_server, tmp_path, fake_mosaic_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_mosaic_shell_operation_cls
 ):
     payload = _mosaic_payload(tmp_path)
     payload["mosaic_products"][0]["sector_image_filenames"] = ["sector_1-I-image.fits", 7]
@@ -688,7 +687,7 @@ def test_run_mosaic_flow_rejects_invalid_mosaic_product_lists(
 
 
 def test_run_mosaic_flow_returns_compressed_records(
-    prefect_server, tmp_path, fake_mosaic_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_mosaic_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         mosaic_flow,
@@ -711,7 +710,7 @@ def test_run_mosaic_flow_returns_compressed_records(
 
 
 def test_run_mosaic_flow_handles_skip_processing_without_commands(
-    prefect_server, tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
+    run_flow_for_test, tmp_path, fake_mosaic_shell_operation_cls, fake_direct_mosaic_helpers
 ):
     outputs = run_flow_for_test(
         mosaic_flow,
@@ -754,7 +753,7 @@ def test_mosaic_prefect_flow_entrypoint_runs_with_mocked_shell(
 
 
 def test_run_mosaic_flow_fails_when_expected_output_is_missing(
-    prefect_server, tmp_path, monkeypatch
+    run_flow_for_test, tmp_path, monkeypatch
 ):
     def fake_missing_mosaic(*args, **kwargs):
         return None
@@ -771,7 +770,7 @@ def test_run_mosaic_flow_fails_when_expected_output_is_missing(
 
 @pytest.mark.parametrize("compress_images", [False, True])
 def test_run_mosaic_flow_retains_intermediates_when_later_product_fails(
-    prefect_server, tmp_path, monkeypatch, fake_mosaic_shell_operation_cls, compress_images
+    run_flow_for_test, tmp_path, monkeypatch, fake_mosaic_shell_operation_cls, compress_images
 ):
     payload = _mosaic_payload(tmp_path, compress_images=compress_images, mosaic_product_count=2)
     finalize = mosaic_module._finalize_mosaic_output
@@ -804,7 +803,7 @@ def test_run_mosaic_flow_retains_intermediates_when_later_product_fails(
 
 
 def test_mosaic_finalizer_accepts_prefect_outputs(
-    prefect_server, tmp_path, fake_mosaic_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_mosaic_shell_operation_cls
 ):
     field = FieldStub(
         tmp_path,

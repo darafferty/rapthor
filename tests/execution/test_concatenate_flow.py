@@ -13,7 +13,6 @@ from rapthor.execution.concatenate.payloads import concatenate_payload_from_inpu
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
-from tests.execution.conftest import run_flow_for_test
 
 
 @pytest.fixture
@@ -205,7 +204,7 @@ def test_concatenate_payload_rejects_duplicate_outputs(tmp_path):
 
 
 def test_run_concatenate_flow_executes_commands_and_returns_records(
-    prefect_server, tmp_path, fake_shell_operation_cls, fake_select_concatenation_command
+    run_flow_for_test, tmp_path, fake_shell_operation_cls, fake_select_concatenation_command
 ):
     payload = {
         "pipeline_working_dir": str(tmp_path),
@@ -257,7 +256,7 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
     ],
 )
 def test_run_concatenate_flow_rejects_invalid_epoch_input_filenames(
-    prefect_server, tmp_path, fake_shell_operation_cls, epoch_input, expected_message
+    run_flow_for_test, tmp_path, fake_shell_operation_cls, epoch_input, expected_message
 ):
     payload = {
         "pipeline_working_dir": str(tmp_path),
@@ -345,7 +344,7 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
 
 
 def test_run_concatenate_flow_handles_no_concatenation_needed(
-    prefect_server, tmp_path, fake_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         concatenate_flow,
@@ -358,7 +357,7 @@ def test_run_concatenate_flow_handles_no_concatenation_needed(
     assert fake_shell_operation_cls.instances == []
 
 
-def test_run_concatenate_flow_propagates_shell_failures(prefect_server, tmp_path):
+def test_run_concatenate_flow_propagates_shell_failures(run_flow_for_test, tmp_path):
     payload = {
         "pipeline_working_dir": str(tmp_path),
         "data_colname": "DATA",
@@ -382,7 +381,7 @@ def test_run_concatenate_flow_propagates_shell_failures(prefect_server, tmp_path
     assert not (tmp_path / "epoch_0_concatenated.ms").exists()
 
 
-def test_run_concatenate_flow_fails_when_expected_output_is_missing(prefect_server, tmp_path):
+def test_run_concatenate_flow_fails_when_expected_output_is_missing(run_flow_for_test, tmp_path):
     payload = {
         "pipeline_working_dir": str(tmp_path),
         "data_colname": "DATA",
@@ -405,7 +404,7 @@ def test_run_concatenate_flow_fails_when_expected_output_is_missing(prefect_serv
 
 
 def test_concatenate_finalizer_accepts_prefect_outputs(
-    prefect_server, tmp_path, fake_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_shell_operation_cls
 ):
     field = FieldStub(
         _operation_parset(tmp_path),

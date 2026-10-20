@@ -52,7 +52,6 @@ from rapthor.lib.records import directory_record, file_record, validate_output_r
 from rapthor.operations.image.base import Image
 from rapthor.operations.image.initial import ImageInitial
 from rapthor.operations.image.normalize import ImageNormalize
-from tests.execution.conftest import run_flow_for_test
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 CUBE_CATALOG_COMMAND_PREFIX = ["python3", "-m", CUBE_CATALOG_MODULE]
@@ -1678,7 +1677,7 @@ def test_image_payload_from_inputs_requires_filtered_model_filename(tmp_path):
 
 
 def test_run_image_flow_executes_no_dde_commands_and_returns_records(
-    prefect_server,
+    run_flow_for_test,
     tmp_path,
     monkeypatch,
     fake_image_shell_operation_cls,
@@ -1868,7 +1867,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
 
 
 def test_run_image_flow_can_skip_fits_preview_artifacts(
-    prefect_server, tmp_path, monkeypatch, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, monkeypatch, fake_image_shell_operation_cls
 ):
     fits_published = []
     postage_published = []
@@ -1980,7 +1979,7 @@ def test_filter_skymodel_products_isolates_allocator_and_native_threads(
 
 
 def test_run_image_flow_uses_filter_skymodel_subprocess(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     input_parms = _image_input_parms()
     input_parms["filter_skymodel_ncores"] = 2
@@ -2019,7 +2018,7 @@ def test_run_image_flow_uses_filter_skymodel_subprocess(
 
 
 def test_run_image_flow_rejects_invalid_prepare_task_payload(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
     payload["sectors"][0]["prepare_tasks"] = ["not-a-task"]
@@ -2036,7 +2035,7 @@ def test_run_image_flow_rejects_invalid_prepare_task_payload(
 
 
 def test_run_image_flow_allows_missing_source_filtering_mask(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     class FilterWithoutMaskShellOperation(fake_image_shell_operation_cls):
         def run(self):
@@ -2063,7 +2062,7 @@ def test_run_image_flow_allows_missing_source_filtering_mask(
 
 
 def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     for ms_name in ["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms", "sector_1_concat.ms"]:
         (tmp_path / ms_name).mkdir()
@@ -2092,7 +2091,7 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
 
 
 def test_run_image_flow_restores_bright_sources_before_filtering(
-    prefect_server, tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2144,7 +2143,7 @@ def test_run_image_flow_restores_bright_sources_before_filtering(
 
 
 def test_run_image_flow_executes_facet_commands_and_returns_region_file(
-    prefect_server, tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2192,7 +2191,7 @@ def test_run_image_flow_executes_facet_commands_and_returns_region_file(
 
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
-    prefect_server, tmp_path, fake_image_shell_operation_cls, keep_temporary_files
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls, keep_temporary_files
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2233,7 +2232,7 @@ def test_run_image_flow_executes_screen_commands_and_writes_aterm_config(
 
 @pytest.mark.parametrize("max_threads", [1, 6])
 def test_run_image_flow_sets_ducc0_num_threads_for_non_mpi_wsclean(
-    prefect_server, tmp_path, fake_image_shell_operation_cls, max_threads
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls, max_threads
 ):
     input_parms = _image_input_parms()
     input_parms["max_threads"] = max_threads
@@ -2259,7 +2258,7 @@ def test_run_image_flow_sets_ducc0_num_threads_for_non_mpi_wsclean(
 
 
 def test_run_image_flow_supports_full_stokes_no_dde(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2288,7 +2287,7 @@ def test_run_image_flow_supports_full_stokes_no_dde(
 
 
 def test_run_image_flow_supports_linked_full_stokes(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     run_flow_for_test(
         image_flow,
@@ -2307,7 +2306,7 @@ def test_run_image_flow_supports_linked_full_stokes(
 
 
 def test_run_image_flow_supports_mpi_no_dde(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2345,7 +2344,7 @@ def test_run_image_flow_supports_mpi_no_dde(
 
 
 def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     with pytest.raises(ValueError, match="requests 2 MPI processes"):
         run_flow_for_test(
@@ -2363,7 +2362,7 @@ def test_run_image_flow_rejects_oversubscribed_mpi_wsclean(
 
 
 def test_run_image_flow_supports_mpi_facets(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2389,7 +2388,7 @@ def test_run_image_flow_supports_mpi_facets(
 
 
 def test_run_image_flow_supports_mpi_screens(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2412,7 +2411,7 @@ def test_run_image_flow_supports_mpi_screens(
 
 
 def test_run_image_flow_returns_compressed_image_outputs(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2465,7 +2464,7 @@ def test_run_image_flow_returns_compressed_image_outputs(
 
 
 def test_run_image_flow_returns_filtered_model_image(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2491,7 +2490,7 @@ def test_run_image_flow_returns_filtered_model_image(
 
 
 def test_run_image_flow_supports_clean_disabled_stokes_i(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2510,7 +2509,7 @@ def test_run_image_flow_supports_clean_disabled_stokes_i(
 
 
 def test_run_image_flow_cleans_isolated_wsclean_temp_dirs(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2680,7 +2679,7 @@ def test_pybdsf_commands_keep_temporary_socket_paths_short(
 
 
 def test_run_image_flow_cleans_wsclean_temp_dir_on_failure(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     class FailingWscleanShellOperation(fake_image_shell_operation_cls):
         instances = []
@@ -2706,7 +2705,7 @@ def test_run_image_flow_cleans_wsclean_temp_dir_on_failure(
 
 
 def test_run_image_flow_returns_image_cube_outputs(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2736,7 +2735,7 @@ def test_run_image_flow_returns_image_cube_outputs(
 
 
 def test_run_image_flow_returns_full_stokes_image_cube_outputs(
-    prefect_server, tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     outputs = run_flow_for_test(
         image_flow,
@@ -2777,7 +2776,7 @@ def test_run_image_flow_returns_full_stokes_image_cube_outputs(
 
 
 def test_run_image_flow_returns_normalization_outputs(
-    prefect_server,
+    run_flow_for_test,
     tmp_path,
     fake_image_shell_operation_cls,
     fake_direct_image_helpers,
@@ -2952,7 +2951,7 @@ def test_image_prefect_flow_entrypoint_runs_with_mocked_shell(
 
 
 def test_image_flow_creates_residual_visibilities(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     input_parms = _image_input_parms()
     input_parms["residual_filename"] = ["sector_1_resid.ms"]
@@ -2983,7 +2982,7 @@ def test_image_flow_creates_residual_visibilities(
     assert len(fake_image_shell_operation_cls.instances) == 6
 
 
-def test_run_image_flow_fails_when_expected_output_is_missing(prefect_server, tmp_path):
+def test_run_image_flow_fails_when_expected_output_is_missing(run_flow_for_test, tmp_path):
     with pytest.raises(FileNotFoundError, match="Prepared imaging MS"):
         run_flow_for_test(
             image_flow,
@@ -3015,7 +3014,7 @@ def test_image_reference_output_fixture_matches_output_contract():
 
 
 def test_image_initial_finalizer_accepts_prefect_outputs(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     field = FieldStub(tmp_path)
     operation = ImageInitial(field)
@@ -3043,7 +3042,7 @@ def test_image_initial_finalizer_accepts_prefect_outputs(
 
 
 def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     field = FieldStub(tmp_path)
     field.parset["imaging_specific"]["save_filtered_model_image"] = True
@@ -3608,7 +3607,7 @@ def test_previous_mask_image_operation_run_uses_prefect_flow(
 
 
 def test_image_finalizer_accepts_prefect_outputs_for_full_stokes(
-    prefect_server, tmp_path, fake_image_shell_operation_cls
+    run_flow_for_test, tmp_path, fake_image_shell_operation_cls
 ):
     field = FieldStub(tmp_path)
     field.image_pol = "IQUV"

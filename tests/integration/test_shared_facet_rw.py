@@ -8,20 +8,9 @@ from .utils import update_parset_path
 
 
 @pytest.mark.integration
-# The shared_facet_rw=False case is the default single-loop run, which
-# tests/integration/test_dd_calibration.py checks.
-@pytest.mark.parametrize(
-    "shared_facet_rw",
-    [
-        pytest.param(
-            True,
-            marks=pytest.mark.xfail(
-                run=False,
-                reason="Serial WSClean 3.7 aborts when shared-facet read/write flags are used.",
-            ),
-            id="shared_facet_rw_true",
-        ),
-    ],
+@pytest.mark.xfail(
+    run=False,
+    reason="Serial WSClean 3.7 aborts when shared-facet read/write flags are used.",
 )
 @pytest.mark.parametrize(
     "generated_parset_path",
@@ -34,15 +23,15 @@ from .utils import update_parset_path
     ],
     indirect=True,
 )
-def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_path, shared_facet_rw):
-    """Test a single self-calibration loop end to end."""
+def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_path):
+    """Run with shared facet I/O; test_dd_calibration covers the disabled case."""
 
     updated_parset_path = update_parset_path(
         generated_parset_path,
         {
             "allow_internet_access": "False",
             "strategy": str(single_loop_strategy_path),
-            "shared_facet_rw": str(shared_facet_rw),
+            "shared_facet_rw": "True",
         },
     )
 

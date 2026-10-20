@@ -69,8 +69,8 @@ python -m pytest -m "not integration and not serial" -n auto --dist worksteal te
 ```
 
 - Choose `-n <count>` instead of `-n auto` when resource limits require fewer
-  workers. Tests marked `prefect` start one Prefect test server per worker, so a
-  higher worker count also means more servers.
+  workers, or use `PYTEST_XDIST_AUTO_NUM_WORKERS=2 tox -e py`. Flow tests share
+  one Prefect server per worker, so more workers also use more memory.
 - [tests/conftest.py](tests/conftest.py) isolates `PREFECT_HOME` by worker. Preserve
   this isolation. Concurrent pytest invocations can interfere through default
   run-root cleanup; use distinct `RAPTHOR_TEST_RUN_ROOT` values if needed.
@@ -88,23 +88,17 @@ python -m pytest -m "not integration and not serial" -n auto --dist worksteal te
 | `serial` | Tests that launch their own Prefect and Dask processes; run outside the parallel pool. |
 | `slow` | Tests that can be explicitly deselected for a faster run. |
 
-Tests that run a Prefect flow request the session-scoped `prefect_server`
-fixture from the [execution conftest](tests/execution/conftest.py). It starts one
-Prefect test server per pytest process (one per xdist worker) because every
-server start costs several seconds. `tests/conftest.py` marks tests that use the
-fixture, or `prefect_test_harness` directly, as `prefect`. Add `prefect`
-explicitly for tests that start a server in a subprocess. Also mark such a test
-`serial` when the subprocess starts its own Prefect server or Dask cluster:
-startup is CPU-bound, and alongside a fully loaded parallel run it can take
-several times longer and exceed the subprocess timeout.
+Request the `run_flow_for_test` fixture from the
+[execution conftest](tests/execution/conftest.py) to run production flows with
+optional fake shell operations. It defaults to the `sync` task runner and
+depends on the session-scoped `prefect_server` fixture. Tests that invoke flows
+or operations directly request `prefect_server` instead. Both are automatically
+marked `prefect`; the server starts only once per pytest process.
 
-Use `run_flow_for_test` in the execution conftest for production flow wiring
-with optional fake shell operations. It defaults to the `sync` task runner and
-requires the calling test to request `prefect_server`; it raises otherwise, so a
-forgotten fixture cannot silently start a slow ephemeral server per call. Use
-local Dask when testing scheduling, resources or worker boundaries; exercise the
-production flow rather than a separate test graph. Builder, validator and
-finalizer tests normally call plain Python helpers.
+Tests that start their own server in a subprocess need an explicit `prefect`
+marker. Add `serial` to process-startup tests that need isolation from parallel
+CPU load. Use local Dask for scheduling, resource and worker-boundary tests.
+Builder, validator and finalizer tests normally call plain Python helpers.
 
 [Option coverage](tests/lib/test_parset_option_coverage.py) checks options in
 `defaults.parset` for direct test attention or an intentional allow-list reason.
@@ -125,19 +119,17 @@ RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
   tests/integration tests/operations/integration tests/execution/integration
 ```
 
-Alternatively use `tox -e test_integration`; CI can split that lane with
-`CI_NODE_TOTAL` and `CI_NODE_INDEX`. The tox environments pass `EVERYBEAM_DATADIR`
-through because tox sets `VIRTUAL_ENV`, which EveryBeam otherwise uses to locate
-its coefficient files. pytest-split balances the nodes with the
-per-test timings in [.test_durations](.test_durations), assigning the longest
-tests first (`least_duration`); a test without an entry is assumed to take the
-average time. CI runs eight nodes, which keeps each node near the longest single
-test plus its fixed setup cost. Refresh the file after adding, removing or
-substantially changing integration tests by running the lane once with
-`--store-durations` and committing the result. The lane collects only the three
-directories above, so a test marked `integration` must live in one of them or
-CI never runs it. Real-tool checks of one execution owner (for example DP3
-runs of a command builder) belong in `tests/execution/integration/`.
+Alternatively use `tox -e test_integration`. CI splits this lane across eight
+jobs using `CI_NODE_TOTAL` and `CI_NODE_INDEX`. pytest-split balances them using
+[.test_durations](.test_durations), assigning the longest tests first and using
+the average duration for new tests. After changing integration scenarios, add
+`--store-durations` to the full pytest command above and commit the updated file.
+
+Integration tests must live in one of the three directories above to run in CI.
+Real-tool checks of one execution owner belong in `tests/execution/integration/`.
+CI reuses the container's installed packages in both test lanes. Tox also passes
+`EVERYBEAM_DATADIR` through so DP3 and WSClean can find the coefficient files
+despite tox changing `VIRTUAL_ENV`.
 
 Reuse [integration fixtures](tests/integration/conftest.py),
 [helpers](tests/integration/utils.py), and

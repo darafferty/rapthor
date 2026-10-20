@@ -23,12 +23,10 @@ from .utils import (
     indirect=True,
 )
 def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_loop_strategy_path):
-    """Test a single selfcal loop with DP3.
-    DD calibration fast gains and medium gains are performed.
+    """Run DD fast and medium phase solves through a complete selfcal loop.
 
-    This is the default single-loop run (peel_bright_sources off and
-    shared_facet_rw off), so it also checks that bright-source peeling does
-    not run; keep it the only test with these default settings.
+    This also covers the disabled bright-source peeling and shared-facet I/O
+    cases, avoiding separate pipeline runs for those defaults.
     """
 
     updated_parset_path = update_parset_path(
