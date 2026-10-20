@@ -1,5 +1,6 @@
 """WSClean model rendering helpers for mosaic products."""
 
+import logging
 import os
 import re
 import shutil
@@ -21,6 +22,8 @@ from rapthor.execution.mosaic.commands import (
 )
 from rapthor.execution.outputs import require_file
 from rapthor.execution.shell import run_external_command
+
+log = logging.getLogger("rapthor:mosaic")
 
 _FITS_SUFFIX = re.compile(r"\.fits$")
 _DEFAULT_MODEL_BANDWIDTH_HZ = 1.0e6
@@ -55,7 +58,15 @@ def render_model_mosaic_with_wsclean(
 
 
 def combine_sector_skymodels(sector_skymodels: Sequence[str], output_skymodel: str) -> dict:
-    """Combine sector sky models, suffixing names to keep components unique."""
+    """
+    Combine sector sky models, suffixing names to keep components unique.
+
+    Empty sector sky models are skipped. If all are empty, the first is copied
+    so that WSClean draws an all-zero mosaic that is handled like any other.
+    """
+    if not sector_skymodels:
+        raise ValueError("Cannot render a model mosaic without sector sky models")
+
     combined = None
     for index, skymodel_path in enumerate(sector_skymodels, start=1):
         skymodel = lsmtool.load(str(skymodel_path))
@@ -71,7 +82,9 @@ def combine_sector_skymodels(sector_skymodels: Sequence[str], output_skymodel: s
             )
 
     if combined is None:
-        raise ValueError("Cannot render a model mosaic from empty sector sky models")
+        log.warning("All sector sky models for %s are empty", os.path.basename(output_skymodel))
+        shutil.copyfile(sector_skymodels[0], output_skymodel)
+        return require_file(output_skymodel, "Mosaic model sky model")
     if combined.hasPatches:
         combined._updateGroups()
         combined.setPatchPositions(method="wmean")
