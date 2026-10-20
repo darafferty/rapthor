@@ -123,6 +123,7 @@ def _calibration_options_for_chunk(
         predict_images=payload.get("predict_images")
         if payload.get("image_based_predict")
         else None,
+        use_array_beam=bool(payload.get("use_array_beam", True)),
     )
 
 

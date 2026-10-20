@@ -141,6 +141,7 @@ class Calibrate(FlowOperation):
                     field.get_obs_parameters("timechunk_filename")
                 ).to_json(),
                 "data_colname": field.data_colname,
+                "use_array_beam": field.use_array_beam,
                 "modeldatacolumn": None,
                 "use_wsclean_predict": self.use_wsclean_predict,
                 "generate_screens": field.generate_screens,
@@ -282,6 +283,7 @@ class Calibrate(FlowOperation):
                     field.get_obs_parameters("predict_di_output_filename")
                 ).to_json(),
                 "data_colname": "DATA",
+                "use_array_beam": field.use_array_beam,
                 "calibration_skymodel_file": None,
                 "starttime": starttime,
                 "ntimes": ntimes,
