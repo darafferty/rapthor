@@ -2,14 +2,17 @@
 Test cases for the `rapthor.modifystate` module.
 """
 
+import errno
 import json
 import logging
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 import rapthor.modifystate as modifystate
+from rapthor.execution import working_dir_lock
 from tests.execution.scratch_transitions import exit_at_scratch_transition
 
 OUTPUT_DIRS = (
@@ -352,3 +355,29 @@ def test_run_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypat
     (archived_commands,) = logs_dir.glob("commands.reset-*.jsonl")
     assert _read_jsonl(archived_commands) == [{"operation": "image_1"}, {"operation": "mosaic_1"}]
     assert [path.read_text() for path in logs_dir.glob("rapthor*.log")] == ["first attempt\n"]
+
+
+@pytest.mark.parametrize("cause", ["held-by-a-run", "flock-unsupported"])
+def test_run_refuses_to_reset_without_the_working_directory_lock(
+    working_dir, monkeypatch, capsys, cause
+):
+    image = _write_prefect_operation_state(working_dir, "image_1")
+    if cause == "held-by-a-run":
+        lock = working_dir_lock.working_directory_lock(str(working_dir), "a Rapthor run")
+        expected = "is in use by a Rapthor run"
+    else:
+        lock = nullcontext()
+        expected = "Could not lock the working directory"
+
+        def flock(file, operation):
+            raise OSError(errno.ENOLCK, "No locks available")
+
+        monkeypatch.setattr(working_dir_lock.fcntl, "flock", flock)
+
+    with lock:
+        assert _reset(monkeypatch, "1", "y", "q") == 1
+
+    output = capsys.readouterr().out
+    assert expected in output
+    assert "No reset can be done." in output
+    assert image.is_dir()
