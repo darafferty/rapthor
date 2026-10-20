@@ -10,6 +10,7 @@ import pytest
 from rapthor.lib.strategy import (
     _validate_calibrate_strategy,
     check_and_adjust_parameters,
+    default_calibration_strategy,
     set_image_strategy,
     set_selfcal_strategy,
     set_strategy,
@@ -326,11 +327,53 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
     with caplog.at_level("WARNING", logger="rapthor:strategy"):
         check_and_adjust_parameters(field, strategy_steps)
 
+    if missing_parameter == "calibration_strategy":
+        default_value = default_calibration_strategy()
+    else:
+        default_value = getattr(field, missing_parameter)
     assert (
         f"Parameter {missing_parameter!r} is not defined in the strategy "
-        f"for cycle 1. Using the default value of {getattr(field, missing_parameter)!r}."
-        in caplog.text
+        f"for cycle 1. Using the default value of {default_value!r}." in caplog.text
     )
+
+
+@pytest.mark.parametrize("omission", ["missing", None, {}], ids=["missing", "None", "empty"])
+def test_check_and_adjust_parameters_warns_for_omitted_calibration_strategy(
+    field, custom_strategy, omission, caplog
+):
+    """An omitted strategy is named in a warning but left for Field.update() to resolve."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    if omission == "missing":
+        del strategy_steps[1]["calibration_strategy"]
+    else:
+        strategy_steps[1]["calibration_strategy"] = omission
+
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
+        adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
+
+    # The step is not filled in, so that Field.update() can tell the default apart
+    # from a strategy the user supplied
+    assert not adjusted_steps[1].get("calibration_strategy")
+    assert caplog.text.count("Parameter 'calibration_strategy' is not defined") == 1
+    assert (
+        "Parameter 'calibration_strategy' is not defined in the strategy for cycle 2. "
+        f"Using the default value of {default_calibration_strategy()!r}." in caplog.text
+    )
+
+
+def test_check_and_adjust_parameters_leaves_image_only_cycle_without_calibration_strategy(
+    field, custom_strategy
+):
+    """An image-only cycle does not get a calibration strategy invented for it."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    strategy_steps[2]["do_calibrate"] = False
+    del strategy_steps[2]["calibration_strategy"]
+
+    adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
+
+    assert "calibration_strategy" not in adjusted_steps[2]
 
 
 @pytest.mark.parametrize(

@@ -76,6 +76,7 @@ class CalibratePayload(TypedDict, total=False):
     """Serializable payload submitted to the calibrate flow."""
 
     mode: str
+    use_array_beam: bool
     calibration_kind: str
     pipeline_working_dir: str
     data_colname: str

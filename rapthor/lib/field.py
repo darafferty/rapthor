@@ -2006,13 +2006,21 @@ class Field(object):
         if final_cycle_number == 1:
             self.imaged_sources_only = False
 
-        # Update field and sector dicts with the parameters for this cycle
-        self.__dict__.update(step_dict)
+        # Resolve before applying the step: an omitted or empty strategy in an
+        # image-only cycle must not overwrite the last calibration's strategy.
+        self.set_calibration_strategy(step_dict)
+        cycle_parameters = {**step_dict, "calibration_strategy": self.calibration_strategy}
+        self.__dict__.update(cycle_parameters)
         for sector in self.imaging_sectors:
-            sector.__dict__.update(step_dict)
+            sector.__dict__.update(cycle_parameters)
 
-        # Update calibration strategy for this cycle
-        self.set_calibration_strategy()
+        if self.do_calibrate:
+            self.log.info(
+                "Calibration strategy for cycle %i (%s): %s",
+                index,
+                "default" if self._calibration_strategy_defaulted else "from the strategy",
+                self.calibration_strategy,
+            )
 
         # Update the sky models
         if index == 1:
@@ -2099,16 +2107,30 @@ class Field(object):
             self.compress_final_images if final_cycle_number > 0 else self.compress_selfcal_images
         )
 
-    def set_calibration_strategy(self):
+    def set_calibration_strategy(self, step_dict=None):
         """
         Sets the calibration strategy for the current cycle.
 
-        If no calibration_strategy is specified in the strategy file, Rapthor uses
-        the default explicit DD self-calibration strategy.
+        A missing, None or empty calibration_strategy uses the default DD
+        sequence in a calibrating cycle. Without calibration, it preserves the
+        previous strategy for imaging. An explicit strategy overrides either
+        behavior.
+
+        Parameters
+        ----------
+        step_dict : dict, optional
+            Strategy parameters of the current cycle. If None, the strategy is
+            resolved from the attributes already set on the field
         """
-        self._calibration_strategy_defaulted = not bool(self.calibration_strategy)
-        if not self.calibration_strategy:
-            self.calibration_strategy = default_calibration_strategy()
+        if step_dict is None:
+            requested = self.calibration_strategy
+        else:
+            requested = step_dict.get("calibration_strategy")
+            if not step_dict.get("do_calibrate") and not requested and self.calibration_strategy:
+                # Image-only cycle: keep the last calibration's strategy
+                return
+        self._calibration_strategy_defaulted = not bool(requested)
+        self.calibration_strategy = requested or default_calibration_strategy()
 
     def get_matplotlib_patch(self, wcs=None):
         """
