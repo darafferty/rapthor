@@ -110,7 +110,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks test as integration tests",
     "internet: marks tests that require internet access",
-    "prefect: marks tests that start a Prefect test server and must run serially"
+    "prefect: marks tests that start or share a Prefect test server"
 ]
 
 
@@ -172,40 +172,26 @@ deps = [
     "pytest-socket",
 ]
 commands = [
-    # test_field.py does not support parallel runs, so run sequentially.
+    # Run the non-integration suite with the worker count selected by pytest-xdist.
+    # Flow tests share one Prefect test server per worker through the
+    # `prefect_server` fixture, so they no longer need a serial lane.
     [
         "python", "-m", "pytest",
         "-m", "not integration",
-        "-k", "test_field.py",
-        "--cov=rapthor",
-        "tests/{posargs}",
-    ],
-    # Tests that start a Prefect test server are sensitive to high process fan-out,
-    # so run them serially before the rest of the suite.
-    [
-        "python", "-m", "pytest",
-        "-m", "not integration and prefect",
-        "-k", "not test_field.py",
-        "--cov=rapthor",
-        "--cov-append",
-        "tests/{posargs}",
-    ],
-    # Run all other tests with the worker count selected by pytest-xdist.
-    # Add to the existing coverage report from the run above.
-    [
-        "python", "-m", "pytest",
-        "-m", "not integration and not prefect",
         "-n", "auto",
         "--dist", "worksteal",
-        "-k", "not test_field.py",
+        "--cov=rapthor",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
         "--cov-report", "html",
-        "--cov=rapthor",
-        "--cov-append",
         "tests/{posargs}",
     ],
 ]
+
+[tool.tox.env_run_base.set_env]
+# Collect coverage through sys.monitoring (Python 3.12+), which slows the tests
+# far less than the default tracer. Older Pythons warn and use the default core.
+COVERAGE_CORE = "sysmon"
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"

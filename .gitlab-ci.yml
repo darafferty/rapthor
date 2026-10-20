@@ -235,7 +235,9 @@ install_rapthor:
 run_tests:
   extends: .run_tests
   script:
-    - tox -e py
+    # The image already contains Rapthor's dependencies, so let the tox
+    # environment reuse them instead of downloading and installing them again.
+    - tox -e py -x tool.tox.env_run_base.system_site_packages=true
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 ### Stage: run_integration_tests

@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.capabilities import PreflightError, preflight_execution
 from rapthor.execution.config import ExecutionConfig
@@ -953,20 +952,19 @@ def test_run_pipeline_skips_initial_skymodel_generation_without_calibration_step
     ] == ["image", "mosaic"]
 
 
-def test_pipeline_flow_runs_no_selfcal_image_only_strategy():
+def test_pipeline_flow_runs_no_selfcal_image_only_strategy(prefect_server):
     parset = _pipeline_parset(input_h5parm="input-solutions.h5")
     lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
 
-    with prefect_test_harness():
-        field = pipeline_flow(
-            "input.parset",
-            operation_factories=RECORDING_FACTORIES,
-            lifecycle_hooks=lifecycle.hooks(),
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
+    field = pipeline_flow(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
 
     assert field is lifecycle.field
     assert field.final_cycle_number_seen == 1
@@ -998,14 +996,14 @@ def test_run_pipeline_rejects_image_only_final_without_input_h5parm():
         )
 
 
-def test_pipeline_flow_rejects_image_only_peeling_without_input_skymodel():
+def test_pipeline_flow_rejects_image_only_peeling_without_input_skymodel(prefect_server):
     parset = _pipeline_parset(input_h5parm="input-solutions.h5", input_skymodel=None)
     lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step(peel_outliers=True)],
     )
 
-    with prefect_test_harness(), pytest.raises(ValueError, match="sky model was provided"):
+    with pytest.raises(ValueError, match="sky model was provided"):
         pipeline_flow(
             "input.parset",
             operation_factories=RECORDING_FACTORIES,

@@ -4,7 +4,6 @@ import shlex
 from pathlib import Path
 
 import pytest
-from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.predict.flow as predict_module
 from rapthor.execution.commands import normalize_command
@@ -650,7 +649,7 @@ def test_predict_payload_from_inputs_rejects_non_basename_model_outputs(tmp_path
 
 
 def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
-    tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
+    prefect_server, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("di", _predict_input_parms(), tmp_path)
 
@@ -709,7 +708,7 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
 
 
 def test_run_predict_flow_rejects_invalid_prediction_directions(
-    tmp_path, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, fake_predict_shell_operation_cls
 ):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
     payload["predict_tasks"][0]["directions"] = ["patch1", 7]
@@ -728,7 +727,12 @@ def test_run_predict_flow_rejects_invalid_prediction_directions(
 @pytest.mark.parametrize("mode", ["di", "dd"])
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_predict_flow_removes_modeldata_only_after_postprocessing_succeeds(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode, keep_temporary_files
+    prefect_server,
+    tmp_path,
+    monkeypatch,
+    fake_predict_shell_operation_cls,
+    mode,
+    keep_temporary_files,
 ):
     input_parms = _predict_input_parms() if mode == "di" else _dd_predict_input_parms()
     if mode == "dd":
@@ -782,7 +786,7 @@ def test_predict_flow_removes_modeldata_only_after_postprocessing_succeeds(
 
 
 def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
-    tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
+    prefect_server, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("dd", _dd_predict_input_parms(), tmp_path)
 
@@ -866,7 +870,7 @@ def test_predict_model_data_task_wraps_runner(
 
 
 def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -874,17 +878,16 @@ def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(
     )
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        outputs = predict_flow(
-            payload,
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
+    outputs = predict_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
 
     assert outputs == {"msfiles_di_cal": [[directory_record(tmp_path / "obs_0.ms.sector_1_di.ms")]]}
     assert len(fake_predict_shell_operation_cls.instances) == 1
 
 
-def test_run_predict_flow_propagates_shell_failures(tmp_path):
+def test_run_predict_flow_propagates_shell_failures(prefect_server, tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(RuntimeError, match="predict failed"):
@@ -896,7 +899,7 @@ def test_run_predict_flow_propagates_shell_failures(tmp_path):
         )
 
 
-def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
+def test_run_predict_flow_fails_when_predicted_model_is_missing(prefect_server, tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="Predict output was not created"):
@@ -910,7 +913,7 @@ def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
 
 @pytest.mark.parametrize("mode", ["di", "dd"])
 def test_run_predict_flow_fails_when_postprocess_output_is_missing(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode
 ):
     helper_name = "add_sector_models" if mode == "di" else "subtract_sector_models"
     postprocess = getattr(predict_module, helper_name)
@@ -943,7 +946,9 @@ def test_predict_reference_output_fixtures_match_output_contract():
     validate_output_record(outputs["predict"]["subtract_models"])
 
 
-def test_predict_finalizer_accepts_prefect_outputs(tmp_path, fake_predict_shell_operation_cls):
+def test_predict_finalizer_accepts_prefect_outputs(
+    prefect_server, tmp_path, fake_predict_shell_operation_cls
+):
     field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
     sector_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
     field = FieldStub(tmp_path, field_observation, sector_observation)
@@ -1005,7 +1010,7 @@ def test_predict_di_finalize_preserves_chunk_infixes_for_later_predict(tmp_path)
 
 
 def test_predict_di_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -1016,8 +1021,7 @@ def test_predict_di_operation_run_uses_prefect_flow(
     field = FieldStub(tmp_path, field_observation, sector_observation)
     operation = Predict("di", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = {
         "msfiles_di_cal": [
@@ -1085,7 +1089,7 @@ def test_predict_di_operation_run_reuses_prefect_outputs_when_done(
     ],
 )
 def test_predict_di_operation_run_failure_does_not_mark_done(
-    tmp_path, monkeypatch, shell_operation_cls, expected_message
+    prefect_server, tmp_path, monkeypatch, shell_operation_cls, expected_message
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -1096,10 +1100,7 @@ def test_predict_di_operation_run_failure_does_not_mark_done(
     field = FieldStub(tmp_path, field_observation, sector_observation)
     operation = Predict("di", field, index=1)
 
-    with (
-        prefect_test_harness(server_startup_timeout=None),
-        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
-    ):
+    with pytest.raises((FileNotFoundError, RuntimeError), match=expected_message):
         operation.run()
 
     assert Path(operation.pipeline_inputs_file).is_file()
@@ -1111,7 +1112,7 @@ def test_predict_di_operation_run_failure_does_not_mark_done(
 
 
 def test_predict_dd_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -1139,8 +1140,7 @@ def test_predict_dd_operation_run_uses_prefect_flow(
     field.predict_sectors = []
     operation = Predict("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = {
         "subtract_models": [
