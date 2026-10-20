@@ -829,15 +829,26 @@ def _two_sector_image_input_parms():
     return input_parms
 
 
+def _image_plots_dir(operation):
+    # Image.finalize() moves the image diagnostics here
+    return Path(operation.parset["dir_working"]) / "plots" / f"image_{operation.index}"
+
+
+def _diagnostics_outputs(diagnostics_dir):
+    return {
+        "sector_diagnostics": [file_record(diagnostics_dir / "sector_1.image_diagnostics.json")],
+        "sector_offsets": [file_record(diagnostics_dir / "sector_1.astrometry_offsets.json")],
+        "sector_diagnostic_plots": [[file_record(diagnostics_dir / "sector_1.photometry.pdf")]],
+    }
+
+
 def _expected_image_operation_outputs(operation):
     pipeline_dir = Path(operation.pipeline_working_dir)
     return {
         "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
         "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
         "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
-        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
-        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
-        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        **_diagnostics_outputs(_image_plots_dir(operation)),
         "visibilities": [
             [
                 directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
@@ -900,9 +911,7 @@ def _expected_full_stokes_image_operation_outputs(operation):
         "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
         "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
         "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
-        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
-        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
-        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        **_diagnostics_outputs(_image_plots_dir(operation)),
         "visibilities": [
             [
                 directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
@@ -923,9 +932,7 @@ def _expected_compressed_image_operation_outputs(operation):
         "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
         "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
         "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
-        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
-        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
-        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        **_diagnostics_outputs(_image_plots_dir(operation)),
         "visibilities": [
             [
                 directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
@@ -980,6 +987,8 @@ def _expected_normalize_image_operation_outputs(operation):
     pipeline_dir = Path(operation.pipeline_working_dir)
     outputs = _expected_image_cube_operation_outputs(operation)
     outputs.pop("sector_skymodels")
+    # The normalize operation does not save the image diagnostics.
+    outputs.update(_diagnostics_outputs(pipeline_dir))
     outputs["sector_source_catalog"] = [file_record(pipeline_dir / "sector_1_source_catalog.fits")]
     outputs["sector_normalize_h5parm"] = [file_record(pipeline_dir / "sector_1_normalize.h5parm")]
     return outputs
