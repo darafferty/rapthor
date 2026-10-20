@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 import rapthor.modifystate as modifystate
+from tests.execution.scratch_transitions import exit_at_scratch_transition
 
 OUTPUT_DIRS = (
     "skymodels",
@@ -176,7 +177,8 @@ def test_find_operations_orders_directories_by_cycle_and_operation(tmp_path):
     names += ["calibrate_2", "concatenate_1", "unrelated", "image", "initial_image_1"]
     for name in names:
         (tmp_path / name).mkdir()
-    (tmp_path / "calibrate_1").mkdir()
+    # An operation stopped while moving to or from scratch may only have this record
+    (tmp_path / ".calibrate_1.scratch").mkdir()
 
     assert modifystate.find_operations(str(tmp_path)) == [
         "concatenate_1",
@@ -225,3 +227,20 @@ def test_run_resets_all_calibration_operations_of_a_cycle_together(
     assert "calibration operations of a cycle are reset together" in capsys.readouterr().out
     remaining = sorted(path.name for path in (working_dir / "pipelines").iterdir())
     assert remaining == sorted(names[:4])
+
+
+def test_run_resets_operations_with_their_scratch_workspaces(tmp_path, working_dir, monkeypatch):
+    pipelines_dir = working_dir / "pipelines"
+    scratch = tmp_path / "scratch"
+    exit_at_scratch_transition(pipelines_dir / "calibrate_1", scratch, "flow")
+    kept_workspace = (pipelines_dir / "calibrate_1").resolve()
+    # The image operation stopped while staging, so only its recovery record is left
+    exit_at_scratch_transition(pipelines_dir / "image_1", scratch, "backup")
+
+    assert _reset(monkeypatch, "2", "y", "q") == 0
+
+    assert sorted(path.name for path in pipelines_dir.iterdir()) == [
+        ".calibrate_1.scratch",
+        "calibrate_1",
+    ]
+    assert list(scratch.iterdir()) == [kept_workspace.parent]

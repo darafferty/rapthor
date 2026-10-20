@@ -471,3 +471,9 @@ are listed as ``calibrate_N``, ``predict_di_N``, ``calibrate_di_N``, whatever
 order the :term:`calibration_strategy` ran them in. As each can use the
 solutions of the others, resetting any one of them resets all calibration
 operations of that cycle.
+
+An operation stopped while using :term:`global_scratch_dir` may have left a
+link to its workspace on the shared scratch disk, and a recovery record
+``.<operation>.scratch``, in ``dir_working/pipelines``. A reset removes them
+together with the workspace, but does not delete the files behind a link that
+does not point to a scratch workspace of that operation.
