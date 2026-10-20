@@ -140,7 +140,7 @@ def test_slow_gain_amplitudes_are_unity_without_normalization(calibrate):
     fast, slow = calibrate("plain", None)
 
     np.testing.assert_allclose(_solution_values(fast, "phase000"), 0.0, atol=0.02)
-    np.testing.assert_allclose(_solution_values(slow, "amplitude000"), 1.0, rtol=0.02)
+    np.testing.assert_allclose(_solution_values(slow, "amplitude000"), 1.0, rtol=1e-4)
 
 
 def test_slow_gain_amplitudes_absorb_the_inverse_normalization(calibrate, normalization_h5parm):
@@ -150,7 +150,7 @@ def test_slow_gain_amplitudes_absorb_the_inverse_normalization(calibrate, normal
     # A per-frequency scalar on the model leaves the phase-only solve unchanged.
     np.testing.assert_allclose(_solution_values(fast, "phase000"), 0.0, atol=0.02)
     np.testing.assert_allclose(
-        _solution_values(slow, "amplitude000"), EXPECTED_NORMALIZED_AMPLITUDE, rtol=0.02
+        _solution_values(slow, "amplitude000"), EXPECTED_NORMALIZED_AMPLITUDE, rtol=1e-4
     )
 
 
@@ -184,5 +184,5 @@ def test_preapply_chain_leaves_the_input_ms_unchanged(
         np.testing.assert_array_equal(table.getcol("DATA"), data_before)
     # The solve itself did see the pre-applied normalization.
     np.testing.assert_allclose(
-        _solution_values(slow, "amplitude000"), EXPECTED_PREAPPLIED_AMPLITUDE, rtol=0.02
+        _solution_values(slow, "amplitude000"), EXPECTED_PREAPPLIED_AMPLITUDE, rtol=1e-4
     )
