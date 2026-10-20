@@ -381,7 +381,14 @@ def _update_field(field, monkeypatch, index, **step):
     field.update(step_dict, index=index)
 
 
-def test_update_resolves_omitted_calibration_strategy_for_each_cycle(field, monkeypatch, caplog):
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+def test_update_resolves_omitted_calibration_strategy_for_each_cycle(
+    field, monkeypatch, caplog, strategy_setting
+):
     """A cycle that omits the strategy gets the default, whatever earlier cycles used."""
     explicit_strategy = {"di": ["fast_phase"], "dd": []}
 
@@ -392,23 +399,30 @@ def test_update_resolves_omitted_calibration_strategy_for_each_cycle(field, monk
         "di": [],
     }
     assert field._calibration_strategy_defaulted is True
-    assert "Calibration strategy for cycle 2 (default): DI solves [], DD solves" in caplog.text
+    assert (
+        f"Calibration strategy for cycle 2 (default): {field.calibration_strategy}" in caplog.text
+    )
 
-    _update_field(field, monkeypatch, 3, calibration_strategy=explicit_strategy)
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 3, calibration_strategy=explicit_strategy)
     assert field.calibration_strategy == explicit_strategy
     assert field._calibration_strategy_defaulted is False
+    assert (
+        f"Calibration strategy for cycle 3 (from the strategy): {explicit_strategy}" in caplog.text
+    )
 
     # Omitted again: the explicit strategy of cycle 3 must not carry over
-    _update_field(field, monkeypatch, 4)
+    _update_field(field, monkeypatch, 4, **strategy_setting)
     assert field.calibration_strategy == {
         "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
         "di": [],
     }
     assert field._calibration_strategy_defaulted is True
 
-    # An explicit None counts as omitted
-    _update_field(field, monkeypatch, 5, calibration_strategy=None)
-    assert field._calibration_strategy_defaulted is True
+    assert all(
+        sector.calibration_strategy == field.calibration_strategy
+        for sector in field.imaging_sectors
+    )
 
 
 def test_update_marks_an_adjusted_omitted_strategy_as_default(
@@ -441,14 +455,26 @@ def test_update_ignores_legacy_solve_flags_without_calibration_strategy(field, m
     assert field._calibration_strategy_defaulted is True
 
 
-def test_update_keeps_last_calibration_strategy_for_image_only_cycle(field, monkeypatch):
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+@pytest.mark.parametrize("defaulted", [False, True], ids=["explicit-previous", "default-previous"])
+def test_update_keeps_last_calibration_strategy_for_image_only_cycle(
+    field, monkeypatch, strategy_setting, defaulted
+):
     """An image-only cycle applies the solutions of the last calibration."""
     explicit_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
-    _update_field(field, monkeypatch, 2, calibration_strategy=explicit_strategy)
+    _update_field(
+        field, monkeypatch, 2, calibration_strategy=None if defaulted else explicit_strategy
+    )
+    previous_strategy = field.calibration_strategy
 
-    _update_field(field, monkeypatch, 3, do_calibrate=False)
-    assert field.calibration_strategy == explicit_strategy
-    assert field._calibration_strategy_defaulted is False
+    _update_field(field, monkeypatch, 3, do_calibrate=False, **strategy_setting)
+    assert field.calibration_strategy == previous_strategy
+    assert field._calibration_strategy_defaulted is defaulted
+    assert all(sector.calibration_strategy == previous_strategy for sector in field.imaging_sectors)
 
     # A later calibrating cycle without a strategy starts afresh from the default
     _update_field(field, monkeypatch, 4)
@@ -459,6 +485,17 @@ def test_update_keeps_last_calibration_strategy_for_image_only_cycle(field, monk
         "slow_gains",
         "medium_phase",
     ]
+
+
+def test_update_allows_an_explicit_strategy_for_an_image_only_cycle(field, monkeypatch):
+    _update_field(field, monkeypatch, 2)
+    strategy = {"di": ["slow_gains"], "dd": []}
+
+    _update_field(field, monkeypatch, 3, do_calibrate=False, calibration_strategy=strategy)
+
+    assert field.calibration_strategy == strategy
+    assert field._calibration_strategy_defaulted is False
+    assert all(sector.calibration_strategy == strategy for sector in field.imaging_sectors)
 
 
 def test_set_calibration_strategy_default(calibration_strategy_field):

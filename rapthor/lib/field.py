@@ -2007,21 +2007,20 @@ class Field(object):
         if final:
             self.imaged_sources_only = False
 
-        # Update field and sector dicts with the parameters for this cycle
-        self.__dict__.update(step_dict)
-        for sector in self.imaging_sectors:
-            sector.__dict__.update(step_dict)
-
-        # Resolve the calibration strategy for this cycle from its own step, so
-        # that a cycle which omits it does not inherit the previous cycle's solves
+        # Resolve before applying the step: an omitted or empty strategy in an
+        # image-only cycle must not overwrite the last calibration's strategy.
         self.set_calibration_strategy(step_dict)
+        cycle_parameters = {**step_dict, "calibration_strategy": self.calibration_strategy}
+        self.__dict__.update(cycle_parameters)
+        for sector in self.imaging_sectors:
+            sector.__dict__.update(cycle_parameters)
+
         if self.do_calibrate:
             self.log.info(
-                "Calibration strategy for cycle %i (%s): DI solves %s, DD solves %s",
+                "Calibration strategy for cycle %i (%s): %s",
                 index,
                 "default" if self._calibration_strategy_defaulted else "from the strategy",
-                self.calibration_strategy.get("di", []),
-                self.calibration_strategy.get("dd", []),
+                self.calibration_strategy,
             )
 
         # Update the sky models
@@ -2111,12 +2110,10 @@ class Field(object):
         """
         Sets the calibration strategy for the current cycle.
 
-        A cycle that calibrates and omits calibration_strategy (or sets it to
-        None) uses the default explicit DD self-calibration strategy. The
-        omission is resolved for each cycle on its own, so a strategy given in an
-        earlier cycle is not carried over. A cycle without calibration keeps the
-        strategy of the last calibrating cycle, so that imaging applies the
-        solutions that cycle produced.
+        A missing, None or empty calibration_strategy uses the default DD
+        sequence in a calibrating cycle. Without calibration, it preserves the
+        previous strategy for imaging. An explicit strategy overrides either
+        behavior.
 
         Parameters
         ----------
@@ -2128,15 +2125,11 @@ class Field(object):
             requested = self.calibration_strategy
         else:
             requested = step_dict.get("calibration_strategy")
-            if (
-                not step_dict.get("do_calibrate")
-                and requested is None
-                and self.calibration_strategy
-            ):
+            if not step_dict.get("do_calibrate") and not requested and self.calibration_strategy:
                 # Image-only cycle: keep the last calibration's strategy
                 return
         self._calibration_strategy_defaulted = not bool(requested)
-        self.calibration_strategy = requested if requested else default_calibration_strategy()
+        self.calibration_strategy = requested or default_calibration_strategy()
 
     def get_matplotlib_patch(self, wcs=None):
         """

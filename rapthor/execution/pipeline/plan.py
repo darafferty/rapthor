@@ -1,5 +1,7 @@
 """Pure pipeline-planning helpers for top-level Rapthor orchestration."""
 
+from rapthor.lib.strategy import default_calibration_strategy
+
 SUPPORTED_PIPELINE_FEATURES = frozenset(
     {
         "calibration",
@@ -67,7 +69,7 @@ def collect_pipeline_features(field: object, strategy_steps: list[dict], parset:
     for step in strategy_steps:
         if step.get("do_calibrate"):
             features.add("calibration")
-            strategy = step.get("calibration_strategy", {})
+            strategy = step.get("calibration_strategy") or default_calibration_strategy()
             enabled_modes = _enabled_calibration_modes(strategy)
             if enabled_modes == ["di", "dd"]:
                 features.add("calibration_di_then_dd")

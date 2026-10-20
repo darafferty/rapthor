@@ -121,10 +121,11 @@ Final cycle of the ``selfcal`` strategy
 
 Omitted calibration strategy
     A cycle that calibrates without :term:`calibration_strategy` uses the
-    default sequence of solves. In version 2, such a cycle repeated the
-    sequence of the previous cycle. Cycles without calibration keep the
-    sequence of the last calibrating cycle, so that imaging applies the
-    solutions that cycle produced.
+    default sequence of solves. ``None`` and an empty dictionary also request
+    this default. In version 2, such a cycle repeated the sequence of the
+    previous cycle. Cycles without calibration preserve the previous sequence
+    unless they explicitly supply a nonempty strategy dictionary, so that
+    imaging can apply the previous solutions.
 
     Related documentation: :term:`calibration_strategy`.
 
