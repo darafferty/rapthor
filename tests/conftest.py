@@ -261,6 +261,8 @@ def _copy_from_resource_folder_to_test_path(filename, tmp_path):
 
 def scale_visibilities(ms_path, scale):
     """Multiply the DATA column of an MS by ``scale`` and rescale the weights."""
+    if not np.isfinite(scale) or scale <= 0:
+        raise ValueError("scale must be finite and greater than zero")
     with pt.table(ms_path, readonly=False, ack=False) as table:
         table.putcol("DATA", table.getcol("DATA") * scale)
         for column in ("WEIGHT", "WEIGHT_SPECTRUM"):
