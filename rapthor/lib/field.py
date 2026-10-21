@@ -1779,9 +1779,7 @@ class Field(object):
                     self.fast_timestep_sec = get_timestep(solset.getSoltab("phase000"))
                 if "amplitude000" in solset.getSoltabNames():
                     if derive_solution_timesteps:
-                        self.slow_timestep_sec = get_timestep(
-                            solset.getSoltab("amplitude000")
-                        )
+                        self.slow_timestep_sec = get_timestep(solset.getSoltab("amplitude000"))
                     return True
                 else:
                     return False
