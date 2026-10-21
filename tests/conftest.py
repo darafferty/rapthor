@@ -12,6 +12,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 
+import casacore.tables as pt
 import lsmtool
 import numpy as np
 import pytest
@@ -32,6 +33,13 @@ RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
+# The visibilities in the downloaded test MS are about four orders of magnitude
+# below what the test sky models predict, so DDECal recovers gain amplitudes
+# near 0.01. The slow-gain processing clamps its lower flagging threshold at
+# 0.1 and would flag every solution. Scaling the session copy puts the gains
+# near unity, as for real LOFAR data. The weight columns are scaled by the
+# inverse square so they stay inverse-variance consistent.
+TEST_MS_DATA_SCALE = 1.5e4
 
 
 def download_test_ms(destination: Path) -> None:
@@ -251,11 +259,25 @@ def _copy_from_resource_folder_to_test_path(filename, tmp_path):
     return target
 
 
+def scale_visibilities(ms_path, scale):
+    """Multiply the DATA column of an MS by ``scale`` and rescale the weights."""
+    if not np.isfinite(scale) or scale <= 0:
+        raise ValueError("scale must be finite and greater than zero")
+    with pt.table(ms_path, readonly=False, ack=False) as table:
+        table.putcol("DATA", table.getcol("DATA") * scale)
+        for column in ("WEIGHT", "WEIGHT_SPECTRUM"):
+            if column in table.colnames():
+                table.putcol(column, table.getcol(column) / scale**2)
+
+
 @pytest.fixture(scope="session")
 def test_ms(tmp_path_factory):
     """
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
+
+    The DATA column of the copy is scaled by ``TEST_MS_DATA_SCALE`` so that the
+    gain amplitudes solved against the test sky models come out near unity.
 
     The test MS contains:
         - 8 channels
@@ -267,6 +289,7 @@ def test_ms(tmp_path_factory):
     source = ensure_test_ms(RESOURCE_DIR)
     target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()
     shutil.copytree(source, target)
+    scale_visibilities(target, TEST_MS_DATA_SCALE)
     yield target
 
 

@@ -1,8 +1,10 @@
 import subprocess
+from pathlib import Path
 
 import pytest
 
 from .utils import (
+    assert_h5parm_has_solutions,
     assert_ms_data_and_flags_unchanged,
     first_command_arguments,
     get_working_dir_from_parset,
@@ -131,6 +133,12 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     assert "diagonal" in dp3_arguments["solve1.mode"]
     assert "slow_gains_di_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples
+    # The processed DI product is what later operations pre-apply, so it must
+    # hold real gains rather than solutions flagged away by the processing.
+    assert_h5parm_has_solutions(
+        Path(working_dir) / "solutions" / "calibrate_di_1" / "di-solutions.h5",
+        expected_soltabs=("amplitude000", "phase000"),
+    )
 
 
 @pytest.mark.integration
