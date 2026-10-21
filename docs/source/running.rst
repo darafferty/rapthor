@@ -462,3 +462,12 @@ operation to reset:
 All operations after the selected one will also be reset. The files that
 these operations produced (their images, solutions, sky models, plots and
 logs) are removed from the working directory.
+
+The list is made from the operation directories in ``dir_working/pipelines``,
+not from the current strategy, so it includes every cycle that was started,
+such as repeated final cycles (see :term:`ntimes_to_repeat_final_cycle`), even
+if the settings have changed since. Within a cycle, the calibration operations
+are listed as ``calibrate_N``, ``predict_di_N``, ``calibrate_di_N``, whatever
+order the :term:`calibration_strategy` ran them in. As each can use the
+solutions of the others, resetting any one of them resets all calibration
+operations of that cycle.
