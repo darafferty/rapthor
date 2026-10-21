@@ -60,11 +60,13 @@ class RecordingField:
     failure_ratio: float = 2.0
     events: list[dict] = field(default_factory=list)
     selfcal_result: SelfcalState = field(default_factory=SelfcalState)
+    updates: list[tuple] = field(default_factory=list)
 
     def update(self, step, index, final_cycle_number=0):
         self.__dict__.update(step)
         self.cycle_number_seen = index
         self.final_cycle_number_seen = final_cycle_number
+        self.updates.append((index, final_cycle_number, step.get("peel_outliers")))
 
     def check_selfcal_progress(self):
         return self.selfcal_result
@@ -845,6 +847,34 @@ def test_run_pipeline_lifecycle_runs_initial_selfcal_and_repeated_final_cycles()
         (1, parset["final_data_fraction"]),
     ]
     assert field.events[-1]["operation"] == "report"
+
+
+def test_run_pipeline_repeats_final_cycle_on_the_data_of_the_cycle_before():
+    """Only the first final cycle starts again from the input data, with the outlier
+    peeling of the first selfcal cycle; its repeats reuse the data before them."""
+    parset = _pipeline_parset(ntimes_to_repeat_final_cycle=2)
+    selfcal_steps = [
+        _single_step({"dd": ["fast_phase"]}, do_check=True, peel_outliers=True) for _ in range(3)
+    ]
+    final_step = _single_step({"dd": ["fast_phase"]}, do_check=False, peel_outliers=False)
+    lifecycle = RecordingPipelineLifecycle(
+        parset=parset,
+        strategy_steps=[*selfcal_steps, final_step],
+        # Selfcal stops after its first cycle
+        field_updates={"selfcal_result": SelfcalState(converged=True)},
+    )
+
+    field = run_pipeline(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+    )
+
+    assert field.updates == [(1, 0, True), (2, 1, True), (3, 2, True), (4, 3, True)]
+    chunks = [event["data_fraction"] for event in field.events if event["operation"] == "chunk"]
+    assert chunks == [parset["selfcal_data_fraction"], parset["final_data_fraction"]]
+    calibrated = [event["index"] for event in field.events if event["operation"] == "calibrate"]
+    assert calibrated == [1, 2, 3, 4]
 
 
 def test_run_pipeline_publishes_plot_artifacts_after_operations_and_report(monkeypatch):
