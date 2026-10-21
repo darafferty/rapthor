@@ -677,7 +677,9 @@ class Calibrate(Operation):
         ):
             common_steps = ["bdaavg", *common_steps, "null"]
 
-        if preapply_solutions and not self.field.use_image_based_predict:
+        if preapply_solutions and not (
+            self.field.use_image_based_predict or self.field.use_wsclean_predict
+        ):
             common_steps = ["applycal", *common_steps]
 
         # Optional image-based predict prefix
