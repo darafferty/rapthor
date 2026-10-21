@@ -215,7 +215,11 @@ def close_rapthor_file_handlers():
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items):
+    """Mark tests that start or share a Prefect test server as ``prefect``."""
     for item in items:
+        if "prefect_server" in item.fixturenames:
+            item.add_marker(pytest.mark.prefect)
+            continue
         try:
             source = inspect.getsource(item.obj)
         except (OSError, TypeError):

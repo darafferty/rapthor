@@ -35,7 +35,7 @@ Do not run expensive suites for unrelated edits.
 | Operation adapter or finalizer | Relevant `tests/operations/` file | Execution owner and restart cases |
 | Payload, validator or command builder | Relevant `tests/execution/` file | Owner flow and command-reference tests |
 | Ownership boundary | `tests/architecture/` and affected owner tests | Non-integration suite |
-| Prefect/Dask scheduling | Serial Prefect tests, using local Dask for scheduler behavior | Affected flows and real-run smoke test |
+| Prefect/Dask scheduling | Prefect flow tests, using local Dask for scheduler behavior | Affected flows and real-run smoke test |
 | CLI/bootstrap/preflight | `tests/test_cli.py`, execution config/bootstrap tests | CLI smoke test in the prepared environment |
 | Scientific products | Focused command, payload and finalizer tests | External-tool integration and relevant science diagnostics |
 | Documentation only | `git diff --check`, links and paths | Sphinx build for changed RST structure or directives |
@@ -59,31 +59,24 @@ Run one focused file during development:
 python -m pytest tests/operations/test_image.py
 ```
 
-For the complete non-integration suite, run these commands sequentially. This
-mirrors the current tox split without running field tests twice:
+For the complete non-integration suite, run the `serial` tests on their own and
+then everything else in parallel, which mirrors the `tox -e py` commands:
 
 ```bash
-RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-field \
-  python -m pytest -m "not integration" tests/lib/test_field.py
-
-RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-prefect \
-  python -m pytest -m "not integration and prefect" \
-  --ignore=tests/lib/test_field.py tests
-
-RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-unit \
-  python -m pytest -m "not integration and not prefect" \
-  -n auto --dist worksteal --ignore=tests/lib/test_field.py tests
+export RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-unit
+python -m pytest -m "not integration and serial" tests
+python -m pytest -m "not integration and not serial" -n auto --dist worksteal tests
 ```
 
-- `tests/lib/test_field.py` and tests starting a Prefect test server run serially.
-  The remaining non-integration tests can use xdist; choose `-n <count>` instead
-  of `-n auto` when resource limits require fewer workers.
+- Choose `-n <count>` instead of `-n auto` when resource limits require fewer
+  workers. Tests marked `prefect` start one Prefect test server per worker, so a
+  higher worker count also means more servers.
 - [tests/conftest.py](tests/conftest.py) isolates `PREFECT_HOME` by worker. Preserve
   this isolation. Concurrent pytest invocations can interfere through default
   run-root cleanup; use distinct `RAPTHOR_TEST_RUN_ROOT` values if needed.
 - `tox` runs all configured environments, including integration tests and
   multiple Python versions. Select a specific available Python environment when
-  that is sufficient; the manual split above uses the prepared environment.
+  that is sufficient; the command above uses the prepared environment.
 
 ## Markers and test helpers
 
@@ -91,18 +84,27 @@ RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-test-unit \
 | --- | --- |
 | `integration` | External-tool or end-to-end tests, excluded from the commands above. |
 | `internet` | Network-dependent tests; require network access or deselect explicitly. |
-| `prefect` | Tests starting a Prefect server; run serially. |
+| `prefect` | Tests that start or share a Prefect test server. |
+| `serial` | Tests that launch their own Prefect and Dask processes; run outside the parallel pool. |
 | `slow` | Tests that can be explicitly deselected for a faster run. |
 
-Direct uses of `prefect_test_harness` are automatically marked by
-`tests/conftest.py`. Add `prefect` explicitly for tests that start a server
-indirectly through a helper.
+Tests that run a Prefect flow request the session-scoped `prefect_server`
+fixture from the [execution conftest](tests/execution/conftest.py). It starts one
+Prefect test server per pytest process (one per xdist worker) because every
+server start costs several seconds. `tests/conftest.py` marks tests that use the
+fixture, or `prefect_test_harness` directly, as `prefect`. Add `prefect`
+explicitly for tests that start a server in a subprocess. Also mark such a test
+`serial` when the subprocess starts its own Prefect server or Dask cluster:
+startup is CPU-bound, and alongside a fully loaded parallel run it can take
+several times longer and exceed the subprocess timeout.
 
-Use `run_flow_for_test` in [execution conftest](tests/execution/conftest.py) for
-production flow wiring with optional fake shell operations. It defaults to the
-`sync` task runner. Use local Dask when testing scheduling, resources or worker
-boundaries; exercise the production flow rather than a separate test graph.
-Builder, validator and finalizer tests normally call plain Python helpers.
+Use `run_flow_for_test` in the execution conftest for production flow wiring
+with optional fake shell operations. It defaults to the `sync` task runner and
+requires the calling test to request `prefect_server`; it raises otherwise, so a
+forgotten fixture cannot silently start a slow ephemeral server per call. Use
+local Dask when testing scheduling, resources or worker boundaries; exercise the
+production flow rather than a separate test graph. Builder, validator and
+finalizer tests normally call plain Python helpers.
 
 [Option coverage](tests/lib/test_parset_option_coverage.py) checks options in
 `defaults.parset` for direct test attention or an intentional allow-list reason.
@@ -124,7 +126,15 @@ RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
 ```
 
 Alternatively use `tox -e test_integration`; CI can split that lane with
-`CI_NODE_TOTAL` and `CI_NODE_INDEX`. The lane collects only the three
+`CI_NODE_TOTAL` and `CI_NODE_INDEX`. The tox environments pass `EVERYBEAM_DATADIR`
+through because tox sets `VIRTUAL_ENV`, which EveryBeam otherwise uses to locate
+its coefficient files. pytest-split balances the nodes with the
+per-test timings in [.test_durations](.test_durations), assigning the longest
+tests first (`least_duration`); a test without an entry is assumed to take the
+average time. CI runs eight nodes, which keeps each node near the longest single
+test plus its fixed setup cost. Refresh the file after adding, removing or
+substantially changing integration tests by running the lane once with
+`--store-durations` and committing the result. The lane collects only the three
 directories above, so a test marked `integration` must live in one of them or
 CI never runs it. Real-tool checks of one execution owner (for example DP3
 runs of a command builder) belong in `tests/execution/integration/`.
@@ -166,4 +176,6 @@ checks execution; it does not establish scientific equivalence on larger data.
   tolerances and non-obvious constraints beside the scenario.
 - Diagnose slow tests with `--durations=30` or `--collect-only`; avoid repeated
   server startup, MS copies or end-to-end runs when one scenario can cover the
-  relevant assertions. Keep heavy optional imports out of broad collection paths.
+  relevant assertions. Share the Prefect server through `prefect_server` rather
+  than starting one per test. Keep heavy optional imports out of broad
+  collection paths.

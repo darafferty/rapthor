@@ -9,6 +9,7 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
+from prefect.settings import PREFECT_API_URL
 from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.config import ExecutionConfig
@@ -34,20 +35,42 @@ def pytest_sessionstart(session):  # pragma: no cover
     os.environ.setdefault("PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS", "180")
 
 
+@pytest.fixture(scope="session")
+def prefect_server():
+    """Run one Prefect test server for every flow test in this pytest process.
+
+    Starting the ephemeral server takes several seconds, so tests that run a
+    Prefect flow share it instead of starting their own. Each pytest-xdist
+    worker is a separate process and therefore starts its own server. Tests
+    that request this fixture are marked ``prefect`` by the root conftest.
+    """
+    with prefect_test_harness(server_startup_timeout=None):
+        yield
+
+
 def run_flow_for_test(
     flow_fn,
     payload,
     execution_config=None,
     shell_operation_cls=None,
 ):
-    """Run a production Prefect flow with optional fake shell loading for tests."""
+    """Run a production Prefect flow with optional fake shell loading for tests.
+
+    The calling test must request the ``prefect_server`` fixture; without it
+    Prefect would silently start a slow ephemeral server for every call.
+    """
+    if not PREFECT_API_URL.value():
+        raise RuntimeError(
+            "run_flow_for_test needs a running Prefect test server: add the "
+            "prefect_server fixture to the test's arguments"
+        )
     shell_loader = (
         patch("rapthor.execution.shell._load_shell_operation_cls", return_value=shell_operation_cls)
         if shell_operation_cls is not None
         else nullcontext()
     )
     config = execution_config or ExecutionConfig(task_runner="sync")
-    with shell_loader, prefect_test_harness(server_startup_timeout=None):
+    with shell_loader:
         return flow_fn(payload, execution_config=config)
 
 

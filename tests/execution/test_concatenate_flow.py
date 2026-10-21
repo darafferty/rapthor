@@ -3,7 +3,6 @@ import shlex
 from pathlib import Path
 
 import pytest
-from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.concatenate.flow as concatenate_module
 from rapthor.execution.concatenate.flow import (
@@ -206,7 +205,7 @@ def test_concatenate_payload_rejects_duplicate_outputs(tmp_path):
 
 
 def test_run_concatenate_flow_executes_commands_and_returns_records(
-    tmp_path, fake_shell_operation_cls, fake_select_concatenation_command
+    prefect_server, tmp_path, fake_shell_operation_cls, fake_select_concatenation_command
 ):
     payload = {
         "pipeline_working_dir": str(tmp_path),
@@ -258,7 +257,7 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
     ],
 )
 def test_run_concatenate_flow_rejects_invalid_epoch_input_filenames(
-    tmp_path, fake_shell_operation_cls, epoch_input, expected_message
+    prefect_server, tmp_path, fake_shell_operation_cls, epoch_input, expected_message
 ):
     payload = {
         "pipeline_working_dir": str(tmp_path),
@@ -307,7 +306,7 @@ def test_concatenate_epoch_task_wraps_epoch_runner(
 
 
 def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
-    tmp_path, monkeypatch, fake_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -325,11 +324,10 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
         ],
     }
 
-    with prefect_test_harness(server_startup_timeout=None):
-        outputs = concatenate_flow(
-            payload,
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
+    outputs = concatenate_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
 
     assert outputs == {
         "concatenated_filenames": [directory_record(tmp_path / "epoch_0_concatenated.ms")]
@@ -346,7 +344,9 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
     assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
 
 
-def test_run_concatenate_flow_handles_no_concatenation_needed(tmp_path, fake_shell_operation_cls):
+def test_run_concatenate_flow_handles_no_concatenation_needed(
+    prefect_server, tmp_path, fake_shell_operation_cls
+):
     outputs = run_flow_for_test(
         concatenate_flow,
         {"pipeline_working_dir": str(tmp_path), "data_colname": "DATA", "epochs": []},
@@ -358,7 +358,7 @@ def test_run_concatenate_flow_handles_no_concatenation_needed(tmp_path, fake_she
     assert fake_shell_operation_cls.instances == []
 
 
-def test_run_concatenate_flow_propagates_shell_failures(tmp_path):
+def test_run_concatenate_flow_propagates_shell_failures(prefect_server, tmp_path):
     payload = {
         "pipeline_working_dir": str(tmp_path),
         "data_colname": "DATA",
@@ -382,7 +382,7 @@ def test_run_concatenate_flow_propagates_shell_failures(tmp_path):
     assert not (tmp_path / "epoch_0_concatenated.ms").exists()
 
 
-def test_run_concatenate_flow_fails_when_expected_output_is_missing(tmp_path):
+def test_run_concatenate_flow_fails_when_expected_output_is_missing(prefect_server, tmp_path):
     payload = {
         "pipeline_working_dir": str(tmp_path),
         "data_colname": "DATA",
@@ -404,7 +404,9 @@ def test_run_concatenate_flow_fails_when_expected_output_is_missing(tmp_path):
         )
 
 
-def test_concatenate_finalizer_accepts_prefect_outputs(tmp_path, fake_shell_operation_cls):
+def test_concatenate_finalizer_accepts_prefect_outputs(
+    prefect_server, tmp_path, fake_shell_operation_cls
+):
     field = FieldStub(
         _operation_parset(tmp_path),
         epoch_observations=[
@@ -435,7 +437,7 @@ def test_concatenate_finalizer_accepts_prefect_outputs(tmp_path, fake_shell_oper
 
 
 def test_concatenate_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -450,8 +452,7 @@ def test_concatenate_operation_run_uses_prefect_flow(
     )
     operation = Concatenate(field, index=0)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_output = directory_record(
         Path(operation.pipeline_working_dir) / "epoch_0_concatenated.ms"
@@ -517,7 +518,7 @@ def test_concatenate_operation_run_reuses_prefect_outputs_when_done(
     ],
 )
 def test_concatenate_operation_run_failure_does_not_mark_done(
-    tmp_path, monkeypatch, shell_operation_cls, expected_message
+    prefect_server, tmp_path, monkeypatch, shell_operation_cls, expected_message
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -532,10 +533,7 @@ def test_concatenate_operation_run_failure_does_not_mark_done(
     )
     operation = Concatenate(field, index=0)
 
-    with (
-        prefect_test_harness(server_startup_timeout=None),
-        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
-    ):
+    with pytest.raises((FileNotFoundError, RuntimeError), match=expected_message):
         operation.run()
 
     assert Path(operation.pipeline_inputs_file).is_file()

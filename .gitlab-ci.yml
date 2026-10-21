@@ -235,7 +235,9 @@ install_rapthor:
 run_tests:
   extends: .run_tests
   script:
-    - tox -e py
+    # The image already contains Rapthor's dependencies, so let the tox
+    # environment reuse them instead of downloading and installing them again.
+    - tox -e py -x tool.tox.env_run_base.system_site_packages=true
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 ### Stage: run_integration_tests
@@ -258,12 +260,13 @@ run_tests:
 
 run_integration_tests:
   extends: .run_integration_tests
-  parallel: 4
+  parallel: 8
   script:
     - export RAPTHOR_TEST_RUN_ROOT="$CI_PROJECT_DIR/ci/i/node-$CI_NODE_INDEX"
     - export PREFECT_HOME="$CI_PROJECT_DIR/ci/prefect-home/node-$CI_NODE_INDEX"
     - mkdir -p "$RAPTHOR_TEST_RUN_ROOT" "$PREFECT_HOME"
-    - tox -e test_integration
+    # Reuse the image's packages here too; see run_tests.
+    - tox -e test_integration -x tool.tox.env_run_base.system_site_packages=true
 
 
 ### Stage: docs

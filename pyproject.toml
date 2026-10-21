@@ -110,7 +110,8 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks test as integration tests",
     "internet: marks tests that require internet access",
-    "prefect: marks tests that start a Prefect test server and must run serially"
+    "prefect: marks tests that start or share a Prefect test server",
+    "serial: marks tests that start their own Prefect and Dask processes and must run outside the parallel pool"
 ]
 
 
@@ -171,41 +172,41 @@ deps = [
     "pytest-mock",
     "pytest-socket",
 ]
+# EveryBeam looks for its coefficient files under $VIRTUAL_ENV/share/everybeam
+# when EVERYBEAM_DATADIR is unset, and tox points VIRTUAL_ENV at its own
+# environment, so pass the image's setting through to DP3 and WSClean.
+pass_env = ["EVERYBEAM_DATADIR"]
 commands = [
-    # test_field.py does not support parallel runs, so run sequentially.
+    # Tests marked `serial` launch Python subprocesses that start their own Prefect
+    # server and Dask cluster. Run them first, on their own, because under the
+    # parallel run's CPU load they can exceed their subprocess timeouts.
     [
         "python", "-m", "pytest",
-        "-m", "not integration",
-        "-k", "test_field.py",
+        "-m", "not integration and serial",
         "--cov=rapthor",
         "tests/{posargs}",
     ],
-    # Tests that start a Prefect test server are sensitive to high process fan-out,
-    # so run them serially before the rest of the suite.
+    # Run the rest of the non-integration suite with the worker count selected by
+    # pytest-xdist and add to the coverage from the run above. Flow tests share
+    # one Prefect test server per worker through the `prefect_server` fixture.
     [
         "python", "-m", "pytest",
-        "-m", "not integration and prefect",
-        "-k", "not test_field.py",
-        "--cov=rapthor",
-        "--cov-append",
-        "tests/{posargs}",
-    ],
-    # Run all other tests with the worker count selected by pytest-xdist.
-    # Add to the existing coverage report from the run above.
-    [
-        "python", "-m", "pytest",
-        "-m", "not integration and not prefect",
+        "-m", "not integration and not serial",
         "-n", "auto",
         "--dist", "worksteal",
-        "-k", "not test_field.py",
+        "--cov=rapthor",
+        "--cov-append",
         "--cov-report", "term-missing",
         "--cov-report", "xml",
         "--cov-report", "html",
-        "--cov=rapthor",
-        "--cov-append",
         "tests/{posargs}",
     ],
 ]
+
+[tool.tox.env_run_base.set_env]
+# Collect coverage through sys.monitoring (Python 3.12+), which slows the tests
+# far less than the default tracer. Older Pythons warn and use the default core.
+COVERAGE_CORE = "sysmon"
 
 [tool.tox.env.test_integration]
 description = "Run integration tests"
@@ -217,6 +218,7 @@ pass_env = [
     "CI_PROJECT_DIR",
     "CI_NODE_INDEX",
     "CI_NODE_TOTAL",
+    "EVERYBEAM_DATADIR",  # see env_run_base
     "BLIS_NUM_THREADS",
     "MKL_NUM_THREADS",
     "NUMEXPR_MAX_THREADS",
@@ -234,6 +236,12 @@ commands = [
         "--durations=0",
         "--splits", "{env:CI_NODE_TOTAL:1}",
         "--group", "{env:CI_NODE_INDEX:1}",
+        # Balance the CI nodes with the stored per-test timings; see TESTING.md.
+        # least_duration places the longest tests first, whereas the default
+        # algorithm cuts contiguous chunks of the collection order and leaves
+        # the remainder to the last node.
+        "--splitting-algorithm", "least_duration",
+        "--durations-path", "{toxinidir}/.test_durations",
         "tests/integration",
         "tests/operations/integration",
         "tests/execution/integration",

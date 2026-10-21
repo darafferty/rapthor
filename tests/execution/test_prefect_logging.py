@@ -1,7 +1,6 @@
 import logging
 
 from prefect import flow
-from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution import prefect_logging
 
@@ -44,7 +43,7 @@ def test_publish_python_logs_to_prefect_is_noop_without_prefect_context(monkeypa
     assert handlers == []
 
 
-def test_publish_python_logs_to_prefect_forwards_rapthor_logs(monkeypatch):
+def test_publish_python_logs_to_prefect_forwards_rapthor_logs(prefect_server, monkeypatch):
     handlers = []
 
     def fake_loader():
@@ -67,8 +66,7 @@ def test_publish_python_logs_to_prefect_forwards_rapthor_logs(monkeypatch):
                 logging.getLogger("rapthor:test").debug("below level")
             return list(handlers[0].records)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        records = logging_flow()
+    records = logging_flow()
 
     assert records == [
         ("rapthor:test", "visible message"),

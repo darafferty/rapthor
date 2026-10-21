@@ -8,6 +8,8 @@ from .utils import update_parset_path
 
 
 @pytest.mark.integration
+# The shared_facet_rw=False case is the default single-loop run, which
+# tests/integration/test_dd_calibration.py checks.
 @pytest.mark.parametrize(
     "shared_facet_rw",
     [
@@ -19,7 +21,6 @@ from .utils import update_parset_path
             ),
             id="shared_facet_rw_true",
         ),
-        pytest.param(False, id="shared_facet_rw_false"),
     ],
 )
 @pytest.mark.parametrize(
