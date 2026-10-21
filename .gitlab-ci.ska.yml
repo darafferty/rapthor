@@ -1,0 +1,16 @@
+# Copyright (C) 2026 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# SKA GitLab doesn't require any extra configuration for docker-in-docker.
+.dind:
+  extends: [] # .dind can't be empty, so add an empty 'extends'.
+
+default:
+  tags: # Use SKA runners instead of standard gitlab.com runners.
+    - ${SKA_DEFAULT_RUNNER}
+
+include:
+  - .gitlab-ci.common.yml
+  # Collects metrics and creates badges.
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/finaliser.gitlab-ci.yml"
