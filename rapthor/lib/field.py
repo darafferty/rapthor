@@ -1738,10 +1738,10 @@ class Field(object):
         filename : str
             Filename of h5parm file to scan.
         derive_solution_timesteps : bool
-            If True and calibration solutions exist, derive the solution time steps from the
-            solutions. These time steps are stored in the same attributes set by the calibration
-            strategy. If this parameter is False, the exiting values of these attributes are not
-            altered.
+            If True, attempt to derive the solution time steps from the
+            solutions. These time steps are stored in the same attributes set
+            by the calibration strategy. If this parameter is False, the
+            exiting values of these attributes are not altered.
         """
         filename = str(filename)
 
@@ -1805,22 +1805,22 @@ class Field(object):
         Parameters
         ----------
         derive_solution_timesteps : bool
-            If True and calibration solutions exist, derive the solution time steps from the
-            solutions. These time steps are stored in the same attributes set by the calibration
-            strategy. If this parameter is False, the exiting values of these attributes are not
-            altered.
+            If True, attempt to derive the solution time steps from the
+            solutions in ``h5parm_filename`` and ``fulljones_h5parm_filename``.
         """
         self.dd_apply_amplitudes = False
         self.di_apply_amplitudes = False
         scanned = {}
 
-        def has_amplitudes(filename):
+        def has_amplitudes(filename, derive_solution_timesteps=False):
             if filename not in scanned:
-                scanned[filename] = self._scan_scalar_h5parm(filename)
+                scanned[filename] = self._scan_scalar_h5parm(
+                    filename, derive_solution_timesteps=derive_solution_timesteps
+                )
             return scanned[filename]
 
         if self.h5parm_filename is not None:
-            self.apply_amplitudes = has_amplitudes(self.h5parm_filename)
+            self.apply_amplitudes = has_amplitudes(self.h5parm_filename, derive_solution_timesteps)
         else:
             self.apply_amplitudes = False
 
