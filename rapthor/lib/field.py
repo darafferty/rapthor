@@ -390,10 +390,10 @@ class Field(object):
         #
         # Note: self.observations are those that are used in processing;
         # self.full_observations are the original, full obserations and should
-        # not be altered
-        self.observations = new_observations[
-            :
-        ]  # make copy so input is not altered inadvertently at some later stage
+        # not be altered. Copy them, as operations change them (for example,
+        # Predict points them at the peeled data) and unchunked observations
+        # would otherwise be the original objects
+        self.observations = [obs.copy() for obs in new_observations]
 
         # Update the copies stored in the imaging sectors (including the full-field
         # sector, used to make the initial sky model). The copies in other (non-
