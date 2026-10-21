@@ -5,7 +5,7 @@ from typing import Mapping, Optional
 
 import numpy as np
 
-from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
+from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA, DDECAL_MODEL_APPLYCAL_STEPS
 from rapthor.lib.strategy import default_calibration_strategy
 
 
@@ -201,18 +201,23 @@ def build_calibration_dp3_steps(
         and not use_image_based_predict
         and not use_wsclean_predict
     ):
-        common_steps = ["avg", *common_steps, "null"]
+        common_steps = ["avg", *common_steps]
 
-    if preapply_solutions and not use_image_based_predict and not use_wsclean_predict:
+    # WSClean prediction writes the model columns outside DP3, so the data still
+    # needs the stand-alone applycal; only DP3 image-based prediction moves it
+    # after the predict and applybeam steps below.
+    if preapply_solutions and not use_image_based_predict:
         common_steps = ["applycal", *common_steps]
 
     if use_image_based_predict:
         preprocessing_steps = (
             ["predict", "applybeam", "applycal"] if preapply_solutions else ["predict", "applybeam"]
         )
-        return preprocessing_steps + common_steps
+        common_steps = preprocessing_steps + common_steps
 
-    return common_steps
+    # Adding a "null" step prevents updating the input MS, which would happen
+    # whenever a step provides data (avg, applycal, applybeam, predict).
+    return [*common_steps, "null"]
 
 
 def build_calibration_preapply_steps(
@@ -246,6 +251,20 @@ def build_calibration_preapply_steps(
         steps.append("normalization")
 
     return steps
+
+
+def build_calibration_solve_applycal_steps(preapply_steps: list[str]) -> list[str]:
+    """
+    Return the DDECal-internal applycal steps implied by the pre-apply steps.
+
+    The stand-alone applycal step corrects the data before the solves. A DDECal
+    solve that predicts its own model additionally corrupts that model with the
+    steps returned here (the flux-scale normalization), so the model matches the
+    flux scale of the data. DP3 applies these only to a model the solve predicts
+    itself: later solves that reuse the kept model inherit the corruption, and
+    externally predicted models (DP3 image-based or WSClean) are not affected.
+    """
+    return [step for step in preapply_steps if step in DDECAL_MODEL_APPLYCAL_STEPS]
 
 
 def build_calibration_solve_slot(

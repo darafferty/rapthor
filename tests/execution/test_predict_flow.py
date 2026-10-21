@@ -4,7 +4,6 @@ import shlex
 from pathlib import Path
 
 import pytest
-from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.predict.flow as predict_module
 from rapthor.execution.commands import normalize_command
@@ -259,6 +258,7 @@ class FieldStub:
         self.peel_outliers = False
         self.peel_bright_sources = False
         self.imaged_sources_only = False
+        self.use_array_beam = True
 
 
 def _operation_parset(tmp_path):
@@ -308,6 +308,7 @@ def _predict_input_parms():
         "normalize_h5parm": None,
         "dp3_applycal_steps": None,
         "onebeamperpatch": True,
+        "use_array_beam": True,
         "sagecalpredict": False,
         "obs_filename": [
             directory_record("/data/obs_0.ms"),
@@ -356,42 +357,51 @@ def _dd_predict_input_parms():
     return input_parms
 
 
+def _build_predict_command(**overrides):
+    """Build a predict command from the reference-fixture inputs with overrides."""
+    kwargs = {
+        "msin": "obs_0.ms",
+        "data_colname": "DATA",
+        "msout": "obs_0.ms.sector_1_modeldata",
+        "starttime": "50000.0",
+        "ntimes": 10,
+        "onebeamperpatch": True,
+        "correctfreqsmearing": False,
+        "correcttimesmearing": False,
+        "sagecalpredict": False,
+        "sourcedb": "sector_1.skymodel",
+        "directions": ["patch1", "patch2"],
+        "use_array_beam": True,
+        "numthreads": 4,
+    }
+    kwargs.update(overrides)
+    return build_predict_model_data_command(**kwargs)
+
+
+def _has_standalone_applycal(command):
+    """Return True if the command configures an applycal step outside predict."""
+    return any(token.startswith("applycal.") or "usemodeldata" in token for token in command)
+
+
 def test_predict_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
-    assert (
-        normalize_command(
-            build_predict_model_data_command(
-                msin="obs_0.ms",
-                data_colname="DATA",
-                msout="obs_0.ms.sector_1_modeldata",
-                starttime="50000.0",
-                ntimes=10,
-                onebeamperpatch=True,
-                correctfreqsmearing=False,
-                correcttimesmearing=False,
-                sagecalpredict=False,
-                sourcedb="sector_1.skymodel",
-                directions=["patch1", "patch2"],
-                numthreads=4,
-            )
-        )
-        == commands["predict"]["predict_model_data"]
-    )
+    assert normalize_command(_build_predict_command()) == commands["predict"]["predict_model_data"]
+
+
+def test_build_predict_model_data_command_without_corrections_has_no_applycal():
+    command = _build_predict_command()
+
+    assert "steps=[predict]" in command
+    assert "predict.type=predict" in command
+    assert not any("applycal" in token for token in command)
 
 
 def test_build_predict_model_data_command_adds_h5parm_applycal_options():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "CORRECTED_DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        10,
-        onebeamperpatch=False,
+    command = _build_predict_command(
+        data_colname="CORRECTED_DATA",
         correctfreqsmearing=True,
         correcttimesmearing=True,
-        sagecalpredict=False,
-        sourcedb="sector_1.skymodel",
         directions=["patch1"],
         numthreads=8,
         h5parm="solutions.h5",
@@ -399,86 +409,109 @@ def test_build_predict_model_data_command_adds_h5parm_applycal_options():
         normalize_h5parm="norm.h5",
     )
 
-    assert "steps=[predict,applycal]" in command
-    assert "predict.applycal.correction=phase000" in command
+    # All corrections are applied by the predict step itself: a stand-alone
+    # applycal step cannot see the prediction written with operation=replace.
+    assert "steps=[predict]" in command
     assert "predict.type=h5parmpredict" in command
-    assert "predict.applycal.steps=[fastphase]" in command
+    assert "predict.applycal.correction=phase000" in command
+    assert "predict.applycal.steps=[fastphase,normalization]" in command
     assert "predict.applycal.parmdb=solutions.h5" in command
-    assert "applycal.type=applycal" in command
-    assert "applycal.steps=[normalization]" in command
-    assert "applycal.normalization.parmdb=norm.h5" in command
-    assert "applycal.normalization.usemodeldata=True" in command
-    assert "applycal.normalization.invert=False" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.applycal.normalization.correction=amplitude000" in command
+    assert "predict.applycal.normalization.solset=sol000" in command
     assert "predict.correctfreqsmearing=True" in command
     assert "predict.correcttimesmearing=True" in command
+    assert not _has_standalone_applycal(command)
 
 
-def test_build_predict_model_data_command_applies_normalization_to_model_data():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        10,
-        onebeamperpatch=False,
-        correctfreqsmearing=False,
-        correcttimesmearing=False,
-        sagecalpredict=False,
-        sourcedb="sector_1.skymodel",
-        directions=["patch1"],
-        numthreads=8,
+def test_build_predict_model_data_command_applies_normalization_inside_predict():
+    command = _build_predict_command(
         applycal_steps="[normalization]",
         normalize_h5parm="norm.h5",
     )
 
-    assert "steps=[predict,applycal]" in command
+    assert "steps=[predict]" in command
     assert "predict.type=predict" in command
-    assert "predict.applycal.steps=[normalization]" not in command
-    assert "predict.applycal.normalization.parmdb=norm.h5" not in command
-    assert "applycal.steps=[normalization]" in command
-    assert "applycal.normalization.parmdb=norm.h5" in command
-    assert "applycal.normalization.usemodeldata=True" in command
+    assert "predict.applycal.steps=[normalization]" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.applycal.normalization.correction=amplitude000" in command
+    assert "predict.applycal.normalization.solset=sol000" in command
+    assert not any(token.startswith("predict.applycal.parmdb") for token in command)
+    assert not _has_standalone_applycal(command)
+
+
+def test_build_predict_model_data_command_applies_dd_solutions_and_normalization():
+    command = _build_predict_command(
+        directions=["[Patch_0]", "[Patch_1]"],
+        h5parm="dd_solutions.h5",
+        applycal_steps="[fastphase,slowgain,normalization]",
+        normalize_h5parm="norm.h5",
+    )
+
+    assert "steps=[predict]" in command
+    assert "predict.type=h5parmpredict" in command
+    assert "predict.applycal.steps=[fastphase,slowgain,normalization]" in command
+    assert "predict.applycal.parmdb=dd_solutions.h5" in command
+    assert "predict.applycal.slowgain.correction=amplitude000" in command
+    assert "predict.applycal.normalization.parmdb=norm.h5" in command
+    assert "predict.directions=[[Patch_0],[Patch_1]]" in command
+    assert not _has_standalone_applycal(command)
 
 
 def test_build_predict_model_data_command_omits_zero_ntimes():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        0,
-        onebeamperpatch=True,
-        correctfreqsmearing=False,
-        correcttimesmearing=False,
-        sagecalpredict=False,
-        sourcedb="sector_1.skymodel",
-        directions=["patch1"],
-        numthreads=4,
-    )
+    command = _build_predict_command(ntimes=0, directions=["patch1"])
 
     assert "msin.ntimes=0" not in command
     assert command[command.index("msin.starttime=50000.0") + 1] == "predict.onebeamperpatch=True"
 
 
 def test_build_predict_model_data_command_uses_sagecalpredict_when_requested():
-    command = build_predict_model_data_command(
-        "obs_0.ms",
-        "DATA",
-        "obs_0.ms.sector_1_modeldata",
-        "50000.0",
-        10,
-        onebeamperpatch=True,
-        correctfreqsmearing=False,
-        correcttimesmearing=False,
+    command = _build_predict_command(
         sagecalpredict=True,
-        sourcedb="sector_1.skymodel",
-        directions=["patch1"],
-        numthreads=4,
+        directions=["[Patch_0]"],
         h5parm="solutions.h5",
+        applycal_steps="[fastphase]",
     )
 
+    assert "steps=[predict]" in command
     assert "predict.type=sagecalpredict" in command
     assert "predict.applycal.parmdb=solutions.h5" in command
+    assert "predict.applycal.steps=[fastphase]" in command
+    assert not _has_standalone_applycal(command)
+
+
+@pytest.mark.parametrize("sagecalpredict", [False, True], ids=["default", "sagecal"])
+@pytest.mark.parametrize(
+    "applycal_steps,sagecal_steps",
+    [
+        pytest.param(None, None, id="no-corrections"),
+        pytest.param("[fastphase]", "[fastphase]", id="phase-only"),
+        pytest.param("[slowgain]", "[slowgain]", id="amplitude-only"),
+        pytest.param("[fastphase,slowgain]", "[slowgain,fastphase]", id="phase-amplitude"),
+        pytest.param("[slowgain,fastphase]", "[slowgain,fastphase]", id="amplitude-phase"),
+        pytest.param("[ fastphase, slowgain ]", "[slowgain,fastphase]", id="whitespace"),
+        pytest.param(
+            "[fastphase,normalization]", "[fastphase,normalization]", id="phase-normalization"
+        ),
+        pytest.param(
+            "[fastphase,slowgain,normalization]",
+            "[fastphase,slowgain,normalization]",
+            id="three-corrections",
+        ),
+    ],
+)
+def test_build_predict_model_data_command_orders_sagecal_gain_pair(
+    sagecalpredict, applycal_steps, sagecal_steps
+):
+    command = _build_predict_command(
+        sagecalpredict=sagecalpredict,
+        h5parm="solutions.h5",
+        applycal_steps=applycal_steps,
+    )
+
+    expected = sagecal_steps if sagecalpredict else applycal_steps
+    steps_tokens = [token for token in command if token.startswith("predict.applycal.steps=")]
+    assert steps_tokens == ([] if expected is None else [f"predict.applycal.steps={expected}"])
 
 
 def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
@@ -501,6 +534,7 @@ def test_predict_payload_from_inputs_builds_di_scatter_payload(tmp_path):
         "sagecalpredict": False,
         "sourcedb": "/data/sector_1.skymodel",
         "directions": ["patch1", "patch2"],
+        "use_array_beam": True,
         "numthreads": 4,
         "h5parm": None,
         "applycal_steps": None,
@@ -535,17 +569,35 @@ def test_predict_payload_from_inputs_builds_dd_specific_postprocess_payload(tmp_
     }
 
 
-def test_validate_predict_payload_normalizes_unset_optional_strings(tmp_path):
+@pytest.mark.parametrize("use_array_beam", [True, False])
+def test_validate_predict_payload_preserves_beam_setting_and_normalizes_optional_strings(
+    tmp_path, use_array_beam
+):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
     payload["predict_tasks"][0]["h5parm"] = "None"
     payload["predict_tasks"][0]["applycal_steps"] = ""
     payload["predict_tasks"][0]["normalize_h5parm"] = None
+    payload["predict_tasks"][0]["use_array_beam"] = use_array_beam
 
     validated = validate_predict_payload(payload)
 
+    assert validated["predict_tasks"][0]["use_array_beam"] is use_array_beam
     assert validated["predict_tasks"][0]["h5parm"] is None
     assert validated["predict_tasks"][0]["applycal_steps"] is None
     assert validated["predict_tasks"][0]["normalize_h5parm"] is None
+
+
+@pytest.mark.parametrize(
+    "use_array_beam",
+    [True, False],
+)
+def test_build_predict_model_data_command_respects_array_beam(use_array_beam):
+    command = _build_predict_command(directions=["patch1"], use_array_beam=use_array_beam)
+
+    if use_array_beam:
+        assert "predict.beammode=array_factor" in command
+    else:
+        assert not any(item.startswith("predict.beammode=") for item in command)
 
 
 def test_predict_model_outputs_are_grouped_by_observation_and_starttime():
@@ -597,7 +649,7 @@ def test_predict_payload_from_inputs_rejects_non_basename_model_outputs(tmp_path
 
 
 def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
-    tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
+    prefect_server, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("di", _predict_input_parms(), tmp_path)
 
@@ -656,7 +708,7 @@ def test_run_predict_flow_executes_di_commands_and_returns_nested_records(
 
 
 def test_run_predict_flow_rejects_invalid_prediction_directions(
-    tmp_path, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, fake_predict_shell_operation_cls
 ):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
     payload["predict_tasks"][0]["directions"] = ["patch1", 7]
@@ -675,7 +727,12 @@ def test_run_predict_flow_rejects_invalid_prediction_directions(
 @pytest.mark.parametrize("mode", ["di", "dd"])
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_predict_flow_removes_modeldata_only_after_postprocessing_succeeds(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode, keep_temporary_files
+    prefect_server,
+    tmp_path,
+    monkeypatch,
+    fake_predict_shell_operation_cls,
+    mode,
+    keep_temporary_files,
 ):
     input_parms = _predict_input_parms() if mode == "di" else _dd_predict_input_parms()
     if mode == "dd":
@@ -729,7 +786,7 @@ def test_predict_flow_removes_modeldata_only_after_postprocessing_succeeds(
 
 
 def test_run_predict_flow_executes_dd_commands_and_returns_peeling_records(
-    tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
+    prefect_server, tmp_path, fake_predict_shell_operation_cls, fake_direct_predict_helpers
 ):
     payload = predict_payload_from_inputs("dd", _dd_predict_input_parms(), tmp_path)
 
@@ -813,7 +870,7 @@ def test_predict_model_data_task_wraps_runner(
 
 
 def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -821,17 +878,16 @@ def test_predict_prefect_flow_entrypoint_runs_with_mocked_shell(
     )
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        outputs = predict_flow(
-            payload,
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
+    outputs = predict_flow(
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
 
     assert outputs == {"msfiles_di_cal": [[directory_record(tmp_path / "obs_0.ms.sector_1_di.ms")]]}
     assert len(fake_predict_shell_operation_cls.instances) == 1
 
 
-def test_run_predict_flow_propagates_shell_failures(tmp_path):
+def test_run_predict_flow_propagates_shell_failures(prefect_server, tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(RuntimeError, match="predict failed"):
@@ -843,7 +899,7 @@ def test_run_predict_flow_propagates_shell_failures(tmp_path):
         )
 
 
-def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
+def test_run_predict_flow_fails_when_predicted_model_is_missing(prefect_server, tmp_path):
     payload = predict_payload_from_inputs("di", _single_observation_input_parms(), tmp_path)
 
     with pytest.raises(FileNotFoundError, match="Predict output was not created"):
@@ -857,7 +913,7 @@ def test_run_predict_flow_fails_when_predicted_model_is_missing(tmp_path):
 
 @pytest.mark.parametrize("mode", ["di", "dd"])
 def test_run_predict_flow_fails_when_postprocess_output_is_missing(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls, mode
 ):
     helper_name = "add_sector_models" if mode == "di" else "subtract_sector_models"
     postprocess = getattr(predict_module, helper_name)
@@ -890,7 +946,9 @@ def test_predict_reference_output_fixtures_match_output_contract():
     validate_output_record(outputs["predict"]["subtract_models"])
 
 
-def test_predict_finalizer_accepts_prefect_outputs(tmp_path, fake_predict_shell_operation_cls):
+def test_predict_finalizer_accepts_prefect_outputs(
+    prefect_server, tmp_path, fake_predict_shell_operation_cls
+):
     field_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
     sector_observation = ObservationStub("obs_0", 59000.0, "obs_0.ms")
     field = FieldStub(tmp_path, field_observation, sector_observation)
@@ -952,7 +1010,7 @@ def test_predict_di_finalize_preserves_chunk_infixes_for_later_predict(tmp_path)
 
 
 def test_predict_di_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -963,8 +1021,7 @@ def test_predict_di_operation_run_uses_prefect_flow(
     field = FieldStub(tmp_path, field_observation, sector_observation)
     operation = Predict("di", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = {
         "msfiles_di_cal": [
@@ -1032,7 +1089,7 @@ def test_predict_di_operation_run_reuses_prefect_outputs_when_done(
     ],
 )
 def test_predict_di_operation_run_failure_does_not_mark_done(
-    tmp_path, monkeypatch, shell_operation_cls, expected_message
+    prefect_server, tmp_path, monkeypatch, shell_operation_cls, expected_message
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -1043,10 +1100,7 @@ def test_predict_di_operation_run_failure_does_not_mark_done(
     field = FieldStub(tmp_path, field_observation, sector_observation)
     operation = Predict("di", field, index=1)
 
-    with (
-        prefect_test_harness(server_startup_timeout=None),
-        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
-    ):
+    with pytest.raises((FileNotFoundError, RuntimeError), match=expected_message):
         operation.run()
 
     assert Path(operation.pipeline_inputs_file).is_file()
@@ -1058,7 +1112,7 @@ def test_predict_di_operation_run_failure_does_not_mark_done(
 
 
 def test_predict_dd_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_predict_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_predict_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -1086,8 +1140,7 @@ def test_predict_dd_operation_run_uses_prefect_flow(
     field.predict_sectors = []
     operation = Predict("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = {
         "subtract_models": [

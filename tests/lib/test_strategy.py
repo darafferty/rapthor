@@ -10,6 +10,7 @@ import pytest
 from rapthor.lib.strategy import (
     _validate_calibrate_strategy,
     check_and_adjust_parameters,
+    default_calibration_strategy,
     set_image_strategy,
     set_selfcal_strategy,
     set_strategy,
@@ -95,6 +96,28 @@ def test_set_selfcal_strategy(field, generate_initial_skymodel):
         )
 
 
+@pytest.mark.parametrize("generate_initial_skymodel", [True, False])
+def test_set_selfcal_strategy_final_step_is_independent(field, generate_initial_skymodel):
+    """The final step is a copy of the last selfcal step, not the same dictionary."""
+    field.parset["strategy"] = "selfcal"
+    field.parset["generate_initial_skymodel"] = generate_initial_skymodel
+    strategy_steps = set_selfcal_strategy(field)
+    last_selfcal_step, final_step = strategy_steps[-2], strategy_steps[-1]
+
+    assert final_step is not last_selfcal_step
+    assert last_selfcal_step["channel_width_hz"] == 8e6
+    assert final_step["channel_width_hz"] == 4e6
+    without_width = lambda step: {k: v for k, v in step.items() if k != "channel_width_hz"}  # noqa: E731
+    assert without_width(final_step) == without_width(last_selfcal_step)
+
+    # The nested solve lists must be independent as well
+    final_step["calibration_strategy"]["dd"].append("full_jones")
+    assert last_selfcal_step["calibration_strategy"] == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+
+
 def test_set_image_strategy(field):
     field.parset["strategy"] = "image"
     strategy_steps = set_image_strategy(field)
@@ -138,7 +161,7 @@ def test_check_and_adjust_parameters_corrects_deprecated(field, custom_strategy,
         step["slow_timestep_joint_sec"] = 3.0
         step["slow_timestep_separate_sec"] = 0.5
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
 
     for i, step in enumerate(strategy_steps_updated):
@@ -197,7 +220,7 @@ def test_check_and_adjust_parameters_translates_legacy_solve_flags(
         step["do_slowgain_solve"] = do_slowgain_solve
         step["do_fulljones_solve"] = do_fulljones_solve
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
 
     for i, step in enumerate(strategy_steps_updated):
@@ -247,7 +270,7 @@ def test_check_and_adjust_parameters_leaves_explicit_calibration_strategy_alone(
     strategy_steps = set_user_strategy(field)
     original = [dict(step["calibration_strategy"]) for step in strategy_steps]
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         strategy_steps_updated = check_and_adjust_parameters(field, strategy_steps)
 
     for step, expected in zip(strategy_steps_updated, original):
@@ -301,14 +324,56 @@ def test_check_and_adjust_parameters_warns_for_missing_parameters_with_defaults(
         # Remove the parameter to test that the default value is used and a warning is raised
         del strategy_steps[0][missing_parameter]
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         check_and_adjust_parameters(field, strategy_steps)
 
+    if missing_parameter == "calibration_strategy":
+        default_value = default_calibration_strategy()
+    else:
+        default_value = getattr(field, missing_parameter)
     assert (
         f"Parameter {missing_parameter!r} is not defined in the strategy "
-        f"for cycle 1. Using the default value of {getattr(field, missing_parameter)!r}."
-        in caplog.text
+        f"for cycle 1. Using the default value of {default_value!r}." in caplog.text
     )
+
+
+@pytest.mark.parametrize("omission", ["missing", None, {}], ids=["missing", "None", "empty"])
+def test_check_and_adjust_parameters_warns_for_omitted_calibration_strategy(
+    field, custom_strategy, omission, caplog
+):
+    """An omitted strategy is named in a warning but left for Field.update() to resolve."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    if omission == "missing":
+        del strategy_steps[1]["calibration_strategy"]
+    else:
+        strategy_steps[1]["calibration_strategy"] = omission
+
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
+        adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
+
+    # The step is not filled in, so that Field.update() can tell the default apart
+    # from a strategy the user supplied
+    assert not adjusted_steps[1].get("calibration_strategy")
+    assert caplog.text.count("Parameter 'calibration_strategy' is not defined") == 1
+    assert (
+        "Parameter 'calibration_strategy' is not defined in the strategy for cycle 2. "
+        f"Using the default value of {default_calibration_strategy()!r}." in caplog.text
+    )
+
+
+def test_check_and_adjust_parameters_leaves_image_only_cycle_without_calibration_strategy(
+    field, custom_strategy
+):
+    """An image-only cycle does not get a calibration strategy invented for it."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    strategy_steps[2]["do_calibrate"] = False
+    del strategy_steps[2]["calibration_strategy"]
+
+    adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
+
+    assert "calibration_strategy" not in adjusted_steps[2]
 
 
 @pytest.mark.parametrize(
@@ -356,7 +421,7 @@ def test_validate_strategy_logs_warning_for_do_normalize_in_non_first_cycle(
         f"do_normalize is True in cycle {cycle + 1} but it is usually True only in the first cycle."
     )
 
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="rapthor:strategy"):
         validate_strategy(strategy_steps, parset)
         if cycle:
             assert expected_log_string in caplog.text

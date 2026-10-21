@@ -90,10 +90,11 @@ class Predict(FlowOperation):
             "sector_patches": sector_parms["sector_patches"],
             "h5parm": FileRecord(h5parm_filename).to_json() if h5parm_filename else None,
             "normalize_h5parm": normalize_h5parm,
-            "dp3_applycal_steps": f"[{','.join(dp3_applycal_steps)}]"
-            if dp3_applycal_steps
-            else None,
+            "dp3_applycal_steps": (
+                f"[{','.join(dp3_applycal_steps)}]" if dp3_applycal_steps else None
+            ),
             "onebeamperpatch": field.onebeamperpatch,
+            "use_array_beam": field.use_array_beam,
             "sagecalpredict": field.sagecalpredict,
             "obs_filename": DirectoryRecord(obs_parms["obs_filename"]).to_json(),
             "obs_starttime": obs_parms["obs_starttime"],
@@ -198,7 +199,7 @@ class Predict(FlowOperation):
         h5parm_filename = self._get_applycal_h5parm_filename(sector_patches)
         if h5parm_filename is not None:
             dp3_applycal_steps.append("fastphase")
-            if self.field.apply_amplitudes:
+            if self._applies_amplitudes(h5parm_filename):
                 dp3_applycal_steps.append("slowgain")
         if self.field.apply_normalizations:
             normalize_h5parm = FileRecord(self.field.normalize_h5parm).to_json()
@@ -206,6 +207,13 @@ class Predict(FlowOperation):
         else:
             normalize_h5parm = None
         return dp3_applycal_steps, normalize_h5parm, h5parm_filename
+
+    def _applies_amplitudes(self, h5parm_filename):
+        """Return the amplitude state of the product selected for prediction."""
+        field = self.field
+        if h5parm_filename == getattr(field, "dd_h5parm_filename", None):
+            return bool(getattr(field, "dd_apply_amplitudes", field.apply_amplitudes))
+        return bool(field.apply_amplitudes)
 
     def _get_applycal_h5parm_filename(self, sector_patches=None):
         dd_h5parm = getattr(self.field, "dd_h5parm_filename", None)

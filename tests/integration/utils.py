@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import casacore.tables as pt
+import numpy as np
+from losoto.h5parm import h5parm
+
 from rapthor.execution.commands import normalize_command
 
 COMMAND_LOG_FILENAME = "commands.jsonl"
@@ -30,6 +34,57 @@ class CommandRecord:
     @property
     def arguments(self):
         return parse_command_arguments(self.command)
+
+
+def read_from_ms(ms_path, columns=("DATA", "FLAG")):
+    """Return the DATA and FLAG columns of a Measurement Set by name.
+
+    Pipeline tests take this snapshot before a run and compare it afterwards to
+    check that no operation writes back into the input MS.
+    """
+    with pt.table(str(ms_path), ack=False) as table:
+        return {column: table.getcol(column) for column in columns}
+
+
+def assert_ms_data_and_flags_unchanged(ms_path, snapshot, *, what="The calibration"):
+    """Assert that the DATA and FLAG columns still match an earlier snapshot."""
+    current = read_from_ms(ms_path)
+    for column in ("DATA", "FLAG"):
+        np.testing.assert_array_equal(
+            current[column],
+            snapshot[column],
+            err_msg=f"{what} wrote the {column} column of the input MS",
+        )
+
+
+def assert_h5parm_has_solutions(h5parm_path, *, expected_soltabs=(), max_flagged_fraction=0.5):
+    """Assert that an h5parm holds solution tables with mostly valid solutions.
+
+    A solve on degenerate data, or solution processing that flags everything,
+    leaves a product whose values are all NaN with zero weights. Later operations
+    then run on fully flagged data without any error, so the pipeline tests
+    check the products they depend on. ``expected_soltabs`` names tables that
+    must be present; a product without any solution table always fails.
+    """
+    solutions = h5parm(str(h5parm_path), readonly=True)
+    try:
+        checked_soltabs = []
+        for solset_name in solutions.getSolsetNames():
+            solset = solutions.getSolset(solset_name)
+            for soltab in solset.getSoltabs():
+                checked_soltabs.append(soltab.name)
+                values = soltab.getValues(retAxesVals=False)
+                weights = soltab.getValues(weight=True, retAxesVals=False)
+                flagged = (weights == 0) | ~np.isfinite(values)
+                assert flagged.mean() <= max_flagged_fraction, (
+                    f"{flagged.mean():.0%} of {solset_name}/{soltab.name} in "
+                    f"{h5parm_path} is flagged"
+                )
+    finally:
+        solutions.close()
+    assert checked_soltabs, f"{h5parm_path} contains no solution tables"
+    missing_soltabs = sorted(set(expected_soltabs) - set(checked_soltabs))
+    assert not missing_soltabs, f"{h5parm_path} lacks the solution tables {missing_soltabs}"
 
 
 def get_working_dir_from_parset(parset_path):

@@ -118,6 +118,7 @@ class Field(object):
         self.propagatesolutions = self.parset["calibration_specific"]["propagatesolutions"]
         self.solveralgorithm = self.parset["calibration_specific"]["solveralgorithm"]
         self.onebeamperpatch = self.parset["calibration_specific"]["onebeamperpatch"]
+        self.use_array_beam = self.parset["calibration_specific"]["use_array_beam"]
         self.llssolver = self.parset["calibration_specific"]["llssolver"]
         self.maxiter = self.parset["calibration_specific"]["maxiter"]
         self.stepsize = self.parset["calibration_specific"]["stepsize"]
@@ -916,7 +917,7 @@ class Field(object):
         target_flux=None,
         target_number=None,
         calibrator_max_dist_deg=None,
-        combine_current_and_intial=False,
+        combine_current_and_initial=False,
     ):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
@@ -935,7 +936,7 @@ class Field(object):
             Target number of patches for grouping
         calibrator_max_dist_deg : float, optional
             Maximum distance in degrees from phase center for grouping
-        combine_current_and_intial : bool, optional
+        combine_current_and_initial : bool, optional
             If True, combine the initial and current sky models (needed for the final
             calibration in order to include potential outlier sources)
         """
@@ -1080,7 +1081,7 @@ class Field(object):
             # must be subtracted, since we have to go back to the original input MS files
             # for which no subtraction has been done) or if all sources (and not only the
             # imaged sources) are to be used in calibration
-            if combine_current_and_intial or not self.imaged_sources_only:
+            if combine_current_and_initial or not self.imaged_sources_only:
                 # Load starting sky model and regroup to one patch per entry to ensure
                 # any existing patches are removed (otherwise they may propagate to
                 # the DD calibrator direction determination, leading to unexpected results)
@@ -1145,7 +1146,7 @@ class Field(object):
             # Plot an overview of the field for this cycle, showing the calibration facets
             # (patches)
             self.log.info("Plotting field overview with calibration patches...")
-            if index == 1 or combine_current_and_intial:
+            if index == 1 or combine_current_and_initial:
                 # Check the sky model bounds, as they may differ from the sector ones
                 check_skymodel_bounds = True
             else:
@@ -1724,12 +1725,82 @@ class Field(object):
             return int(match.group(1))
         return None
 
+    def _scan_scalar_h5parm(self, filename, derive_solution_timesteps=False):
+        """
+        Check the structure of a scalar (non-full-Jones) solution h5parm.
+
+        Returns True when the file holds amplitude solutions alongside the
+        required phase solutions, for either the sol000 or the coefficients000
+        (screen) layout.
+
+        Parameters
+        ----------
+        filename : str
+            Filename of h5parm file to scan.
+        derive_solution_timesteps : bool
+            If True and calibration solutions exist, derive the solution time steps from the
+            solutions. These time steps are stored in the same attributes set by the calibration
+            strategy. If this parameter is False, the exiting values of these attributes are not
+            altered.
+        """
+        filename = str(filename)
+
+        def get_timestep(soltab):
+            return np.min(soltab.time[1:] - soltab.time[:-1])
+
+        with h5parm(filename) as solutions:
+            if "coefficients000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("coefficients000")
+                if "phase_coefficients" not in solset.getSoltabNames():
+                    raise ValueError(
+                        f"The screen solutions file {filename!r} must "
+                        "have a phase_coefficients soltab."
+                    )
+                    if derive_solution_timesteps:
+                        self.fast_timestep_sec = get_timestep(
+                            solset.getSoltab("phase_coefficients")
+                        )
+                if "amplitude1_coefficients" in solset.getSoltabNames():
+                    if derive_solution_timesteps:
+                        self.slow_timestep_sec = get_timestep(
+                            solset.getSoltab("amplitude1_coefficients")
+                        )
+                    return True
+                else:
+                    return False
+            if "sol000" in solutions.getSolsetNames():
+                solset = solutions.getSolset("sol000")
+                if "phase000" not in solset.getSoltabNames():
+                    raise ValueError(
+                        f"The direction-dependent solutions file {filename!r} must "
+                        "have a phase000 soltab."
+                    )
+                if derive_solution_timesteps:
+                    self.fast_timestep_sec = get_timestep(solset.getSoltab("phase000"))
+                if "amplitude000" in solset.getSoltabNames():
+                    if derive_solution_timesteps:
+                        self.slow_timestep_sec = get_timestep(
+                            solset.getSoltab("amplitude000")
+                        )
+                    return True
+                else:
+                    return False
+            raise ValueError(
+                f"The direction-dependent solutions file {filename!r} must "
+                "have the solutions stored in the sol000 or coefficients000 solset."
+            )
+
     def scan_h5parms(self, derive_solution_timesteps=False):
         """
         Scans the calibration h5parms
 
         The basic structure is checked for correctness and for the presence of
         amplitude solutions (which may require different processing steps).
+
+        The DD and DI products are scanned separately: ``dd_apply_amplitudes``
+        and ``di_apply_amplitudes`` describe their own files, while
+        ``apply_amplitudes`` describes ``h5parm_filename``, which points at the
+        most recent product (or the parset-supplied h5parm).
 
         Parameters
         ----------
@@ -1739,63 +1810,29 @@ class Field(object):
             strategy. If this parameter is False, the exiting values of these attributes are not
             altered.
         """
+        self.dd_apply_amplitudes = False
+        self.di_apply_amplitudes = False
+        scanned = {}
+
+        def has_amplitudes(filename):
+            if filename not in scanned:
+                scanned[filename] = self._scan_scalar_h5parm(filename)
+            return scanned[filename]
+
         if self.h5parm_filename is not None:
-            with h5parm(self.h5parm_filename) as solutions:
-                if "coefficients000" in solutions.getSolsetNames():
-                    solset = solutions.getSolset("coefficients000")
-                    if "phase_coefficients" not in solset.getSoltabNames():
-                        raise ValueError(
-                            f"The screen solutions file {self.h5parm_filename!r} must "
-                            "have a phase_coefficients soltab."
-                        )
-                        if derive_solution_timesteps:
-                            self.fast_timestep_sec = np.min(
-                                solset.getSoltab("phase_coefficients").time[1:]
-                                - solset.getSoltab("phase_coefficients").time[:-1]
-                            )
-                    if "amplitude1_coefficients" in solset.getSoltabNames():
-                        self.apply_amplitudes = True
-                        if derive_solution_timesteps:
-                            self.slow_timestep_sec = np.min(
-                                solset.getSoltab("amplitude1_coefficients").time[1:]
-                                - solset.getSoltab("amplitude1_coefficients").time[:-1]
-                            )
-                    else:
-                        self.apply_amplitudes = False
-                elif "sol000" in solutions.getSolsetNames():
-                    solset = solutions.getSolset("sol000")
-                    if "phase000" not in solset.getSoltabNames():
-                        raise ValueError(
-                            f"The direction-dependent solutions file {self.h5parm_filename!r} must "
-                            "have a phase000 soltab."
-                        )
-                    if derive_solution_timesteps:
-                        self.fast_timestep_sec = np.min(
-                            solset.getSoltab("phase000").time[1:]
-                            - solset.getSoltab("phase000").time[:-1]
-                        )
-                    if "amplitude000" in solset.getSoltabNames():
-                        self.apply_amplitudes = True
-                        if derive_solution_timesteps:
-                            self.slow_timestep_sec = np.min(
-                                solset.getSoltab("amplitude000").time[1:]
-                                - solset.getSoltab("amplitude000").time[:-1]
-                            )
-                    else:
-                        self.apply_amplitudes = False
-                else:
-                    raise ValueError(
-                        f"The direction-dependent solutions file {self.h5parm_filename!r} must "
-                        "have the solutions stored in the sol000 or coefficients000 solset."
-                    )
-            if derive_solution_timesteps:
-                # Set reasonable values for solution steps that cannot be derived from the
-                # solutions
-                self.medium_timestep_sec = self.fast_timestep_sec * 4
-                if not self.apply_amplitudes:
-                    self.slow_timestep_sec = self.medium_timestep_sec * 4
+            self.apply_amplitudes = has_amplitudes(self.h5parm_filename)
         else:
             self.apply_amplitudes = False
+
+        if self.dd_h5parm_filename is not None:
+            self.dd_apply_amplitudes = has_amplitudes(self.dd_h5parm_filename)
+        elif self.h5parm_filename is not None and self.di_h5parm_filename is None:
+            # A supplied h5parm without DI or DD ownership is applied as the DD
+            # product (legacy single-file state).
+            self.dd_apply_amplitudes = self.apply_amplitudes
+
+        if self.di_h5parm_filename is not None:
+            self.di_apply_amplitudes = has_amplitudes(self.di_h5parm_filename)
 
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
@@ -1999,7 +2036,7 @@ class Field(object):
             # Report not converged, not diverged, and not failed
             return SelfcalState(False, False, False)
 
-    def update(self, step_dict, index, final=False):
+    def update(self, step_dict, index, final_cycle_number=0):
         """
         Updates parameters, sky models, etc. for current cycle
 
@@ -2009,22 +2046,29 @@ class Field(object):
             Dict of parameter values for given processing cycle
         index : int
             Index of processing cycle (counting starts from 1)
-        final : bool, optional
-            If True, process as the final pass (needed for correct processing of
-            the sky models)
+        final_cycle_number : int, optional
+            Index of final processing cycle (counting starts from 1; 0 indicates a non-final cycle)
         """
-        # If this is set as a final pass, set some peeling/calibration options to
+        # If this is set as the initial final pass, set some peeling/calibration options to
         # the defaults
-        if final:
+        if final_cycle_number == 1:
             self.imaged_sources_only = False
 
-        # Update field and sector dicts with the parameters for this cycle
-        self.__dict__.update(step_dict)
+        # Resolve before applying the step: an omitted or empty strategy in an
+        # image-only cycle must not overwrite the last calibration's strategy.
+        self.set_calibration_strategy(step_dict)
+        cycle_parameters = {**step_dict, "calibration_strategy": self.calibration_strategy}
+        self.__dict__.update(cycle_parameters)
         for sector in self.imaging_sectors:
-            sector.__dict__.update(step_dict)
+            sector.__dict__.update(cycle_parameters)
 
-        # Update calibration strategy for this cycle
-        self.set_calibration_strategy()
+        if self.do_calibrate:
+            self.log.info(
+                "Calibration strategy for cycle %i (%s): %s",
+                index,
+                "default" if self._calibration_strategy_defaulted else "from the strategy",
+                self.calibration_strategy,
+            )
 
         # Update the sky models
         if index == 1:
@@ -2072,7 +2116,7 @@ class Field(object):
             target_flux=target_flux,
             target_number=target_number,
             calibrator_max_dist_deg=calibrator_max_dist_deg,
-            combine_current_and_intial=final,
+            combine_current_and_initial=(final_cycle_number == 1),
         )
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
@@ -2107,18 +2151,34 @@ class Field(object):
             self.do_predict = False
 
         # check whether images are to be compressed
-        self.compress_images = self.compress_final_images if final else self.compress_selfcal_images
+        self.compress_images = (
+            self.compress_final_images if final_cycle_number > 0 else self.compress_selfcal_images
+        )
 
-    def set_calibration_strategy(self):
+    def set_calibration_strategy(self, step_dict=None):
         """
         Sets the calibration strategy for the current cycle.
 
-        If no calibration_strategy is specified in the strategy file, Rapthor uses
-        the default explicit DD self-calibration strategy.
+        A missing, None or empty calibration_strategy uses the default DD
+        sequence in a calibrating cycle. Without calibration, it preserves the
+        previous strategy for imaging. An explicit strategy overrides either
+        behavior.
+
+        Parameters
+        ----------
+        step_dict : dict, optional
+            Strategy parameters of the current cycle. If None, the strategy is
+            resolved from the attributes already set on the field
         """
-        self._calibration_strategy_defaulted = not bool(self.calibration_strategy)
-        if not self.calibration_strategy:
-            self.calibration_strategy = default_calibration_strategy()
+        if step_dict is None:
+            requested = self.calibration_strategy
+        else:
+            requested = step_dict.get("calibration_strategy")
+            if not step_dict.get("do_calibrate") and not requested and self.calibration_strategy:
+                # Image-only cycle: keep the last calibration's strategy
+                return
+        self._calibration_strategy_defaulted = not bool(requested)
+        self.calibration_strategy = requested or default_calibration_strategy()
 
     def get_matplotlib_patch(self, wcs=None):
         """

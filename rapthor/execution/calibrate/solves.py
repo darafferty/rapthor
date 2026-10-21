@@ -123,6 +123,7 @@ def _calibration_options_for_chunk(
         predict_images=payload.get("predict_images")
         if payload.get("image_based_predict")
         else None,
+        use_array_beam=bool(payload.get("use_array_beam", True)),
     )
 
 
@@ -134,6 +135,7 @@ def _solve_slots_for_chunk(
     wsclean_model_columns = (
         payload.get("modeldatacolumn") if payload.get("wsclean_predict") else None
     )
+    model_applycal_steps = payload.get("calibration_applycal_steps")
     for slot in chunk["solve_slots"]:
         solve_type = str(slot["solve_type"])
         smoothnessconstraint = slot["smoothnessconstraint"]
@@ -176,6 +178,12 @@ def _solve_slots_for_chunk(
         }
         if wsclean_model_columns and int(slot["slot"]) > 1:
             slot_options["modeldatacolumns"] = str(wsclean_model_columns)
+        if model_applycal_steps and _slot_predicts_model(payload, slot_options):
+            # DDECal applies these sub-steps only to the model it predicts
+            # itself. Later solves reuse that kept model, corrections included,
+            # so the steps are attached to the predicting solve and nowhere else.
+            slot_options["applycal_steps"] = model_applycal_steps
+            slot_options["normalize_h5parm"] = payload.get("normalize_h5parm")
         solve_slots.append(slot_options)
     solve_slots[0]["correctfreqsmearing"] = payload["correctfreqsmearing"]
     solve_slots[0]["correcttimesmearing"] = payload["correcttimesmearing"]
@@ -201,6 +209,13 @@ def _idgcal_screen_options_for_chunk(
         antennaconstraint=str(payload["idgcal_antennaconstraint"]),
         num_threads=int(payload["max_threads"]),
     )
+
+
+def _slot_predicts_model(payload: CalibratePayload, slot_options: Mapping[str, object]) -> bool:
+    """Return whether this DDECal solve predicts its model from the sky model."""
+    if _uses_external_prediction(payload) or payload.get("modeldatacolumn") is not None:
+        return False
+    return slot_options.get("reusemodel") is None and slot_options.get("modeldatacolumns") is None
 
 
 def _uses_external_prediction(payload: CalibratePayload) -> bool:

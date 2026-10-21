@@ -3,6 +3,7 @@ Test cases for the `rapthor.modifystate` module.
 """
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -40,7 +41,7 @@ def _write_prefect_operation_state(working_dir, operation_name):
     operation_dir = working_dir / "pipelines" / operation_name
     operation_dir.mkdir(parents=True)
     (operation_dir / ".done").touch()
-    (operation_dir / ".outputs.json").write_text(
+    (operation_dir / "pipeline_outputs.json").write_text(
         json.dumps(
             {
                 "product": {
@@ -62,7 +63,11 @@ def _write_output_subdir(working_dir, dirname, operation_name):
 
 
 def _patch_modifystate_lifecycle(monkeypatch, working_dir, strategy_steps=None):
-    parset = {"dir_working": str(working_dir), "strategy": "test-strategy"}
+    parset = {
+        "dir_working": str(working_dir),
+        "strategy": "test-strategy",
+        "ntimes_to_repeat_final_cycle": 0,
+    }
 
     monkeypatch.setattr(
         modifystate,
@@ -100,11 +105,11 @@ def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state
 
     assert upstream_calibrate.is_dir()
     assert (upstream_calibrate / ".done").is_file()
-    upstream_outputs = json.loads((upstream_calibrate / ".outputs.json").read_text())
+    upstream_outputs = json.loads((upstream_calibrate / "pipeline_outputs.json").read_text())
     assert upstream_outputs["product"]["class"] == "File"
     assert upstream_predict.is_dir()
     assert (upstream_predict / ".done").is_file()
-    assert (upstream_predict / ".outputs.json").is_file()
+    assert (upstream_predict / "pipeline_outputs.json").is_file()
     assert upstream_solutions.is_dir()
     assert upstream_visibilities.is_dir()
 
@@ -112,6 +117,20 @@ def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state
     assert not downstream_mosaic.exists()
     assert not downstream_images.exists()
     assert not downstream_logs.exists()
+
+
+def test_run_restores_logger_levels_after_exit(tmp_path, monkeypatch):
+    """Suppressing the parset and strategy loggers must not leak out of run()."""
+    _patch_modifystate_lifecycle(monkeypatch, tmp_path)
+    loggers = [logging.getLogger(name) for name in ("rapthor:parset", "rapthor:strategy")]
+    for logger in loggers:
+        monkeypatch.setattr(logger, "level", logging.INFO)
+
+    # Without any pipeline directory there is nothing to reset and run() exits.
+    with pytest.raises(SystemExit):
+        modifystate.run("input.parset")
+
+    assert [logger.level for logger in loggers] == [logging.INFO, logging.INFO]
 
 
 def test_run_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch, capsys):

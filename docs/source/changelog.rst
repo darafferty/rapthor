@@ -46,6 +46,28 @@ existing parsets and strategy files.
       :term:`fail_on_calibration_oom_risk` stops the run instead.
     - The calculation of the RMS noise of each facet no longer fails if a
       facet lies outside of the image.
+    - The calibration no longer writes the data back into its input MS when
+      direction-independent solutions are applied before the solves. In
+      earlier versions, this happened whenever baseline-dependent averaging was
+      not used for the solves (for example, with
+      :term:`bda_timebase <bda_timebase (calibration)>` and
+      :term:`bda_frequencybase <bda_frequencybase (calibration)>` set to 0,
+      with irregular channels, or with WSClean or image-based prediction). The
+      corrected data and flags were then written to the input MS (which can be
+      an original input MS), so later operations applied the
+      direction-independent corrections a second time.
+    - In the ``selfcal`` strategy, the final cycle no longer shares its
+      parameters with the last cycle of selfcal. In earlier versions, setting
+      the output channel width of the final cycle to 4 MHz also changed the
+      last selfcal cycle from 8 MHz to 4 MHz, and the two cycles then compared
+      as identical, so the final cycle was skipped when the selfcal and final
+      data fractions were equal.
+    - A calibrating cycle with neither :term:`calibration_strategy` nor legacy
+      solve flags now uses the full default DD sequence independently of earlier
+      cycles. Legacy flags, including explicitly ``False`` values, are translated
+      before this default is considered. Image-only cycles preserve the previous
+      strategy unless explicitly overridden. Each calibrating cycle logs its
+      resolved sequence in order and identifies whether it was defaulted.
 
 
 Version 2.1 (2025/12/04)

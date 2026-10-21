@@ -5,10 +5,13 @@ import casacore.tables as pt
 import lsmtool
 import numpy as np
 import pytest
+from losoto.h5parm import h5parm
 from matplotlib import pyplot as plt
 
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
 from rapthor.lib.observation import Observation
+from rapthor.lib.strategy import check_and_adjust_parameters, set_user_strategy
+from tests.conftest import write_scalar_h5parm
 
 
 @pytest.fixture
@@ -211,6 +214,60 @@ def test_update_allows_target_number_without_target_flux(field, monkeypatch):
     assert captured["target_number"] == 1
 
 
+def test_update_sets_skymodel_flags_in_repeated_final_cycles(field, monkeypatch):
+    captured = {}
+
+    def fake_update_skymodels(index, regroup_model, **kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(field, "update_skymodels", fake_update_skymodels)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+
+    class Sector:
+        name = "sector_1"
+
+    # Set one imaging sector and one outlier sector to simluate
+    # the first final cycle
+    field.imaging_sectors = [Sector()]
+    field.outlier_sectors = [Sector()]
+
+    field.update(
+        {
+            "do_calibrate": False,
+            "regroup_model": False,
+            "peel_bright_sources": False,
+            "peel_outliers": False,
+            "reweight": False,
+            "compress_selfcal_images": False,
+        },
+        index=2,
+        final_cycle_number=1,
+    )
+
+    assert captured["combine_current_and_initial"] is True
+    assert field.imaged_sources_only is False
+
+    # Remove the outlier sector to simluate the removal done by the predict
+    # operation (in the first final cycle) before the second final cycle starts
+    field.outlier_sectors = []
+
+    field.update(
+        {
+            "do_calibrate": False,
+            "regroup_model": False,
+            "peel_bright_sources": False,
+            "peel_outliers": False,
+            "reweight": False,
+            "compress_selfcal_images": False,
+        },
+        index=3,
+        final_cycle_number=2,
+    )
+
+    assert captured["combine_current_and_initial"] is False
+    assert field.imaged_sources_only is True
+
+
 def test_update_skymodels_allows_target_number_without_target_flux(parset_for_field_test):
     field = Field(parset_for_field_test)
 
@@ -355,6 +412,146 @@ def test_plot_overview_initial_near_pole(field):
     assert plt.get_fignums() == []
 
 
+def _update_field(field, monkeypatch, index, **step):
+    """Run Field.update() for one cycle without touching sky models."""
+    monkeypatch.setattr(field, "update_skymodels", lambda *args, **kwargs: None)
+    monkeypatch.setattr(field, "remove_skymodels", lambda: None)
+    field.lofar_to_true_flux_ratio = 1.0
+    field.lofar_to_true_flux_std = 0.1
+    field.apply_normalizations = False
+    step_dict = {
+        "do_calibrate": True,
+        "regroup_model": False,
+        "target_flux": None,
+        "max_directions": 1,
+        "max_distance": None,
+        "peel_bright_sources": False,
+        "peel_outliers": False,
+        "reweight": False,
+        "compress_selfcal_images": False,
+        "compress_final_images": False,
+    }
+    step_dict.update(step)
+    field.update(step_dict, index=index)
+
+
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+def test_update_resolves_omitted_calibration_strategy_for_each_cycle(
+    field, monkeypatch, caplog, strategy_setting
+):
+    """A cycle that omits the strategy gets the default, whatever earlier cycles used."""
+    explicit_strategy = {"di": ["fast_phase"], "dd": []}
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 2)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+    assert (
+        f"Calibration strategy for cycle 2 (default): {field.calibration_strategy}" in caplog.text
+    )
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 3, calibration_strategy=explicit_strategy)
+    assert field.calibration_strategy == explicit_strategy
+    assert field._calibration_strategy_defaulted is False
+    assert (
+        f"Calibration strategy for cycle 3 (from the strategy): {explicit_strategy}" in caplog.text
+    )
+
+    # Omitted again: the explicit strategy of cycle 3 must not carry over
+    _update_field(field, monkeypatch, 4, **strategy_setting)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+
+    assert all(
+        sector.calibration_strategy == field.calibration_strategy
+        for sector in field.imaging_sectors
+    )
+
+
+def test_update_marks_an_adjusted_omitted_strategy_as_default(
+    field, custom_strategy, monkeypatch, caplog
+):
+    """A step that went through check_and_adjust_parameters() still counts as defaulted."""
+    field.parset["strategy"] = str(custom_strategy)
+    strategy_steps = set_user_strategy(field)
+    del strategy_steps[1]["calibration_strategy"]
+    adjusted_steps = check_and_adjust_parameters(field, strategy_steps)
+
+    with caplog.at_level("INFO", logger="rapthor:field"):
+        _update_field(field, monkeypatch, 2, **adjusted_steps[1])
+
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+    assert "Calibration strategy for cycle 2 (default)" in caplog.text
+
+
+def test_update_ignores_legacy_solve_flags_without_calibration_strategy(field, monkeypatch):
+    """Legacy flags are translated when the strategy is loaded, not by Field.update()."""
+    _update_field(field, monkeypatch, 2, do_slowgain_solve=False, do_fulljones_solve=True)
+    assert field.calibration_strategy == {
+        "dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"],
+        "di": [],
+    }
+    assert field._calibration_strategy_defaulted is True
+
+
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+@pytest.mark.parametrize("defaulted", [False, True], ids=["explicit-previous", "default-previous"])
+def test_update_keeps_last_calibration_strategy_for_image_only_cycle(
+    field, monkeypatch, strategy_setting, defaulted
+):
+    """An image-only cycle applies the solutions of the last calibration."""
+    explicit_strategy = {"di": ["slow_gains"], "dd": ["fast_phase"]}
+    _update_field(
+        field, monkeypatch, 2, calibration_strategy=None if defaulted else explicit_strategy
+    )
+    previous_strategy = field.calibration_strategy
+
+    _update_field(field, monkeypatch, 3, do_calibrate=False, **strategy_setting)
+    assert field.calibration_strategy == previous_strategy
+    assert field._calibration_strategy_defaulted is defaulted
+    assert all(sector.calibration_strategy == previous_strategy for sector in field.imaging_sectors)
+
+    # A later calibrating cycle without a strategy starts afresh from the default
+    _update_field(field, monkeypatch, 4)
+    assert field._calibration_strategy_defaulted is True
+    assert field.calibration_strategy["dd"] == [
+        "fast_phase",
+        "medium_phase",
+        "slow_gains",
+        "medium_phase",
+    ]
+
+
+def test_update_allows_an_explicit_strategy_for_an_image_only_cycle(field, monkeypatch):
+    _update_field(field, monkeypatch, 2)
+    strategy = {"di": ["slow_gains"], "dd": []}
+
+    _update_field(field, monkeypatch, 3, do_calibrate=False, calibration_strategy=strategy)
+
+    assert field.calibration_strategy == strategy
+    assert field._calibration_strategy_defaulted is False
+    assert all(sector.calibration_strategy == strategy for sector in field.imaging_sectors)
+
+
 def test_set_calibration_strategy_default(calibration_strategy_field):
     """The default calibration strategy is explicit and ignores legacy flags."""
     calibration_strategy_field.__dict__.update(
@@ -462,3 +659,103 @@ def test_set_calibration_strategy_preserves_order_of_solves(
             user_provided_strategy[key]
         )
     assert calibration_strategy_field.calibration_strategy == user_provided_strategy
+
+
+@pytest.fixture
+def solution_state_field():
+    """A bare Field with only the solution-file attributes that scan_h5parms reads."""
+    field = Field.__new__(Field)
+    field.h5parm_filename = None
+    field.dd_h5parm_filename = None
+    field.di_h5parm_filename = None
+    field.fulljones_h5parm_filename = None
+    field.apply_amplitudes = False
+    field.dd_apply_amplitudes = False
+    field.di_apply_amplitudes = False
+    return field
+
+
+ANTENNAS = ["CS001HBA0", "CS002HBA0"]
+
+
+def test_scan_h5parms_keeps_dd_amplitudes_after_a_phase_only_di_product(
+    solution_state_field, tmp_path
+):
+    """DD slow gains stay applied when a later DI phase solve becomes the current product."""
+    field = solution_state_field
+    field.dd_h5parm_filename = write_scalar_h5parm(
+        tmp_path / "dd.h5", ANTENNAS, with_amplitudes=True
+    )
+    field.di_h5parm_filename = write_scalar_h5parm(tmp_path / "di.h5", ANTENNAS)
+    # Calibrate.finalize() points h5parm_filename at the most recent product.
+    field.h5parm_filename = field.di_h5parm_filename
+
+    field.scan_h5parms()
+
+    assert field.dd_apply_amplitudes is True
+    assert field.di_apply_amplitudes is False
+    assert field.apply_amplitudes is False
+
+
+def test_scan_h5parms_keeps_di_amplitudes_after_a_phase_only_dd_product(
+    solution_state_field, tmp_path
+):
+    field = solution_state_field
+    field.dd_h5parm_filename = write_scalar_h5parm(tmp_path / "dd.h5", ANTENNAS)
+    field.di_h5parm_filename = write_scalar_h5parm(
+        tmp_path / "di.h5", ANTENNAS, with_amplitudes=True
+    )
+    field.h5parm_filename = field.dd_h5parm_filename
+
+    field.scan_h5parms()
+
+    assert field.dd_apply_amplitudes is False
+    assert field.di_apply_amplitudes is True
+    assert field.apply_amplitudes is False
+
+
+def test_scan_h5parms_treats_a_lone_supplied_h5parm_as_the_dd_product(
+    solution_state_field, tmp_path
+):
+    """An input h5parm without DI or DD ownership keeps the legacy single-flag behaviour."""
+    field = solution_state_field
+    field.h5parm_filename = write_scalar_h5parm(
+        tmp_path / "input.h5", ANTENNAS, with_amplitudes=True
+    )
+
+    field.scan_h5parms()
+
+    assert field.apply_amplitudes is True
+    assert field.dd_apply_amplitudes is True
+    assert field.di_apply_amplitudes is False
+
+
+def test_scan_h5parms_resets_flags_when_products_are_cleared(solution_state_field, tmp_path):
+    field = solution_state_field
+    field.dd_apply_amplitudes = True
+    field.di_apply_amplitudes = True
+    field.apply_amplitudes = True
+
+    field.scan_h5parms()
+
+    assert field.apply_amplitudes is False
+    assert field.dd_apply_amplitudes is False
+    assert field.di_apply_amplitudes is False
+
+
+def test_scan_h5parms_rejects_a_scalar_product_without_phases(solution_state_field, tmp_path):
+    path = tmp_path / "amplitudes_only.h5"
+    with h5parm(str(path), readonly=False) as solutions:
+        solset = solutions.makeSolset("sol000")
+        solset.makeSoltab(
+            "amplitude",
+            "amplitude000",
+            axesNames=["ant"],
+            axesVals=[ANTENNAS],
+            vals=np.ones(len(ANTENNAS)),
+            weights=np.ones(len(ANTENNAS)),
+        )
+    solution_state_field.dd_h5parm_filename = str(path)
+
+    with pytest.raises(ValueError, match="phase000"):
+        solution_state_field.scan_h5parms()

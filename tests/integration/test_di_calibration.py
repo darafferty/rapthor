@@ -1,10 +1,14 @@
 import subprocess
+from pathlib import Path
 
 import pytest
 
 from .utils import (
+    assert_h5parm_has_solutions,
+    assert_ms_data_and_flags_unchanged,
     first_command_arguments,
     get_working_dir_from_parset,
+    read_from_ms,
     update_parset_path,
 )
 
@@ -69,9 +73,6 @@ def test_rapthor_run_single_loop_calibrate_di_fast_phase(
     assert "scalarphase" in dp3_arguments["solve1.mode"]
 
 
-# fast medium slow for DI
-
-
 @pytest.mark.integration
 @pytest.mark.parametrize(
     "generated_parset_path,single_loop_strategy_with_calibration_strategy",
@@ -132,6 +133,12 @@ def test_rapthor_run_single_loop_calibrate_di_slow_gains(
     assert "diagonal" in dp3_arguments["solve1.mode"]
     assert "slow_gains_di_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples
+    # The processed DI product is what later operations pre-apply, so it must
+    # hold real gains rather than solutions flagged away by the processing.
+    assert_h5parm_has_solutions(
+        Path(working_dir) / "solutions" / "calibrate_di_1" / "di-solutions.h5",
+        expected_soltabs=("amplitude000", "phase000"),
+    )
 
 
 @pytest.mark.integration
@@ -274,7 +281,7 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
 ):
     """Test a single selfcal loop with DP3 when only full-Jones
     direction-independent calibration is specified in the
-    strategy.
+    strategy, and that all operations of the loop complete.
     """
 
     updated_parset_path = update_parset_path(
@@ -292,7 +299,12 @@ def test_rapthor_run_single_loop_calibrate_di_full_jones(
     result = subprocess.run(command, capture_output=True, text=True, check=True)
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+    assert "Operation predict_di_1 completed" in output
     assert "Operation calibrate_di_1 completed" in output
+    assert "Operation predict_1 completed" in output
+    assert "Operation image_1 completed" in output
+    assert "Operation mosaic_1 completed" in output
+    assert "Rapthor has finished :)" in output
 
     dp3_arguments = first_command_arguments(
         working_dir,
@@ -339,6 +351,7 @@ def test_rapthor_run_mixed_di_dd_order(
     generated_parset_path,
     single_loop_strategy_with_calibration_strategy,
     expected_order,
+    test_ms,
 ):
     """Test mixed DI/DD calibration order and branch-to-branch solution application."""
 
@@ -352,9 +365,15 @@ def test_rapthor_run_mixed_di_dd_order(
 
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
+    input_ms_before = read_from_ms(test_ms)
 
     command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+    finally:
+        # Check the input MS even when the run fails: a solve that writes the
+        # pre-applied data back into it breaks the later operations as well.
+        assert_ms_data_and_flags_unchanged(test_ms, input_ms_before)
     output = f"{result.stdout}\n{result.stderr}"
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     for operation in expected_order:
@@ -375,6 +394,9 @@ def test_rapthor_run_mixed_di_dd_order(
         )
         assert "applycal" in dp3_arguments["steps"]
         assert "fulljones" in dp3_arguments["applycal.steps"]
+        # The pre-apply runs DP3 with an empty msout, so the chain must end with
+        # a null step or DP3 writes the corrected visibilities into the input MS.
+        assert dp3_arguments["steps"].endswith(",null]")
     else:
         dp3_arguments = first_command_arguments(
             working_dir,

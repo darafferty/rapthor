@@ -4,9 +4,13 @@ from collections.abc import Mapping
 from math import ceil
 from typing import Optional, Union
 
+# DP3 applycal sub-step for each strategy solve type. The combined solution
+# product holds one phase000 soltab (the fast and medium phases summed) and
+# optionally one amplitude000 soltab, so every phase solve maps to the single
+# fastphase step: a second phase step would apply the same phase000 twice.
 SOLVE_TYPE_TO_APPLYCAL_STEP = {
     "fast_phase": "fastphase",
-    "medium_phase": "mediumphase",
+    "medium_phase": "fastphase",
     "slow_gains": "slowgain",
     "full_jones": "fulljones",
 }
@@ -229,8 +233,6 @@ def build_image_applycal_steps(
                 selected_applycal_h5parm = candidate_h5parm
             if candidate_h5parm == selected_applycal_h5parm:
                 step = SOLVE_TYPE_TO_APPLYCAL_STEP[solve]
-                if mode == "di" and solve in {"fast_phase", "medium_phase"}:
-                    step = "fastphase"
                 if step not in steps:
                     steps.append(step)
 

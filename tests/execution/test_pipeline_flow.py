@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-from prefect.testing.utilities import prefect_test_harness
 
 from rapthor.execution.capabilities import PreflightError, preflight_execution
 from rapthor.execution.config import ExecutionConfig
@@ -62,10 +61,10 @@ class RecordingField:
     events: list[dict] = field(default_factory=list)
     selfcal_result: SelfcalState = field(default_factory=SelfcalState)
 
-    def update(self, step, index, final=False):
+    def update(self, step, index, final_cycle_number=0):
         self.__dict__.update(step)
         self.cycle_number_seen = index
-        self.final_seen = final
+        self.final_cycle_number_seen = final_cycle_number
 
     def check_selfcal_progress(self):
         return self.selfcal_result
@@ -596,6 +595,33 @@ def test_collect_pipeline_features_describes_strategy_and_runtime_options():
     } <= features
 
 
+@pytest.mark.parametrize(
+    "strategy_setting",
+    [{}, {"calibration_strategy": None}, {"calibration_strategy": {}}],
+    ids=["missing", "none", "empty"],
+)
+def test_collect_pipeline_features_resolves_default_calibration_strategy(strategy_setting):
+    steps = [{"do_calibrate": True, **strategy_setting}]
+
+    features = collect_pipeline_features(RecordingField(), steps, {})
+
+    assert features == {
+        "calibration",
+        "calibration_dd",
+        "solve_dd_fast_phase",
+        "solve_dd_medium_phase",
+        "solve_dd_slow_gains",
+        "final_cycle",
+    }
+    assert steps == [{"do_calibrate": True, **strategy_setting}]
+
+
+def test_collect_pipeline_features_keeps_explicit_empty_solve_lists():
+    steps = [{"do_calibrate": True, "calibration_strategy": {"di": [], "dd": []}}]
+
+    assert collect_pipeline_features(RecordingField(), steps, {}) == {"calibration", "final_cycle"}
+
+
 def test_supported_merge_feature_matrix_entries_pass_process_preflight():
     matrix = _merge_feature_matrix()
 
@@ -926,23 +952,22 @@ def test_run_pipeline_skips_initial_skymodel_generation_without_calibration_step
     ] == ["image", "mosaic"]
 
 
-def test_pipeline_flow_runs_no_selfcal_image_only_strategy():
+def test_pipeline_flow_runs_no_selfcal_image_only_strategy(prefect_server):
     parset = _pipeline_parset(input_h5parm="input-solutions.h5")
     lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step()],
     )
 
-    with prefect_test_harness():
-        field = pipeline_flow(
-            "input.parset",
-            operation_factories=RECORDING_FACTORIES,
-            lifecycle_hooks=lifecycle.hooks(),
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
+    field = pipeline_flow(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
 
     assert field is lifecycle.field
-    assert field.final_seen is True
+    assert field.final_cycle_number_seen == 1
     assert field.cycle_number == 1
     assert parset["generate_initial_skymodel"] is False
     assert parset["download_initial_skymodel"] is False
@@ -971,14 +996,14 @@ def test_run_pipeline_rejects_image_only_final_without_input_h5parm():
         )
 
 
-def test_pipeline_flow_rejects_image_only_peeling_without_input_skymodel():
+def test_pipeline_flow_rejects_image_only_peeling_without_input_skymodel(prefect_server):
     parset = _pipeline_parset(input_h5parm="input-solutions.h5", input_skymodel=None)
     lifecycle = RecordingPipelineLifecycle(
         parset=parset,
         strategy_steps=[_image_step(peel_outliers=True)],
     )
 
-    with prefect_test_harness(), pytest.raises(ValueError, match="sky model was provided"):
+    with pytest.raises(ValueError, match="sky model was provided"):
         pipeline_flow(
             "input.parset",
             operation_factories=RECORDING_FACTORIES,

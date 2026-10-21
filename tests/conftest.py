@@ -12,11 +12,13 @@ import tarfile
 import tempfile
 from pathlib import Path
 
+import casacore.tables as pt
 import lsmtool
 import numpy as np
 import pytest
 import requests
 from astropy.table import Table
+from losoto.h5parm import h5parm
 from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
@@ -31,6 +33,13 @@ RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
+# The visibilities in the downloaded test MS are about four orders of magnitude
+# below what the test sky models predict, so DDECal recovers gain amplitudes
+# near 0.01. The slow-gain processing clamps its lower flagging threshold at
+# 0.1 and would flag every solution. Scaling the session copy puts the gains
+# near unity, as for real LOFAR data. The weight columns are scaled by the
+# inverse square so they stay inverse-variance consistent.
+TEST_MS_DATA_SCALE = 1.5e4
 
 
 def download_test_ms(destination: Path) -> None:
@@ -214,7 +223,11 @@ def close_rapthor_file_handlers():
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items):
+    """Mark tests that start or share a Prefect test server as ``prefect``."""
     for item in items:
+        if "prefect_server" in item.fixturenames:
+            item.add_marker(pytest.mark.prefect)
+            continue
         try:
             source = inspect.getsource(item.obj)
         except (OSError, TypeError):
@@ -246,11 +259,25 @@ def _copy_from_resource_folder_to_test_path(filename, tmp_path):
     return target
 
 
+def scale_visibilities(ms_path, scale):
+    """Multiply the DATA column of an MS by ``scale`` and rescale the weights."""
+    if not np.isfinite(scale) or scale <= 0:
+        raise ValueError("scale must be finite and greater than zero")
+    with pt.table(ms_path, readonly=False, ack=False) as table:
+        table.putcol("DATA", table.getcol("DATA") * scale)
+        for column in ("WEIGHT", "WEIGHT_SPECTRUM"):
+            if column in table.colnames():
+                table.putcol(column, table.getcol(column) / scale**2)
+
+
 @pytest.fixture(scope="session")
 def test_ms(tmp_path_factory):
     """
     Fixture to provide a copy of the test MS in the resources directory.
     Yield the POSIX path to the copy of the MS.
+
+    The DATA column of the copy is scaled by ``TEST_MS_DATA_SCALE`` so that the
+    gain amplitudes solved against the test sky models come out near unity.
 
     The test MS contains:
         - 8 channels
@@ -262,6 +289,7 @@ def test_ms(tmp_path_factory):
     source = ensure_test_ms(RESOURCE_DIR)
     target = (tmp_path_factory.mktemp("test_ms") / TEST_MS_DIRNAME).as_posix()
     shutil.copytree(source, target)
+    scale_visibilities(target, TEST_MS_DATA_SCALE)
     yield target
 
 
@@ -773,3 +801,47 @@ def source_catalog_with_outliers_fits(tmp_path):
     )  # 10 sources, 4 of which will be outliers
     table.write(catalog_path, format="fits", overwrite=True)
     return catalog_path
+
+
+def write_scalar_h5parm(
+    path,
+    antennas,
+    *,
+    with_amplitudes=False,
+    phases=0.0,
+    amplitudes=1.0,
+    directions=("[Patch_0]",),
+    times=(0.0,),
+    frequencies=(1.0e8,),
+):
+    """Write a Rapthor-style scalar solution h5parm with phase000 and optionally amplitude000.
+
+    ``phases`` and ``amplitudes`` may be scalars or arrays broadcastable to the
+    (time, freq, ant, dir) solution shape. Returns the path as a string.
+    """
+    antennas = list(antennas)
+    directions = list(directions)
+    axes = {
+        "time": np.asarray(times, dtype=float),
+        "freq": np.asarray(frequencies, dtype=float),
+        "ant": antennas,
+        "dir": directions,
+    }
+    shape = tuple(len(values) for values in axes.values())
+    with h5parm(str(path), readonly=False) as solutions:
+        solset = solutions.makeSolset("sol000")
+        solset.obj._f_get_child("antenna").append([(name, np.zeros(3)) for name in antennas])
+        solset.obj._f_get_child("source").append([(name, (0.0, 0.0)) for name in directions])
+        soltabs = [("phase", "phase000", phases)]
+        if with_amplitudes:
+            soltabs.append(("amplitude", "amplitude000", amplitudes))
+        for soltype, name, values in soltabs:
+            solset.makeSoltab(
+                soltype,
+                name,
+                axesNames=list(axes),
+                axesVals=list(axes.values()),
+                vals=np.broadcast_to(np.asarray(values, dtype=float), shape).copy(),
+                weights=np.ones(shape),
+            )
+    return str(path)

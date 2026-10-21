@@ -179,6 +179,7 @@ def run_predict_model_data(
         predict_task["sagecalpredict"],
         predict_task["sourcedb"],
         predict_task["directions"],
+        predict_task["use_array_beam"],
         predict_task["numthreads"],
         h5parm=predict_task["h5parm"],
         applycal_steps=predict_task["applycal_steps"],

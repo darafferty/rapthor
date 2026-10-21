@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from prefect.testing.utilities import prefect_test_harness
 
 import rapthor.execution.calibrate.collection as calibrate_collection
 import rapthor.execution.calibrate.flow as calibrate_module
@@ -358,6 +357,7 @@ class CalibrateFieldStub:
         }
         self.observations = [CalibrateObservationStub(), CalibrateObservationStub()]
         self.ntimechunks = 2
+        self.use_array_beam = True
         self.calibration_diagnostics = []
         self.calibration_skymodel_file = str(tmp_path / "calibration.skymodel")
         Path(self.calibration_skymodel_file).write_text("skymodel")
@@ -402,6 +402,8 @@ class CalibrateFieldStub:
         self._calibration_strategy_defaulted = False
         self.apply_diagonal_solutions = False
         self.apply_amplitudes = False
+        self.dd_apply_amplitudes = False
+        self.di_apply_amplitudes = False
         self.generate_screens = False
         self.use_image_based_predict = False
         self.use_wsclean_predict = False
@@ -537,7 +539,8 @@ def _configure_dd_preapply_products(field, tmp_path):
     field.di_h5parm_filename = str(di_h5parm)
     field.fulljones_h5parm_filename = str(fulljones_h5parm)
     field.normalize_h5parm = str(normalize_h5parm)
-    field.apply_amplitudes = True
+    # The DI product carries slow gains; the DI pre-apply follows its own flag.
+    field.di_apply_amplitudes = True
     field.apply_normalizations = True
     return di_h5parm, fulljones_h5parm, normalize_h5parm
 
@@ -1310,6 +1313,7 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["calibration_di_fulljones"]
     )
+
     assert (
         normalize_command(
             build_collect_h5parms_command(
@@ -1435,6 +1439,12 @@ def test_calibrate_command_builders_match_reference_fixtures():
         )
         == commands["calibrate"]["idgcal_solve_phase_and_gain"]
     )
+
+
+def test_calibration_solve_command_only_sets_array_factor_for_array_beam():
+    command = build_calibration_solve_command(_calibration_solve_options(use_array_beam=False))
+
+    assert "solve1.beammode=array_factor" not in command
 
 
 @pytest.mark.parametrize(
@@ -1995,6 +2005,127 @@ def test_calibrate_payload_from_inputs_builds_dd_preapply_payload(tmp_path):
     assert payload["normalize_h5parm"] == "/solutions/normalize_solutions.h5"
 
 
+def _dd_with_slow_preapply_input_parms():
+    """Default fast/medium/slow/medium chain with DI pre-application and normalization."""
+    input_parms = _dd_with_slow_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[applycal,solve1,solve2,solve3,solve4]",
+            "applycal_steps": "[fastphase,normalization]",
+            "calibration_applycal_steps": "[normalization]",
+            "applycal_h5parm": file_record("/solutions/di_solutions.h5"),
+            "normalize_h5parm": file_record("/solutions/normalize_solutions.h5"),
+        }
+    )
+    return _add_explicit_solve_metadata(input_parms)
+
+
+def _solve_applycal_tokens(command):
+    """Return the DDECal-internal applycal tokens (solveN.applycal.*) of a command."""
+    return [
+        token
+        for token in command
+        if token.startswith("solve")
+        and ".applycal." in token
+        and not token.endswith(("correction=amplitude000", "solset=sol000"))
+    ]
+
+
+def test_calibrate_payload_from_inputs_forwards_solve_model_applycal_steps(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_with_slow_preapply_input_parms(), tmp_path)
+
+    assert payload["applycal_steps"] == "[fastphase,normalization]"
+    assert payload["calibration_applycal_steps"] == "[normalization]"
+    assert payload["normalize_h5parm"] == "/solutions/normalize_solutions.h5"
+
+
+def test_calibrate_commands_normalize_model_in_the_predicting_solve_only(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_with_slow_preapply_input_parms(), tmp_path)
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    # The data is corrected by the stand-alone applycal step.
+    assert "steps=[applycal,solve1,solve2,solve3,solve4]" in command
+    assert "applycal.steps=[fastphase,normalization]" in command
+    assert "applycal.normalization.parmdb=/solutions/normalize_solutions.h5" in command
+    # The model is normalized where DP3 predicts it: solve1. DP3 does not apply
+    # DDECal applycal steps to a reused model, so the later solves inherit the
+    # kept model and get no applycal settings of their own.
+    assert "solve1.keepmodel=True" in command
+    assert "solve3.reusemodel=[solve1.*]" in command
+    assert sorted(_solve_applycal_tokens(command)) == [
+        "solve1.applycal.normalization.parmdb=/solutions/normalize_solutions.h5",
+        "solve1.applycal.steps=[normalization]",
+    ]
+
+
+def test_calibrate_commands_omit_solve_model_applycal_without_normalization(tmp_path):
+    payload = calibrate_payload_from_inputs("dd", _dd_preapply_input_parms(), tmp_path)
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in command
+    assert _solve_applycal_tokens(command) == []
+
+
+def test_calibrate_commands_omit_solve_model_applycal_for_external_prediction(tmp_path):
+    input_parms = _dd_image_predict_preapply_input_parms()
+    input_parms["calibration_applycal_steps"] = "[normalization]"
+    payload = calibrate_payload_from_inputs(
+        "dd", _add_explicit_solve_metadata(input_parms), tmp_path
+    )
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    # The DP3 predict step owns the model buffers; the stand-alone applycal
+    # with usemodeldata corrects them, so no solve applies corrections itself.
+    assert "steps=[predict,applybeam,applycal,solve1,solve2]" in command
+    assert "solve1.reusemodel=[predict.*]" in command
+    assert _solve_applycal_tokens(command) == []
+
+
+def test_calibrate_payload_from_inputs_builds_dd_wsclean_predict_preapply_payload(tmp_path):
+    input_parms = _dd_wsclean_predict_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[applycal,solve1,solve2]",
+            "applycal_steps": "[fastphase]",
+            "applycal_h5parm": file_record("/solutions/di_solutions.h5"),
+        }
+    )
+    payload = calibrate_payload_from_inputs(
+        "dd", _add_explicit_solve_metadata(input_parms), tmp_path
+    )
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][0])
+
+    assert payload["wsclean_predict"] is True
+    assert "steps=[applycal,solve1,solve2]" in command
+    assert "applycal.steps=[fastphase]" in command
+    assert "applycal.parmdb=/solutions/di_solutions.h5" in command
+    assert _solve_applycal_tokens(command) == []
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({"calibration_applycal_steps": "[fastphase]"}, "Unsupported DDECal model applycal step"),
+        (
+            {"calibration_applycal_steps": "[normalization]", "normalize_h5parm": None},
+            "requires normalize_h5parm",
+        ),
+    ],
+)
+def test_calibrate_payload_from_inputs_rejects_invalid_solve_model_applycal(
+    tmp_path, overrides, message
+):
+    input_parms = _dd_fast_medium_input_parms()
+    input_parms.update(overrides)
+
+    with pytest.raises(ValueError, match=message):
+        calibrate_payload_from_inputs("dd", _add_explicit_solve_metadata(input_parms), tmp_path)
+
+
 def test_calibrate_payload_from_inputs_builds_dd_image_predict_payload(tmp_path):
     payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
 
@@ -2308,6 +2439,7 @@ def test_run_plot_solutions_publishes_new_plot_artifacts(
 
 
 def test_run_calibrate_flow_supports_di_fulljones(
+    prefect_server,
     tmp_path,
     fake_calibrate_shell_operation_cls,
     fake_direct_calibrate_helpers,
@@ -2372,7 +2504,7 @@ def test_run_calibrate_flow_supports_di_fulljones(
 
 
 def test_run_calibrate_flow_rejects_invalid_chunk_payload(
-    tmp_path, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
 ):
     payload = calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path)
     payload["chunks"] = ["not-a-chunk"]
@@ -2388,7 +2520,9 @@ def test_run_calibrate_flow_rejects_invalid_chunk_payload(
     assert fake_calibrate_shell_operation_cls.instances == []
 
 
-def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_di_scalar_phase(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("di", _di_scalar_phase_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2422,7 +2556,9 @@ def test_run_calibrate_flow_supports_di_scalar_phase(tmp_path, fake_calibrate_sh
     assert "--first-dir" in commands[5]
 
 
-def test_run_calibrate_flow_supports_di_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_di_fast_phase(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("di", _di_fast_phase_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2450,7 +2586,9 @@ def test_run_calibrate_flow_supports_di_fast_phase(tmp_path, fake_calibrate_shel
     assert "--first-dir" in commands[3]
 
 
-def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_di_slow(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("di", _di_slow_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2483,7 +2621,9 @@ def test_run_calibrate_flow_supports_di_slow(tmp_path, fake_calibrate_shell_oper
     assert "--first-dir" in commands[4]
 
 
-def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_di_phase_slow(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("di", _di_phase_slow_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2514,7 +2654,7 @@ def test_run_calibrate_flow_supports_di_phase_slow(tmp_path, fake_calibrate_shel
 
 
 def test_run_calibrate_flow_supports_mixed_di_strategy(
-    tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
 ):
     payload = calibrate_payload_from_inputs("di", _di_scalar_slow_fulljones_input_parms(), tmp_path)
 
@@ -2566,7 +2706,9 @@ def test_run_calibrate_flow_supports_mixed_di_strategy(
     ]
 
 
-def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_dd_fast_phase(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("dd", _dd_fast_phase_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2607,7 +2749,9 @@ def test_run_calibrate_flow_supports_dd_fast_phase(tmp_path, fake_calibrate_shel
     )
 
 
-def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_dd_slow(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("dd", _dd_slow_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2647,7 +2791,7 @@ def test_run_calibrate_flow_supports_dd_slow(tmp_path, fake_calibrate_shell_oper
 
 
 def test_run_calibrate_flow_supports_dd_slow_then_medium(
-    tmp_path, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
 ):
     payload = calibrate_payload_from_inputs("dd", _dd_slow_medium_input_parms(), tmp_path)
 
@@ -2679,7 +2823,9 @@ def test_run_calibrate_flow_supports_dd_slow_then_medium(
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
 
 
-def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_dd_fast_medium(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("dd", _dd_fast_medium_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2710,7 +2856,7 @@ def test_run_calibrate_flow_supports_dd_fast_medium(tmp_path, fake_calibrate_she
 
 
 def test_run_calibrate_flow_supports_custom_dd_solve_order(
-    tmp_path, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
 ):
     payload = calibrate_payload_from_inputs("dd", _dd_medium_fast_input_parms(), tmp_path)
 
@@ -2738,7 +2884,9 @@ def test_run_calibrate_flow_supports_custom_dd_solve_order(
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
 
 
-def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_dd_preapply(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("dd", _dd_preapply_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2765,7 +2913,9 @@ def test_run_calibrate_flow_supports_dd_preapply(tmp_path, fake_calibrate_shell_
     assert "solve2.reusemodel=[solve1.*]" in commands[0]
 
 
-def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_shell_operation_cls):
+def test_run_calibrate_flow_supports_dd_image_predict(
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
+):
     payload = calibrate_payload_from_inputs("dd", _dd_image_predict_input_parms(), tmp_path)
 
     outputs = run_flow_for_test(
@@ -2825,6 +2975,7 @@ def test_run_calibrate_flow_supports_dd_image_predict(tmp_path, fake_calibrate_s
 
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_calibrate_flow_supports_dd_wsclean_predict(
+    prefect_server,
     tmp_path,
     fake_calibrate_shell_operation_cls,
     fake_direct_calibrate_helpers,
@@ -2907,7 +3058,7 @@ def test_run_calibrate_flow_supports_dd_wsclean_predict(
 
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_calibrate_flow_supports_dd_screen_generation(
-    tmp_path, fake_calibrate_shell_operation_cls, keep_temporary_files
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls, keep_temporary_files
 ):
     payload = calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path)
 
@@ -2945,7 +3096,7 @@ def test_run_calibrate_flow_supports_dd_screen_generation(
 
 
 def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
-    tmp_path, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
 ):
     payload = calibrate_payload_from_inputs(
         "dd",
@@ -2985,7 +3136,7 @@ def test_run_calibrate_flow_supports_dd_screen_generation_with_slow_gain(
     ids=["normal", "image-predict", "wsclean-predict", "screens"],
 )
 def test_run_calibrate_flow_retains_intermediates_on_late_failure(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls, mode, input_factory
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls, mode, input_factory
 ):
     input_parms = _use_local_timechunk_dirs(input_factory(), tmp_path)
     payload = calibrate_payload_from_inputs(mode, input_parms, tmp_path)
@@ -3030,7 +3181,7 @@ def test_run_calibrate_flow_retains_intermediates_on_late_failure(
 
 
 def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
-    tmp_path, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
 ):
     class MissingModelShellOperation(fake_calibrate_shell_operation_cls):
         instances = []
@@ -3053,7 +3204,7 @@ def test_run_calibrate_flow_fails_when_image_predict_model_is_missing(
 
 
 def test_run_calibrate_flow_fails_when_image_predict_region_is_missing(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     def skip_region_file(*args, **kwargs):
         return None
@@ -3076,7 +3227,7 @@ def test_run_calibrate_flow_fails_when_image_predict_region_is_missing(
 
 
 def test_run_calibrate_flow_supports_dd_image_predict_preapply(
-    tmp_path, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls
 ):
     normalization = tmp_path / "normalize_solutions.h5"
     normalization.write_text("normalization input")
@@ -3114,7 +3265,7 @@ def test_run_calibrate_flow_supports_dd_image_predict_preapply(
 
 
 def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
-    tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls, fake_direct_calibrate_helpers
 ):
     input_parms = _dd_fast_medium_input_parms()
     input_parms["calibrator_patch_names"] = ["patch1"]
@@ -3137,7 +3288,7 @@ def test_run_calibrate_flow_skips_dd_source_adjustment_for_single_direction(
 
 @pytest.mark.parametrize("keep_temporary_files", [False, True])
 def test_run_calibrate_flow_supports_dd_with_slow(
-    tmp_path, fake_calibrate_shell_operation_cls, keep_temporary_files
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls, keep_temporary_files
 ):
     payload = calibrate_payload_from_inputs("dd", _dd_with_slow_input_parms(), tmp_path)
 
@@ -3184,7 +3335,7 @@ def test_run_calibrate_flow_supports_dd_with_slow(
 
 @pytest.mark.parametrize("solution_combine_mode", ["p1p2a2_scalar", "p1p2a2_diagonal"])
 def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
-    tmp_path, fake_calibrate_shell_operation_cls, solution_combine_mode
+    prefect_server, tmp_path, fake_calibrate_shell_operation_cls, solution_combine_mode
 ):
     input_parms = _dd_with_slow_input_parms()
     input_parms["dp3_steps"] = "[solve1,solve2,solve3]"
@@ -3219,36 +3370,34 @@ def test_run_calibrate_flow_supports_dd_with_slow_without_medium2(
 
 
 def test_calibrate_prefect_flow_entrypoint_runs_with_mocked_shell(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
         lambda: fake_calibrate_shell_operation_cls,
     )
 
-    with prefect_test_harness(server_startup_timeout=None):
-        outputs = calibrate_flow(
-            calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path),
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
+    outputs = calibrate_flow(
+        calibrate_payload_from_inputs("di", _di_fulljones_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
 
     assert outputs["combined_solutions"] == file_record(tmp_path / "fulljones_solutions.h5")
     assert len(fake_calibrate_shell_operation_cls.instances) == 4
 
 
 def test_calibrate_prefect_flow_entrypoint_runs_screen_generation(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
         lambda: fake_calibrate_shell_operation_cls,
     )
 
-    with prefect_test_harness(server_startup_timeout=None):
-        outputs = calibrate_flow(
-            calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path),
-            execution_config=ExecutionConfig(task_runner="sync"),
-        )
+    outputs = calibrate_flow(
+        calibrate_payload_from_inputs("dd", _dd_screen_input_parms(), tmp_path),
+        execution_config=ExecutionConfig(task_runner="sync"),
+    )
 
     assert outputs["combined_solutions"] == file_record(tmp_path / "combined_solutions.h5")
     assert _command_names(_command_tokens(fake_calibrate_shell_operation_cls)) == [
@@ -3259,7 +3408,7 @@ def test_calibrate_prefect_flow_entrypoint_runs_screen_generation(
 
 
 def test_calibrate_di_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3273,8 +3422,7 @@ def test_calibrate_di_operation_run_uses_prefect_flow(
     field = CalibrateFieldStub(tmp_path)
     operation = Calibrate("di", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = _expected_di_fulljones_operation_outputs(operation)
     solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_di_1"
@@ -3292,7 +3440,7 @@ def test_calibrate_di_operation_run_uses_prefect_flow(
 
 
 def test_calibrate_di_scalar_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3307,8 +3455,7 @@ def test_calibrate_di_scalar_operation_run_uses_prefect_flow(
     field.calibration_strategy = {"di": ["fast_phase", "medium_phase"]}
     operation = Calibrate("di", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = _expected_di_scalar_phase_operation_outputs(operation)
     solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_di_1"
@@ -3378,7 +3525,7 @@ def test_calibrate_di_operation_run_reuses_prefect_outputs_when_done(
     ],
 )
 def test_calibrate_di_operation_run_failure_does_not_mark_done(
-    tmp_path, monkeypatch, shell_operation_cls, expected_message
+    prefect_server, tmp_path, monkeypatch, shell_operation_cls, expected_message
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3392,10 +3539,7 @@ def test_calibrate_di_operation_run_failure_does_not_mark_done(
     field = CalibrateFieldStub(tmp_path)
     operation = Calibrate("di", field, index=1)
 
-    with (
-        prefect_test_harness(server_startup_timeout=None),
-        pytest.raises((FileNotFoundError, RuntimeError), match=expected_message),
-    ):
+    with pytest.raises((FileNotFoundError, RuntimeError), match=expected_message):
         operation.run()
 
     assert Path(operation.pipeline_inputs_file).is_file()
@@ -3451,7 +3595,7 @@ def test_calibrate_di_scalar_operation_run_reuses_prefect_outputs_when_done(
 
 
 def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3466,8 +3610,7 @@ def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
     field = CalibrateFieldStub(tmp_path)
     operation = Calibrate("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = _expected_dd_fast_medium_operation_outputs(operation)
     solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
@@ -3491,7 +3634,7 @@ def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
 
 
 def test_calibrate_dd_operation_run_passes_only_current_cycle_initial_solutions_to_dp3(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3524,8 +3667,7 @@ def test_calibrate_dd_operation_run_passes_only_current_cycle_initial_solutions_
 
     operation = Calibrate("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     dp3_command = next(
         command
@@ -3581,7 +3723,7 @@ def test_calibrate_dd_fast_medium_operation_run_reuses_prefect_outputs_when_done
 
 
 def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3597,8 +3739,7 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
     di_h5parm, fulljones_h5parm, normalize_h5parm = _configure_dd_preapply_products(field, tmp_path)
     operation = Calibrate("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = _expected_dd_fast_medium_operation_outputs(operation)
     solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
@@ -3610,7 +3751,7 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1)
-    assert "steps=[applycal,solve1,solve2]" in commands[0]
+    assert "steps=[applycal,solve1,solve2,null]" in commands[0]
     assert "applycal.steps=[fastphase,slowgain,fulljones,normalization]" in commands[0]
     assert f"applycal.parmdb={di_h5parm}" in commands[0]
     assert f"applycal.fulljones.parmdb={fulljones_h5parm}" in commands[0]
@@ -3619,7 +3760,7 @@ def test_calibrate_dd_preapply_operation_run_uses_prefect_flow(
 
 
 def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3635,8 +3776,7 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
     field.use_image_based_predict = True
     operation = Calibrate("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = _expected_dd_fast_medium_operation_outputs(operation)
     pipeline_dir = Path(operation.pipeline_working_dir)
@@ -3667,7 +3807,7 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
         "-scale",
         "0.001",
     ]
-    assert "steps=[predict,applybeam,solve1,solve2]" in commands[1]
+    assert "steps=[predict,applybeam,solve1,solve2,null]" in commands[1]
     assert f"predict.regions={pipeline_dir / 'field_facets_ds9.reg'}" in commands[1]
     assert f"predict.images=[{pipeline_dir / 'calibration_model-term-0.fits'}]" in commands[1]
     assert "solve1.reusemodel=[predict.*]" in commands[1]
@@ -3676,7 +3816,7 @@ def test_calibrate_dd_image_predict_operation_run_uses_prefect_flow(
 
 
 def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3698,8 +3838,7 @@ def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
     field.generate_screens = True
     operation = Calibrate("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = _expected_dd_screen_operation_outputs(operation)
     solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
@@ -3732,7 +3871,7 @@ def test_calibrate_dd_screen_operation_run_uses_prefect_flow(
 
 
 def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
-    tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3752,8 +3891,7 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
     _configure_dd_multidirection(field)
     operation = Calibrate("dd", field, index=1)
 
-    with prefect_test_harness(server_startup_timeout=None):
-        operation.run()
+    operation.run()
 
     expected_outputs = _expected_dd_slow_operation_outputs(operation)
     solutions_dir = Path(field.parset["dir_working"]) / "solutions" / "calibrate_1"
@@ -3784,7 +3922,7 @@ def test_calibrate_dd_slow_source_adjusted_operation_run_uses_prefect_flow(
     assert field.calibration_diagnostics == [{"cycle_number": 1, "solution_flagged_fraction": 0.0}]
     commands = _command_tokens(fake_calibrate_shell_operation_cls)
     assert _command_names(commands) == _calibration_command_names_after_collect_split(1, 1, 2, 1)
-    assert "steps=[solve1,solve2,solve3,solve4]" in commands[0]
+    assert "steps=[solve1,solve2,solve3,solve4,null]" in commands[0]
     assert "solve3.h5parm=slow_gain_0.h5parm" in commands[0]
     assert field.scan_h5parms_calls == 1
 
@@ -3979,7 +4117,7 @@ def test_calibrate_prefect_tasks_submit_all_chunks_before_collect(monkeypatch, t
     ]
 
 
-def test_run_calibrate_flow_fails_when_expected_output_is_missing(tmp_path):
+def test_run_calibrate_flow_fails_when_expected_output_is_missing(prefect_server, tmp_path):
     with pytest.raises(FileNotFoundError, match="DI solve1 full-Jones h5parm"):
         run_flow_for_test(
             calibrate_flow,

@@ -22,6 +22,12 @@ Rapthor parset. The options for this parameter are described below:
         are not skipped. In these cases, a custom strategy can disable them
         when they are not needed (see :ref:`custom_strategy`).
 
+        The built-in strategy sets :term:`calibration_strategy` explicitly for
+        every cycle. Its early phase-only sequence is
+        ``["fast_phase", "medium_phase"]`` under ``"dd"``; later cycles add
+        ``"slow_gains"`` and a second ``"medium_phase"``. It does not rely on the
+        fallback used when a custom cycle omits the parameter.
+
 ``strategy = image``
     This strategy performs imaging only; no calibration is done. As such, a file
     containing the direction-dependent corrections must be supplied via the
@@ -77,16 +83,17 @@ cycle.
 .. note::
 
     Examples of custom strategy files are available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/main/examples/custom_calibration_strategy.py>`_
     (for self calibration), `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_imaging_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/main/examples/custom_imaging_strategy.py>`_
     (for imaging only) and `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/flexible_calibration_strategy.py>`_
-    (for more control over the calibration strategy). Files that duplicate the default strategies are available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/main/examples/flexible_calibration_strategy.py>`_
+    (for more control over the calibration strategy). Templates based on the
+    built-in strategies are available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/main/examples/default_calibration_strategy.py>`_
     (for self calibration; unlike the built-in self calibration strategy, this
     file never runs phase-only cycles) and `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_imaging_strategy.py>`_
+    <https://git.astron.nl/RD/rapthor/-/blob/main/examples/default_imaging_strategy.py>`_
     (for imaging only).
 
 .. note::
@@ -94,7 +101,8 @@ cycle.
     If the strategy performs self calibration, the last entry in ``strategy_steps`` can be
     used to specify parameters specific to the final cycle (which is performed after
     self calibration finishes). In the default self calibration strategy, the parameters
-    for the final cycle are set to those of the last cycle of selfcal.
+    for the final cycle are set to those of the last cycle of selfcal, except for the
+    output channel width, which is reduced from 8 MHz to 4 MHz for the final cycle.
 
 .. note::
 
@@ -112,10 +120,17 @@ The following processing parameters can be set for each cycle:
         Float that sets the minimum uv distance in lambda used during calibration for this cycle (applies to both fast-phase and slow-gain solves).
 
     fast_timestep_sec
-        Float that sets the solution interval in sec to use in the fast (scalarphase) solve. For this solve, all the core stations are constrained to have the same solutions.
+        Float that sets the solution interval in sec to use in the fast
+        (scalarphase) solve. For DD calibration, the core stations are constrained
+        to have the same solutions. DI solves do not use this core constraint.
 
     medium_timestep_sec
-        Float that sets the solution interval in sec to use in the medium-fast (scalarphase) solves. For the first medium-fast solve, each station is solved for independently. For a medium-fast solve requested after ``slow_gains`` in ``calibration_strategy``, the core stations are constrained to have the same solutions.
+        Float that sets the solution interval in sec to use in the medium-fast
+        (scalarphase) solves. In DD calibration, each station is solved for
+        independently before ``slow_gains``. A ``medium_phase`` solve requested
+        after ``slow_gains`` constrains the core stations to have the same
+        solutions, even if it is the first ``medium_phase`` in the sequence.
+        DI solves do not use this core constraint.
 
     slow_timestep_sec
         Float that sets the solution interval in sec to use in the slow-gain solve. For this solve, each station is solved for independently.
@@ -200,7 +215,35 @@ The following processing parameters can be set for each cycle:
         - "slow_gains": run the slow (diagonal) solve.
         - "full_jones": run the full-Jones solve.
 
-        The order of the top-level keys (DI and DD) and the order of solve names within each list determine the order requested by the user. An empty list means that calibration mode is skipped, allowing DI-only or DD-only cycles. If this parameter is not set for a cycle in which calibration is done, Rapthor logs a warning and uses the sequence of the example above (i.e., the full direction-dependent sequence and no direction-independent solves). See :ref:`calibration_strategy_details` for the combinations of solves that can be used and for how the resulting solutions are applied.
+        The order of the top-level keys (DI and DD) and the order of solve names
+        within each list determine the order requested by the user. An empty
+        list means that calibration mode is skipped, allowing DI-only or DD-only
+        cycles.
+
+        An omitted parameter, ``None`` and an empty dictionary all count as
+        unspecified. If either legacy solve flag is present in that cycle,
+        Rapthor first translates the flags into an explicit strategy; see
+        :ref:`legacy_calibration_flags`. This also applies to flags set to
+        ``False``.
+
+        If neither a strategy nor legacy flags are supplied, a calibrating cycle
+        logs a warning and uses the sequence above (the full DD sequence and no
+        DI solves). Each calibrating cycle resolves this default independently;
+        an earlier cycle's sequence does not carry over. Preflight checks use
+        the same resolved sequence. Each calibrating cycle logs the sequence in
+        its requested order and identifies whether it was defaulted.
+
+        A cycle without calibration preserves the previous sequence when neither
+        a strategy nor legacy flags are supplied, so that imaging can apply the
+        previous solutions. An explicit strategy, including one translated from
+        legacy flags, overrides that sequence. If there is no previous sequence,
+        the full DD sequence above is used to select the supplied solutions to
+        apply; no calibration is run.
+
+        A dictionary with empty solve lists, such as ``{"di": [], "dd": []}``,
+        explicitly disables those modes; it does not request the default. See
+        :ref:`calibration_strategy_details` for supported solve combinations and
+        how the resulting solutions are applied.
 
 
 .. _calibration_strategy_details:
@@ -227,7 +270,11 @@ For the direction-independent ("di") calibration:
 - ``["slow_gains"]``
 - ``["full_jones"]``
 
-Rapthor stops with an error at the start of the run if the strategy contains any other sequence. A full-Jones solve can only be done as a direction-independent solve, on its own. To do a full-Jones solve in addition to other direction-independent solves, do them in different cycles.
+An empty list is also allowed for either mode and disables its solves. Rapthor
+stops with an error at the start of the run if the strategy contains any other
+nonempty sequence. A full-Jones solve can only be done as a direction-independent
+solve, on its own. To do a full-Jones solve in addition to other
+direction-independent solves, do them in different cycles.
 
 The order of the "dd" and "di" keys sets which of the two is done first:
 
@@ -243,6 +290,59 @@ The solutions are then used in the imaging of the same cycle as follows:
 
 The solutions found in one cycle are not applied to the data in later cycles in which calibration is done again. They are used only as the starting values for the same solves in the next cycle, which speeds up the convergence of the solver.
 
-.. note::
+.. _legacy_calibration_flags:
 
-    The ``do_slowgain_solve`` and ``do_fulljones_solve`` parameters of earlier versions are deprecated. If one of them is present, Rapthor logs a warning and uses the equivalent ``calibration_strategy``. It is an error to set both one of these parameters and ``calibration_strategy`` for the same cycle.
+Legacy solve flags
+~~~~~~~~~~~~~~~~~~
+
+The ``do_slowgain_solve`` and ``do_fulljones_solve`` parameters are deprecated.
+If at least one is present and :term:`calibration_strategy` is unspecified,
+Rapthor translates the flags into an explicit strategy when loading the
+processing strategy. It logs a deprecation warning naming the replacement.
+Any missing companion flag is treated as ``False`` for that cycle.
+
+The table below applies when ``calibration_strategy`` is absent, ``None`` or
+``{}``. "Phase-only DD" means ``["fast_phase", "medium_phase"]``. "Full DD"
+means ``["fast_phase", "medium_phase", "slow_gains", "medium_phase"]``.
+
+.. list-table:: Solve selection for a calibrating cycle
+    :header-rows: 1
+    :widths: 25 25 25 25
+
+    * - ``do_slowgain_solve``
+      - ``do_fulljones_solve``
+      - DD solves
+      - DI solves
+    * - Absent
+      - Absent
+      - Full DD (default)
+      - None
+    * - ``False``
+      - ``False``
+      - Phase-only DD
+      - None
+    * - ``True``
+      - ``False``
+      - Full DD
+      - None
+    * - ``False``
+      - ``True``
+      - Phase-only DD
+      - ``["full_jones"]``
+    * - ``True``
+      - ``True``
+      - Full DD
+      - ``["full_jones"]``
+
+Explicitly setting either flag to ``False`` therefore differs from omitting
+both flags. For example, setting only ``do_fulljones_solve = False`` requests
+phase-only DD calibration. Translated strategies always put DD before DI.
+
+A nonempty ``calibration_strategy`` dictionary cannot be combined with either
+legacy flag, even when the flag is ``False`` or the dictionary contains only
+empty solve lists. Rapthor rejects that combination as ambiguous. Use the
+explicit dictionary and remove the legacy flags.
+
+Legacy flags are also translated in image-only cycles. They override the
+previous strategy used to select solutions for imaging, but do not enable
+calibration when :term:`do_calibrate` is ``False``.

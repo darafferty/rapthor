@@ -22,14 +22,16 @@ from .utils import find_command_records, get_working_dir_from_parset, update_par
 def test_rapthor_run_single_loop_peel_bright_sources(
     generated_parset_path, single_loop_strategy_path_peel_bright_sources
 ):
-    """Test a single self-calibration loop with peel_bright_sources enabled and disabled."""
-    strategy_path, peel_bright_sources = single_loop_strategy_path_peel_bright_sources
+    """Test a single self-calibration loop with peel_bright_sources enabled.
 
+    The disabled case is the default single-loop run, which
+    tests/integration/test_dd_calibration.py checks.
+    """
     updated_parset_path = update_parset_path(
         generated_parset_path,
         {
             "allow_internet_access": "False",
-            "strategy": str(strategy_path),
+            "strategy": str(single_loop_strategy_path_peel_bright_sources),
         },
     )
 
@@ -54,13 +56,8 @@ def test_rapthor_run_single_loop_peel_bright_sources(
         contains="-restore-list",
     )
 
-    if peel_bright_sources:
-        assert len(restore_commands) >= 2, (
-            "Expected PB and non-PB WSClean restore commands when peeling is enabled"
-        )
-    else:
-        assert restore_commands == [], (
-            "WSClean restore commands should not run when bright-source peeling is disabled"
-        )
+    assert len(restore_commands) >= 2, (
+        "Expected PB and non-PB WSClean restore commands when peeling is enabled"
+    )
 
     assert "Rapthor has finished :)" in output

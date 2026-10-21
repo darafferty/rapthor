@@ -76,11 +76,19 @@ class CalibratePayload(TypedDict, total=False):
     """Serializable payload submitted to the calibrate flow."""
 
     mode: str
+    use_array_beam: bool
     calibration_kind: str
     pipeline_working_dir: str
     data_colname: str
     modeldatacolumn: Optional[str]
     dp3_steps: str
+    # Stand-alone applycal step (corrects the data before the solves).
+    applycal_steps: Optional[str]
+    applycal_h5parm: Optional[str]
+    fulljones_h5parm: Optional[str]
+    normalize_h5parm: Optional[str]
+    # DDECal-internal applycal steps for the solve that predicts the model.
+    calibration_applycal_steps: Optional[str]
     image_based_predict: bool
     wsclean_predict: bool
     image_predict: Optional[CalibrateImagePredictPayload]
