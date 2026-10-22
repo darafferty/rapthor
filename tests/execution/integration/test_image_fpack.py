@@ -16,7 +16,7 @@ pytestmark = [
 ]
 
 
-def test_compression_restart_replaces_a_stopped_output_and_then_reuses_it(tmp_path):
+def test_compression_restart_replaces_a_stopped_output(tmp_path):
     images = [tmp_path / "sector_1-MFS-I-image.fits", tmp_path / "sector_1-MFS-I-model-pb.fits"]
     for image in images:
         fits.PrimaryHDU(np.random.default_rng(1).random((64, 64), dtype=np.float32)).writeto(image)
@@ -36,13 +36,9 @@ def test_compression_restart_replaces_a_stopped_output_and_then_reuses_it(tmp_pa
         [file_record(f"{images[0]}.fz")],
         [file_record(f"{images[1]}.fz")],
     )
-    compressed_times = []
     for image in images:
         with fits.open(f"{image}.fz") as compressed, fits.open(image) as original:
             assert compressed[1].data.shape == original[0].data.shape
-        compressed_times.append((tmp_path / f"{image.name}.fz").stat().st_mtime_ns)
 
+    # A resumed run compresses the complete images again
     assert compress() == records
-    assert [(tmp_path / f"{image.name}.fz").stat().st_mtime_ns for image in images] == (
-        compressed_times
-    )

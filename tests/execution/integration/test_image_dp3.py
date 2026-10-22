@@ -174,7 +174,7 @@ def test_duplicate_phase_step_applies_the_phases_twice(prepare, test_ms_info, tm
 def test_prepare_restart_remakes_a_stopped_ms_and_then_reuses_it(
     test_ms, test_ms_info, phasecenter, tmp_path
 ):
-    """A restart replaces an MS left by a stopped attempt, then reuses the complete one."""
+    """A restart makes an MS that a stopped attempt left partial, then reuses the complete one."""
     workdir = tmp_path / "image_1"
     workdir.mkdir()
     sector = {
@@ -194,9 +194,7 @@ def test_prepare_restart_remakes_a_stopped_ms_and_then_reuses_it(
         "minchannels": 1,
     }
     input_state = file_tree_state(test_ms)
-    # A stopped attempt left an incomplete MS at the final path and a partial one.
-    (workdir / "prep.ms").mkdir()
-    (workdir / "prep.ms" / "table.dat").write_text("incomplete")
+    # A stopped attempt left a partial MS
     (workdir / ".prep.ms.partial").mkdir()
 
     config = ExecutionConfig(task_runner="sync")

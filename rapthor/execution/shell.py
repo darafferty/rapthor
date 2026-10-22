@@ -14,9 +14,9 @@ import threading
 import time
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
-from functools import lru_cache, partial
+from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Mapping, Optional
+from typing import Mapping, Optional
 
 from rapthor.execution.commands import CommandInput, command_to_string, normalize_command
 from rapthor.execution.config import ExecutionConfig
@@ -97,18 +97,6 @@ def run_external_command(
         ),
         execution_config,
         shell_operation_cls=shell_operation_cls,
-    )
-
-
-def command_runner(
-    working_directory: Optional[str], execution_config: ExecutionConfig, **options
-) -> Callable[[CommandInput], object]:
-    """Return a function that runs one command with these run_external_command settings."""
-    return partial(
-        run_external_command,
-        working_directory=working_directory,
-        execution_config=execution_config,
-        **options,
     )
 
 

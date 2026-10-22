@@ -199,7 +199,6 @@ def imaging_restart(tmp_path, monkeypatch):
         )
         return prepared, concat
 
-    run.sector = sector
     yield workdir, commands, run
     assert [file_tree_state(path) for path in inputs] == original_state
 
@@ -229,18 +228,17 @@ def test_imaging_preparation_restarts_after_a_failure_during_creation(imaging_re
     assert (workdir / "sector_1_concat.ms" / "table.dat").read_text() == "taql"
 
 
-def test_imaging_preparation_restarts_after_a_failure_before_completion_is_recorded(
+def test_imaging_preparation_restarts_after_a_failure_before_promotion(
     imaging_restart, monkeypatch
 ):
     workdir, commands, run = imaging_restart
-    # Stop after the second DP3 command succeeded, before its MS is promoted.
+    # Stop after the second DP3 command succeeded, before its MS gets its final name.
     promotions = []
 
     def stop_second_promotion(source, destination):
-        if not destination.endswith(".product.json"):
-            promotions.append(destination)
-            if len(promotions) == 2:
-                raise KeyboardInterrupt
+        promotions.append(destination)
+        if len(promotions) == 2:
+            raise KeyboardInterrupt
         return original_replace(source, destination)
 
     original_replace = outputs_module.os.replace
@@ -268,33 +266,7 @@ def test_imaging_preparation_second_restart_reuses_complete_outputs(imaging_rest
     assert run() == first_records == _expected_records(workdir)
     assert commands.commands == []
     assert sorted(path.name for path in workdir.iterdir()) == [
-        ".sector_1_concat.ms.product.json",
-        ".sector_1_obs_0_prep.ms.product.json",
-        ".sector_1_obs_1_prep.ms.product.json",
         "sector_1_concat.ms",
         "sector_1_obs_0_prep.ms",
         "sector_1_obs_1_prep.ms",
     ]
-
-
-def test_imaging_preparation_remakes_untracked_outputs(imaging_restart):
-    workdir, commands, run = imaging_restart
-    run()
-    commands.commands.clear()
-    # A prepared MS without a record, such as one left by an older version, is
-    # made again. The concat MS depends on it only through the digest in its
-    # record, which is the same, so it is reused.
-    (workdir / ".sector_1_obs_0_prep.ms.product.json").unlink()
-
-    assert run() == _expected_records(workdir)
-    assert commands.commands == ["DP3"]
-
-
-def test_imaging_preparation_remakes_outputs_for_other_settings(imaging_restart):
-    workdir, commands, run = imaging_restart
-    run()
-    commands.commands.clear()
-    run.sector["prepare_data_steps"] = "[shift,avg]"
-
-    assert run() == _expected_records(workdir)
-    assert commands.commands == ["DP3", "DP3", "taql"]
