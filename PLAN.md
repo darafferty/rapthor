@@ -1,6 +1,6 @@
 # Post-Merge Development Plan
 
-Updated: 2026-10-22. Release baseline: `origin/main` at `62907d14`;
+Updated: 2026-10-22. Release baseline: `origin/main` at `27e36a20`;
 CWL reference: `origin/master` at `b83cf9bc` (v2.2) and `origin/rapthor-cwl` at
 `24307de9` (v2.2 plus BDA averaging and the BDA applycal restriction).
 
@@ -10,34 +10,21 @@ feature-branch implementations remain open until reviewed, validated and merged.
 
 ## Recommended next item
 
-**P0-BUG-05: restart safety for image preparation, concatenate and mosaic.**
-No reviewed outstanding branch implements this fix. On `main`,
-`prepare_visibility_ms()` and `concatenate_prepared_visibilities()` accept an
-existing output directory as complete, including one left by a failed command.
-
-1. **First MR:** fix those two helpers in
-   [image/preparation.py](rapthor/execution/image/preparation.py). Reuse only
-   validated, completed outputs belonging to the requested inputs/settings;
-   recover incomplete owned outputs without changing original MS inputs.
-   Test failure during creation, after creation but before completion is
-   recorded, and a second successful restart with complete output records.
-2. Extend the same contract to standalone concatenation and image/mosaic
-   compression. Existing outputs currently cause concatenation to fail, and
-   compression is rerun without accounting for existing compressed products.
-3. Resolve P0-BUG-08: reserve/remove the ineffective `prefect_retries` option,
-   or implement it only after repeatability is established.
-
-**Merge existing work:** the restart and output-ownership tasks (WS-D) are
-implemented on three GEC-672 branches and the test-MS download fix on
-`gec-664-pre-fetch-test-data`; review and merge them rather than implement them
-again (see [existing branches](#existing-branches-to-integrate)). Resolve the
-separate phase-only DD product decision (P1-DEC-01) before release; the merged
-strategy fixes do not change that selector.
+**Review and merge the restart branches.** Both remaining P0 blockers are
+implemented on branches from `27e36a20`: restart safety (P0-BUG-05) on
+`gec-672-restart-safety` and the removal of `prefect_retries` (P0-BUG-08) on
+`gec-672-remove-retries`. With the three earlier GEC-672 branches (WS-D) they
+merge with each other without conflicts; run the full suite on the combined
+tree, since each branch was only tested alone (see
+[existing branches](#existing-branches-to-integrate)). Resolve the separate
+phase-only DD product decision (P1-DEC-01) before release; the merged strategy
+fixes do not change that selector.
 
 ## Release status
 
-Seven P0 fixes are merged; **two P0 items remain**: restart safety (P0-BUG-05)
-and the retries-option decision (P0-BUG-08).
+Seven P0 fixes are merged; **the other two are implemented on unmerged
+branches**: restart safety (P0-BUG-05) and the removal of `prefect_retries`
+(P0-BUG-08).
 P1 items gate the features named below. P2/P3 work can follow release if
 applicable limitations are recorded in the [upgrade guide](docs/source/upgrading.rst).
 
@@ -66,6 +53,7 @@ Also merged since `98a06302`, as partial progress on the tasks named:
 | `d91e2dfe` | Serial/parallel test split with one shared Prefect server per worker, and an eight-node integration lane balanced by `.test_durations`. | Most of P3-TEST-01 |
 | `d649aa3d` | Integration MS DATA scaled by `1.5e4` (weights inversely by its square) so solved gains are realistic; original inputs untouched. | Test fixture; not P2-TEST-02 |
 | `62907d14` | Astron/SKA CI split, Docker dependency-version helper and docs, v2.2 changelog. CWL's `run-rapthor.sh` was deliberately not copied. | P3-PORT-02 helper/docs |
+| `27e36a20` | The test MS is downloaded after collection, only when a selected test uses it; one download is shared between xdist workers and a damaged archive gives a warning. | Test fixture |
 
 `35731c8e` also changes repeated final cycles **without** peeling: they now
 calibrate against the imaged sources only, where they previously kept the
@@ -76,8 +64,8 @@ already behave this way; confirm that this is intended.
 
 | Task | Status / owner | Required result |
 | --- | --- | --- |
-| P0-BUG-05 | Open. Image preparation/compression, concatenate and mosaic execution; large. | Never accept an incomplete MS because its directory exists. Make owned outputs recoverable and compression repeatable. Inject failures during/after product creation and restart with complete records; never overwrite original inputs. |
-| P0-BUG-08 | Open; depends on P0-BUG-05 if implemented. | `prefect_retries` is parsed but ineffective. Remove it, or explicitly reserve it with a warning; implement only for safely repeatable tasks and verify actual attempt counts, cleanup and records. |
+| P0-BUG-05 | **Implemented, unmerged:** `gec-672-restart-safety`. | Image preparation, concatenation (in imaging and the standalone operation) and image/mosaic compression write each product to `.<name>.partial` and rename it into place only after the command succeeds, with a `.<name>.product.json` record of the command and input fingerprints. A resumed run reuses a product only if the record matches and none of its files was removed; otherwise it removes leftovers and makes it again. Inputs are refused as outputs, and `.outputs.json` is written before `.done`. Follow-ups: WSClean images are still reused after the concatenated MS is remade with new settings; the residual-visibility MS, mask and region still treat "exists" as done; an interrupted finalizer move (`copy_record_object(move=True)`) can nest an MS. |
+| P0-BUG-08 | **Implemented, unmerged:** `gec-672-remove-retries`. | `prefect_retries` is removed from defaults, execution settings, flow wiring, docs, the demo parset and templates; a parset that still sets it gets the usual invalid-option warning. No retry behaviour is added. |
 
 ### P1 — decisions and feature-specific release gates
 
@@ -176,10 +164,11 @@ in the Prefect version.
 
 | Branch / reviewed tip | Disposition and next action |
 | --- | --- |
+| `gec-672-restart-safety` — `38531e7e` | P0-BUG-05, four commits on `27e36a20`, including real DP3 and `fpack` integration tests. Review and merge. |
+| `gec-672-remove-retries` — `e3d76980` | P0-BUG-08, one commit on `27e36a20`. Review and merge. |
 | `gec-672-reset` — `4f692cf9` | P2-BUG-03 (rest) and P2-BUG-04, five commits on `62907d14`. Review and merge. |
 | `gec-672-model-mosaic` — `fdec1c1d` | P2-BUG-06, four commits on `62907d14`, including a real-WSClean draw-model integration test. Review and merge. |
 | `gec-672-plot-outputs` — `b31ae5f4` | P2-BUG-02 and P2-BUG-05, three commits on `62907d14`. Review and merge. |
-| `gec-664-pre-fetch-test-data` — `b0a534cb` (MR !536) | Downloads the test MS after collection when a selected test uses it, so no socket-blocked test has to fetch it; skips collect-only runs, shares one download between xdist workers and warns on damaged archives. Review and merge. |
 | `gec-664-integration-coverage` — `2400779c` | Combines unit and integration coverage into one report. Its test-speed commits are merged as `d91e2dfe` and its pre-fetch commit is superseded by MR !536; rebase the two coverage commits onto the Astron/SKA CI split. |
 | `pytest-8-threads` — `ac727806` | Part of P3-TEST-01: the parallel tox lane uses eight xdist workers instead of `auto`. Check it against CI runner and local CPU limits before merging. |
 | `RAP-1444-get-BDA-parms-no_cal` — `98c48866` | Supplied-h5parm interval inference related to P2-BUG-01, now with a field test. Reconcile with GEC-670 scanning; test single-sample/irregular time axes. Does not fix direction-layout ownership. |
@@ -189,7 +178,8 @@ in the Prefect version.
 | `add-multi-sector-tests` — `b7537329` (CWL) | Source for P3-TEST-03/B4; adapt per-sector assertions to Prefect records and retain real-tool coverage. |
 | `RAP-1405_add-run-script` — `bfb06c9f` (CWL) | Merged there as `6052b19d`; port under P3-PORT-04. |
 
-Merged and no longer listed: both GEC-671 branches, `gec-664-scale-test-ms-data`,
+Merged and no longer listed: both GEC-671 branches, `gec-664-pre-fetch-test-data`,
+`gec-664-scale-test-ms-data`,
 `gec-664-speed-up-unit-tests`, `correct-calibration-beam-application`,
 `sync-with-master` and `RAP-1392-skip-outlier-subtraction` (see
 [Merged](#merged)). The local `gec-664-fix-bootstrap-timeout` and
@@ -203,8 +193,8 @@ tracked below.
 **Coordinate overlaps:** preserve merged GEC-678 input protection when changing
 beam/averaging builders; strategy, image-only and repeated-final changes share `Field.update()`;
 plot ownership feeds artifact publication; process-output limits feed failure
-reporting; safe restart must precede retries. Update options through defaults,
-parsing, payloads, validators, commands, docs and tests together.
+reporting; any future task retries need restart-safe products first. Update
+options through defaults, parsing, payloads, validators, commands, docs and tests together.
 
 ## Later improvements
 
@@ -250,7 +240,11 @@ This update fetched branch refs and checked each listed branch against
 `62907d14`, by merging it in memory or, for squash merges, by comparing the
 files it changes with the merged commit. The GEC-672 branches and
 `gec-664-pre-fetch-test-data` passed the full non-integration suite, lint and the
-docs build on `62907d14`; other branch tests were inspected, not rerun. This
+docs build on `62907d14`. `gec-672-restart-safety` (with its DP3 and `fpack`
+integration tests) and `gec-672-remove-retries` passed the same checks on
+`27e36a20`, and all five GEC-672 branches merge with each other without
+conflicts; the combined tree has not been tested. Other branch tests were
+inspected, not rerun. This
 review does not establish CI, scientific-equivalence or cluster validation.
 Unchanged findings retain the earlier source-review baseline.
 
