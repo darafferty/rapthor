@@ -412,8 +412,6 @@ def _run_captured_shell_command(
     reader_thread = None
     temp_file = None
     output_log_handle = None
-    resource_before = None
-    process_start_time = None
     try:
         if output_log_path is not None:
             output_log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -446,9 +444,11 @@ def _run_captured_shell_command(
             started_at,
             profile,
         )
-        if profile:
+
+        if execution_config.command_profile != "off":
             resource_before = _resource_usage_snapshot()
             process_start_time = time.monotonic()
+
         process = subprocess.Popen(
             process_args,
             cwd=shell_command.working_directory,
@@ -491,16 +491,17 @@ def _run_captured_shell_command(
             _flush_stream_log(command_logger, buffered_log_lines)
 
         process.wait()
-        resource_after = _resource_usage_snapshot() if resource_before is not None else None
-        profile_elapsed_seconds = (
-            time.monotonic() - process_start_time if process_start_time is not None else 0.0
-        )
-        _finish_command_profile(
-            profile,
-            resource_before=resource_before,
-            resource_after=resource_after,
-            elapsed_seconds=profile_elapsed_seconds,
-        )
+
+        if execution_config.command_profile != "off":
+            resource_after = _resource_usage_snapshot()
+            profile_elapsed_seconds = time.monotonic() - process_start_time
+            _finish_command_profile(
+                profile,
+                resource_before=resource_before,
+                resource_after=resource_after,
+                elapsed_seconds=profile_elapsed_seconds,
+            )
+
         if process.returncode != 0:
             raise ShellCommandError(
                 "Command failed with return code "
@@ -543,9 +544,9 @@ def _profile_directory(shell_command: ShellCommand, started_at: datetime) -> Opt
 
 def _finish_command_profile(
     profile: dict,
-    resource_before=None,
-    resource_after=None,
-    elapsed_seconds: float = 0.0,
+    resource_before,
+    resource_after,
+    elapsed_seconds: float,
 ) -> None:
     artifacts = profile.get("artifacts")
     if isinstance(artifacts, dict) and artifacts.get("gnu_time"):

@@ -1009,14 +1009,10 @@ for how these options are used.
 
     prefect_command_profile
         Sets how the resource use of each command is measured: ``auto``,
-        ``time``, or ``off`` (default = ``auto``).
-        If ``auto`` or ``time``, the CPU time, memory use, and disk I/O of
-        each command are recorded  using both the Python ``resource`` module
-        and the GNU ``time`` command. The Python ``resource`` module is
-        always used. The GNU ``time`` command is used only if it is available.
-        The profile output is stored in ``dir_working/logs/commands.jsonl``,
-        with a preference for the output of the GNU ``time`` command.
-        If ``off``, only the run time of each command is recorded.
+        ``time``, or ``off`` (default = ``auto``). If ``off`` only the run
+        time of each command is recorded. If ``auto`` or ``time``, memory
+        usage and disk I/O of are also recorded.
+        The profile output is stored in ``dir_working/logs/commands.jsonl``.
 
     prefect_publish_fits_previews
         Make PNG previews of the images and show them in the Prefect dashboard
