@@ -43,8 +43,6 @@ class PipelineOperationFactories:
 class PipelineLifecycleHooks:
     """Top-level pipeline collaborators outside operation execution."""
 
-    # read_parset only returns the settings; prepare_run opens the log file and
-    # creates the working directory once the pipeline holds the lock on it
     read_parset: Callable[[object], dict]
     prepare_run: Callable[[dict], None]
     set_logging_level: Callable[[str], None]
@@ -109,10 +107,8 @@ def run_pipeline(
     factories = operation_factories or default_pipeline_operation_factories()
     hooks = lifecycle_hooks or default_pipeline_lifecycle_hooks()
 
-    # Only the settings are read here; nothing is written to the working
-    # directory, and the log file stays closed, until this run holds the lock.
-    # Otherwise a refused run would write into the log of the active one, and a
-    # reset could rename a log that this run had already opened.
+    # Only read the settings here: the log file is opened under the lock, so that
+    # a refused run does not write into the log of the active one
     parset = hooks.read_parset(parset_file)
     # Keep resets and other runs out of the working directory (for the CLI and
     # direct calls alike)
@@ -371,11 +367,11 @@ def default_pipeline_lifecycle_hooks() -> PipelineLifecycleHooks:
     from rapthor import _logging
     from rapthor.execution.pipeline.lifecycle import chunk_observations, do_final_pass, make_report
     from rapthor.lib.field import Field
-    from rapthor.lib.parset import prepare_run, read_parset_settings
+    from rapthor.lib.parset import Parset, prepare_run
     from rapthor.lib.strategy import set_strategy, validate_strategy
 
     return PipelineLifecycleHooks(
-        read_parset=read_parset_settings,
+        read_parset=lambda parset_file: Parset(parset_file).as_parset_dict(),
         prepare_run=prepare_run,
         set_logging_level=_logging.set_level,
         build_field=Field,
