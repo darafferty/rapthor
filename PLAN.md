@@ -1,7 +1,8 @@
 # Post-Merge Development Plan
 
-Updated: 2026-10-20. Release baseline: `origin/main` at `98a06302`;
-CWL reference: `origin/master` / `origin/rapthor-cwl` at `b83cf9bc` (v2.2).
+Updated: 2026-10-22. Release baseline: `origin/main` at `62907d14`;
+CWL reference: `origin/master` at `b83cf9bc` (v2.2) and `origin/rapthor-cwl` at
+`24307de9` (v2.2 plus BDA averaging and the BDA applycal restriction).
 
 This is the actionable backlog for the first Prefect/Dask release and later
 improvements. Task IDs are unchanged. **Merged** means present on `main`;
@@ -26,16 +27,17 @@ existing output directory as complete, including one left by a failed command.
 3. Resolve P0-BUG-08: reserve/remove the ineffective `prefect_retries` option,
    or implement it only after repeatability is established.
 
-**Merge existing work:** the two GEC-671 strategy fixes and GEC-664's scaled
-integration fixture are already implemented; review and validate their combined
-state rather than implement them again. GEC-678 input-MS protection is merged.
-Resolve the separate phase-only DD product decision (P1-DEC-01) before release;
-neither strategy fix changes that selector.
+**Merge existing work:** the restart and output-ownership tasks (WS-D) are
+implemented on three GEC-672 branches and the test-MS download fix on
+`gec-664-pre-fetch-test-data`; review and merge them rather than implement them
+again (see [existing branches](#existing-branches-to-integrate)). Resolve the
+separate phase-only DD product decision (P1-DEC-01) before release; the merged
+strategy fixes do not change that selector.
 
 ## Release status
 
-Five P0 fixes are merged; **four P0 items remain**: two implemented on the
-unmerged GEC-671 branches, restart safety, and the retries-option decision.
+Seven P0 fixes are merged; **two P0 items remain**: restart safety (P0-BUG-05)
+and the retries-option decision (P0-BUG-08).
 P1 items gate the features named below. P2/P3 work can follow release if
 applicable limitations are recorded in the [upgrade guide](docs/source/upgrading.rst).
 
@@ -46,20 +48,34 @@ applicable limitations are recorded in the [upgrade guide](docs/source/upgrading
 | P0-BUG-01 | Prediction normalization acts on the predicted model. SageCal normalization remains unsupported; use `sagecalpredict = False`. | `83f056c7` (GEC-669) |
 | P0-BUG-02 | Calibration receives DI pre-application and normalization on the predicting solve. WSClean model-column normalization remains unsupported by the tested DP3 6.6 path. | `d3f236dc` (GEC-669) |
 | P0-BUG-03 | DI and DD amplitude-application state is tracked separately. | `57f90ab7` (GEC-670) |
+| P0-BUG-04 | Absent, `None` or empty calibration strategies resolve per calibrating cycle; omissions stay identifiable at load time. Legacy flags are translated first, including explicitly false flags; image-only omissions keep the previous solve list. Preflight, logging, tests and docs updated. | `812743c5` (GEC-671) |
 | P0-BUG-06 | Single-direction imaging applies the combined phase table once. | `57f90ab7` (GEC-670) |
+| P0-BUG-07 | The final step is a deep copy of the last selfcal step, including nested solve lists, so default final/last-selfcal widths stay 4/8 MHz and differing steps trigger a final pass even with equal data fractions. CWL remains unfixed. | `352468c7` (GEC-671) |
 | P0-BUG-09 | DD solve chains end with `null`, protecting input DATA/FLAG; DDECal-only DI behavior is retained. Includes command and real-DP3 regression checks. | `98a06302` (GEC-678 implementation; merge title says GEC-669) |
 
-GEC-678's feature tip `94003846` and `main` at `98a06302` have identical trees;
-no rebase or implementation remains for P0-BUG-09. GEC-670 does **not** fix
-phase-only DD product selection (P1-DEC-01) or image-only solution/layout
-carry-forward (P2-BUG-01).
+GEC-670 does **not** fix phase-only DD product selection (P1-DEC-01) or
+image-only solution/layout carry-forward (P2-BUG-01); the GEC-671 fixes keep the
+solve list, not that product/layout association.
+
+Also merged since `98a06302`, as partial progress on the tasks named:
+
+| Merge | Change | Tasks |
+| --- | --- | --- |
+| `8fc94bb8` | Solve-beam selection follows `use_array_beam`, including `False`. | Part of P2-PORT-01 |
+| `35731c8e` | Outliers are peeled only in the first final cycle; repeats reuse the peeled data. Reset lists repeated final cycles from the current repeat count. | Part of P2-BUG-03 |
+| `d91e2dfe` | Serial/parallel test split with one shared Prefect server per worker, and an eight-node integration lane balanced by `.test_durations`. | Most of P3-TEST-01 |
+| `d649aa3d` | Integration MS DATA scaled by `1.5e4` (weights inversely by its square) so solved gains are realistic; original inputs untouched. | Test fixture; not P2-TEST-02 |
+| `62907d14` | Astron/SKA CI split, Docker dependency-version helper and docs, v2.2 changelog. CWL's `run-rapthor.sh` was deliberately not copied. | P3-PORT-02 helper/docs |
+
+`35731c8e` also changes repeated final cycles **without** peeling: they now
+calibrate against the imaged sources only, where they previously kept the
+outlier sources, which are still in the data. Selfcal cycles without peeling
+already behave this way; confirm that this is intended.
 
 ### P0 — release blockers
 
 | Task | Status / owner | Required result |
 | --- | --- | --- |
-| P0-BUG-07 | **Implemented, unmerged:** `gec-671-fix-final-cycle` at `4b4bd2f3`. | Deep-copy the final step, including nested solve lists: default final/last-selfcal widths remain 4/8 MHz. The differing steps trigger a final pass even with equal data fractions. Tests and migration notes included; CWL remains unfixed. |
-| P0-BUG-04 | **Implemented, unmerged:** `gec-671-fix-calibration-strategy` at `69656ceb`. | Resolve absent/`None`/empty strategies per calibrating cycle; keep omissions intact at load time so the default remains identifiable. Legacy flags are translated first, including explicitly false flags. Image-only omissions retain the previous solve list. Preflight, logging, tests and docs are updated. |
 | P0-BUG-05 | Open. Image preparation/compression, concatenate and mosaic execution; large. | Never accept an incomplete MS because its directory exists. Make owned outputs recoverable and compression repeatable. Inject failures during/after product creation and restart with complete records; never overwrite original inputs. |
 | P0-BUG-08 | Open; depends on P0-BUG-05 if implemented. | `prefect_retries` is parsed but ineffective. Remove it, or explicitly reserve it with a warning; implement only for safely repeatable tasks and verify actual attempt counts, cleanup and records. |
 
@@ -99,13 +115,16 @@ splitting work into issues. Existing branch implementations are mapped below.
 
 ### Restart and output ownership (WS-D)
 
+All five tasks are implemented on three independent GEC-672 branches based on
+`62907d14`; review and merge them in any order.
+
 | Task | Remaining work |
 | --- | --- |
-| P2-BUG-02 | Give calibration plot tasks explicit paths or manifests. Concurrent tasks and reruns must return all and only their own plots. |
-| P2-BUG-03 | Preserve peeled data across repeated final passes and discover actual cycle directories during reset. Test early termination, changed repeat counts, selected MS/model and both `pipeline_outputs.json` and `.outputs.json`; retain earlier completed work. |
-| P2-BUG-04 | Reset owned scratch links, targets and recovery records together; never follow unowned links. Rotate/tag aggregate logs by attempt. Test staged, partial and selectively reset workspaces. |
-| P2-BUG-05 | Preserve per-sector astrometry-offset JSON through finalization, cleanup and restart, or explicitly document retirement. Test multi-sector names. |
-| P2-BUG-06 | Define rendered versus regridded model-mosaic semantics. Handle mixed/all-empty models with valid records, compare products and document the default. |
+| P2-BUG-02 | **Implemented, unmerged:** `gec-672-plot-outputs`. Each calibration plot call writes to its own directory, cleared before a rerun, so concurrent tasks and reruns return all and only their own plots; each plot has one Prefect artifact key. |
+| P2-BUG-03 | **Partly merged** (`35731c8e`, repeated finals reuse the peeled data). **Rest implemented, unmerged:** `gec-672-reset` lists reset operations from the actual `pipelines/` directories (including cycles the current settings no longer run), resets a cycle's DI and DD calibration operations together, and copies the observations so unchunked input data is not peeled twice. |
+| P2-BUG-04 | **Implemented, unmerged:** `gec-672-reset`. Reset removes owned scratch workspaces, links and recovery records together without following unowned links, and moves the log records of reset operations to per-attempt files. A `flock` on the working directory keeps a reset and a run apart. Follow-up: reset refuses where the file system has no `flock` support (for example Lustre mounted without `flock`), and `localflock` only protects within one node. |
+| P2-BUG-05 | **Implemented, unmerged:** `gec-672-plot-outputs`. Per-sector offsets, diagnostics and diagnostic plots move to `plots/image_N` with repointed records and survive cleanup and restart. |
+| P2-BUG-06 | **Implemented, unmerged:** `gec-672-model-mosaic`. All-empty sector models give an all-zero model mosaic with valid records; WSClean draws model mosaics with at least two threads and fails clearly when memory would force one; Stokes IQUV cycles omit filtered-model products; both methods are documented. Follow-ups: calibration's WSClean model drawing has the same one-thread exposure; report the WSClean 3.7 single-thread `-draw-model` bug upstream; drawn mosaics can sit up to one pixel off the regridded grid; `sparse_fits` halves components in sector overlaps. |
 
 ### Logging and failures (WS-E)
 
@@ -118,8 +137,8 @@ splitting work into issues. Existing branch implementations are mapped below.
 
 | Task | Remaining work |
 | --- | --- |
-| P2-PORT-01 | Solve beam selection is implemented on `correct-calibration-beam-application`; image-based `applybeam.beammode=array_factor` remains. Port WSClean full-beam prediction (`23ed80e9`): `wsclean_predict_beam_interval`, facet-beam flags and full-beam model images, with DP3 beam modes coordinated to prevent double application. Test both `use_array_beam` settings and compare DP3/WSClean multi-facet fluxes. |
-| P2-DEC-02 | Keep the WSClean/BDA guard until averaged data/model rows and channels, beam handling, input preservation and restart are validated. Otherwise document the limitation and resource cost. |
+| P2-PORT-01 | Solve beam selection is merged (`8fc94bb8`); image-based `applybeam.beammode=array_factor` remains. Port WSClean full-beam prediction (`23ed80e9`): `wsclean_predict_beam_interval`, facet-beam flags and full-beam model images, with DP3 beam modes coordinated to prevent double application. Test both `use_array_beam` settings and compare DP3/WSClean multi-facet fluxes. |
+| P2-DEC-02 | Keep the WSClean/BDA guard until averaged data/model rows and channels, beam handling, input preservation and restart are validated. Otherwise document the limitation and resource cost. CWL now has BDA averaging (`c0509eae`) and skips the pre-applying applycal for WSClean prediction with BDA, because DP3 ApplyCal does not support BDA data (`24307de9`); use both as porting references. |
 | P3-PORT-01 | Adapt rendering geometry and reordered-data reuse (`d587eec5`). Keep scratch per chunk until all consumers finish. Test single/multi-band and single-channel coverage, visibility agreement, resources and end-exclusive channel ranges. |
 | P3-DEC-01 | Validate named DS9 facets with supported tools; introduce separate point/polygon formats only where needed. Match facets to model columns and h5parm directions. |
 
@@ -139,44 +158,45 @@ splitting work into issues. Existing branch implementations are mapped below.
 | P2-PORT-08 | Reconcile Python/package metadata, license/build requirements and tox access to compiled astronomy dependencies; verify the supported Prefect environment. |
 | P2-TEST-01 | Mark real-WSClean restoration tests as integration and verify non-integration selection excludes them. |
 | P2-TEST-02 | Reset flags and weights in the synthetic normalization MS before prediction (`da442dfc`). GEC-664's scaled integration fixture and h5parm assertions are separate improvements; this reset remains unimplemented. |
-| P3-TEST-01 | Astron/SKA CI separation is implemented on `sync-with-master`. Duration-balanced shards, bounded CPU counts and measured test-speed improvements remain. Keep field/Prefect-server tests serial with isolated state. |
+| P3-TEST-01 | Astron/SKA CI separation (`62907d14`), the serial/parallel split with shared Prefect servers and duration-balanced integration shards (`d91e2dfe`) are merged. Bounded CPU counts remain: `pytest-8-threads` fixes the parallel lane at eight workers. Record measured speed-ups and refresh `.test_durations` when integration tests change. |
 | P3-TEST-02 | Add real-run facet-RMS JSON assertions and the missing sky-model-download failure cases; runtime handling is already present. |
 | P3-TEST-03 | Restore the task-count 1/2, full/single DDE and serial/MPI gridding matrix using command records. Adapt two-sector cases without CWL mocks. |
-| P3-PORT-02 | Helper and usage docs are implemented on `sync-with-master` (`74e89904`). Add a fake-Docker test covering labels, missing labels and inspect failure, then validate and merge. |
+| P3-PORT-02 | Helper and usage docs are merged (`62907d14`). Add a fake-Docker test covering labels, missing labels and inspect failure. |
 | P3-PORT-03 | Merge current-branch documentation links, correct `DATA` versus `data_colname` guidance and fix the imaging-parameter docstring markup. |
-| P3-PORT-04 | Adapt CWL's installed run/log-archive wrapper (`6052b19d`) to Prefect logs and supported environments. Preserve exit status, exclude MS/large products, and test partial logs, optional inputs and unusual paths. Document Bash/GNU requirements. |
+| P3-PORT-04 | Adapt CWL's installed run/log-archive wrapper (`6052b19d`, `sbin/run-rapthor.sh`; not copied by `62907d14`) to Prefect logs and supported environments. Preserve exit status, exclude MS/large products, and test partial logs, optional inputs and unusual paths. Document Bash/GNU requirements. |
 | P3-DEC-02 | Choose and validate the SageCal/libdirac dependency tuple; coordinate resolver, mirrors, labels and cache keys. CWL v2.2's dependency file is a comparison baseline, not Prefect validation. |
 | P3-BUG-01 | Reproduce WSClean's shared-facet I/O failure on the supported stack; fix or constrain support, then run the currently disabled integration case. |
 
 ## Existing branches to integrate
 
-These implementations are not yet merged into `main`. The two GEC-671 branches,
-scaled test data and calibration beam branch already descend from `98a06302`.
-Rebase older branches using focused changes; avoid replaying pre-squash migration
-history or temporary `rapthor3` CLI overlays. CWL branches are porting sources,
-not implementations in the Prefect version.
+These implementations are not yet merged into `main`. Rebase older branches
+using focused changes; avoid replaying pre-squash migration history or temporary
+`rapthor3` CLI overlays. CWL branches are porting sources, not implementations
+in the Prefect version.
 
 | Branch / reviewed tip | Disposition and next action |
 | --- | --- |
-| `gec-671-fix-final-cycle` — `4b4bd2f3` | P0-BUG-07 implemented with strategy/lifecycle tests and docs. Review and merge. |
-| `gec-671-fix-calibration-strategy` — `69656ceb` | P0-BUG-04 implemented with field/strategy/preflight regressions and docs. With no legacy flags, the fallback is the full DD sequence; presence of either flag selects legacy translation. Merge alongside the final-cycle fix and check the combined strategy behavior. |
-| `gec-664-scale-test-ms-data` — `6ec95d2f` | Integration fixture DATA scaled by `1.5e4`, weights scaled inversely by its square; original inputs remain untouched. DI and DI+DD tests require expected h5parm tables with mostly valid solutions. Review/merge; does not close P2-TEST-02 or the phase-only selector decision. |
-| `correct-calibration-beam-application` — `b9c80730` | Partial P2-PORT-01: propagates `use_array_beam` through calibration inputs/payloads and selects the solve beam, with command coverage. Image-based applybeam and the WSClean facet-beam port still need work. |
-| `sync-with-master` — `74e89904` | Partial P3-TEST-01/P3-PORT-02: Astron/SKA CI split, dependency-label helper/docs and v2.2 changelog. Adds Ubuntu 26.04 build files, but CI still selects 24.04. Do not count this as resolving 24.04 APT, NumPy compatibility, test performance or adopting 26.04. |
-| `RAP-1392-skip-outlier-subtraction` — `21657525` | Partial P2-BUG-03: repeated-final state and reset enumeration. Add focused peeling/reset regressions and actual-directory discovery. |
-| `RAP-1444-get-BDA-parms-no_cal` — `5102840d` | Supplied-h5parm interval inference related to P2-BUG-01. Reconcile with GEC-670 scanning; test single-sample/irregular time axes. Does not fix direction-layout ownership. |
-| `fix-references-to-master-branch` — `8c451a08` | Partial P3-PORT-03; preparation guidance and docstring fixes remain. |
-| `use-local-git-mirror` — `0e318a61` | Build/CI URL changes; verify mirror refs and reproducibility. Does not fix NumPy/APT gaps or pin `HEAD`. |
-| `RAP1418-enable-averaging` — `e5e14fdd` (CWL) | P2-DEC-02/P3-PORT-01 candidate; now includes a BDA on/off WSClean-prediction integration case. Adapt averaged-MS outputs, serializable records, scratch lifetime and calibration consumers; retain the Prefect guard until validated. |
+| `gec-672-reset` — `4f692cf9` | P2-BUG-03 (rest) and P2-BUG-04, five commits on `62907d14`. Review and merge. |
+| `gec-672-model-mosaic` — `fdec1c1d` | P2-BUG-06, four commits on `62907d14`, including a real-WSClean draw-model integration test. Review and merge. |
+| `gec-672-plot-outputs` — `b31ae5f4` | P2-BUG-02 and P2-BUG-05, three commits on `62907d14`. Review and merge. |
+| `gec-664-pre-fetch-test-data` — `b0a534cb` (MR !536) | Downloads the test MS after collection when a selected test uses it, so no socket-blocked test has to fetch it; skips collect-only runs, shares one download between xdist workers and warns on damaged archives. Review and merge. |
+| `gec-664-integration-coverage` — `2400779c` | Combines unit and integration coverage into one report. Its test-speed commits are merged as `d91e2dfe` and its pre-fetch commit is superseded by MR !536; rebase the two coverage commits onto the Astron/SKA CI split. |
+| `pytest-8-threads` — `ac727806` | Part of P3-TEST-01: the parallel tox lane uses eight xdist workers instead of `auto`. Check it against CI runner and local CPU limits before merging. |
+| `RAP-1444-get-BDA-parms-no_cal` — `98c48866` | Supplied-h5parm interval inference related to P2-BUG-01, now with a field test. Reconcile with GEC-670 scanning; test single-sample/irregular time axes. Does not fix direction-layout ownership. |
+| `fix-references-to-master-branch` — `1ff897db` | Part of P3-PORT-03, rebased onto `main`: two `master` references in the docs become `main`. Preparation guidance and docstring fixes remain. |
+| `use-local-git-mirror` — `3cd82217` | Build/CI URL changes in the Dockerfile, commit-hash script and CI base image; verify mirror refs and reproducibility. Does not fix NumPy/APT gaps or pin `HEAD`. |
+| `rapthor-cwl` — `c0509eae`, `24307de9` (CWL) | Merged CWL versions of `RAP1418-enable-averaging` and `RAP1418-remove-applycal`: BDA averaging with a BDA on/off WSClean-prediction integration case, and no pre-applying applycal with BDA. P2-DEC-02/P3-PORT-01 sources; adapt averaged-MS outputs, serializable records, scratch lifetime and calibration consumers, and keep the Prefect guard until validated. |
 | `add-multi-sector-tests` — `b7537329` (CWL) | Source for P3-TEST-03/B4; adapt per-sector assertions to Prefect records and retain real-tool coverage. |
 | `RAP-1405_add-run-script` — `bfb06c9f` (CWL) | Merged there as `6052b19d`; port under P3-PORT-04. |
 
-GEC-669 prediction/calibration, GEC-670 and GEC-678 are merged; the older
-`gec-669-fix-amplitude-state-and-phase-application` branch is superseded.
+Merged and no longer listed: both GEC-671 branches, `gec-664-scale-test-ms-data`,
+`gec-664-speed-up-unit-tests`, `correct-calibration-beam-application`,
+`sync-with-master` and `RAP-1392-skip-outlier-subtraction` (see
+[Merged](#merged)). The local `gec-664-fix-bootstrap-timeout` and
+`gec-664-simplify-test-setup` branches are fully contained in `d91e2dfe`. The
+older `gec-669-fix-amplitude-state-and-phase-application` branch is superseded.
 CWL's missing-strategy warning removal (`7511e4a1`) is not a remaining port:
-GEC-671 deliberately warns with the resolved default. The local
-`gec-664-speed-up-unit-tests` branch still points to `98a06302`, with no changes
-at review time; it does not yet implement P3-TEST-01. Older observation-chunking
+GEC-671 deliberately warns with the resolved default. Older observation-chunking
 fixes are already in the migration baseline. Resource and Hebog branches are
 tracked below.
 
@@ -226,11 +246,13 @@ evidence and relevant release/upgrade documentation. Never modify original
 Measurement Sets; preserve serializable worker payloads and complete
 output/finalizer/restart records.
 
-This update fetched branch refs, compared the outstanding implementations and
-tests, verified GEC-678's tree against `main`, and rechecked restart, retry and
-phase-only selector code. Branch tests were inspected, not rerun; this review
-does not establish CI, scientific-equivalence or cluster validation. Unchanged
-findings retain the earlier source-review baseline.
+This update fetched branch refs and checked each listed branch against
+`62907d14`, by merging it in memory or, for squash merges, by comparing the
+files it changes with the merged commit. The GEC-672 branches and
+`gec-664-pre-fetch-test-data` passed the full non-integration suite, lint and the
+docs build on `62907d14`; other branch tests were inspected, not rerun. This
+review does not establish CI, scientific-equivalence or cluster validation.
+Unchanged findings retain the earlier source-review baseline.
 
 Detailed review-ID mappings, source references and dated runtime evidence are
 preserved in the previous plan at commit `b228d6b6`:
