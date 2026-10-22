@@ -639,19 +639,19 @@ def _flush_stream_log(command_logger, buffered_lines: list[str]) -> None:
 
 @lru_cache
 def _gnu_time_path() -> Optional[str]:
-    candidates = ["/usr/bin/time", shutil.which("time")]
-    for candidate in dict.fromkeys(path for path in candidates if path):
-        try:
-            result = subprocess.run(
-                [candidate, "-v", "true"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
-        except OSError:
-            continue
+    """Return the path to the GNU `time` command if available, otherwise None."""
+    command = shutil.which("time")
+    try:
+        result = subprocess.run(
+            [command, "-v", "true"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
         if result.returncode == 0:
-            return candidate
+            return command
+    except OSError:
+        pass
     return None
 
 
