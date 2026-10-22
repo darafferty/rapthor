@@ -650,7 +650,7 @@ def _gnu_time_path() -> Optional[str]:
         )
         if result.returncode == 0:
             return command
-    except OSError:
+    except (OSError, TypeError):
         pass
     return None
 
