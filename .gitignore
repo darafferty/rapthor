@@ -8,6 +8,7 @@ runs/
 test/resources/
 tests/resources/test.ms
 tests/resources/test_integration.ms
+tests/resources/.test.ms.lock
 tests/test.ms_di.ms
 test.ms_di.ms/
 
