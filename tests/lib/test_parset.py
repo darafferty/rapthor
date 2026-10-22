@@ -10,7 +10,12 @@ from pathlib import Path
 
 import pytest
 
-from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
+from rapthor.lib.parset import (
+    check_and_adjust_skymodel_settings,
+    parset_read,
+    prepare_run,
+    read_parset_settings,
+)
 
 RESOURCE_DIR = Path(__file__).parents[1] / "resources"
 
@@ -94,6 +99,26 @@ def test_minimal_parset(parset_scenario):
 
     assert parset_dict["dir_working"] == str(parset_scenario.working_dir)
     assert parset_dict["input_ms"] == str(parset_scenario.input_ms)
+
+
+def test_read_parset_settings_leaves_the_working_directory_alone(parset_scenario):
+    parset_dict = read_parset_settings(str(parset_scenario.parset))
+
+    assert parset_dict["dir_working"] == str(parset_scenario.working_dir)
+    assert "mss" not in parset_dict
+    # Only the parset itself is in the working directory: no subdirectories, no log
+    assert [path.name for path in parset_scenario.working_dir.iterdir()] == ["test.parset"]
+
+
+def test_prepare_run_completes_the_settings_and_starts_the_log(parset_scenario):
+    parset_dict = read_parset_settings(str(parset_scenario.parset))
+
+    prepare_run(parset_dict)
+
+    assert parset_dict["mss"] == [str(parset_scenario.input_ms)]
+    assert (parset_scenario.working_dir / "pipelines").is_dir()
+    assert (parset_scenario.working_dir / "logs" / "rapthor.log").is_file()
+    assert parset_dict == parset_read(str(parset_scenario.parset))
 
 
 def test_misspelled_section(parset_scenario, caplog):
