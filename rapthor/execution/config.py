@@ -24,7 +24,6 @@ class ExecutionConfig:
     dask_dashboard_address: Optional[str] = None
     stream_output: bool = True
     run_tags: tuple[str, ...] = ()
-    retries: int = 0
     log_commands: bool = True
     command_profile: str = "auto"
     publish_fits_previews: bool = False
@@ -81,7 +80,6 @@ class ExecutionConfig:
                 cluster.get("prefect_stream_output", True), "prefect_stream_output"
             ),
             run_tags=_as_tags(cluster.get("prefect_run_tags"), "prefect_run_tags"),
-            retries=_as_non_negative_int(cluster.get("prefect_retries", 0), "prefect_retries"),
             log_commands=_as_bool(
                 cluster.get("prefect_log_commands", True), "prefect_log_commands"
             ),

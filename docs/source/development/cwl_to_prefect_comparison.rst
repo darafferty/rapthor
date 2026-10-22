@@ -1066,7 +1066,7 @@ Parset options
    * - Added to ``[cluster]``
      - ``local_dask_workers``, ``dask_scheduler``, ``dask_dashboard_address``,
        ``prefect_task_runner``, ``prefect_api_url``, ``prefect_api_mode``,
-       ``prefect_run_tags``, ``prefect_retries``, ``prefect_log_commands``,
+       ``prefect_run_tags``, ``prefect_log_commands``,
        ``prefect_stream_output``, ``prefect_command_profile``,
        ``prefect_publish_fits_previews``,
        ``prefect_publish_postage_stamp_previews``,
