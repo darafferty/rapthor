@@ -14,6 +14,7 @@ from rapthor.execution.concatenate.payloads import concatenate_payload_from_inpu
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
+from tests.conftest import file_tree_state
 from tests.execution.conftest import run_flow_for_test
 
 
@@ -547,13 +548,6 @@ def test_concatenate_operation_run_failure_does_not_mark_done(
     assert field.scan_count == 0
 
 
-def _input_tree(path):
-    return sorted(
-        (str(item.relative_to(path)), item.stat().st_mtime_ns, item.read_bytes())
-        for item in path.rglob("*")
-    )
-
-
 def test_concatenate_operation_restarts_with_complete_outputs(
     prefect_server, tmp_path, monkeypatch, fake_shell_operation_cls
 ):
@@ -564,7 +558,7 @@ def test_concatenate_operation_restarts_with_complete_outputs(
             original.mkdir(parents=True)
             (original / "table.dat").write_text("original")
             inputs.append(original)
-    original_state = [_input_tree(path) for path in inputs]
+    original_state = [file_tree_state(path) for path in inputs]
 
     class StoppedShellOperation(fake_shell_operation_cls):
         def run(self):
@@ -614,7 +608,7 @@ def test_concatenate_operation_restarts_with_complete_outputs(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected
     assert Path(operation.done_file).is_file()
     assert not (pipeline_dir / ".epoch_1_concatenated.ms.partial").exists()
-    assert [_input_tree(path) for path in inputs] == original_state
+    assert [file_tree_state(path) for path in inputs] == original_state
 
 
 def test_concatenate_epoch_remakes_an_output_left_by_an_earlier_attempt(

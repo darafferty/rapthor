@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 from typing import Callable, Iterable, Mapping, Optional, Sequence, Union
 
+from rapthor._version import __version__
 from rapthor.lib.records import directory_record, file_record
 
 log = logging.getLogger("rapthor:outputs")
@@ -97,28 +98,26 @@ def make_command_product(
     Make a product with an external command, or reuse the one an earlier attempt made.
 
     The command writes to a hidden partial path, which is renamed to
-    ``output_path`` only after the command has succeeded, so a product at the
-    final path is complete. A record next to it holds a digest of the command
-    and of its inputs. A product is reused only when that digest matches, so
-    that a product made with other settings, from other inputs, from an input
-    that has been made again, or by an earlier Rapthor version is made again.
+    ``output_path`` once the command has succeeded, so a product at the final
+    path is complete. A record next to it holds a digest of the Rapthor version,
+    the program, the command and the inputs, and the product is reused only when
+    that digest matches.
 
     Parameters
     ----------
     output_path : str
-        Final path of the product. It is owned by the caller and may be removed.
+        Final path of the product, which may be removed and made again.
     build_command : callable
         Returns the command that writes the product to the path it is given.
     run_command : callable
-        Runs the command and raises when it fails.
+        Runs a command and raises when it fails.
     description : str
-        Product description used in log and error messages.
+        Description of the product for log and error messages.
     inputs : iterable of str
-        Paths that the command reads. They are never removed, and a product that
-        was made from a different version of one of them is not reused.
+        Paths that the command reads. They are never removed, and a product made
+        from another version of one of them is not reused.
     directory : bool
-        Whether the product is a directory (such as a Measurement Set) rather
-        than a file.
+        Whether the product is a directory (such as a Measurement Set).
 
     Returns
     -------
@@ -131,11 +130,12 @@ def make_command_product(
     for path in (output_path, partial_path):
         _check_not_input(path, inputs)
     # Only this function writes the partial path, so anything there was left by
-    # an attempt that failed or was stopped before promotion.
+    # an attempt that failed or was stopped before promotion
     _remove_path(partial_path)
     command = [str(token) for token in build_command(partial_path)]
     digest = _product_digest(command, inputs)
-    if _recorded_product_digest(output_path, directory) == digest:
+    exists = os.path.isdir(output_path) if directory else os.path.isfile(output_path)
+    if exists and _recorded_product_digest(output_path) == digest:
         log.info("Using the %s made by an earlier attempt: %s", description, output_path)
         return require(output_path, description)
 
@@ -146,8 +146,8 @@ def make_command_product(
         _remove_path(output_path)
     run_command(command)
     require(partial_path, description)
-    # Write the record before promotion: until the rename, the final path does
-    # not exist, so the record cannot describe an older product.
+    # Until the rename, the final path does not exist, so the record cannot
+    # describe an older product
     _write_json_atomically(
         record_path,
         {
@@ -163,11 +163,18 @@ def make_command_product(
 
 def _check_not_input(path: str, inputs: list[str]) -> None:
     """Refuse to write a path that is, contains or lies inside one of the inputs."""
-    for candidate in {Path(os.path.abspath(path)), Path(os.path.realpath(path))}:
-        for input_path in inputs:
-            for resolved in {Path(os.path.abspath(input_path)), Path(os.path.realpath(input_path))}:
-                if candidate.is_relative_to(resolved) or resolved.is_relative_to(candidate):
-                    raise ValueError(f"Output {path} would overwrite the input {input_path}")
+    for input_path in inputs:
+        if any(
+            output.is_relative_to(source) or source.is_relative_to(output)
+            for output in _aliases(path)
+            for source in _aliases(input_path)
+        ):
+            raise ValueError(f"Output {path} would overwrite the input {input_path}")
+
+
+def _aliases(path: str) -> set[Path]:
+    """Return the absolute path and the path with links resolved."""
+    return {Path(os.path.abspath(path)), Path(os.path.realpath(path))}
 
 
 def _remove_path(path: str) -> None:
@@ -179,28 +186,36 @@ def _remove_path(path: str) -> None:
 
 
 def _product_digest(command: list[str], inputs: list[str]) -> str:
+    """
+    Return a digest of what makes a product: Rapthor, the program, the command and the inputs.
+
+    An update of Rapthor or of the program (such as DP3 or WSClean) may change
+    what the same command makes, so a product made before it is not reused.
+    """
     content = {
+        "rapthor": __version__,
+        "program": _program_identity(command[0]),
         "command": command,
         "inputs": [[path, _input_identity(path)] for path in inputs],
     }
     return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
 
+def _program_identity(program: str) -> object:
+    """Return the path, size and modification time of the file that runs ``program``."""
+    path = shutil.which(program)
+    return [path, *_file_entries(path)] if path else None
+
+
 def _input_identity(path: str) -> object:
     """
     Return what identifies the version of an input beyond its path.
 
-    A product made by :func:`make_command_product` is identified by its own
-    digest. Any other file or directory, such as an input Measurement Set, is
-    identified by the relative path, size and modification time of each file
-    in it, so that an input that is replaced or changed at the same path is
-    noticed.
+    A product of :func:`make_command_product` is identified by its digest, any
+    other file or directory (such as an input Measurement Set) by the relative
+    path, size and modification time of each of its files.
     """
-    for is_directory in (True, False):
-        digest = _recorded_product_digest(path, is_directory)
-        if digest is not None:
-            return digest
-    return _file_entries(path)
+    return _recorded_product_digest(path) or _file_entries(path)
 
 
 def _file_entries(path: str) -> list[list]:
@@ -211,7 +226,7 @@ def _file_entries(path: str) -> list[list]:
     entries = []
     visited = set()
     for root, directories, names in os.walk(path, followlinks=True):
-        # Follow linked subdirectories (such as linked subtables), but only once.
+        # Follow linked subdirectories (such as linked subtables), but only once
         real_root = os.path.realpath(root)
         if real_root in visited:
             directories.clear()
@@ -219,7 +234,7 @@ def _file_entries(path: str) -> list[list]:
         visited.add(real_root)
         directories.sort()
         for name in sorted(names):
-            # Casacore may update the lock file of a table that it only reads.
+            # Casacore may update the lock file of a table that it only reads
             if name == "table.lock":
                 continue
             file_path = os.path.join(root, name)
@@ -231,29 +246,27 @@ def _file_entries(path: str) -> list[list]:
     return entries
 
 
-def _recorded_product_digest(path: str, directory: bool) -> Optional[str]:
+def _recorded_product_digest(path: str) -> Optional[str]:
     """
-    Return the recorded digest of a promoted product, or ``None``.
+    Return the recorded digest of a promoted product that is still complete, or None.
 
-    A directory product is accepted only if every file that it held when it
-    was promoted still exists, so that one that was partly removed (for
-    example, by a cleanup or a move that was stopped) is not reused. Files
-    added later, such as a column that WSClean adds to a Measurement Set, are
-    allowed.
+    A directory product is complete if every file that it held when it was
+    promoted still exists, so that one that was partly removed (for example by
+    a cleanup or a move that was stopped) is not reused. Files added later, such
+    as a column that WSClean adds to a Measurement Set, are allowed.
     """
-    exists = os.path.isdir(path) if directory else os.path.isfile(path)
-    if not exists:
-        return None
     try:
         with open(product_record_path(path)) as handle:
             record = json.load(handle)
-        digest = record.get("digest")
-        files = record.get("files")
-    except (OSError, ValueError, AttributeError):
+        digest, files = record["digest"], record["files"]
+    except (OSError, ValueError, KeyError, TypeError):
         return None
     if not isinstance(digest, str) or not isinstance(files, list):
         return None
-    if directory and not all(os.path.isfile(os.path.join(path, str(name))) for name in files):
+    if os.path.isdir(path):
+        if not all(os.path.isfile(os.path.join(path, str(name))) for name in files):
+            return None
+    elif not os.path.isfile(path):
         return None
     return digest
 
@@ -305,8 +318,7 @@ def cleanup_intermediate_outputs(
             for output in retained
         ):
             continue
-        # Remove the record first, so that a product that is only partly
-        # removed is not reused.
+        # Remove the record first, so that a partly removed product is not reused
         _remove_path(product_record_path(str(path)))
         if path.is_symlink() or path.is_file():
             path.unlink()

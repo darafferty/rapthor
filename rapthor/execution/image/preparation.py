@@ -13,7 +13,7 @@ from rapthor.execution.image.masking import blank_image
 from rapthor.execution.image.payloads import ImageSectorPayload
 from rapthor.execution.outputs import make_command_product, require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel
-from rapthor.execution.shell import run_external_command
+from rapthor.execution.shell import command_runner
 
 
 def prepare_visibility_ms(
@@ -59,7 +59,9 @@ def prepare_visibility_ms(
     return make_command_product(
         str(prepare_task["msout_path"]),
         build_command,
-        _command_runner(pipeline_working_dir, execution_config, shell_operation_cls),
+        command_runner(
+            pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
+        ),
         description="Prepared imaging MS",
         inputs=[str(prepare_task["msin"])] + [str(path) for path in solutions if path],
         directory=True,
@@ -83,19 +85,12 @@ def concatenate_prepared_visibilities(
             data_colname=str(sector["data_colname"]),
             concat_property="time",
         ),
-        _command_runner(pipeline_working_dir, execution_config, shell_operation_cls),
+        command_runner(
+            pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
+        ),
         description="Concatenated imaging MS",
         inputs=prepared_paths,
         directory=True,
-    )
-
-
-def _command_runner(pipeline_working_dir, execution_config, shell_operation_cls):
-    return lambda command: run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
     )
 
 

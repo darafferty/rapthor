@@ -16,6 +16,7 @@ from rapthor.execution.image.preparation import (
 )
 from rapthor.execution.regions import make_ds9_region_from_skymodel
 from rapthor.lib.records import directory_record
+from tests.conftest import file_tree_state
 
 RESOURCE_DIR = Path(__file__).resolve().parents[1] / "resources"
 
@@ -146,13 +147,6 @@ class _MeasurementSetCommands:
         return Operation()
 
 
-def _input_tree(path):
-    return sorted(
-        (str(item.relative_to(path)), item.stat().st_mtime_ns, item.read_bytes())
-        for item in path.rglob("*")
-    )
-
-
 @pytest.fixture
 def imaging_restart(tmp_path, monkeypatch):
     """Prepare and concatenate two observations as the image flow does."""
@@ -169,7 +163,7 @@ def imaging_restart(tmp_path, monkeypatch):
         original.mkdir()
         (original / "table.dat").write_text("original")
         inputs.append(original)
-    original_state = [_input_tree(path) for path in inputs]
+    original_state = [file_tree_state(path) for path in inputs]
     sector = {
         "data_colname": "DATA",
         "phasecenter": "[0deg, 0deg]",
@@ -207,7 +201,7 @@ def imaging_restart(tmp_path, monkeypatch):
 
     run.sector = sector
     yield workdir, commands, run
-    assert [_input_tree(path) for path in inputs] == original_state
+    assert [file_tree_state(path) for path in inputs] == original_state
 
 
 def _expected_records(workdir):

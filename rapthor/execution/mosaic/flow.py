@@ -30,7 +30,7 @@ from rapthor.execution.outputs import (
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
-from rapthor.execution.shell import run_external_command
+from rapthor.execution.shell import command_runner
 from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import file_record_path, validate_output_record
@@ -312,15 +312,12 @@ def _finalize_mosaic_output(
     """Compress and/or publish one mosaic output record."""
     if compress_images:
         # Every attempt writes the mosaic again, which changes its modification
-        # time, so a compressed mosaic left by an earlier attempt is replaced.
+        # time, so a compressed mosaic left by an earlier attempt is replaced
         output_record = make_command_product(
             f"{mosaic_path}.fz",
             lambda partial_path: build_compress_mosaic_command(mosaic_filename, partial_path),
-            lambda command: run_external_command(
-                command,
-                pipeline_working_dir,
-                execution_config,
-                shell_operation_cls=shell_operation_cls,
+            command_runner(
+                pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
             ),
             description="Mosaic output",
             inputs=[mosaic_path],
