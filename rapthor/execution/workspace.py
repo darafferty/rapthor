@@ -137,21 +137,18 @@ def recover_scratch_workspace(pipeline_working_dir: str) -> None:
 def remove_operation_workspace(pipeline_working_dir: str) -> None:
     """Remove an operation path with the scratch workspace and recovery record it owns.
 
-    This is used when an operation is reset, which may have stopped at any point
-    of a move to or from shared scratch. A scratch workspace is removed only when
-    its marker names this operation path; any other link is removed without
-    following it.
+    A reset may find the operation at any point of a move to or from shared
+    scratch. A workspace is removed only if its marker names this operation path;
+    any other link is removed without following it.
     """
     workdir = Path(os.path.abspath(pipeline_working_dir))
     recovery_dir = _recovery_directory(workdir)
     workspaces = [workdir.resolve()] if workdir.is_symlink() else []
     try:
         record = json.loads((recovery_dir / WORKSPACE_MARKER).read_text())
-    except (OSError, ValueError):
-        record = {}
-    if isinstance(record, dict) and record.get("working_directory") == str(workdir):
-        if record.get("workspace"):
-            workspaces.append(Path(record["workspace"]))
+        workspaces.append(Path(record["workspace"]))
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     for workspace in workspaces:
         if _workspace_owner(workspace) == str(workdir):
             _remove_workspace(workspace.parent)
