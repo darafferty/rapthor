@@ -9,6 +9,7 @@ from rapthor.execution.mosaic.flow import mosaic_flow
 from rapthor.execution.mosaic.payloads import mosaic_payload_from_inputs
 from rapthor.lib.records import FileRecord
 from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
+from rapthor.operations.image.plan import is_only_pol_I
 
 
 class Mosaic(FlowOperation):
@@ -62,7 +63,10 @@ class Mosaic(FlowOperation):
                 )
         if self.field.save_supplementary_images:
             self.image_names.append("filtering_mask_file")
-        if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+        if self.field.parset["imaging_specific"]["save_filtered_model_image"] and is_only_pol_I(
+            self.field.image_pol
+        ):
+            # The Image operation makes no filtered model image with Stokes QUV
             self.image_names.append("filtered_model_file_apparent_sky")
         if self.field.imaging_sectors:
             self.image_names = [
@@ -119,7 +123,11 @@ class Mosaic(FlowOperation):
 
     def _model_skymodels_for_image_name(self, image_name):
         """Return sector sky-model paths when WSClean can render this model mosaic."""
-        if self.field.model_mosaic_method == "sparse_fits":
+        if self.field.model_mosaic_method == "sparse_fits" or not is_only_pol_I(
+            self.field.image_pol
+        ):
+            # With Stokes QUV, the sectors hold the sky models of an earlier
+            # cycle, so the model images of this cycle are regridded instead
             return None
         skymodel_attr_by_image_name = {
             "I_model_file_true_sky": "image_skymodel_file_true_sky",

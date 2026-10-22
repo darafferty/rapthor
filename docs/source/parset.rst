@@ -572,14 +572,16 @@ The available options are described below under their respective sections.
 
     save_filtered_model_image
         Save images of the filtered sky model made during each imaging cycle
-        (default = ``False``).
+        (default = ``False``). No image is made in a cycle that also images
+        Stokes Q, U and V. See :ref:`model_mosaics`.
 
     model_mosaic_method
         Method used to generate model mosaics from multiple imaging sectors
         (default = ``wsclean``). With ``wsclean``, the model mosaic is drawn by
         WSClean from the sky models of the sectors. With ``sparse_fits``, the
         model images of the sectors are regridded instead; this method is
-        intended mainly for testing.
+        intended mainly for testing. See :ref:`model_mosaics` for what each
+        method produces, and for cycles that image Stokes Q, U and V.
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default

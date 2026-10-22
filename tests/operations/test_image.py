@@ -1501,3 +1501,34 @@ def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_core_divisor(
     max_cores, requested_tasks, max_work_units, expected
 ):
     assert adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units) == expected
+
+
+@pytest.mark.parametrize("image_pol, makes_filtered_model", [("I", True), ("IQUV", False)])
+def test_filtered_model_image_is_made_only_for_stokes_i(
+    field, monkeypatch, image_pol, makes_filtered_model
+):
+    # With Stokes QUV there is no filtered sky model to draw, and the image of
+    # an earlier cycle must not be mosaicked as this cycle's product
+    field.parset["imaging_specific"]["save_filtered_model_image"] = True
+    _prepare_field_for_image(field)
+    field.image_pol = image_pol
+    sector = field.imaging_sectors[0]
+    sector.filtered_model_file_apparent_sky = "image_0/sector_1-filtered-model.fits"
+    _mock_image_flow(
+        monkeypatch,
+        {
+            "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"]],
+            "sector_extra_images": [[f"sector_1-MFS-{pol}-model-pb.fits" for pol in image_pol]],
+            "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
+            "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
+            "pybdsf_catalog": ["sector_1.source_catalog.fits"],
+            "sector_diagnostics": ["sector_1_diagnostics.json"],
+        },
+    )
+    image = _initialize_operation(Image(field=field, index=1), do_predict=False)
+
+    assert image.input_parms["save_filtered_model_image"] is makes_filtered_model
+    image.run()
+    filtered_model = getattr(sector, "filtered_model_file_apparent_sky", None)
+    assert (filtered_model is not None) is makes_filtered_model
+    assert filtered_model != "image_0/sector_1-filtered-model.fits"

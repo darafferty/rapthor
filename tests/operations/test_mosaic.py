@@ -225,7 +225,6 @@ def test_set_input_parameters_includes_clean_and_supplementary_products(tmp_path
         "Q_residual_file_apparent_sky",
         "Q_dirty_file_apparent_sky",
         "filtering_mask_file",
-        "filtered_model_file_apparent_sky",
     ]
     assert operation.input_parms["mosaic_filename"] == [
         "mosaic_1-I-image.fits",
@@ -240,7 +239,31 @@ def test_set_input_parameters_includes_clean_and_supplementary_products(tmp_path
         "mosaic_1-Q-residual.fits",
         "mosaic_1-Q-dirty.fits",
         "mosaic_1-filtering-mask.fits",
-        "mosaic_1-filtered-model.fits",
+    ]
+    # With Stokes QUV, the filtered model is left out and model images are regridded
+    assert operation.input_parms["sector_model_skymodel_filename"] == [None] * 12
+
+
+def test_set_input_parameters_renders_stokes_i_models_from_sector_skymodels(tmp_path):
+    field = _field(
+        tmp_path,
+        sector_count=2,
+        image_pol=("I",),
+        disable_clean=False,
+        save_filtered_model_image=True,
+    )
+    operation = Mosaic(field, index=1)
+
+    operation.set_input_parameters()
+
+    assert operation.image_names == [
+        "I_image_file_true_sky",
+        "I_image_file_true_sky_astcorr",
+        "I_image_file_apparent_sky",
+        "I_model_file_true_sky",
+        "I_residual_file_apparent_sky",
+        "I_dirty_file_apparent_sky",
+        "filtered_model_file_apparent_sky",
     ]
     assert operation.input_parms["sector_model_skymodel_filename"] == [
         None,
@@ -252,12 +275,6 @@ def test_set_input_parameters_includes_clean_and_supplementary_products(tmp_path
                 field.imaging_sectors[1].image_skymodel_file_true_sky,
             ]
         ).to_json(),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
         None,
         None,
         FileRecord(
