@@ -4,12 +4,10 @@ import hashlib
 import json
 import logging
 import os
-import queue
 import re
 import resource
 import shutil
 import subprocess
-import threading
 import time
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
@@ -405,113 +403,71 @@ def _run_captured_shell_command(
     task_metadata: Mapping[str, object],
 ) -> list[str]:
     command_logger = _get_command_logger() if execution_config.stream_output else None
-    buffered_log_lines = []
-    output_lines = []
-    process = None
-    reader_thread = None
     output_log_handle = None
-    try:
-        if output_log_path is not None:
-            output_log_path.parent.mkdir(parents=True, exist_ok=True)
-            output_log_handle = output_log_path.open("a", encoding="utf-8", buffering=1)
-            _write_command_output_header(
-                output_log_handle,
-                shell_command,
-                started_at,
-                task_metadata=task_metadata,
-            )
 
-        env = os.environ.copy()
-        for key, value in shell_command.environment.items():
-            if value is None:
-                env.pop(key, None)
-            else:
-                env[key] = value
-        process_args = _profiled_process_args(
-            normalize_command(shell_command.command),
+    if output_log_path is not None:
+        output_log_path.parent.mkdir(parents=True, exist_ok=True)
+        output_log_handle = output_log_path.open("a", encoding="utf-8", buffering=1)
+        _write_command_output_header(
+            output_log_handle,
             shell_command,
-            execution_config,
             started_at,
+            task_metadata=task_metadata,
+        )
+
+    env = os.environ.copy()
+    for key, value in shell_command.environment.items():
+        if value is None:
+            env.pop(key, None)
+        else:
+            env[key] = value
+
+    process_args = _profiled_process_args(
+        normalize_command(shell_command.command),
+        shell_command,
+        execution_config,
+        started_at,
+        profile,
+    )
+
+    if execution_config.command_profile != "off":
+        resource_before = _resource_usage_snapshot()
+        process_start_time = time.monotonic()
+
+    process = subprocess.run(
+        process_args,
+        cwd=shell_command.working_directory,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+    if execution_config.command_profile != "off":
+        resource_after = _resource_usage_snapshot()
+        profile_elapsed_seconds = time.monotonic() - process_start_time
+        _finish_command_profile(
             profile,
+            resource_before=resource_before,
+            resource_after=resource_after,
+            elapsed_seconds=profile_elapsed_seconds,
         )
 
-        if execution_config.command_profile != "off":
-            resource_before = _resource_usage_snapshot()
-            process_start_time = time.monotonic()
+    if output_log_handle is not None:
+        output_log_handle.write(process.stdout)
+        _write_command_output_footer(output_log_handle, returncode=process.returncode)
+        output_log_handle.close()
 
-        process = subprocess.Popen(
-            process_args,
-            cwd=shell_command.working_directory,
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+    if command_logger is not None:
+        command_logger.info(process.stdout)
+
+    if process.returncode != 0:
+        raise ShellCommandError(
+            f"Command failed with return code {process.returncode}: {process_args}",
+            process.returncode,
         )
-        if process.stdout is None:
-            raise RuntimeError("Command output pipe was not created")
 
-        output_queue = queue.Queue()
-        reader_thread = threading.Thread(
-            target=_queue_process_output,
-            args=(process.stdout, output_queue),
-            daemon=True,
-        )
-        reader_thread.start()
-
-        while True:
-            try:
-                raw_line = output_queue.get(timeout=STREAM_LOG_FLUSH_INTERVAL_SECONDS)
-            except queue.Empty:
-                if command_logger is not None:
-                    _flush_stream_log(command_logger, buffered_log_lines)
-                continue
-
-            if raw_line is _STREAM_DONE:
-                break
-
-            lines = _output_lines(raw_line)
-            output_lines.extend(lines)
-            if output_log_handle is not None:
-                output_log_handle.write(raw_line.decode(errors="replace"))
-            if command_logger is not None:
-                buffered_log_lines.extend(lines)
-                if len(buffered_log_lines) >= STREAM_LOG_MAX_LINES_PER_RECORD:
-                    _flush_stream_log(command_logger, buffered_log_lines)
-
-        if command_logger is not None:
-            _flush_stream_log(command_logger, buffered_log_lines)
-
-        process.wait()
-
-        if execution_config.command_profile != "off":
-            resource_after = _resource_usage_snapshot()
-            profile_elapsed_seconds = time.monotonic() - process_start_time
-            _finish_command_profile(
-                profile,
-                resource_before=resource_before,
-                resource_after=resource_after,
-                elapsed_seconds=profile_elapsed_seconds,
-            )
-
-        if process.returncode != 0:
-            raise ShellCommandError(
-                "Command failed with return code "
-                f"{process.returncode}: {shell_command.command_string}",
-                process.returncode,
-            )
-    finally:
-        if process is not None and process.poll() is None:
-            process.kill()
-            process.wait()
-        if reader_thread is not None:
-            reader_thread.join(timeout=1)
-        if output_log_handle is not None:
-            _write_command_output_footer(
-                output_log_handle,
-                returncode=None if process is None else process.returncode,
-            )
-            output_log_handle.close()
-
-    return output_lines
+    return process.stdout.splitlines()
 
 
 def _profile_directory(shell_command: ShellCommand, started_at: datetime) -> Optional[Path]:
@@ -576,14 +532,6 @@ def _resource_usage_metrics(before, after, elapsed_seconds: float) -> dict:
     return metrics
 
 
-def _queue_process_output(output, output_queue) -> None:
-    try:
-        for raw_line in iter(output.readline, b""):
-            output_queue.put(raw_line)
-    finally:
-        output_queue.put(_STREAM_DONE)
-
-
 def _output_lines(raw_line: bytes) -> list[str]:
     text = raw_line.decode(errors="replace").rstrip("\r\n")
     return text.splitlines() or [text]
@@ -615,15 +563,6 @@ def _write_command_output_footer(handle, *, returncode: Optional[int]) -> None:
     handle.write("\n")
     handle.write(f"Exit status: {returncode if returncode is not None else 'unknown'}\n")
     handle.write(f"=== Rapthor command finished {datetime.now(timezone.utc).isoformat()} ===\n\n")
-
-
-def _flush_stream_log(command_logger, buffered_lines: list[str]) -> None:
-    if not buffered_lines:
-        return
-    message = "\n".join(buffered_lines).rstrip("\n")
-    buffered_lines.clear()
-    if message:
-        command_logger.info(message)
 
 
 @lru_cache
