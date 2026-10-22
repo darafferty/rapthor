@@ -995,10 +995,6 @@ for how these options are used.
         test-robust`` (default = ``None``). The labels can be used in the
         dashboard to find the run and everything that belongs to it.
 
-    prefect_retries
-        Number of times that a step that failed is tried again before the
-        operation is stopped (default = ``0``).
-
     prefect_log_commands
         Record every command that is run in ``dir_working/logs/commands.jsonl``
         and write its output to ``dir_working/logs/<operation>/<task>.log``

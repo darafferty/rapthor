@@ -22,7 +22,6 @@ def test_execution_config_defaults_from_empty_parset(monkeypatch):
     assert config.dask_dashboard_address is None
     assert config.stream_output is True
     assert config.run_tags == ()
-    assert config.retries == 0
     assert config.log_commands is True
     assert config.command_profile == "auto"
     assert config.publish_fits_previews is False
@@ -47,7 +46,6 @@ def test_execution_config_reads_cluster_specific_values():
                 "dask_dashboard_address": ":8787",
                 "prefect_stream_output": False,
                 "prefect_run_tags": "rich demo, multi-sector",
-                "prefect_retries": 2,
                 "prefect_log_commands": False,
                 "prefect_command_profile": "time",
                 "prefect_publish_fits_previews": True,
@@ -76,7 +74,6 @@ def test_execution_config_reads_cluster_specific_values():
     assert config.dask_dashboard_address == ":8787"
     assert config.stream_output is False
     assert config.run_tags == ("multi-sector", "rich_demo")
-    assert config.retries == 2
     assert config.log_commands is False
     assert config.command_profile == "time"
     assert config.publish_fits_previews is True
@@ -253,11 +250,6 @@ def test_execution_config_treats_none_command_profile_as_auto():
     config = ExecutionConfig.from_parset({"cluster_specific": {"prefect_command_profile": None}})
 
     assert config.command_profile == "auto"
-
-
-def test_execution_config_rejects_negative_retries():
-    with pytest.raises(ValueError, match="prefect_retries"):
-        ExecutionConfig.from_parset({"cluster_specific": {"prefect_retries": -1}})
 
 
 def test_execution_config_rejects_negative_local_dask_workers():
