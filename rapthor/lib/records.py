@@ -257,6 +257,22 @@ def copy_record_recursive(src_obj, dest_dir, index=None, move=False):
     # Otherwise, do nothing
 
 
+def move_record_recursive(src_obj, dest_dir):
+    """
+    Move file or directory records to dest_dir and return records of the new paths.
+
+    Records whose files are missing or already in dest_dir are only repointed.
+    """
+    if isinstance(src_obj, list):
+        return [move_record_recursive(item, dest_dir) for item in src_obj]
+    if not is_file_or_directory_record(src_obj):
+        return src_obj
+    dest = Path(dest_dir) / Path(src_obj["path"]).name
+    if Path(src_obj["path"]) != dest:
+        copy_record_object(src_obj, dest_dir, move=True)
+    return {**src_obj, "path": str(dest)}
+
+
 def remove_or_log_error(path: Path):
     """
     Remove a file or directory at the specified path.
