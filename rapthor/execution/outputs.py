@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import shutil
-import stat
 from pathlib import Path
 from typing import Callable, Iterable, Mapping, Optional, Sequence, Union
 
@@ -151,7 +150,12 @@ def make_command_product(
     # not exist, so the record cannot describe an older product.
     _write_json_atomically(
         record_path,
-        {"digest": digest, "command": command, "inputs": inputs},
+        {
+            "digest": digest,
+            "command": command,
+            "inputs": inputs,
+            "files": [entry[0] for entry in _file_entries(partial_path)],
+        },
     )
     os.replace(partial_path, output_path)
     return require(output_path, description)
@@ -187,34 +191,71 @@ def _input_identity(path: str) -> object:
     Return what identifies the version of an input beyond its path.
 
     A product made by :func:`make_command_product` is identified by its own
-    digest. A regular file is identified by its size and modification time.
-    Other inputs, such as the input Measurement Sets, are not changed by Rapthor
-    and are identified by their path alone.
+    digest. Any other file or directory, such as an input Measurement Set, is
+    identified by the relative path, size and modification time of each file
+    in it, so that an input that is replaced or changed at the same path is
+    noticed.
     """
     for is_directory in (True, False):
         digest = _recorded_product_digest(path, is_directory)
         if digest is not None:
             return digest
-    try:
+    return _file_entries(path)
+
+
+def _file_entries(path: str) -> list[list]:
+    """Return the relative path, size and modification time of each file in ``path``."""
+    if os.path.isfile(path):
         status = os.stat(path)
-    except OSError:
-        return None
-    if stat.S_ISREG(status.st_mode):
-        return [status.st_size, status.st_mtime_ns]
-    return None
+        return [["", status.st_size, status.st_mtime_ns]]
+    entries = []
+    visited = set()
+    for root, directories, names in os.walk(path, followlinks=True):
+        # Follow linked subdirectories (such as linked subtables), but only once.
+        real_root = os.path.realpath(root)
+        if real_root in visited:
+            directories.clear()
+            continue
+        visited.add(real_root)
+        directories.sort()
+        for name in sorted(names):
+            # Casacore may update the lock file of a table that it only reads.
+            if name == "table.lock":
+                continue
+            file_path = os.path.join(root, name)
+            try:
+                status = os.stat(file_path)
+            except OSError:
+                continue
+            entries.append([os.path.relpath(file_path, path), status.st_size, status.st_mtime_ns])
+    return entries
 
 
 def _recorded_product_digest(path: str, directory: bool) -> Optional[str]:
-    """Return the recorded digest of a promoted product, or ``None``."""
+    """
+    Return the recorded digest of a promoted product, or ``None``.
+
+    A directory product is accepted only if every file that it held when it
+    was promoted still exists, so that one that was partly removed (for
+    example, by a cleanup or a move that was stopped) is not reused. Files
+    added later, such as a column that WSClean adds to a Measurement Set, are
+    allowed.
+    """
     exists = os.path.isdir(path) if directory else os.path.isfile(path)
     if not exists:
         return None
     try:
         with open(product_record_path(path)) as handle:
-            digest = json.load(handle).get("digest")
+            record = json.load(handle)
+        digest = record.get("digest")
+        files = record.get("files")
     except (OSError, ValueError, AttributeError):
         return None
-    return digest if isinstance(digest, str) else None
+    if not isinstance(digest, str) or not isinstance(files, list):
+        return None
+    if directory and not all(os.path.isfile(os.path.join(path, str(name))) for name in files):
+        return None
+    return digest
 
 
 def _write_json_atomically(path: str, content: Mapping[str, object]) -> None:
@@ -264,8 +305,10 @@ def cleanup_intermediate_outputs(
             for output in retained
         ):
             continue
+        # Remove the record first, so that a product that is only partly
+        # removed is not reused.
+        _remove_path(product_record_path(str(path)))
         if path.is_symlink() or path.is_file():
             path.unlink()
         elif path.is_dir():
             shutil.rmtree(path)
-        _remove_path(product_record_path(str(path)))

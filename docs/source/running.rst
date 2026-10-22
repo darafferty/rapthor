@@ -424,8 +424,10 @@ command that makes it has succeeded, so the commands in
 ``logs/commands.jsonl`` show the temporary name. A file
 ``.<name>.product.json`` next to it records the command and the input files.
 When a run is resumed, such a file is used again only if this record matches
-the current command and inputs; otherwise it is made again, as is any
-``.partial`` file left by a command that was stopped. The input Measurement
+the current command and inputs (including the size and modification time of
+each file of the inputs) and if none of its own files has been removed since;
+otherwise it is made again, as is any ``.partial`` file left by a command that
+was stopped. The input Measurement
 Sets are only read: they are never changed or removed.
 
 The intermediate files of an operation that failed are kept in
