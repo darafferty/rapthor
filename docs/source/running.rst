@@ -409,28 +409,20 @@ that were successfully completed previously. In this way, one can quickly resume
 reduction that was halted (either by the user or due to some problem) by simply
 re-running Rapthor with the same parset.
 
-An operation that had not finished is run again from its start, but it uses
-again some of the files that the earlier attempt had finished:
+An operation that had not finished is run again from its start, but reuses
+the Measurement Sets that an earlier attempt had completed (those made by the
+Concatenate operation, and the prepared and concatenated data of each imaging
+sector) and the images of a sector that WSClean had finished. Images are
+compressed again, since some of them are written again by every attempt.
 
-* the Measurement Sets made by the Concatenate operation and by imaging (the
-  prepared and concatenated data of each sector), if they were made with the
-  same settings from the same data;
-* the images of a sector, if WSClean had already finished making them;
-* the compressed images (``.fits.fz``) of a sector, if they were made from the
-  same images. A mosaic is made again by each attempt, and so is compressed
-  again.
-
-Rapthor makes each of these Measurement Sets and compressed images under a
-temporary name, ``.<name>.partial``, and gives it its final name only once the
-command that makes it has succeeded, so the commands in
-``logs/commands.jsonl`` show the temporary name. A file
-``.<name>.product.json`` next to it records the command and the input files.
-When a run is resumed, such a file is used again only if this record matches
-the current command and inputs (including the size and modification time of
-each file of the inputs) and if none of its own files has been removed since;
-otherwise it is made again, as is any ``.partial`` file left by a command that
-was stopped. The input Measurement
-Sets are only read: they are never changed or removed.
+Rapthor makes each Measurement Set and compressed image under a temporary name,
+``.<name>.partial``, which is also the name shown in ``logs/commands.jsonl``,
+and gives it its final name only once the command that makes it has succeeded.
+A product with its final name is therefore complete, while a ``.partial`` file
+left by a command that was stopped is made again. As for a finished operation,
+the settings are not compared: to make the products with other settings, reset
+the operation (see :ref:`resetting_rapthor`). The input Measurement Sets are
+only read, never changed or removed.
 
 The intermediate files of an operation that failed are kept in
 ``dir_working/pipelines`` so that they can be inspected.

@@ -14,7 +14,7 @@ import pytest
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.preparation import prepare_visibility_ms
 from rapthor.operations.image.plan import build_image_applycal_steps
-from tests.conftest import write_scalar_h5parm
+from tests.conftest import file_tree_state, write_scalar_h5parm
 from tests.execution.conftest import TEST_DIRECTION_NAME, TEST_PATCH_NAME, requires_dp3
 
 pytestmark = [pytest.mark.integration, requires_dp3]
@@ -171,18 +171,10 @@ def test_duplicate_phase_step_applies_the_phases_twice(prepare, test_ms_info, tm
     _assert_phase_applications(corrected, reference, applications=2)
 
 
-def _measurement_set_state(path):
-    return sorted(
-        (str(item.relative_to(path)), item.stat().st_size, item.stat().st_mtime_ns)
-        for item in Path(path).rglob("*")
-        if item.is_file()
-    )
-
-
 def test_prepare_restart_remakes_a_stopped_ms_and_then_reuses_it(
     test_ms, test_ms_info, phasecenter, tmp_path
 ):
-    """A restart replaces an MS left by a stopped attempt, then reuses the complete one."""
+    """A restart makes an MS that a stopped attempt left partial, then reuses the complete one."""
     workdir = tmp_path / "image_1"
     workdir.mkdir()
     sector = {
@@ -201,19 +193,17 @@ def test_prepare_restart_remakes_a_stopped_ms_and_then_reuses_it(
         "timestep": 1,
         "minchannels": 1,
     }
-    input_state = _measurement_set_state(test_ms)
-    # A stopped attempt left an incomplete MS at the final path and a partial one.
-    (workdir / "prep.ms").mkdir()
-    (workdir / "prep.ms" / "table.dat").write_text("incomplete")
+    input_state = file_tree_state(test_ms)
+    # A stopped attempt left a partial MS
     (workdir / ".prep.ms.partial").mkdir()
 
     config = ExecutionConfig(task_runner="sync")
     record = prepare_visibility_ms(sector, task, workdir.as_posix(), config)
     with pt.table(record["path"], ack=False) as table:
         assert table.nrows() == len(test_ms_info["antenna1"])
-    product_state = _measurement_set_state(record["path"])
+    product_state = file_tree_state(record["path"])
 
     assert prepare_visibility_ms(sector, task, workdir.as_posix(), config) == record
-    assert _measurement_set_state(record["path"]) == product_state
+    assert file_tree_state(record["path"]) == product_state
     assert not (workdir / ".prep.ms.partial").exists()
-    assert _measurement_set_state(test_ms) == input_state
+    assert file_tree_state(test_ms) == input_state

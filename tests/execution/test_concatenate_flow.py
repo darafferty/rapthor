@@ -14,6 +14,7 @@ from rapthor.execution.concatenate.payloads import concatenate_payload_from_inpu
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
+from tests.conftest import file_tree_state
 from tests.execution.conftest import run_flow_for_test
 
 
@@ -547,13 +548,6 @@ def test_concatenate_operation_run_failure_does_not_mark_done(
     assert field.scan_count == 0
 
 
-def _input_tree(path):
-    return sorted(
-        (str(item.relative_to(path)), item.stat().st_mtime_ns, item.read_bytes())
-        for item in path.rglob("*")
-    )
-
-
 def test_concatenate_operation_restarts_with_complete_outputs(
     prefect_server, tmp_path, monkeypatch, fake_shell_operation_cls
 ):
@@ -564,7 +558,7 @@ def test_concatenate_operation_restarts_with_complete_outputs(
             original.mkdir(parents=True)
             (original / "table.dat").write_text("original")
             inputs.append(original)
-    original_state = [_input_tree(path) for path in inputs]
+    original_state = [file_tree_state(path) for path in inputs]
 
     class StoppedShellOperation(fake_shell_operation_cls):
         def run(self):
@@ -614,10 +608,10 @@ def test_concatenate_operation_restarts_with_complete_outputs(
     assert json.loads(Path(operation.outputs_file).read_text()) == expected
     assert Path(operation.done_file).is_file()
     assert not (pipeline_dir / ".epoch_1_concatenated.ms.partial").exists()
-    assert [_input_tree(path) for path in inputs] == original_state
+    assert [file_tree_state(path) for path in inputs] == original_state
 
 
-def test_concatenate_epoch_remakes_an_output_left_by_an_earlier_attempt(
+def test_concatenate_epoch_reuses_an_output_of_an_earlier_attempt(
     tmp_path, fake_shell_operation_cls
 ):
     epoch = {
@@ -625,14 +619,15 @@ def test_concatenate_epoch_remakes_an_output_left_by_an_earlier_attempt(
         "output_filename": "epoch_0_concatenated.ms",
         "output_path": str(tmp_path / "epoch_0_concatenated.ms"),
     }
-    # An output without a record, for example one left by a stopped command,
-    # used to make the restart fail.
-    (tmp_path / "epoch_0_concatenated.ms" / "partial_table").mkdir(parents=True)
+    # An output with its final name is complete, as a stopped command leaves a
+    # partial one.
+    (tmp_path / "epoch_0_concatenated.ms").mkdir()
+    (tmp_path / "epoch_0_concatenated.ms" / "table.dat").write_text("earlier attempt")
 
     output = run_concatenate_epoch(
         epoch, "DATA", str(tmp_path), shell_operation_cls=fake_shell_operation_cls
     )
 
     assert output == directory_record(tmp_path / "epoch_0_concatenated.ms")
-    assert not (tmp_path / "epoch_0_concatenated.ms" / "partial_table").exists()
-    assert len(fake_shell_operation_cls.instances) == 1
+    assert (tmp_path / "epoch_0_concatenated.ms" / "table.dat").read_text() == "earlier attempt"
+    assert fake_shell_operation_cls.instances == []

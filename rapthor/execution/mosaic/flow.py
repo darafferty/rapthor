@@ -24,13 +24,13 @@ from rapthor.execution.mosaic.model_rendering import (
 from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mosaic_payload
 from rapthor.execution.outputs import (
     cleanup_intermediate_outputs,
-    make_command_product,
+    make_product,
+    partial_product_path,
     require_file,
 )
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
-from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import file_record_path, validate_output_record
@@ -311,19 +311,16 @@ def _finalize_mosaic_output(
 ) -> dict:
     """Compress and/or publish one mosaic output record."""
     if compress_images:
-        # Every attempt writes the mosaic again, which changes its modification
-        # time, so a compressed mosaic left by an earlier attempt is replaced.
-        output_record = make_command_product(
-            f"{mosaic_path}.fz",
-            lambda partial_path: build_compress_mosaic_command(mosaic_filename, partial_path),
-            lambda command: run_external_command(
-                command,
-                pipeline_working_dir,
-                execution_config,
-                shell_operation_cls=shell_operation_cls,
-            ),
-            description="Mosaic output",
-            inputs=[mosaic_path],
+        # Every attempt writes the mosaic again, so it is compressed again too
+        compressed_path = f"{mosaic_path}.fz"
+        output_record = make_product(
+            compressed_path,
+            build_compress_mosaic_command(mosaic_filename, partial_product_path(compressed_path)),
+            "Mosaic output",
+            pipeline_working_dir,
+            execution_config,
+            reuse=False,
+            shell_operation_cls=shell_operation_cls,
         )
     if execution_config.publish_fits_previews:
         publish_fits_image_artifacts(

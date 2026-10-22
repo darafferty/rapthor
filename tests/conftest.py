@@ -48,6 +48,16 @@ TEST_MS_DOWNLOAD_TIMEOUT = (30, 300)
 TEST_MS_DATA_SCALE = 1.5e4
 
 
+def file_tree_state(path):
+    """Return the relative path, size and modification time of every file under ``path``."""
+    path = Path(path)
+    return sorted(
+        (str(item.relative_to(path)), item.stat().st_size, item.stat().st_mtime_ns)
+        for item in path.rglob("*")
+        if item.is_file()
+    )
+
+
 def download_test_ms(destination: Path) -> None:
     """Download the shared small Measurement Set used by the tests."""
     response = requests.get(TEST_MS_ARCHIVE_URL, timeout=TEST_MS_DOWNLOAD_TIMEOUT)

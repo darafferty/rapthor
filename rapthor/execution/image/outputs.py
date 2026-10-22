@@ -20,7 +20,8 @@ from rapthor.execution.image.restoration import restore_skymodel
 from rapthor.execution.outputs import (
     cleanup_intermediate_outputs,
     file_records_for_required_patterns,
-    make_command_product,
+    make_product,
+    partial_product_path,
     require_file,
 )
 from rapthor.execution.scratch import temporary_environment
@@ -114,26 +115,25 @@ def compress_image_records(
     """
     Compress sector image records and return records for the compressed files.
 
-    Each image is compressed by its own command, so that a compressed image is
-    complete once it has its final name. One that an earlier attempt completed
-    from the same image is reused.
+    Each image is compressed by its own command under a partial name, so that a
+    compressed image is complete once it has its final name. A resumed run
+    compresses the images again, as some of them are written by every attempt.
     """
 
     def compress(record: dict, description: str) -> dict:
         image = record["path"]
-        return make_command_product(
-            f"{image}.fz",
-            lambda partial_path: build_compress_image_command(
-                image, partial_path, lossless=_is_sparse_model_image(image)
-            ),
-            lambda command: run_external_command(
-                command,
-                pipeline_working_dir,
-                execution_config,
-                shell_operation_cls=shell_operation_cls,
-            ),
-            description=description,
-            inputs=[image],
+        compressed = f"{image}.fz"
+        command = build_compress_image_command(
+            image, partial_product_path(compressed), lossless=_is_sparse_model_image(image)
+        )
+        return make_product(
+            compressed,
+            command,
+            description,
+            pipeline_working_dir,
+            execution_config,
+            reuse=False,
+            shell_operation_cls=shell_operation_cls,
         )
 
     descriptions = [

@@ -10,11 +10,10 @@ from rapthor.execution.concatenate.payloads import (
     validate_concatenate_payload,
 )
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.outputs import make_command_product
+from rapthor.execution.outputs import make_product, partial_product_path
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_options
-from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.lib.records import validate_output_record
@@ -101,30 +100,25 @@ def run_concatenate_epoch(
     """
     Run concatenation for one epoch and return a directory output record.
 
-    A concatenated MS completed by an earlier attempt with the same inputs and
-    settings is reused; any other output left by an earlier attempt is made
-    again. The input Measurement Sets are only read.
+    A concatenated MS that an earlier attempt completed is reused.
     """
     config = execution_config or ExecutionConfig(task_runner="sync")
-    input_filenames = epoch["input_filenames"]
-    return make_command_product(
-        epoch["output_path"],
-        lambda partial_path: select_concatenation_command(
-            input_filenames,
-            partial_path,
-            data_colname,
-            use_array_beam=use_array_beam,
-        ),
-        lambda command: run_external_command(
-            command,
-            pipeline_working_dir,
-            config,
-            name="concatenate_epoch",
-            shell_operation_cls=shell_operation_cls,
-        ),
-        description="Concatenate output",
-        inputs=input_filenames,
+    output_path = epoch["output_path"]
+    command = select_concatenation_command(
+        epoch["input_filenames"],
+        partial_product_path(output_path),
+        data_colname,
+        use_array_beam=use_array_beam,
+    )
+    return make_product(
+        output_path,
+        command,
+        "Concatenate output",
+        pipeline_working_dir,
+        config,
         directory=True,
+        name="concatenate_epoch",
+        shell_operation_cls=shell_operation_cls,
     )
 
 

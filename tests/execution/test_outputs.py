@@ -1,12 +1,17 @@
-import json
-import os
+import shlex
 from pathlib import Path
 
 import pytest
 
 import rapthor.execution.outputs as outputs_module
-from rapthor.execution.outputs import cleanup_intermediate_outputs, make_command_product
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.outputs import (
+    cleanup_intermediate_outputs,
+    make_product,
+    partial_product_path,
+)
 from rapthor.lib.records import directory_record, file_record
+from tests.conftest import file_tree_state
 
 
 @pytest.mark.parametrize("scratch_workspace", [False, True])
@@ -85,237 +90,118 @@ def test_cleanup_cannot_delete_outside_the_operation(tmp_path):
     assert not owned_link.is_symlink()
 
 
-class _ProductCommand:
-    """Fake command that writes a directory product, optionally failing part-way."""
+class _FakeShellOperation:
+    """Fake shell operation that writes a directory product and can fail after writing."""
 
-    def __init__(self, fail_after_writing=False):
-        self.fail_after_writing = fail_after_writing
-        self.commands = []
+    commands = []
+    fail = False
 
-    def __call__(self, command):
-        self.commands.append(command)
-        output = Path(command[-1])
+    def __init__(self, **kwargs):
+        self.command = shlex.split(kwargs["commands"][-1])
+
+    def run(self):
+        self.commands.append(self.command)
+        output = Path(self.command[-1])
         output.mkdir()
-        (output / "table.dat").write_text(command[0])
-        if self.fail_after_writing:
+        (output / "table.dat").write_text(self.command[0])
+        if self.fail:
             raise RuntimeError("command failed")
+        return "OK"
 
 
-def _make_product(output, run, *, settings="a", inputs=()):
-    return make_command_product(
+@pytest.fixture
+def shell_operation_cls():
+    _FakeShellOperation.commands = []
+    _FakeShellOperation.fail = False
+    return _FakeShellOperation
+
+
+def _make_product(output, shell_operation_cls, *, settings="a", reuse=True):
+    return make_product(
         str(output),
-        lambda partial: [settings, partial],
-        run,
-        description="Test product",
-        inputs=[str(path) for path in inputs],
+        [settings, partial_product_path(str(output))],
+        "Test product",
+        str(output.parent),
+        ExecutionConfig(task_runner="sync"),
         directory=True,
+        reuse=reuse,
+        shell_operation_cls=shell_operation_cls,
     )
 
 
-def _tree_state(path):
-    return sorted(
-        (str(item.relative_to(path)), item.stat().st_mtime_ns, item.read_bytes())
-        for item in path.rglob("*")
-        if item.is_file()
-    )
-
-
-def test_make_command_product_promotes_a_complete_product(tmp_path):
+def test_make_product_gives_a_complete_product_its_final_name(tmp_path, shell_operation_cls):
     output = tmp_path / "product.ms"
-    run = _ProductCommand()
 
-    record = _make_product(output, run)
+    record = _make_product(output, shell_operation_cls)
 
     assert record == directory_record(output)
-    assert run.commands == [["a", str(tmp_path / ".product.ms.partial")]]
+    assert shell_operation_cls.commands == [["a", str(tmp_path / ".product.ms.partial")]]
     assert (output / "table.dat").read_text() == "a"
     assert not (tmp_path / ".product.ms.partial").exists()
-    assert (tmp_path / ".product.ms.product.json").is_file()
 
 
-def test_make_command_product_restarts_after_a_failure_during_creation(tmp_path):
+def test_make_product_restarts_after_a_failure_during_creation(tmp_path, shell_operation_cls):
     output = tmp_path / "product.ms"
     partial = tmp_path / ".product.ms.partial"
-
+    shell_operation_cls.fail = True
     with pytest.raises(RuntimeError, match="command failed"):
-        _make_product(output, _ProductCommand(fail_after_writing=True))
-
-    # Nothing is promoted; the partial output is kept for inspection.
+        _make_product(output, shell_operation_cls)
+    # Nothing gets the final name; the partial output is kept for inspection
     assert not output.exists()
     assert (partial / "table.dat").is_file()
 
-    run = _ProductCommand()
-    assert _make_product(output, run) == directory_record(output)
-    assert len(run.commands) == 1
+    shell_operation_cls.fail = False
+    assert _make_product(output, shell_operation_cls) == directory_record(output)
+    assert len(shell_operation_cls.commands) == 2
     assert not partial.exists()
 
 
-def test_make_command_product_restarts_after_a_failure_before_promotion(tmp_path, monkeypatch):
+def test_make_product_reuses_a_complete_product(tmp_path, shell_operation_cls):
     output = tmp_path / "product.ms"
-
-    original_replace = os.replace
-
-    def stop_promotion(source, destination):
-        if destination == str(output):
-            raise KeyboardInterrupt
-        return original_replace(source, destination)
-
-    with monkeypatch.context() as patch:
-        patch.setattr(outputs_module.os, "replace", stop_promotion)
-        with pytest.raises(KeyboardInterrupt):
-            _make_product(output, _ProductCommand())
-    # The record was written, but it does not make a missing product complete.
-    assert not output.exists()
-    assert (tmp_path / ".product.ms.product.json").is_file()
-
-    run = _ProductCommand()
-    assert _make_product(output, run) == directory_record(output)
-    assert len(run.commands) == 1
-
-
-def test_make_command_product_reuses_a_complete_product(tmp_path):
-    output = tmp_path / "product.ms"
-    _make_product(output, _ProductCommand())
-    state = _tree_state(output)
+    _make_product(output, shell_operation_cls)
+    state = file_tree_state(output)
     leftover = tmp_path / ".product.ms.partial"
     leftover.mkdir()
 
-    run = _ProductCommand()
-    assert _make_product(output, run) == directory_record(output)
+    assert _make_product(output, shell_operation_cls, settings="b") == directory_record(output)
 
-    assert run.commands == []
-    assert _tree_state(output) == state
+    assert len(shell_operation_cls.commands) == 1
+    assert file_tree_state(output) == state
     assert not leftover.exists()
 
 
-def test_make_command_product_remakes_a_product_without_a_matching_record(tmp_path):
+def test_make_product_replaces_an_earlier_product_when_not_reusing(tmp_path, shell_operation_cls):
     output = tmp_path / "product.ms"
     output.mkdir()
-    (output / "table.dat").write_text("unknown")
+    (output / "table.dat").write_text("earlier attempt")
 
-    run = _ProductCommand()
-    _make_product(output, run)
-    assert len(run.commands) == 1
+    assert _make_product(output, shell_operation_cls, reuse=False) == directory_record(output)
+
+    assert len(shell_operation_cls.commands) == 1
     assert (output / "table.dat").read_text() == "a"
 
-    _make_product(output, run, settings="b")
-    assert len(run.commands) == 2
-    assert (output / "table.dat").read_text() == "b"
 
-
-def test_make_command_product_remakes_a_product_when_an_input_changes(tmp_path):
-    source = tmp_path / "source.fits"
-    source.write_text("one")
-    upstream = tmp_path / "upstream.ms"
-    output = tmp_path / "product.ms"
-    run = _ProductCommand()
-    _make_product(upstream, run)
-    _make_product(output, run, inputs=[source, upstream])
-    assert len(run.commands) == 2
-
-    _make_product(output, run, inputs=[source, upstream])
-    assert len(run.commands) == 2
-
-    os.utime(source, ns=(1, 1))
-    _make_product(output, run, inputs=[source, upstream])
-    assert len(run.commands) == 3
-
-    # An upstream product made with other settings changes the downstream one.
-    _make_product(upstream, run, settings="b")
-    _make_product(output, run, inputs=[source, upstream])
-    assert len(run.commands) == 5
-
-
-def test_make_command_product_remakes_a_partly_removed_product(tmp_path):
-    output = tmp_path / "product.ms"
-    run = _ProductCommand()
-    _make_product(output, run)
-    # Files added after promotion, such as a new column, are allowed.
-    (output / "table.f9").write_text("model data")
-    _make_product(output, run)
-    assert len(run.commands) == 1
-
-    # A cleanup or move that was stopped part-way removed some files.
-    (output / "table.dat").unlink()
-    _make_product(output, run)
-    assert len(run.commands) == 2
-    assert (output / "table.dat").is_file()
-
-
-def test_make_command_product_remakes_a_product_when_an_input_ms_changes(tmp_path):
-    original = tmp_path / "input.ms"
-    (original / "ANTENNA").mkdir(parents=True)
-    (original / "ANTENNA" / "table.dat").write_text("antennas")
-    output = tmp_path / "product.ms"
-    run = _ProductCommand()
-    _make_product(output, run, inputs=[original])
-
-    # Reading a table may update its lock file, which is ignored.
-    (original / "table.lock").write_text("lock")
-    _make_product(output, run, inputs=[original])
-    assert len(run.commands) == 1
-
-    (original / "ANTENNA" / "table.dat").write_text("other antennas")
-    _make_product(output, run, inputs=[original])
-    assert len(run.commands) == 2
-
-
-def test_make_command_product_follows_linked_subtables_of_an_input(tmp_path):
-    subtable = tmp_path / "shared" / "ANTENNA"
-    subtable.mkdir(parents=True)
-    (subtable / "table.dat").write_text("antennas")
-    original = tmp_path / "input.ms"
-    original.mkdir()
-    (original / "ANTENNA").symlink_to(subtable, target_is_directory=True)
-    # A link back to the table itself is followed only once.
-    (original / "SELF").symlink_to(original, target_is_directory=True)
-    output = tmp_path / "product.ms"
-    run = _ProductCommand()
-    _make_product(output, run, inputs=[original])
-
-    (subtable / "table.dat").write_text("other antennas")
-    _make_product(output, run, inputs=[original])
-    assert len(run.commands) == 2
-
-
-def test_make_command_product_remakes_a_product_whose_record_lists_no_files(tmp_path):
-    output = tmp_path / "product.ms"
-    run = _ProductCommand()
-    _make_product(output, run)
-    record_path = tmp_path / ".product.ms.product.json"
-    record = json.loads(record_path.read_text())
-    del record["files"]
-    record_path.write_text(json.dumps(record))
-
-    _make_product(output, run)
-    assert len(run.commands) == 2
-
-
-def test_make_command_product_never_removes_an_input(tmp_path):
-    original = tmp_path / "input.ms"
-    original.mkdir()
-    (original / "table.dat").write_text("input")
-    state = _tree_state(original)
-    run = _ProductCommand()
-
-    for output in (original, original / "nested.ms", tmp_path):
-        with pytest.raises(ValueError, match="would overwrite the input"):
-            _make_product(output, run, inputs=[original])
-
-    assert run.commands == []
-    assert _tree_state(original) == state
-
-
-def test_cleanup_removes_the_record_of_a_removed_product(tmp_path):
+def test_cleanup_moves_a_product_aside_before_removing_it(
+    tmp_path, shell_operation_cls, monkeypatch
+):
     removed = tmp_path / "removed.ms"
     kept = tmp_path / "kept.ms"
-    run = _ProductCommand()
-    _make_product(removed, run)
-    _make_product(kept, run)
+    for output in (removed, kept):
+        _make_product(output, shell_operation_cls)
 
-    cleanup_intermediate_outputs([removed, kept], str(tmp_path), [directory_record(kept)])
+    def stop(path):
+        raise KeyboardInterrupt
 
+    with monkeypatch.context() as patch:
+        patch.setattr(outputs_module.shutil, "rmtree", stop)
+        with pytest.raises(KeyboardInterrupt):
+            cleanup_intermediate_outputs([removed, kept], str(tmp_path), [directory_record(kept)])
+    # A removal that is stopped leaves no incomplete product with its final name
     assert not removed.exists()
-    assert not (tmp_path / ".removed.ms.product.json").exists()
+    assert (tmp_path / ".removed.ms.partial" / "table.dat").is_file()
     assert kept.is_dir()
-    assert (tmp_path / ".kept.ms.product.json").is_file()
+
+    # The next attempt makes the product again and removes what was left
+    _make_product(removed, shell_operation_cls)
+    assert (removed / "table.dat").is_file()
+    assert not (tmp_path / ".removed.ms.partial").exists()
