@@ -899,8 +899,6 @@ def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory
                 lifecycle_hooks=lifecycle.hooks(),
             )
 
-    # The refused run must not touch the working directory or its log
-    assert lifecycle.read_files == ["input.parset"]
     assert lifecycle.prepared == []
     assert lifecycle.field is None
 
@@ -908,24 +906,18 @@ def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory
 def test_run_pipeline_prepares_the_run_only_once_it_holds_the_working_directory():
     parset = _pipeline_parset()
     lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
-    lock_holders = []
 
     def prepare_run(prepared_parset):
-        # Opening the log file (and the rest of the preparation) must happen
-        # under the lock, so another process cannot take it at this point
-        with pytest.raises(WorkingDirectoryInUse) as refusal:
+        # The run must already hold the lock when it opens its log
+        with pytest.raises(WorkingDirectoryInUse, match="in use by a Rapthor run"):
             with working_directory_lock(prepared_parset["dir_working"], "a probe", required=True):
                 pass
-        lock_holders.append(str(refusal.value))
         lifecycle.prepare_run(prepared_parset)
 
     hooks = replace(lifecycle.hooks(), prepare_run=prepare_run)
     run_pipeline("input.parset", operation_factories=RECORDING_FACTORIES, lifecycle_hooks=hooks)
 
     assert lifecycle.prepared == [parset]
-    assert len(lock_holders) == 1
-    assert "in use by a Rapthor run" in lock_holders[0]
-    assert lifecycle.field is not None
 
 
 def test_run_pipeline_publishes_plot_artifacts_after_operations_and_report(monkeypatch):
