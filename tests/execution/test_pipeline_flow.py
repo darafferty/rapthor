@@ -1,6 +1,7 @@
 import copy
 import json
-from dataclasses import dataclass, field
+import tempfile
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,8 @@ from rapthor.execution.pipeline.plan import (
     SUPPORTED_PIPELINE_FEATURES,
     collect_pipeline_features,
 )
+from rapthor.execution.working_dir_lock import WorkingDirectoryInUse, working_directory_lock
+from tests.conftest import _get_test_run_root
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 REPO_ROOT = Path(__file__).parents[2]
@@ -60,11 +63,13 @@ class RecordingField:
     failure_ratio: float = 2.0
     events: list[dict] = field(default_factory=list)
     selfcal_result: SelfcalState = field(default_factory=SelfcalState)
+    updates: list[tuple] = field(default_factory=list)
 
     def update(self, step, index, final_cycle_number=0):
         self.__dict__.update(step)
         self.cycle_number_seen = index
         self.final_cycle_number_seen = final_cycle_number
+        self.updates.append((index, final_cycle_number, step.get("peel_outliers")))
 
     def check_selfcal_progress(self):
         return self.selfcal_result
@@ -302,6 +307,8 @@ def _image_step(**updates):
 
 def _pipeline_parset(**updates):
     parset = {
+        # The pipeline locks its working directory, so each test needs its own
+        "dir_working": tempfile.mkdtemp(prefix="pipeline-flow-", dir=_get_test_run_root()),
         "strategy": "test-strategy",
         "generate_initial_skymodel": False,
         "download_initial_skymodel": False,
@@ -334,6 +341,7 @@ class RecordingPipelineLifecycle:
     supported_features: set[str] | None = None
     epoch_observations: list[list[object]] = field(default_factory=lambda: [[object()]])
     read_files: list[object] = field(default_factory=list)
+    prepared: list[dict] = field(default_factory=list)
     logging_levels: list[str] = field(default_factory=list)
     preflight_features: set[str] = field(default_factory=set)
     field_updates: dict = field(default_factory=dict)
@@ -342,6 +350,7 @@ class RecordingPipelineLifecycle:
     def hooks(self):
         return PipelineLifecycleHooks(
             read_parset=self.read_parset,
+            prepare_run=self.prepare_run,
             set_logging_level=self.set_logging_level,
             build_field=self.build_field,
             set_strategy=self.set_strategy,
@@ -355,6 +364,9 @@ class RecordingPipelineLifecycle:
     def read_parset(self, parset_file):
         self.read_files.append(parset_file)
         return self.parset
+
+    def prepare_run(self, parset):
+        self.prepared.append(parset)
 
     def set_logging_level(self, logging_level):
         self.logging_levels.append(logging_level)
@@ -845,6 +857,67 @@ def test_run_pipeline_lifecycle_runs_initial_selfcal_and_repeated_final_cycles()
         (1, parset["final_data_fraction"]),
     ]
     assert field.events[-1]["operation"] == "report"
+
+
+def test_run_pipeline_repeats_final_cycle_on_the_data_of_the_cycle_before():
+    """Only the first final cycle starts again from the input data, with the outlier
+    peeling of the first selfcal cycle; its repeats reuse the data before them."""
+    parset = _pipeline_parset(ntimes_to_repeat_final_cycle=2)
+    selfcal_steps = [
+        _single_step({"dd": ["fast_phase"]}, do_check=True, peel_outliers=True) for _ in range(3)
+    ]
+    final_step = _single_step({"dd": ["fast_phase"]}, do_check=False, peel_outliers=False)
+    lifecycle = RecordingPipelineLifecycle(
+        parset=parset,
+        strategy_steps=[*selfcal_steps, final_step],
+        # Selfcal stops after its first cycle
+        field_updates={"selfcal_result": SelfcalState(converged=True)},
+    )
+
+    field = run_pipeline(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=lifecycle.hooks(),
+    )
+
+    assert field.updates == [(1, 0, True), (2, 1, True), (3, 2, True), (4, 3, True)]
+    chunks = [event["data_fraction"] for event in field.events if event["operation"] == "chunk"]
+    assert chunks == [parset["selfcal_data_fraction"], parset["final_data_fraction"]]
+    calibrated = [event["index"] for event in field.events if event["operation"] == "calibrate"]
+    assert calibrated == [1, 2, 3, 4]
+
+
+def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory():
+    parset = _pipeline_parset()
+    lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
+
+    with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
+        with pytest.raises(WorkingDirectoryInUse, match="in use by a Rapthor reset"):
+            run_pipeline(
+                "input.parset",
+                operation_factories=RECORDING_FACTORIES,
+                lifecycle_hooks=lifecycle.hooks(),
+            )
+
+    assert lifecycle.prepared == []
+    assert lifecycle.field is None
+
+
+def test_run_pipeline_prepares_the_run_only_once_it_holds_the_working_directory():
+    parset = _pipeline_parset()
+    lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
+
+    def prepare_run(prepared_parset):
+        # The run must already hold the lock when it opens its log
+        with pytest.raises(WorkingDirectoryInUse, match="in use by a Rapthor run"):
+            with working_directory_lock(prepared_parset["dir_working"], "a probe", required=True):
+                pass
+        lifecycle.prepare_run(prepared_parset)
+
+    hooks = replace(lifecycle.hooks(), prepare_run=prepare_run)
+    run_pipeline("input.parset", operation_factories=RECORDING_FACTORIES, lifecycle_hooks=hooks)
+
+    assert lifecycle.prepared == [parset]
 
 
 def test_run_pipeline_publishes_plot_artifacts_after_operations_and_report(monkeypatch):

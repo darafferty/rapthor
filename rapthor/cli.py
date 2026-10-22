@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 
 from rapthor import modifystate
 from rapthor._version import __version__ as version
+from rapthor.execution.working_dir_lock import WorkingDirectoryLockError
 
 
 def _build_parser() -> optparse.OptionParser:
@@ -73,6 +74,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         _run_pipeline(parset_file, logging_level=_logging_level(options))
+    except WorkingDirectoryLockError as exc:
+        logging.getLogger("rapthor").error(exc)
+        return 1
     except Exception as exc:
         logging.getLogger("rapthor").exception(exc)
         return 1

@@ -523,9 +523,26 @@ def parset_read(parset_file, use_log_file=True):
             If no input MS files can be found; or
             if the sky model file cannot be found and download is not requested.
     """
-
     parset_dict = Parset(parset_file).as_parset_dict()
+    prepare_run(parset_dict, use_log_file=use_log_file)
+    return parset_dict
 
+
+def prepare_run(parset_dict, use_log_file=True):
+    """
+    Create the working directory, start the log file and find the input MS files
+
+    Call this while holding the working directory lock, so that a reset cannot
+    rename the log file in the meantime. The input MS files are stored under the
+    "mss" key.
+
+    Parameters
+    ----------
+    parset_dict : dict
+        Dict of parset parameters, as returned by Parset.as_parset_dict()
+    use_log_file : bool, optional
+        Use a log file as well as outputing to the screen
+    """
     # Set up working directory. All output will be placed in this directory
     try:
         if not os.path.isdir(parset_dict["dir_working"]):
@@ -572,8 +589,6 @@ def parset_read(parset_file, use_log_file=True):
 
     check_and_adjust_skymodel_settings(parset_dict)
     log.info("=========================================================")
-
-    return parset_dict
 
 
 def check_and_adjust_skymodel_settings(parset_dict):

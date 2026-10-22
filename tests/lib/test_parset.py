@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from rapthor.lib.parset import check_and_adjust_skymodel_settings, parset_read
+from rapthor.lib.parset import Parset, check_and_adjust_skymodel_settings, parset_read, prepare_run
 
 RESOURCE_DIR = Path(__file__).parents[1] / "resources"
 
@@ -94,6 +94,17 @@ def test_minimal_parset(parset_scenario):
 
     assert parset_dict["dir_working"] == str(parset_scenario.working_dir)
     assert parset_dict["input_ms"] == str(parset_scenario.input_ms)
+
+
+def test_prepare_run_sets_up_the_working_directory(parset_scenario):
+    parset_dict = Parset(str(parset_scenario.parset)).as_parset_dict()
+    # Reading the settings leaves the working directory alone
+    assert [path.name for path in parset_scenario.working_dir.iterdir()] == ["test.parset"]
+
+    prepare_run(parset_dict)
+
+    assert parset_dict["mss"] == [str(parset_scenario.input_ms)]
+    assert (parset_scenario.working_dir / "logs" / "rapthor.log").is_file()
 
 
 def test_misspelled_section(parset_scenario, caplog):

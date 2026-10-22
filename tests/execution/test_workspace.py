@@ -12,8 +12,10 @@ import pytest
 from rapthor.execution.workspace import (
     WORKSPACE_MARKER,
     recover_scratch_workspace,
+    remove_operation_workspace,
     shared_scratch_workspace,
 )
+from tests.execution.scratch_transitions import exit_at_scratch_transition
 
 
 def _force_cross_device_promotion(monkeypatch, scratch):
@@ -99,62 +101,7 @@ def test_restart_recovers_after_process_exit_at_directory_transitions(tmp_path, 
     original = workdir / "input.fits"
     original.write_text("input")
     original_mtime = original.stat().st_mtime_ns
-    child = r"""
-import errno
-import os
-import sys
-from pathlib import Path
-from rapthor.execution import workspace as module
-
-workdir, scratch = map(Path, sys.argv[1:3])
-stage = sys.argv[3]
-rename, unlink, symlink_to = Path.rename, Path.unlink, Path.symlink_to
-copy_workspace = module._copy_workspace
-
-def copy(source, destination):
-    copy_workspace(source, destination)
-    if (stage == "copy" and source == workdir) or (
-        stage == "cross-copy" and source.parent.parent == scratch
-    ):
-        os._exit(73)
-
-def move(source, destination):
-    if source.parent.parent == scratch and stage.startswith("cross-"):
-        raise OSError(errno.EXDEV, "different filesystems")
-    result = rename(source, destination)
-    if (stage == "backup" and source == workdir) or (
-        stage == "rename" and source.parent.parent == scratch
-    ) or (stage == "cross-rename" and source.name == "promoted"):
-        os._exit(73)
-    return result
-
-def remove(path, *args, **kwargs):
-    result = unlink(path, *args, **kwargs)
-    if stage == "unlink" and path == workdir:
-        os._exit(73)
-    return result
-
-def link(path, *args, **kwargs):
-    result = symlink_to(path, *args, **kwargs)
-    if stage == "link" and path == workdir:
-        os._exit(73)
-    return result
-
-module._copy_workspace = copy
-Path.rename, Path.unlink, Path.symlink_to = move, remove, link
-with module.shared_scratch_workspace(str(workdir), str(scratch)):
-    (workdir / "result.fits").write_text("result")
-    (workdir / "result-link.fits").symlink_to((workdir / "result.fits").resolve())
-    if stage == "flow":
-        os._exit(73)
-"""
-    result = subprocess.run(
-        [sys.executable, "-c", child, str(workdir), str(scratch), stage],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    assert result.returncode == 73, result.stderr
+    exit_at_scratch_transition(workdir, scratch, stage)
 
     # Recovery must also work when the next parset disables global scratch.
     recover_scratch_workspace(str(workdir))
@@ -378,3 +325,52 @@ def test_measurement_set_tables_survive_scratch_promotion(tmp_path, monkeypatch,
             assert list(table.getcol("TIME")) == [42.0]
             with pt.table(table.getkeyword("ANTENNA"), ack=False) as antenna:
                 assert Path(antenna.name()).is_relative_to(workdir)
+
+
+@pytest.mark.parametrize("stage", [None, "copy", "backup", "flow", "cross-copy", "rename"])
+def test_reset_removes_operation_with_its_scratch_workspace(tmp_path, stage):
+    """Reset leaves nothing of an operation behind, whatever state it stopped in."""
+    workdir = tmp_path / "pipelines" / "image_2"
+    scratch = tmp_path / "scratch"
+    workdir.mkdir(parents=True)
+    if stage is not None:
+        exit_at_scratch_transition(workdir, scratch, stage)
+    # Another operation staged on the same scratch must survive
+    other = tmp_path / "pipelines" / "calibrate_2"
+    exit_at_scratch_transition(other, scratch, "flow")
+    other_workspace = other.resolve()
+
+    remove_operation_workspace(str(workdir))
+
+    assert sorted(path.name for path in workdir.parent.iterdir()) == [
+        ".calibrate_2.scratch",
+        "calibrate_2",
+    ]
+    assert list(scratch.iterdir()) == [other_workspace.parent]
+    assert (other / "result.fits").read_text() == "result"
+
+
+@pytest.mark.parametrize("target", ["user-data", "other-workspace"])
+def test_reset_does_not_follow_an_unowned_link(tmp_path, target):
+    """Neither a link nor a recovery record may lead reset into files it does not own."""
+    workdir = tmp_path / "pipelines" / "image_1"
+    workdir.parent.mkdir()
+    if target == "user-data":
+        linked = tmp_path / "user-data"
+        linked.mkdir()
+        (linked / "result.fits").write_text("result")
+    else:
+        other = tmp_path / "other-run" / "pipelines" / "image_1"
+        exit_at_scratch_transition(other, tmp_path / "scratch", "flow")
+        linked = other.resolve()
+        recovery_dir = workdir.with_name(".image_1.scratch")
+        recovery_dir.mkdir()
+        (recovery_dir / WORKSPACE_MARKER).write_text(
+            json.dumps({"working_directory": str(workdir), "workspace": str(linked)})
+        )
+    workdir.symlink_to(linked, target_is_directory=True)
+
+    remove_operation_workspace(str(workdir))
+
+    assert list(workdir.parent.iterdir()) == []
+    assert (linked / "result.fits").read_text() == "result"
