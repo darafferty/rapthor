@@ -22,7 +22,11 @@ from rapthor.execution.mosaic.model_rendering import (
     render_model_mosaic_with_wsclean,
 )
 from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mosaic_payload
-from rapthor.execution.outputs import cleanup_intermediate_outputs, require_file
+from rapthor.execution.outputs import (
+    cleanup_intermediate_outputs,
+    make_command_product,
+    require_file,
+)
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
@@ -307,13 +311,19 @@ def _finalize_mosaic_output(
 ) -> dict:
     """Compress and/or publish one mosaic output record."""
     if compress_images:
-        compressed_path = f"{mosaic_path}.fz"
-        output_record = _run_command_and_require_file(
-            build_compress_mosaic_command(mosaic_filename),
-            compressed_path,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
+        # Every attempt writes the mosaic again, which changes its modification
+        # time, so a compressed mosaic left by an earlier attempt is replaced.
+        output_record = make_command_product(
+            f"{mosaic_path}.fz",
+            lambda partial_path: build_compress_mosaic_command(mosaic_filename, partial_path),
+            lambda command: run_external_command(
+                command,
+                pipeline_working_dir,
+                execution_config,
+                shell_operation_cls=shell_operation_cls,
+            ),
+            description="Mosaic output",
+            inputs=[mosaic_path],
         )
     if execution_config.publish_fits_previews:
         publish_fits_image_artifacts(
@@ -322,22 +332,6 @@ def _finalize_mosaic_output(
             clip_percentile=execution_config.fits_preview_clip_percentile,
         )
     return output_record
-
-
-def _run_command_and_require_file(
-    command: list[str],
-    output_path: str,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return require_file(output_path, "Mosaic output")
 
 
 def _work_path(pipeline_working_dir: str, filename: str) -> str:

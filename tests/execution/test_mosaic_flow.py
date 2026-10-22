@@ -135,8 +135,8 @@ def fake_mosaic_shell_operation_cls():
             tokens = shlex.split(self.kwargs["commands"][0])
             cwd = Path(self.kwargs["working_dir"])
             if tokens[0] == "fpack":
-                assert (cwd / tokens[1]).is_file()
-                output_path = cwd / f"{tokens[1]}.fz"
+                assert (cwd / tokens[-1]).is_file()
+                output_path = cwd / tokens[tokens.index("-O") + 1]
             else:
                 raise AssertionError(f"Unexpected command: {tokens[0]}")
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -235,7 +235,7 @@ def test_mosaic_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        build_compress_mosaic_command("mosaic_1-I-image.fits")
+        build_compress_mosaic_command("mosaic_1-I-image.fits", ".mosaic_1-I-image.fits.fz.partial")
         == commands["mosaic"]["compress_mosaic_image"]
     )
     assert (
@@ -704,10 +704,38 @@ def test_run_mosaic_flow_returns_compressed_records(
     for index in (1, 2):
         assert not (tmp_path / f"sector_{index}-I-image.fits.regridded").exists()
     assert [
-        instance.kwargs["commands"][0] for instance in fake_mosaic_shell_operation_cls.instances
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_mosaic_shell_operation_cls.instances
     ] == [
-        "fpack mosaic_1-I-image.fits",
+        [
+            "fpack",
+            "-O",
+            str(tmp_path / ".mosaic_1-I-image.fits.fz.partial"),
+            "mosaic_1-I-image.fits",
+        ],
     ]
+
+
+def test_run_mosaic_flow_restart_replaces_an_earlier_compressed_mosaic(
+    prefect_server, tmp_path, fake_mosaic_shell_operation_cls
+):
+    # An earlier attempt left a compressed mosaic, complete or not, which made
+    # fpack fail.
+    compressed = tmp_path / "mosaic_1-I-image.fits.fz"
+    compressed.write_text("earlier attempt")
+
+    for _attempt in range(2):
+        outputs = run_flow_for_test(
+            mosaic_flow,
+            _mosaic_payload(tmp_path, compress_images=True),
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=fake_mosaic_shell_operation_cls,
+        )
+
+        assert outputs == {"mosaic_image": [file_record(compressed)]}
+        assert compressed.read_text() == "OK"
+    # The mosaic is made again by each attempt, and so is compressed again.
+    assert len(fake_mosaic_shell_operation_cls.instances) == 2
 
 
 def test_run_mosaic_flow_handles_skip_processing_without_commands(

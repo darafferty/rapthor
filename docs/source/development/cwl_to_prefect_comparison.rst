@@ -645,7 +645,7 @@ common ancestor.
      - ``restore_skymodel``
    * - ``compress_sector_images``
      - ``fpack``
-     - ``build_compress_sector_images_command``
+     - ``build_compress_image_command``
      - ``compress_images``
    * - ``make_mosaic_template``, ``regrid_image``, ``make_mosaic``
      - scripts
