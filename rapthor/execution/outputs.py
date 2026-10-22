@@ -9,7 +9,12 @@ from typing import Iterable, Mapping, Optional, Sequence, Union
 
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.shell import run_external_command
-from rapthor.lib.records import directory_record, file_record
+from rapthor.lib.records import (
+    directory_record,
+    file_record,
+    partial_product_path,
+    remove_directory,
+)
 
 log = logging.getLogger("rapthor:outputs")
 
@@ -70,12 +75,6 @@ def file_records_for_required_patterns(patterns: list[str], description: str) ->
     if not records:
         raise FileNotFoundError(f"{description} was not created: {', '.join(patterns)}")
     return records
-
-
-def partial_product_path(path: str) -> str:
-    """Return the hidden sibling path at which a product is made before it is complete."""
-    directory, name = os.path.split(path)
-    return os.path.join(directory, f".{name}.partial")
 
 
 def make_product(
@@ -160,9 +159,4 @@ def cleanup_intermediate_outputs(
         if path.is_symlink() or path.is_file():
             path.unlink()
         elif path.is_dir():
-            # Move it aside first, so that a removal that is stopped part way
-            # does not leave an incomplete product at its final name
-            partial_path = partial_product_path(str(path))
-            _remove_path(partial_path)
-            path.rename(partial_path)
-            shutil.rmtree(partial_path)
+            remove_directory(path)

@@ -21,12 +21,11 @@ from rapthor.execution.outputs import (
     cleanup_intermediate_outputs,
     file_records_for_required_patterns,
     make_product,
-    partial_product_path,
     require_file,
 )
 from rapthor.execution.scratch import temporary_environment
 from rapthor.execution.shell import run_external_command
-from rapthor.lib.records import file_record
+from rapthor.lib.records import file_record, partial_product_path
 
 
 def cleanup_image_intermediates(payload: Mapping[str, object], result: dict) -> None:

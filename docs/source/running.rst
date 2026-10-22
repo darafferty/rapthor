@@ -417,9 +417,10 @@ compressed again, since some of them are written again by every attempt.
 
 Rapthor makes each Measurement Set and compressed image under a temporary name,
 ``.<name>.partial``, which is also the name shown in ``logs/commands.jsonl``,
-and gives it its final name only once the command that makes it has succeeded.
-A product with its final name is therefore complete, while a ``.partial`` file
-left by a command that was stopped is made again. As for a finished operation,
+and gives it its final name only once the command that makes it has succeeded;
+a product that is no longer needed is moved back to that name before it is
+removed. A product with its final name is therefore complete, while a
+``.partial`` file left by a run that was stopped is made again. As for a finished operation,
 the settings are not compared: to make the products with other settings, reset
 the operation (see :ref:`resetting_rapthor`). The input Measurement Sets are
 only read, never changed or removed.
