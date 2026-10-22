@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -223,6 +224,71 @@ def test_make_command_product_remakes_a_product_when_an_input_changes(tmp_path):
     _make_product(upstream, run, settings="b")
     _make_product(output, run, inputs=[source, upstream])
     assert len(run.commands) == 5
+
+
+def test_make_command_product_remakes_a_partly_removed_product(tmp_path):
+    output = tmp_path / "product.ms"
+    run = _ProductCommand()
+    _make_product(output, run)
+    # Files added after promotion, such as a new column, are allowed.
+    (output / "table.f9").write_text("model data")
+    _make_product(output, run)
+    assert len(run.commands) == 1
+
+    # A cleanup or move that was stopped part-way removed some files.
+    (output / "table.dat").unlink()
+    _make_product(output, run)
+    assert len(run.commands) == 2
+    assert (output / "table.dat").is_file()
+
+
+def test_make_command_product_remakes_a_product_when_an_input_ms_changes(tmp_path):
+    original = tmp_path / "input.ms"
+    (original / "ANTENNA").mkdir(parents=True)
+    (original / "ANTENNA" / "table.dat").write_text("antennas")
+    output = tmp_path / "product.ms"
+    run = _ProductCommand()
+    _make_product(output, run, inputs=[original])
+
+    # Reading a table may update its lock file, which is ignored.
+    (original / "table.lock").write_text("lock")
+    _make_product(output, run, inputs=[original])
+    assert len(run.commands) == 1
+
+    (original / "ANTENNA" / "table.dat").write_text("other antennas")
+    _make_product(output, run, inputs=[original])
+    assert len(run.commands) == 2
+
+
+def test_make_command_product_follows_linked_subtables_of_an_input(tmp_path):
+    subtable = tmp_path / "shared" / "ANTENNA"
+    subtable.mkdir(parents=True)
+    (subtable / "table.dat").write_text("antennas")
+    original = tmp_path / "input.ms"
+    original.mkdir()
+    (original / "ANTENNA").symlink_to(subtable, target_is_directory=True)
+    # A link back to the table itself is followed only once.
+    (original / "SELF").symlink_to(original, target_is_directory=True)
+    output = tmp_path / "product.ms"
+    run = _ProductCommand()
+    _make_product(output, run, inputs=[original])
+
+    (subtable / "table.dat").write_text("other antennas")
+    _make_product(output, run, inputs=[original])
+    assert len(run.commands) == 2
+
+
+def test_make_command_product_remakes_a_product_whose_record_lists_no_files(tmp_path):
+    output = tmp_path / "product.ms"
+    run = _ProductCommand()
+    _make_product(output, run)
+    record_path = tmp_path / ".product.ms.product.json"
+    record = json.loads(record_path.read_text())
+    del record["files"]
+    record_path.write_text(json.dumps(record))
+
+    _make_product(output, run)
+    assert len(run.commands) == 2
 
 
 def test_make_command_product_never_removes_an_input(tmp_path):
