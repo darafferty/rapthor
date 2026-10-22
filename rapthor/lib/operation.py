@@ -133,9 +133,13 @@ class Operation(object):
         """
         Finalize this operation.
 
-        Create a "done" file to indicate that this operations is done.
-        Specializations should be defined in the subclasses as needed.
+        Store the outputs, then create a "done" file to indicate that this
+        operation is done. Specializations should be defined in the subclasses
+        as needed, and call this method last.
         """
+        # A done operation is resumed from its stored outputs, so they must be
+        # complete before the operation is marked done.
+        self.store_outputs()
         open(self.done_file, "w").close()
 
     def copy_outputs_to(
@@ -187,9 +191,14 @@ class Operation(object):
     def store_outputs(self):
         """
         Store outputs to a JSON file.
+
+        The file is replaced in one step, so that a run that is stopped while
+        writing it leaves the previous file.
         """
-        with open(self.outputs_file, "w") as f:
+        temporary_file = f"{self.outputs_file}.tmp"
+        with open(temporary_file, "w") as f:
             f.write(json.dumps(self.outputs, cls=NpEncoder, indent=4, sort_keys=True))
+        os.replace(temporary_file, self.outputs_file)
 
     def load_outputs(self):
         """
@@ -241,10 +250,9 @@ class Operation(object):
             # Reloads outputs
             self.load_outputs()
 
-        # Finalize
+        # Finalize, which also stores the outputs
         if success:
             self.log.info("--> Operation %s completed", self.name)
             self.finalize()
-            self.store_outputs()
         else:
             raise RuntimeError(f"Operation {self.name} failed due to an error")
