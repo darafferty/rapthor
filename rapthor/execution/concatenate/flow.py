@@ -10,13 +10,13 @@ from rapthor.execution.concatenate.payloads import (
     validate_concatenate_payload,
 )
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.outputs import make_product, partial_product_path
+from rapthor.execution.outputs import make_product
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_options
 from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
-from rapthor.lib.records import validate_output_record
+from rapthor.lib.records import partial_product_path, validate_output_record
 
 
 def concatenate_flow(

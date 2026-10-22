@@ -25,7 +25,6 @@ from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mos
 from rapthor.execution.outputs import (
     cleanup_intermediate_outputs,
     make_product,
-    partial_product_path,
     require_file,
 )
 from rapthor.execution.payloads import assert_serializable_payload
@@ -33,7 +32,7 @@ from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
 from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
-from rapthor.lib.records import file_record_path, validate_output_record
+from rapthor.lib.records import file_record_path, partial_product_path, validate_output_record
 
 log = logging.getLogger("rapthor:mosaic")
 
