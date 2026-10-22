@@ -580,7 +580,7 @@ The available options are described below under their respective sections.
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
-        ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_ 
+        ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_
         for details on precision. Some tools may be unable to read compressed fits files and will
         require decompression to be run first. This can be done with the ``funpack`` tool .
 
@@ -662,10 +662,10 @@ The available options are described below under their respective sections.
 
     shared_facet_rw
         When using facet-based imaging runs WSClean with the options
-        -shared-facet-reads and -shared-facet-writes 
+        -shared-facet-reads and -shared-facet-writes
         (https://wsclean.readthedocs.io/en/latest/facet_based_imaging.html#enabling-shared-reads).
-        
-        .. warning:: 
+
+        .. warning::
             This option is currently experimental and should be used with caution.
 
     reweight
@@ -712,7 +712,7 @@ The available options are described below under their respective sections.
         Max desired peak flux density reduction at center of the image edges due to
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
-        smearing away from the image centers. Note this option is not considered if 
+        smearing away from the image centers. Note this option is not considered if
         :term:`average_visibilities` = ``False``.
 
     correct_time_frequency_smearing (imaging)
@@ -744,15 +744,15 @@ The available options are described below under their respective sections.
         in wsclean.
 
     photometry_skymodel
-        Full path to the sky model file for photometry comparison when generating 
-        image diagnostics. If this is not set, a sky model will be downloaded from 
+        Full path to the sky model file for photometry comparison when generating
+        image diagnostics. If this is not set, a sky model will be downloaded from
         the TGSS and LOTSS catalogs. If this is not possible a backup sky model will be
-        downloaded from the NVSS catalog. Default = ``None`` (sky model will be 
+        downloaded from the NVSS catalog. Default = ``None`` (sky model will be
         downloaded by default).
 
     astrometry_skymodel
-        Full path to the sky model file for astrometry comparison when generating 
-        image diagnostics. If this is not set, a sky model will be downloaded from 
+        Full path to the sky model file for astrometry comparison when generating
+        image diagnostics. If this is not set, a sky model will be downloaded from
         Pan-STARRS. Default = ``None`` (sky model will be downloaded by default).
 
     normalization_skymodels
@@ -1009,11 +1009,14 @@ for how these options are used.
 
     prefect_command_profile
         Sets how the resource use of each command is measured: ``auto``,
-        ``time``, or ``off`` (default = ``auto``). If ``auto`` or
-        ``time``, the CPU time, memory use, and disk I/O of each command are
-        recorded in ``dir_working/logs/commands.jsonl``, using
-        ``/usr/bin/time`` when it is available. If ``off``, only the run time
-        of each command is recorded.
+        ``time``, or ``off`` (default = ``auto``).
+        If ``auto`` or ``time``, the CPU time, memory use, and disk I/O of
+        each command are recorded  using both the Python ``resource`` module
+        and the GNU ``time`` command. The Python ``resource`` module is
+        always used. The GNU ``time`` command is used only if it is available.
+        The profile output is stored in ``dir_working/logs/commands.jsonl``,
+        with a preference for the output of the GNU ``time`` command.
+        If ``off``, only the run time of each command is recorded.
 
     prefect_publish_fits_previews
         Make PNG previews of the images and show them in the Prefect dashboard
@@ -1066,7 +1069,7 @@ for how these options are used.
     allow_internet_access
         Allow internet access for downloading sky models when these are not provided.
         Default = ``True``. If ``False``, then the user must either provide the path
-        to a sky model (see :term:`input_skymodel`) or set 
+        to a sky model (see :term:`input_skymodel`) or set
         :term:`generate_initial_skymodel` = ``True``. If photometry and/or astrometry
         skymodels are not provided, then these will not be downloaded and the image
         diagnostics will not be generated.
