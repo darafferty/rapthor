@@ -20,7 +20,7 @@ Rapthor produces the following output inside the working directory:
 ``pipelines/``
     Directory containing intermediate files of each operation. Once a run has finished successfully, this directory can be removed.
 
-    Each operation has its own subdirectory, which also holds the files that Rapthor uses to resume a run: ``pipeline_inputs.json`` and ``pipeline_outputs.json`` list the inputs and outputs of the operation, and ``.done`` and ``.outputs.json`` are written once the operation has finished. An operation with a ``.done`` file is skipped when the run is resumed (see :ref:`resuming_rapthor`).
+    Each operation has its own subdirectory, which also holds the files that Rapthor uses to resume a run: ``pipeline_inputs.json`` and ``pipeline_outputs.json`` list the inputs and outputs of the operation, and ``.done`` and ``.outputs.json`` are written once the operation has finished. An operation with a ``.done`` file is skipped when the run is resumed (see :ref:`resuming_rapthor`). A file ``.<name>.product.json`` records how the product ``<name>`` was made, so that a resumed run can use it again, and ``.<name>.partial`` is a product that was still being made when a run stopped; it is removed when the resumed run makes that product again.
 
     A calibration operation writes the plots of each solve to its own subdirectory, for example ``pipelines/calibrate_1/plots/solve1_phase/``. Only the plots listed in the operation's outputs are copied to ``plots/``; a resumed run replaces the plots of an interrupted attempt.
 

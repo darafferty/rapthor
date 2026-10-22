@@ -10,7 +10,7 @@ from rapthor.execution.concatenate.payloads import (
     validate_concatenate_payload,
 )
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.outputs import require_directory
+from rapthor.execution.outputs import make_command_product
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_options
@@ -98,24 +98,34 @@ def run_concatenate_epoch(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run concatenation for one epoch and return a directory output record."""
+    """
+    Run concatenation for one epoch and return a directory output record.
+
+    A concatenated MS completed by an earlier attempt with the same inputs and
+    settings is reused; any other output left by an earlier attempt is made
+    again. The input Measurement Sets are only read.
+    """
     config = execution_config or ExecutionConfig(task_runner="sync")
     input_filenames = epoch["input_filenames"]
-    output_path = epoch["output_path"]
-    command = select_concatenation_command(
-        input_filenames,
-        output_path,
-        data_colname,
-        use_array_beam=use_array_beam,
+    return make_command_product(
+        epoch["output_path"],
+        lambda partial_path: select_concatenation_command(
+            input_filenames,
+            partial_path,
+            data_colname,
+            use_array_beam=use_array_beam,
+        ),
+        lambda command: run_external_command(
+            command,
+            pipeline_working_dir,
+            config,
+            name="concatenate_epoch",
+            shell_operation_cls=shell_operation_cls,
+        ),
+        description="Concatenate output",
+        inputs=input_filenames,
+        directory=True,
     )
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        config,
-        name="concatenate_epoch",
-        shell_operation_cls=shell_operation_cls,
-    )
-    return require_directory(output_path, "Concatenate output")
 
 
 def _result_from_epoch_records(outputs: list[dict]) -> dict:
