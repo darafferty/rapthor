@@ -23,7 +23,7 @@ from rapthor.execution.image.commands import (
     WscleanOptions,
     WscleanScreenOptions,
     build_aterm_config_content,
-    build_compress_sector_images_command,
+    build_compress_image_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
     build_make_residual_visibilities_command,
@@ -359,17 +359,8 @@ def fake_image_shell_operation_cls():
                     for suffix in ["-sources.txt", "-sources-pb.txt"]:
                         (cwd / f"{image_name}{suffix}").write_text("skymodel")
             elif tokens[0] == "fpack":
-                skip_next = False
-                for image in tokens[1:]:
-                    if skip_next:
-                        skip_next = False
-                        continue
-                    if image in {"-O", "-R", "-q", "-s", "-n", "-t"}:
-                        skip_next = True
-                        continue
-                    if image.startswith("-"):
-                        continue
-                    Path(f"{image}.fz").write_text("compressed")
+                assert Path(tokens[-1]).is_file()
+                Path(tokens[tokens.index("-O") + 1]).write_text("compressed")
             elif _is_filter_skymodel_command(tokens):
                 filter_args = _filter_skymodel_args(tokens)
                 output_root = Path(filter_args[4])
@@ -1082,17 +1073,11 @@ def test_image_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
-            build_compress_sector_images_command(
-                images=[
-                    "sector_1-MFS-I-image.fits",
-                    "sector_1-MFS-I-image-pb.fits",
-                    "sector_1-MFS-I-residual.fits",
-                    "sector_1-MFS-I-model-pb.fits",
-                    "sector_1-MFS-I-dirty.fits",
-                ]
+            build_compress_image_command(
+                "sector_1-MFS-I-image.fits", ".sector_1-MFS-I-image.fits.fz.partial"
             )
         )
-        == commands["image"]["compress_sector_images"]
+        == commands["image"]["compress_sector_image"]
     )
     assert (
         normalize_command(
@@ -1281,20 +1266,21 @@ def test_image_support_command_builders_create_expected_tokens():
         "beam.update_interval = 120\n"
         "beam.usechannelfreq = true\n"
     )
-    assert build_compress_sector_images_command(
-        ["sector_1-MFS-I-image.fits", "sector_1-MFS-I-image-pb.fits"]
-    ) == [
+    assert build_compress_image_command("sector_1-MFS-I-image.fits", "image.fz.partial") == [
         "fpack",
+        "-O",
+        "image.fz.partial",
         "sector_1-MFS-I-image.fits",
-        "sector_1-MFS-I-image-pb.fits",
     ]
-    assert build_compress_sector_images_command(
-        ["sector_1-MFS-I-model-pb.fits"], lossless=True
+    assert build_compress_image_command(
+        "sector_1-MFS-I-model-pb.fits", "model.fz.partial", lossless=True
     ) == [
         "fpack",
         "-g",
         "-q",
         "0",
+        "-O",
+        "model.fz.partial",
         "sector_1-MFS-I-model-pb.fits",
     ]
     assert build_wsclean_restore_command(
@@ -2483,35 +2469,92 @@ def test_run_image_flow_returns_compressed_image_outputs(
         _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert command_names == [
-        "DP3",
-        "DP3",
-        "taql",
-        "wsclean",
-        FILTER_SKYMODEL_COMMAND_NAME,
-        "fpack",
-        "fpack",
-    ]
+    assert (
+        command_names
+        == [
+            "DP3",
+            "DP3",
+            "taql",
+            "wsclean",
+            FILTER_SKYMODEL_COMMAND_NAME,
+        ]
+        + ["fpack"] * 6
+    )
     fpack_commands = [
         shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
         if _command_name(shlex.split(instance.kwargs["commands"][-1])) == "fpack"
     ]
-    assert fpack_commands[0] == [
-        "fpack",
-        str(tmp_path / "sector_1-MFS-I-image.fits"),
-        str(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        str(tmp_path / "sector_1-MFS-I-image-pb-ast.fits"),
-        str(tmp_path / "sector_1-MFS-I-residual.fits"),
-        str(tmp_path / "sector_1-MFS-I-dirty.fits"),
+
+    def fpack(name, *options):
+        return [
+            "fpack",
+            *options,
+            "-O",
+            str(tmp_path / f".{name}.fz.partial"),
+            str(tmp_path / name),
+        ]
+
+    # Each image is compressed on its own; the sparse model image losslessly.
+    assert fpack_commands == [
+        fpack("sector_1-MFS-I-image.fits"),
+        fpack("sector_1-MFS-I-image-pb.fits"),
+        fpack("sector_1-MFS-I-image-pb-ast.fits"),
+        fpack("sector_1-MFS-I-residual.fits"),
+        fpack("sector_1-MFS-I-model-pb.fits", "-g", "-q", "0"),
+        fpack("sector_1-MFS-I-dirty.fits"),
     ]
-    assert fpack_commands[1] == [
-        "fpack",
-        "-g",
-        "-q",
-        "0",
-        str(tmp_path / "sector_1-MFS-I-model-pb.fits"),
-    ]
+    assert not list(tmp_path.glob(".*.partial"))
+
+
+def test_run_image_flow_restart_reuses_or_replaces_compressed_images(
+    prefect_server, tmp_path, fake_image_shell_operation_cls
+):
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True)
+    # Keep the uncompressed images, so that WSClean is not run again.
+    config = ExecutionConfig(task_runner="sync", keep_temporary_files=True)
+    # A compressed image without a record, as left by fpack when it was stopped.
+    stopped = tmp_path / "sector_1-MFS-I-image.fits.fz"
+    stopped.write_text("partial")
+
+    def fpack_inputs():
+        commands = [
+            shlex.split(instance.kwargs["commands"][-1])
+            for instance in fake_image_shell_operation_cls.instances
+        ]
+        fake_image_shell_operation_cls.instances.clear()
+        return [Path(command[-1]).name for command in commands if command[0] == "fpack"]
+
+    first = run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    assert len(fpack_inputs()) == 6
+    assert stopped.read_text() == "compressed"
+
+    second = run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    assert second["sector_I_images"] == first["sector_I_images"]
+    assert second["sector_extra_images"] == first["sector_extra_images"]
+    # Only the astrometry-corrected image, which each attempt writes again, is
+    # compressed again.
+    assert fpack_inputs() == ["sector_1-MFS-I-image-pb-ast.fits"]
+
+    # An image that has been made again is compressed again.
+    os.utime(tmp_path / "sector_1-MFS-I-residual.fits", ns=(1, 1))
+    run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    assert fpack_inputs() == ["sector_1-MFS-I-image-pb-ast.fits", "sector_1-MFS-I-residual.fits"]
 
 
 def test_run_image_flow_returns_filtered_model_image(

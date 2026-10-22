@@ -9,7 +9,7 @@ from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.environments import filter_skymodel_environment
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
-    build_compress_sector_images_command,
+    build_compress_image_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
 )
@@ -19,9 +19,8 @@ from rapthor.execution.image.payloads import ImageCubeSpecPayload, ImageSectorPa
 from rapthor.execution.image.restoration import restore_skymodel
 from rapthor.execution.outputs import (
     cleanup_intermediate_outputs,
-    compressed_file_record,
-    file_records_for_patterns,
     file_records_for_required_patterns,
+    make_command_product,
     require_file,
 )
 from rapthor.execution.scratch import temporary_environment
@@ -106,45 +105,52 @@ def channel_image_patterns(image_name: str, stokes: str, pipeline_working_dir: s
 
 
 def compress_image_records(
-    image_name: str,
     sector_images: list[dict],
     extra_images: list[dict],
     pipeline_working_dir: str,
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> tuple[list[dict], list[dict]]:
-    """Compress sector image records and return records for the compressed files."""
-    image_paths = [record["path"] for record in sector_images + extra_images]
-    sparse_model_images = [path for path in image_paths if _is_sparse_model_image(path)]
-    regular_images = [path for path in image_paths if path not in sparse_model_images]
-    _compress_images(
-        regular_images,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    _compress_images(
-        sparse_model_images,
-        pipeline_working_dir,
-        execution_config,
-        lossless=True,
-        shell_operation_cls=shell_operation_cls,
-    )
+    """
+    Compress sector image records and return records for the compressed files.
+
+    Each image is compressed by its own command, so that a compressed image is
+    complete once it has its final name. One that an earlier attempt completed
+    from the same image is reused.
+    """
+
+    def compress(record: dict, description: str) -> dict:
+        image = record["path"]
+        return make_command_product(
+            f"{image}.fz",
+            lambda partial_path: build_compress_image_command(
+                image, partial_path, lossless=_is_sparse_model_image(image)
+            ),
+            lambda command: run_external_command(
+                command,
+                pipeline_working_dir,
+                execution_config,
+                shell_operation_cls=shell_operation_cls,
+            ),
+            description=description,
+            inputs=[image],
+        )
+
     descriptions = [
         "Compressed WSClean non-PB image",
         "Compressed WSClean PB image",
         "Compressed WSClean astrometry-corrected PB image",
     ]
     compressed_sector_images = [
-        compressed_file_record(
+        compress(
             record,
             descriptions[index] if index < len(descriptions) else "Compressed WSClean sector image",
         )
         for index, record in enumerate(sector_images)
     ]
-    compressed_extra_images = file_records_for_patterns(
-        mfs_extra_image_patterns(image_name, pipeline_working_dir, compressed=True)
-    )
+    compressed_extra_images = [
+        compress(record, "Compressed WSClean supplementary image") for record in extra_images
+    ]
     return compressed_sector_images, compressed_extra_images
 
 
@@ -356,21 +362,3 @@ def make_filtered_model_image(
 def _is_sparse_model_image(path: str) -> bool:
     """Return whether ``path`` is a sparse WSClean model image."""
     return os.path.basename(path).endswith("model-pb.fits")
-
-
-def _compress_images(
-    images: list[str],
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    *,
-    lossless: bool = False,
-    shell_operation_cls=None,
-) -> None:
-    if not images:
-        return
-    run_external_command(
-        build_compress_sector_images_command(images, lossless=lossless),
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )

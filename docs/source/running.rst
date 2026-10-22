@@ -413,16 +413,20 @@ again some of the files that the earlier attempt had finished:
 * the Measurement Sets made by the Concatenate operation and by imaging (the
   prepared and concatenated data of each sector), if they were made with the
   same settings from the same data;
-* the images of a sector, if WSClean had already finished making them.
+* the images of a sector, if WSClean had already finished making them;
+* the compressed images (``.fits.fz``) of a sector, if they were made from the
+  same images. A mosaic is made again by each attempt, and so is compressed
+  again.
 
-Rapthor makes each of these Measurement Sets under a temporary name,
-``.<name>.partial``, and gives it its final name only once the command that
-makes it has succeeded, so the commands in ``logs/commands.jsonl`` show the
-temporary name. A file ``.<name>.product.json`` next to it records the command
-and the input files. When a run is resumed, a Measurement Set is used again
-only if this record matches the current command and inputs; otherwise it is
-made again, as is any ``.partial`` file left by a command that was stopped.
-The input Measurement Sets are only read: they are never changed or removed.
+Rapthor makes each of these Measurement Sets and compressed images under a
+temporary name, ``.<name>.partial``, and gives it its final name only once the
+command that makes it has succeeded, so the commands in
+``logs/commands.jsonl`` show the temporary name. A file
+``.<name>.product.json`` next to it records the command and the input files.
+When a run is resumed, such a file is used again only if this record matches
+the current command and inputs; otherwise it is made again, as is any
+``.partial`` file left by a command that was stopped. The input Measurement
+Sets are only read: they are never changed or removed.
 
 The intermediate files of an operation that failed are kept in
 ``dir_working/pipelines`` so that they can be inspected.

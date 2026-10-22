@@ -12,7 +12,12 @@
         ]
     },
     "mosaic": {
-        "compress_mosaic_image": ["fpack", "mosaic_1-I-image.fits"],
+        "compress_mosaic_image": [
+            "fpack",
+            "-O",
+            ".mosaic_1-I-image.fits.fz.partial",
+            "mosaic_1-I-image.fits"
+        ],
         "draw_model_mosaic": [
             "wsclean",
             "-j",
@@ -851,13 +856,11 @@
             "numthreads=4",
             "steps=[applybeam,shift,avg,bdaavg]"
         ],
-        "compress_sector_images": [
+        "compress_sector_image": [
             "fpack",
-            "sector_1-MFS-I-image.fits",
-            "sector_1-MFS-I-image-pb.fits",
-            "sector_1-MFS-I-residual.fits",
-            "sector_1-MFS-I-model-pb.fits",
-            "sector_1-MFS-I-dirty.fits"
+            "-O",
+            ".sector_1-MFS-I-image.fits.fz.partial",
+            "sector_1-MFS-I-image.fits"
         ],
         "wsclean_restore": [
             "wsclean",

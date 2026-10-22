@@ -73,11 +73,6 @@ def file_records_for_required_patterns(patterns: list[str], description: str) ->
     return records
 
 
-def compressed_file_record(record: dict, description: str) -> dict:
-    """Return a File record for the compressed version of an output record."""
-    return require_file(f"{record['path']}.fz", description)
-
-
 def partial_product_path(path: str) -> str:
     """Return the hidden sibling path at which a product is made before promotion."""
     directory, name = os.path.split(path)
