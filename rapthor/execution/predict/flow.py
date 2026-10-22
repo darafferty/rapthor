@@ -185,13 +185,14 @@ def run_predict_model_data(
         applycal_steps=predict_task["applycal_steps"],
         normalize_h5parm=predict_task["normalize_h5parm"],
     )
-    return _run_command_and_validate_directory(
+    run_external_command(
         command,
-        predict_task["msout_path"],
         pipeline_working_dir,
         config,
+        environment=dp3_environment(),
         shell_operation_cls=shell_operation_cls,
     )
+    return require_directory(predict_task["msout_path"], "Predict output")
 
 
 def run_predict_postprocess(
@@ -315,23 +316,6 @@ def _result_from_postprocess_records(mode: str, outputs: list[list[dict]]) -> di
     result = {key: outputs}
     validate_output_record(result[key])
     return result
-
-
-def _run_command_and_validate_directory(
-    command: list[str],
-    output_path: str,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        environment=dp3_environment(),
-        shell_operation_cls=shell_operation_cls,
-    )
-    return require_directory(output_path, "Predict output")
 
 
 def _glob_directory_records(

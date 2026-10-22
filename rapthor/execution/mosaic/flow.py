@@ -307,14 +307,13 @@ def _finalize_mosaic_output(
 ) -> dict:
     """Compress and/or publish one mosaic output record."""
     if compress_images:
-        compressed_path = f"{mosaic_path}.fz"
-        output_record = _run_command_and_require_file(
+        run_external_command(
             build_compress_mosaic_command(mosaic_filename),
-            compressed_path,
             pipeline_working_dir,
             execution_config,
             shell_operation_cls=shell_operation_cls,
         )
+        output_record = require_file(f"{mosaic_path}.fz", "Mosaic output")
     if execution_config.publish_fits_previews:
         publish_fits_image_artifacts(
             [output_record],
@@ -322,22 +321,6 @@ def _finalize_mosaic_output(
             clip_percentile=execution_config.fits_preview_clip_percentile,
         )
     return output_record
-
-
-def _run_command_and_require_file(
-    command: list[str],
-    output_path: str,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return require_file(output_path, "Mosaic output")
 
 
 def _work_path(pipeline_working_dir: str, filename: str) -> str:
