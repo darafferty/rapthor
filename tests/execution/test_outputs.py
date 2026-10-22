@@ -7,6 +7,7 @@ import pytest
 import rapthor.execution.outputs as outputs_module
 from rapthor.execution.outputs import cleanup_intermediate_outputs, make_command_product
 from rapthor.lib.records import directory_record, file_record
+from tests.conftest import file_tree_state
 
 
 @pytest.mark.parametrize("scratch_workspace", [False, True])
@@ -112,14 +113,6 @@ def _make_product(output, run, *, settings="a", inputs=()):
     )
 
 
-def _tree_state(path):
-    return sorted(
-        (str(item.relative_to(path)), item.stat().st_mtime_ns, item.read_bytes())
-        for item in path.rglob("*")
-        if item.is_file()
-    )
-
-
 def test_make_command_product_promotes_a_complete_product(tmp_path):
     output = tmp_path / "product.ms"
     run = _ProductCommand()
@@ -176,7 +169,7 @@ def test_make_command_product_restarts_after_a_failure_before_promotion(tmp_path
 def test_make_command_product_reuses_a_complete_product(tmp_path):
     output = tmp_path / "product.ms"
     _make_product(output, _ProductCommand())
-    state = _tree_state(output)
+    state = file_tree_state(output)
     leftover = tmp_path / ".product.ms.partial"
     leftover.mkdir()
 
@@ -184,7 +177,7 @@ def test_make_command_product_reuses_a_complete_product(tmp_path):
     assert _make_product(output, run) == directory_record(output)
 
     assert run.commands == []
-    assert _tree_state(output) == state
+    assert file_tree_state(output) == state
     assert not leftover.exists()
 
 
@@ -224,6 +217,29 @@ def test_make_command_product_remakes_a_product_when_an_input_changes(tmp_path):
     _make_product(upstream, run, settings="b")
     _make_product(output, run, inputs=[source, upstream])
     assert len(run.commands) == 5
+
+
+def test_make_command_product_remakes_a_product_made_by_other_software(tmp_path, monkeypatch):
+    program = tmp_path / "bin" / "a"
+    program.parent.mkdir()
+    program.write_text("#!/bin/sh\n")
+    program.chmod(0o755)
+    monkeypatch.setenv("PATH", str(program.parent))
+    output = tmp_path / "product.ms"
+    run = _ProductCommand()
+    _make_product(output, run)
+    _make_product(output, run)
+    assert len(run.commands) == 1
+
+    # An updated program, such as a new DP3, may make something else
+    os.utime(program, ns=(1, 1))
+    _make_product(output, run)
+    assert len(run.commands) == 2
+
+    # So may an updated Rapthor
+    monkeypatch.setattr(outputs_module, "__version__", "next")
+    _make_product(output, run)
+    assert len(run.commands) == 3
 
 
 def test_make_command_product_remakes_a_partly_removed_product(tmp_path):
@@ -295,7 +311,7 @@ def test_make_command_product_never_removes_an_input(tmp_path):
     original = tmp_path / "input.ms"
     original.mkdir()
     (original / "table.dat").write_text("input")
-    state = _tree_state(original)
+    state = file_tree_state(original)
     run = _ProductCommand()
 
     for output in (original, original / "nested.ms", tmp_path):
@@ -303,7 +319,7 @@ def test_make_command_product_never_removes_an_input(tmp_path):
             _make_product(output, run, inputs=[original])
 
     assert run.commands == []
-    assert _tree_state(original) == state
+    assert file_tree_state(original) == state
 
 
 def test_cleanup_removes_the_record_of_a_removed_product(tmp_path):

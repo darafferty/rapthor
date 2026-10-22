@@ -24,7 +24,7 @@ from rapthor.execution.outputs import (
     require_file,
 )
 from rapthor.execution.scratch import temporary_environment
-from rapthor.execution.shell import run_external_command
+from rapthor.execution.shell import command_runner, run_external_command
 from rapthor.lib.records import file_record
 
 
@@ -118,6 +118,9 @@ def compress_image_records(
     complete once it has its final name. One that an earlier attempt completed
     from the same image is reused.
     """
+    run_command = command_runner(
+        pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
+    )
 
     def compress(record: dict, description: str) -> dict:
         image = record["path"]
@@ -126,12 +129,7 @@ def compress_image_records(
             lambda partial_path: build_compress_image_command(
                 image, partial_path, lossless=_is_sparse_model_image(image)
             ),
-            lambda command: run_external_command(
-                command,
-                pipeline_working_dir,
-                execution_config,
-                shell_operation_cls=shell_operation_cls,
-            ),
+            run_command,
             description=description,
             inputs=[image],
         )
