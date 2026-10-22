@@ -4,12 +4,16 @@ for this directory.
 """
 
 import configparser
+import fcntl
 import inspect
 import logging
 import os
 import shutil
 import tarfile
 import tempfile
+import warnings
+import zlib
+from contextlib import contextmanager
 from pathlib import Path
 
 import casacore.tables as pt
@@ -33,6 +37,8 @@ RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
+# Fail fast when the server is unreachable, but allow a slow transfer
+TEST_MS_DOWNLOAD_TIMEOUT = (30, 300)
 # The visibilities in the downloaded test MS are about four orders of magnitude
 # below what the test sky models predict, so DDECal recovers gain amplitudes
 # near 0.01. The slow-gain processing clamps its lower flagging threshold at
@@ -44,7 +50,7 @@ TEST_MS_DATA_SCALE = 1.5e4
 
 def download_test_ms(destination: Path) -> None:
     """Download the shared small Measurement Set used by the tests."""
-    response = requests.get(TEST_MS_ARCHIVE_URL, timeout=300)
+    response = requests.get(TEST_MS_ARCHIVE_URL, timeout=TEST_MS_DOWNLOAD_TIMEOUT)
     response.raise_for_status()
 
     with tempfile.TemporaryDirectory(dir=destination.parent) as tmp_dir_name:
@@ -200,22 +206,38 @@ def _prepare_prefect_home(config):
     _set_prefect_home(worker_id, force=worker_id != "main")
 
 
-def _prefetch_test_ms(config):
-    """Fetch the shared test MS once, before any xdist worker needs it.
+@contextmanager
+def _test_ms_download_lock():
+    """Let one process download the test MS while others wait for it."""
+    with open(RESOURCE_DIR / f".{TEST_MS_DIRNAME}.lock", "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        yield
 
-    A worker would otherwise download it from the first fixture that asks for
-    it, which fails when that test carries the ``disable_socket`` marker.
+
+def pytest_collection_finish(session):
+    """Fetch the shared test MS before any selected test needs it.
+
+    A test would otherwise download it from the first fixture that asks for it,
+    which fails when that test carries the ``disable_socket`` marker. Only runs
+    that will use the MS fetch it. Each xdist worker collects every test, so the
+    workers share one download through a lock.
     """
-    if _xdist_worker_id(config) != "main":
+    if session.config.option.collectonly:
+        return
+    if not any("test_ms" in getattr(item, "fixturenames", ()) for item in session.items):
         return
     try:
-        ensure_test_ms(RESOURCE_DIR)
-    except (OSError, requests.RequestException) as error:
+        with _test_ms_download_lock():
+            ensure_test_ms(RESOURCE_DIR)
+    except (
+        OSError,
+        EOFError,
+        zlib.error,
+        tarfile.TarError,
+        requests.RequestException,
+    ) as error:
         # The tests that need the MS fail with the cause; the others still run.
-        config.issue_config_time_warning(
-            pytest.PytestWarning(f"Could not fetch the shared test MS: {error}"),
-            stacklevel=2,
-        )
+        warnings.warn(pytest.PytestWarning(f"Could not fetch the shared test MS: {error}"))
 
 
 def pytest_configure(config):
@@ -223,7 +245,6 @@ def pytest_configure(config):
     _quiet_async_runtime_loggers()
     _prepare_local_test_run_root(config)
     _prepare_prefect_home(config)
-    _prefetch_test_ms(config)
 
 
 @pytest.fixture(autouse=True)

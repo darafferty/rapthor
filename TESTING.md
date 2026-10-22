@@ -119,11 +119,11 @@ by the scenario.  The `test_ms` fixture hands tests a
 session copy whose DATA column is scaled by `TEST_MS_DATA_SCALE` (see
 `tests/conftest.py`), because the downloaded visibilities are far too faint for
 the test sky models and the solved gains would otherwise be flagged away. Point a
-demo parset at the downloaded MS only if the gain level does not matter. pytest
-downloads the small test Measurement Set into `tests/resources/` at startup if
-it is missing, so that no socket-blocked test has to fetch it; prepare that
-cache before an offline run. Ordinary unit tests should not introduce network
-dependencies.
+demo parset at the downloaded MS only if the gain level does not matter. If the
+small test Measurement Set is missing from `tests/resources/`, pytest downloads
+it after collection when a selected test uses it, so that no socket-blocked test
+has to fetch it; prepare that cache before an offline run. Ordinary unit tests
+should not introduce network dependencies.
 
 ```bash
 RAPTHOR_TEST_RUN_ROOT=/tmp/rapthor-integration-runs \
