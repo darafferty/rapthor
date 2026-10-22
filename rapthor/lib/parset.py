@@ -503,6 +503,8 @@ def parset_read(parset_file, use_log_file=True):
     """
     Read a rapthor-formatted parset file and return dict of parameters
 
+    This also prepares the working directory for a run; see prepare_run().
+
     Parameters
     ----------
     parset_file : str
@@ -523,9 +525,55 @@ def parset_read(parset_file, use_log_file=True):
             If no input MS files can be found; or
             if the sky model file cannot be found and download is not requested.
     """
+    parset_dict = read_parset_settings(parset_file)
+    prepare_run(parset_dict, use_log_file=use_log_file)
+    return parset_dict
 
-    parset_dict = Parset(parset_file).as_parset_dict()
 
+def read_parset_settings(parset_file):
+    """
+    Read a rapthor-formatted parset file and return dict of its settings
+
+    Unlike parset_read(), this leaves the working directory and the log file
+    alone, so that it can be called before the working directory is locked.
+
+    Parameters
+    ----------
+    parset_file : str
+        Filename of rapthor-formated parset file
+
+    Returns
+    -------
+    parset_dict : dict
+        Dict of parset parameters
+    """
+    return Parset(parset_file).as_parset_dict()
+
+
+def prepare_run(parset_dict, use_log_file=True):
+    """
+    Prepare a run from the settings returned by read_parset_settings()
+
+    Creates the working directory, starts the log file, finds the input MS files
+    (stored under the "mss" key) and checks the sky model settings. The caller
+    should hold the working directory lock, so that a reset cannot rename the log
+    file while it is being opened.
+
+    Parameters
+    ----------
+    parset_dict : dict
+        Dict of parset parameters, updated in place
+    use_log_file : bool, optional
+        Use a log file as well as outputing to the screen
+
+    Raises
+    ------
+        RuntimeError
+            If the working directory cannot be created.
+        FileNotFoundError
+            If no input MS files can be found; or
+            if the sky model file cannot be found and download is not requested.
+    """
     # Set up working directory. All output will be placed in this directory
     try:
         if not os.path.isdir(parset_dict["dir_working"]):
@@ -572,8 +620,6 @@ def parset_read(parset_file, use_log_file=True):
 
     check_and_adjust_skymodel_settings(parset_dict)
     log.info("=========================================================")
-
-    return parset_dict
 
 
 def check_and_adjust_skymodel_settings(parset_dict):
