@@ -28,35 +28,33 @@ def working_directory_lock(
     Runs and resets take this advisory ``flock``, so that a reset cannot change
     the files of a running pipeline and two runs cannot share a working
     directory. The operating system releases it when the process ends, even if
-    it is killed. The lock file describes the holder for the error message.
-    Each call opens the file again, so a second call in the same process is
-    refused too (except where ``flock`` is emulated with POSIX locks, as for
-    NFS on Linux).
+    it is killed. The lock file names the holder for the error message. A second
+    call in the same process is refused too, except where ``flock`` is emulated
+    with POSIX locks (NFS on Linux).
 
-    If the lock cannot be taken for another reason, for example because the
-    file system does not support it, a required lock (for a reset, which removes
-    files) raises WorkingDirectoryLockError. Otherwise (for a run) a warning is
-    logged and the run continues without the lock.
+    If the lock cannot be taken for another reason, for example because the file
+    system does not support it, a required lock (for a reset) raises
+    WorkingDirectoryLockError, while a run logs a warning and continues without it.
     """
     lock_file = None
     try:
         os.makedirs(dir_working, exist_ok=True)
         lock_file = open(os.path.join(dir_working, LOCK_FILENAME), "a+", encoding="utf-8")
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        # Only flock can block: another process holds the lock
+        holder = ""
+        with lock_file, suppress(OSError):
+            lock_file.seek(0)
+            holder = lock_file.read().strip()
+        raise WorkingDirectoryInUse(
+            f"The working directory {dir_working} is in use by "
+            f"{holder or 'another Rapthor process'}. Wait for it to finish, or stop it, "
+            "before trying again."
+        ) from None
     except OSError as error:
         if lock_file is not None:
-            with lock_file:
-                # Only flock can block: another process holds the lock
-                if isinstance(error, BlockingIOError):
-                    holder = ""
-                    with suppress(OSError):
-                        lock_file.seek(0)
-                        holder = lock_file.read().strip()
-                    raise WorkingDirectoryInUse(
-                        f"The working directory {dir_working} is in use by "
-                        f"{holder or 'another Rapthor process'}. Wait for it to finish, or "
-                        "stop it, before trying again."
-                    ) from None
+            lock_file.close()
         if required:
             raise WorkingDirectoryLockError(
                 f"Could not lock the working directory {dir_working} ({error}). The lock "

@@ -74,7 +74,7 @@ is in progress:
 
 These files do not depend on the dashboards described below. They are written
 when :term:`prefect_log_commands` is set, which is the default. A resumed run
-adds to them. When operations are reset, their entries are moved to separate
+adds to them; a reset moves the entries of the reset operations to separate
 files (see :ref:`resetting_rapthor`).
 
 
@@ -452,39 +452,28 @@ All operations after the selected one will also be reset. The files that
 these operations produced (their images, solutions, sky models, plots and
 logs) are removed from the working directory.
 
-The list is made from the operation directories in ``dir_working/pipelines``,
-not from the current strategy, so it includes every cycle that was started,
-such as repeated final cycles (see :term:`ntimes_to_repeat_final_cycle`), even
-if the settings have changed since. Within a cycle, the calibration operations
-are listed as ``calibrate_N``, ``predict_di_N``, ``calibrate_di_N``, whatever
-order the :term:`calibration_strategy` ran them in. As each can use the
-solutions of the others, resetting any one of them resets all calibration
-operations of that cycle.
+The list comes from the operation directories in ``dir_working/pipelines``, so
+it includes every cycle that was started, such as repeated final cycles, even if
+the strategy has changed since. The calibration operations of a cycle
+(``calibrate_N``, ``predict_di_N`` and ``calibrate_di_N``) use each other's
+solutions, so resetting one of them resets them all.
 
-An operation stopped while using :term:`global_scratch_dir` may have left a
-link to its workspace on the shared scratch disk, and a recovery record
-``.<operation>.scratch``, in ``dir_working/pipelines``. A reset removes them
-together with the workspace, but does not delete the files behind a link that
-does not point to a scratch workspace of that operation.
+A reset also removes the scratch workspace of an operation that was stopped
+while using :term:`global_scratch_dir`, together with its link and recovery
+record (``.<operation>.scratch``) in ``dir_working/pipelines``. Files behind a
+link that does not point to such a workspace are left alone.
 
 The entries of the reset operations in ``logs/commands.jsonl`` and
-``logs/tasks.jsonl`` are moved to files named after the UTC time of the reset,
-for example ``logs/commands.reset-20250102T030405Z.jsonl``, and
-``logs/rapthor.log`` is renamed in the same way, so the next run starts a new
-one. The remaining records therefore only describe the work whose products are
-kept; to include earlier attempts in run times or resource use, read the
-``*.reset-<time>.*`` files as well.
+``logs/tasks.jsonl`` are moved to ``*.reset-<time>.jsonl`` files, named after
+the UTC time of the reset, and ``logs/rapthor.log`` is renamed in the same way.
+The remaining records describe only the work whose products are kept.
 
-A run and a reset, or two runs, cannot use the same working directory at the
-same time. Each holds a lock on ``dir_working/.rapthor.lock``, and the one that
-starts second stops with a message naming the process that holds it. The lock
-is released when the process ends, even if it is killed. If the lock cannot be
-taken for another reason, for example because the file system does not support
-``flock``, a reset refuses to run, while a run logs a warning that reset
-protection is off and carries on. On a shared file system, the lock only keeps
-out processes on other machines if the mount provides cluster-wide locks (for
-example, NFS mounted without ``local_lock=flock``, or Lustre mounted with
-``flock`` rather than ``localflock``); Rapthor does not check this. With a Dask
-scheduler that you started yourself (see :term:`dask_scheduler`), make sure
-that its workers have stopped before you reset: they may still be writing to the
-working directory after Rapthor itself has been killed.
+A run and a reset, or two runs, cannot share a working directory: each locks
+``dir_working/.rapthor.lock`` until its process ends, and the one that starts
+second stops with a message naming the holder. If the lock cannot be taken at
+all, for example because the file system does not support ``flock``, a reset
+refuses to run and a run continues with a warning. On a shared file system, the
+lock only keeps out other machines if the mount provides cluster-wide locks (for
+example, NFS without ``local_lock=flock`` or Lustre with ``flock``). If you
+started the Dask scheduler yourself (see :term:`dask_scheduler`), make sure its
+workers have stopped before you reset.
