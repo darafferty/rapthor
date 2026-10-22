@@ -1,7 +1,7 @@
 import copy
 import json
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
@@ -341,6 +341,7 @@ class RecordingPipelineLifecycle:
     supported_features: set[str] | None = None
     epoch_observations: list[list[object]] = field(default_factory=lambda: [[object()]])
     read_files: list[object] = field(default_factory=list)
+    prepared: list[dict] = field(default_factory=list)
     logging_levels: list[str] = field(default_factory=list)
     preflight_features: set[str] = field(default_factory=set)
     field_updates: dict = field(default_factory=dict)
@@ -349,6 +350,7 @@ class RecordingPipelineLifecycle:
     def hooks(self):
         return PipelineLifecycleHooks(
             read_parset=self.read_parset,
+            prepare_run=self.prepare_run,
             set_logging_level=self.set_logging_level,
             build_field=self.build_field,
             set_strategy=self.set_strategy,
@@ -362,6 +364,9 @@ class RecordingPipelineLifecycle:
     def read_parset(self, parset_file):
         self.read_files.append(parset_file)
         return self.parset
+
+    def prepare_run(self, parset):
+        self.prepared.append(parset)
 
     def set_logging_level(self, logging_level):
         self.logging_levels.append(logging_level)
@@ -894,7 +899,33 @@ def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory
                 lifecycle_hooks=lifecycle.hooks(),
             )
 
+    # The refused run must not touch the working directory or its log
+    assert lifecycle.read_files == ["input.parset"]
+    assert lifecycle.prepared == []
     assert lifecycle.field is None
+
+
+def test_run_pipeline_prepares_the_run_only_once_it_holds_the_working_directory():
+    parset = _pipeline_parset()
+    lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
+    lock_holders = []
+
+    def prepare_run(prepared_parset):
+        # Opening the log file (and the rest of the preparation) must happen
+        # under the lock, so another process cannot take it at this point
+        with pytest.raises(WorkingDirectoryInUse) as refusal:
+            with working_directory_lock(prepared_parset["dir_working"], "a probe", required=True):
+                pass
+        lock_holders.append(str(refusal.value))
+        lifecycle.prepare_run(prepared_parset)
+
+    hooks = replace(lifecycle.hooks(), prepare_run=prepare_run)
+    run_pipeline("input.parset", operation_factories=RECORDING_FACTORIES, lifecycle_hooks=hooks)
+
+    assert lifecycle.prepared == [parset]
+    assert len(lock_holders) == 1
+    assert "in use by a Rapthor run" in lock_holders[0]
+    assert lifecycle.field is not None
 
 
 def test_run_pipeline_publishes_plot_artifacts_after_operations_and_report(monkeypatch):
