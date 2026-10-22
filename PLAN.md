@@ -14,9 +14,11 @@ feature-branch implementations remain open until reviewed, validated and merged.
 implemented on branches from `27e36a20`: restart safety (P0-BUG-05) on
 `gec-672-restart-safety` and the removal of `prefect_retries` (P0-BUG-08) on
 `gec-672-remove-retries`. With the three earlier GEC-672 branches (WS-D) they
-merge with each other without conflicts; run the full suite on the combined
-tree, since each branch was only tested alone (see
-[existing branches](#existing-branches-to-integrate)). Resolve the separate
+merge with each other without conflicts, and the combined tree passed the full
+suite including the integration lane (see
+[existing branches](#existing-branches-to-integrate)). Some of these branches
+are still being refactored, so check each tip before review and test the
+combined tree again after changes. Resolve the separate
 phase-only DD product decision (P1-DEC-01) before release; the merged strategy
 fixes do not change that selector.
 
@@ -104,7 +106,7 @@ splitting work into issues. Existing branch implementations are mapped below.
 ### Restart and output ownership (WS-D)
 
 All five tasks are implemented on three independent GEC-672 branches based on
-`62907d14`; review and merge them in any order.
+`27e36a20`; review and merge them in any order.
 
 | Task | Remaining work |
 | --- | --- |
@@ -162,13 +164,16 @@ using focused changes; avoid replaying pre-squash migration history or temporary
 `rapthor3` CLI overlays. CWL branches are porting sources, not implementations
 in the Prefect version.
 
+Refactoring is ongoing on some GEC-672 branches, so their tips may have moved
+on from those listed here.
+
 | Branch / reviewed tip | Disposition and next action |
 | --- | --- |
-| `gec-672-restart-safety` — `38531e7e` | P0-BUG-05, four commits on `27e36a20`, including real DP3 and `fpack` integration tests. Review and merge. |
+| `gec-672-restart-safety` — `cce5f8cd` | P0-BUG-05, five commits on `27e36a20`, including real DP3 and `fpack` integration tests. Review and merge. |
 | `gec-672-remove-retries` — `e3d76980` | P0-BUG-08, one commit on `27e36a20`. Review and merge. |
-| `gec-672-reset` — `4f692cf9` | P2-BUG-03 (rest) and P2-BUG-04, five commits on `62907d14`. Review and merge. |
-| `gec-672-model-mosaic` — `fdec1c1d` | P2-BUG-06, four commits on `62907d14`, including a real-WSClean draw-model integration test. Review and merge. |
-| `gec-672-plot-outputs` — `b31ae5f4` | P2-BUG-02 and P2-BUG-05, three commits on `62907d14`. Review and merge. |
+| `gec-672-reset` — `5cfeb5d0` | P2-BUG-03 (rest) and P2-BUG-04, eight commits on `27e36a20`; the run now takes the working-directory lock before it opens the log. Review and merge. |
+| `gec-672-model-mosaic` — `e05097cd` | P2-BUG-06, four commits on `27e36a20`, including a real-WSClean draw-model integration test. Review and merge. |
+| `gec-672-plot-outputs` — `b75c1232` | P2-BUG-02 and P2-BUG-05, three commits on `27e36a20`. Review and merge. |
 | `gec-664-integration-coverage` — `2400779c` | Combines unit and integration coverage into one report. Its test-speed commits are merged as `d91e2dfe` and its pre-fetch commit is superseded by MR !536; rebase the two coverage commits onto the Astron/SKA CI split. |
 | `pytest-8-threads` — `ac727806` | Part of P3-TEST-01: the parallel tox lane uses eight xdist workers instead of `auto`. Check it against CI runner and local CPU limits before merging. |
 | `RAP-1444-get-BDA-parms-no_cal` — `98c48866` | Supplied-h5parm interval inference related to P2-BUG-01, now with a field test. Reconcile with GEC-670 scanning; test single-sample/irregular time axes. Does not fix direction-layout ownership. |
@@ -242,9 +247,14 @@ files it changes with the merged commit. The GEC-672 branches and
 `gec-664-pre-fetch-test-data` passed the full non-integration suite, lint and the
 docs build on `62907d14`. `gec-672-restart-safety` (with its DP3 and `fpack`
 integration tests) and `gec-672-remove-retries` passed the same checks on
-`27e36a20`, and all five GEC-672 branches merge with each other without
-conflicts; the combined tree has not been tested. Other branch tests were
-inspected, not rerun. This
+`27e36a20`. All five GEC-672 branches merged together on `27e36a20`
+(restart-safety at `38531e7e`, remove-retries at `e3d76980`, reset at
+`5cfeb5d0`, model-mosaic at `e05097cd`, plot-outputs at `b75c1232`) passed the
+non-integration suite (4 serial, 1,610 parallel), lint, the docs build and the
+integration lane (45 passed, 1 Slurm test skipped, 4 expected failures that are
+also marked on `main`). The later restart-safety refactoring (`cce5f8cd`) still
+merges cleanly but was not in that run. Other branch tests were inspected, not
+rerun. This
 review does not establish CI, scientific-equivalence or cluster validation.
 Unchanged findings retain the earlier source-review baseline.
 
