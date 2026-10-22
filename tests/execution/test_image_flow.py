@@ -1766,10 +1766,6 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         "sector_1.true_sky_rms.fits",
     ]
     assert all(not (tmp_path / name).exists() for name in intermediates)
-    # The cleanup removes the record of the removed concat MS, but keeps those of
-    # the prepared MSs, which are outputs.
-    assert not (tmp_path / ".sector_1_concat.ms.product.json").exists()
-    assert (tmp_path / ".sector_1_obs_0_prep.ms.product.json").is_file()
     assert all(path.read_text() == "retain" for path in protected_paths)
     for record in outputs["sector_I_images"][0] + outputs["sector_extra_images"][0]:
         assert Path(record["path"]).is_file()
@@ -2065,9 +2061,6 @@ def test_run_image_flow_allows_missing_source_filtering_mask(
 def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
     prefect_server, tmp_path, fake_image_shell_operation_cls
 ):
-    # Measurement Sets without a record of how they were made (for example,
-    # left by a command that was stopped) are made again; WSClean images are
-    # reused.
     for ms_name in ["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms", "sector_1_concat.ms"]:
         (tmp_path / ms_name).mkdir()
     for filename in [
@@ -2091,7 +2084,7 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
         _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert command_names == ["DP3", "DP3", "taql", FILTER_SKYMODEL_COMMAND_NAME]
+    assert command_names == [FILTER_SKYMODEL_COMMAND_NAME]
 
 
 def test_run_image_flow_restart_reuses_complete_measurement_sets(
@@ -2516,13 +2509,13 @@ def test_run_image_flow_returns_compressed_image_outputs(
     assert not list(tmp_path.glob(".*.partial"))
 
 
-def test_run_image_flow_restart_reuses_or_replaces_compressed_images(
+def test_run_image_flow_restart_compresses_images_again(
     prefect_server, tmp_path, fake_image_shell_operation_cls
 ):
     payload = image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True)
     # Keep the uncompressed images, so that WSClean is not run again.
     config = ExecutionConfig(task_runner="sync", keep_temporary_files=True)
-    # A compressed image without a record, as left by fpack when it was stopped.
+    # A compressed image left by fpack when it was stopped.
     stopped = tmp_path / "sector_1-MFS-I-image.fits.fz"
     stopped.write_text("partial")
 
@@ -2543,6 +2536,7 @@ def test_run_image_flow_restart_reuses_or_replaces_compressed_images(
     assert len(fpack_inputs()) == 6
     assert stopped.read_text() == "compressed"
 
+    # Some images are written again by every attempt, so all are compressed again.
     second = run_flow_for_test(
         image_flow,
         payload,
@@ -2551,19 +2545,7 @@ def test_run_image_flow_restart_reuses_or_replaces_compressed_images(
     )
     assert second["sector_I_images"] == first["sector_I_images"]
     assert second["sector_extra_images"] == first["sector_extra_images"]
-    # Only the astrometry-corrected image, which each attempt writes again, is
-    # compressed again.
-    assert fpack_inputs() == ["sector_1-MFS-I-image-pb-ast.fits"]
-
-    # An image that has been made again is compressed again.
-    os.utime(tmp_path / "sector_1-MFS-I-residual.fits", ns=(1, 1))
-    run_flow_for_test(
-        image_flow,
-        payload,
-        execution_config=config,
-        shell_operation_cls=fake_image_shell_operation_cls,
-    )
-    assert fpack_inputs() == ["sector_1-MFS-I-image-pb-ast.fits", "sector_1-MFS-I-residual.fits"]
+    assert len(fpack_inputs()) == 6
 
 
 def test_run_image_flow_returns_filtered_model_image(

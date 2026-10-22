@@ -408,21 +408,19 @@ reduction that was halted (either by the user or due to some problem) by simply
 re-running Rapthor with the same parset.
 
 An operation that had not finished is run again from its start, but reuses
-the files that an earlier attempt had completed from the same inputs with the
-same settings: the Measurement Sets made by the Concatenate operation and by
-imaging, the images of a sector that WSClean had finished, and the compressed
-images (``.fits.fz``) of a sector. A mosaic is made, and compressed, again by
-each attempt.
+the Measurement Sets that an earlier attempt had completed (those made by the
+Concatenate operation, and the prepared and concatenated data of each imaging
+sector) and the images of a sector that WSClean had finished. Images are
+compressed again, since some of them are written again by every attempt.
 
 Rapthor makes each Measurement Set and compressed image under a temporary name,
 ``.<name>.partial``, which is also the name shown in ``logs/commands.jsonl``,
 and gives it its final name only once the command that makes it has succeeded.
-A file ``.<name>.product.json`` next to it records the Rapthor version, the
-program, the command and the inputs, including the size and modification time
-of their files. The product is reused only if this record still matches and
-none of its files has been removed since;
-otherwise it is made again, as is any ``.partial`` file left by a command that
-was stopped. The input Measurement Sets are only read, never changed or removed.
+A product with its final name is therefore complete, while a ``.partial`` file
+left by a command that was stopped is made again. As for a finished operation,
+the settings are not compared: to make the products with other settings, reset
+the operation (see :ref:`resetting_rapthor`). The input Measurement Sets are
+only read, never changed or removed.
 
 The intermediate files of an operation that failed are kept in
 ``dir_working/pipelines`` so that they can be inspected.

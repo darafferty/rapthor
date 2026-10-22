@@ -11,9 +11,8 @@ from rapthor.execution.image.commands import (
 )
 from rapthor.execution.image.masking import blank_image
 from rapthor.execution.image.payloads import ImageSectorPayload
-from rapthor.execution.outputs import make_command_product, require_file
+from rapthor.execution.outputs import make_product, partial_product_path, require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel
-from rapthor.execution.shell import command_runner
 
 
 def prepare_visibility_ms(
@@ -25,46 +24,40 @@ def prepare_visibility_ms(
 ) -> dict:
     """Prepare one observation Measurement Set for imaging, or reuse a complete one."""
 
-    def build_command(partial_path: str) -> list[str]:
-        return build_prepare_imaging_data_command(
-            PrepareImagingDataOptions(
-                msin=str(prepare_task["msin"]),
-                data_colname=str(sector["data_colname"]),
-                # The partial path is next to msout in the working directory.
-                msout=os.path.basename(partial_path),
-                starttime=str(prepare_task["starttime"]),
-                ntimes=int(prepare_task["ntimes"]),
-                phasecenter=str(sector["phasecenter"]),
-                freqstep=int(prepare_task["freqstep"]),
-                timestep=int(prepare_task["timestep"]),
-                beamdir=str(sector["phasecenter"]),
-                num_threads=int(sector["max_threads"]),
-                steps=str(sector["prepare_data_steps"]),
-                minchannels=int(prepare_task["minchannels"]),
-                maxinterval=prepare_task.get("maxinterval"),
-                timebase=sector.get("timebase"),
-                frequencybase=sector.get("frequencybase"),
-                h5parm=sector.get("prepare_data_h5parm"),
-                fulljones_h5parm=sector.get("fulljones_h5parm"),
-                normalize_h5parm=sector.get("input_normalize_h5parm"),
-                central_patch_name=sector.get("central_patch_name"),
-                applycal_steps=sector.get("prepare_data_applycal_steps"),
-            )
+    msout_path = str(prepare_task["msout_path"])
+    command = build_prepare_imaging_data_command(
+        PrepareImagingDataOptions(
+            msin=str(prepare_task["msin"]),
+            data_colname=str(sector["data_colname"]),
+            # The partial MS is made next to msout in the working directory
+            msout=os.path.basename(partial_product_path(msout_path)),
+            starttime=str(prepare_task["starttime"]),
+            ntimes=int(prepare_task["ntimes"]),
+            phasecenter=str(sector["phasecenter"]),
+            freqstep=int(prepare_task["freqstep"]),
+            timestep=int(prepare_task["timestep"]),
+            beamdir=str(sector["phasecenter"]),
+            num_threads=int(sector["max_threads"]),
+            steps=str(sector["prepare_data_steps"]),
+            minchannels=int(prepare_task["minchannels"]),
+            maxinterval=prepare_task.get("maxinterval"),
+            timebase=sector.get("timebase"),
+            frequencybase=sector.get("frequencybase"),
+            h5parm=sector.get("prepare_data_h5parm"),
+            fulljones_h5parm=sector.get("fulljones_h5parm"),
+            normalize_h5parm=sector.get("input_normalize_h5parm"),
+            central_patch_name=sector.get("central_patch_name"),
+            applycal_steps=sector.get("prepare_data_applycal_steps"),
         )
-
-    solutions = [
-        sector.get(key)
-        for key in ("prepare_data_h5parm", "fulljones_h5parm", "input_normalize_h5parm")
-    ]
-    return make_command_product(
-        str(prepare_task["msout_path"]),
-        build_command,
-        command_runner(
-            pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
-        ),
-        description="Prepared imaging MS",
-        inputs=[str(prepare_task["msin"])] + [str(path) for path in solutions if path],
+    )
+    return make_product(
+        msout_path,
+        command,
+        "Prepared imaging MS",
+        pipeline_working_dir,
+        execution_config,
         directory=True,
+        shell_operation_cls=shell_operation_cls,
     )
 
 
@@ -76,21 +69,21 @@ def concatenate_prepared_visibilities(
     shell_operation_cls=None,
 ) -> dict:
     """Concatenate prepared imaging Measurement Sets for one sector, or reuse a complete one."""
-    prepared_paths = [record["path"] for record in prepared_records]
-    return make_command_product(
-        str(sector["concat_path"]),
-        lambda partial_path: select_concatenation_command(
-            prepared_paths,
-            partial_path,
-            data_colname=str(sector["data_colname"]),
-            concat_property="time",
-        ),
-        command_runner(
-            pipeline_working_dir, execution_config, shell_operation_cls=shell_operation_cls
-        ),
-        description="Concatenated imaging MS",
-        inputs=prepared_paths,
+    concat_path = str(sector["concat_path"])
+    command = select_concatenation_command(
+        [record["path"] for record in prepared_records],
+        partial_product_path(concat_path),
+        data_colname=str(sector["data_colname"]),
+        concat_property="time",
+    )
+    return make_product(
+        concat_path,
+        command,
+        "Concatenated imaging MS",
+        pipeline_working_dir,
+        execution_config,
         directory=True,
+        shell_operation_cls=shell_operation_cls,
     )
 
 
