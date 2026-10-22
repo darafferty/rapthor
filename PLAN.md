@@ -14,11 +14,11 @@ feature-branch implementations remain open until reviewed, validated and merged.
 implemented on branches from `27e36a20`: restart safety (P0-BUG-05) on
 `gec-672-restart-safety` and the removal of `prefect_retries` (P0-BUG-08) on
 `gec-672-remove-retries`. With the three earlier GEC-672 branches (WS-D) they
-merge with each other without conflicts, and the combined tree passed the full
-suite including the integration lane (see
-[existing branches](#existing-branches-to-integrate)). Some of these branches
-are still being refactored, so check each tip before review and test the
-combined tree again after changes. Resolve the separate
+are merged together, for testing only, on `gec-672-combined-test` (see
+[existing branches](#existing-branches-to-integrate)). The only conflict is
+between `gec-672-restart-safety` and `gec-672-reset` in
+`tests/lib/test_records.py`, where both add a test at the same place; whichever
+merges second keeps both. Resolve the separate
 phase-only DD product decision (P1-DEC-01) before release; the merged strategy
 fixes do not change that selector.
 
@@ -66,7 +66,7 @@ already behave this way; confirm that this is intended.
 
 | Task | Status / owner | Required result |
 | --- | --- | --- |
-| P0-BUG-05 | **Implemented, unmerged:** `gec-672-restart-safety`. | Image preparation, concatenation (in imaging and the standalone operation) and image/mosaic compression write each product to `.<name>.partial` and rename it into place only after the command succeeds, with a `.<name>.product.json` record of the command and input fingerprints. A resumed run reuses a product only if the record matches and none of its files was removed; otherwise it removes leftovers and makes it again. Inputs are refused as outputs, and `.outputs.json` is written before `.done`. Follow-ups: WSClean images are still reused after the concatenated MS is remade with new settings; the residual-visibility MS, mask and region still treat "exists" as done; an interrupted finalizer move (`copy_record_object(move=True)`) can nest an MS. |
+| P0-BUG-05 | **Implemented, unmerged:** `gec-672-restart-safety`. | Image preparation, concatenation (in imaging and the standalone operation) write each Measurement Set to `.<name>.partial` and rename it into place only after the command succeeds, so a product under its final name is complete and a resumed run reuses it, as it reuses a finished operation; leftover partial products are removed and made again. Settings are not compared: a reset makes the products again with other settings. Compressed images and mosaics are always made again, since some of their inputs are rewritten by every attempt. Every removal of a directory record first moves it to its partial name, so a stopped removal leaves nothing incomplete under a final name. Inputs are refused as outputs, and `.outputs.json` is written before `.done`. Follow-ups: the residual-visibility MS, mask and region still treat "exists" as done; an interrupted finalizer move (`copy_record_object(move=True)`) can nest an MS. |
 | P0-BUG-08 | **Implemented, unmerged:** `gec-672-remove-retries`. | `prefect_retries` is removed from defaults, execution settings, flow wiring, docs, the demo parset and templates; a parset that still sets it gets the usual invalid-option warning. No retry behaviour is added. |
 
 ### P1 — decisions and feature-specific release gates
@@ -164,12 +164,13 @@ using focused changes; avoid replaying pre-squash migration history or temporary
 `rapthor3` CLI overlays. CWL branches are porting sources, not implementations
 in the Prefect version.
 
-Refactoring is ongoing on some GEC-672 branches, so their tips may have moved
-on from those listed here.
+The GEC-672 branches were refactored after their first review; the tips below
+include that refactoring. `gec-672-combined-test` merges all five on `main` for
+testing only and is not for merging.
 
 | Branch / reviewed tip | Disposition and next action |
 | --- | --- |
-| `gec-672-restart-safety` — `cce5f8cd` | P0-BUG-05, five commits on `27e36a20`, including real DP3 and `fpack` integration tests. Review and merge. |
+| `gec-672-restart-safety` — `91737cd1` | P0-BUG-05, seven commits on `27e36a20`, including real DP3 and `fpack` integration tests. Review and merge. |
 | `gec-672-remove-retries` — `e3d76980` | P0-BUG-08, one commit on `27e36a20`. Review and merge. |
 | `gec-672-reset` — `5cfeb5d0` | P2-BUG-03 (rest) and P2-BUG-04, eight commits on `27e36a20`; the run now takes the working-directory lock before it opens the log. Review and merge. |
 | `gec-672-model-mosaic` — `e05097cd` | P2-BUG-06, four commits on `27e36a20`, including a real-WSClean draw-model integration test. Review and merge. |
@@ -247,15 +248,14 @@ files it changes with the merged commit. The GEC-672 branches and
 `gec-664-pre-fetch-test-data` passed the full non-integration suite, lint and the
 docs build on `62907d14`. `gec-672-restart-safety` (with its DP3 and `fpack`
 integration tests) and `gec-672-remove-retries` passed the same checks on
-`27e36a20`. All five GEC-672 branches merged together on `27e36a20`
-(restart-safety at `38531e7e`, remove-retries at `e3d76980`, reset at
-`5cfeb5d0`, model-mosaic at `e05097cd`, plot-outputs at `b75c1232`) passed the
-non-integration suite (4 serial, 1,610 parallel), lint, the docs build and the
-integration lane (45 passed, 1 Slurm test skipped, 4 expected failures that are
-also marked on `main`). The later restart-safety refactoring (`cce5f8cd`) still
-merges cleanly but was not in that run. Other branch tests were inspected, not
-rerun. This
-review does not establish CI, scientific-equivalence or cluster validation.
+`27e36a20`. All five GEC-672 branches merged together on `27e36a20` as
+`gec-672-combined-test` (`0e4da8e9`: restart-safety at `91737cd1`,
+remove-retries at `e3d76980`, reset at `5cfeb5d0`, model-mosaic at `e05097cd`,
+plot-outputs at `b75c1232`) passed the non-integration suite (4 serial, 1,602
+parallel), lint, the docs build and the integration lane (45 passed, 1 Slurm
+test skipped, 4 expected failures that are also marked on `main`). Other branch
+tests were inspected, not rerun. This review does not establish CI,
+scientific-equivalence or cluster validation.
 Unchanged findings retain the earlier source-review baseline.
 
 Detailed review-ID mappings, source references and dated runtime evidence are
