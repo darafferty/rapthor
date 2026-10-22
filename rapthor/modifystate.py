@@ -146,33 +146,28 @@ def archive_reset_logs(logs_dir, operations, now=None):
         if not os.path.isfile(path):
             continue
         with open(path, encoding="utf-8") as log_file:
-            lines = log_file.readlines()
-        kept = [line for line in lines if _record_operation(line) not in operations]
-        if len(kept) == len(lines):
+            lines = log_file.read().splitlines()
+        kept, moved = [], []
+        for line in lines:
+            (moved if _record_operation(line) in operations else kept).append(line)
+        if not moved:
             continue
         # A reset that stopped after writing an archive but before replacing the
-        # log left its records in both. Each archived copy accounts for one line.
+        # log left its records in both, so archive each record once
         archived = Counter()
         for archive in glob.glob(_archive_path(glob.escape(logs_dir), filename, "reset-*")):
             with open(archive, encoding="utf-8") as archive_file:
-                archived.update(line.rstrip("\n") for line in archive_file)
-        moved = []
-        for line in lines:
-            if _record_operation(line) in operations:
-                record = line.rstrip("\n")
-                if archived[record] > 0:
-                    archived[record] -= 1
-                else:
-                    moved.append(record + "\n")
+                archived.update(archive_file.read().splitlines())
+        moved = list((Counter(moved) - archived).elements())
         if moved:
             with open(_archive_path(logs_dir, filename, attempt), "a", encoding="utf-8") as archive:
-                archive.writelines(moved)
+                archive.writelines(f"{line}\n" for line in moved)
             archived_any = True
         # Replace the log in one step, so it is never left partly written
         with tempfile.NamedTemporaryFile(
             "w", encoding="utf-8", dir=logs_dir, prefix=f".{filename}.", delete=False
         ) as replacement:
-            replacement.writelines(kept)
+            replacement.writelines(f"{line}\n" for line in kept)
         try:
             shutil.copymode(path, replacement.name)
             os.replace(replacement.name, path)
