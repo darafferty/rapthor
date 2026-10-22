@@ -5,6 +5,8 @@ the predicted point-source model and verify that the selected applycal steps
 apply the combined DD solution product exactly once.
 """
 
+from pathlib import Path
+
 import casacore.tables as pt
 import numpy as np
 import pytest
@@ -167,3 +169,51 @@ def test_duplicate_phase_step_applies_the_phases_twice(prepare, test_ms_info, tm
     corrected = prepare("corrected", product, "[fastphase,mediumphase]")
 
     _assert_phase_applications(corrected, reference, applications=2)
+
+
+def _measurement_set_state(path):
+    return sorted(
+        (str(item.relative_to(path)), item.stat().st_size, item.stat().st_mtime_ns)
+        for item in Path(path).rglob("*")
+        if item.is_file()
+    )
+
+
+def test_prepare_restart_remakes_a_stopped_ms_and_then_reuses_it(
+    test_ms, test_ms_info, phasecenter, tmp_path
+):
+    """A restart replaces an MS left by a stopped attempt, then reuses the complete one."""
+    workdir = tmp_path / "image_1"
+    workdir.mkdir()
+    sector = {
+        "data_colname": "DATA",
+        "phasecenter": phasecenter,
+        "max_threads": 2,
+        "prepare_data_steps": "[shift]",
+    }
+    task = {
+        "msin": test_ms,
+        "msout": "prep.ms",
+        "msout_path": (workdir / "prep.ms").as_posix(),
+        "starttime": test_ms_info["starttime"],
+        "ntimes": 0,
+        "freqstep": 1,
+        "timestep": 1,
+        "minchannels": 1,
+    }
+    input_state = _measurement_set_state(test_ms)
+    # A stopped attempt left an incomplete MS at the final path and a partial one.
+    (workdir / "prep.ms").mkdir()
+    (workdir / "prep.ms" / "table.dat").write_text("incomplete")
+    (workdir / ".prep.ms.partial").mkdir()
+
+    config = ExecutionConfig(task_runner="sync")
+    record = prepare_visibility_ms(sector, task, workdir.as_posix(), config)
+    with pt.table(record["path"], ack=False) as table:
+        assert table.nrows() == len(test_ms_info["antenna1"])
+    product_state = _measurement_set_state(record["path"])
+
+    assert prepare_visibility_ms(sector, task, workdir.as_posix(), config) == record
+    assert _measurement_set_state(record["path"]) == product_state
+    assert not (workdir / ".prep.ms.partial").exists()
+    assert _measurement_set_state(test_ms) == input_state

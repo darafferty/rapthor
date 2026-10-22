@@ -11,7 +11,7 @@ from rapthor.execution.image.commands import (
 )
 from rapthor.execution.image.masking import blank_image
 from rapthor.execution.image.payloads import ImageSectorPayload
-from rapthor.execution.outputs import require_directory, require_file
+from rapthor.execution.outputs import make_command_product, require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel
 from rapthor.execution.shell import run_external_command
 
@@ -23,13 +23,15 @@ def prepare_visibility_ms(
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> dict:
-    """Prepare one observation Measurement Set for imaging."""
-    if not os.path.isdir(str(prepare_task["msout_path"])):
-        command = build_prepare_imaging_data_command(
+    """Prepare one observation Measurement Set for imaging, or reuse a complete one."""
+
+    def build_command(partial_path: str) -> list[str]:
+        return build_prepare_imaging_data_command(
             PrepareImagingDataOptions(
                 msin=str(prepare_task["msin"]),
                 data_colname=str(sector["data_colname"]),
-                msout=str(prepare_task["msout"]),
+                # The partial path is next to msout in the working directory.
+                msout=os.path.basename(partial_path),
                 starttime=str(prepare_task["starttime"]),
                 ntimes=int(prepare_task["ntimes"]),
                 phasecenter=str(sector["phasecenter"]),
@@ -49,13 +51,19 @@ def prepare_visibility_ms(
                 applycal_steps=sector.get("prepare_data_applycal_steps"),
             )
         )
-        run_external_command(
-            command,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-    return require_directory(str(prepare_task["msout_path"]), "Prepared imaging MS")
+
+    solutions = [
+        sector.get(key)
+        for key in ("prepare_data_h5parm", "fulljones_h5parm", "input_normalize_h5parm")
+    ]
+    return make_command_product(
+        str(prepare_task["msout_path"]),
+        build_command,
+        _command_runner(pipeline_working_dir, execution_config, shell_operation_cls),
+        description="Prepared imaging MS",
+        inputs=[str(prepare_task["msin"])] + [str(path) for path in solutions if path],
+        directory=True,
+    )
 
 
 def concatenate_prepared_visibilities(
@@ -65,22 +73,30 @@ def concatenate_prepared_visibilities(
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> dict:
-    """Concatenate prepared imaging Measurement Sets for one sector."""
+    """Concatenate prepared imaging Measurement Sets for one sector, or reuse a complete one."""
     prepared_paths = [record["path"] for record in prepared_records]
-    if not os.path.isdir(str(sector["concat_path"])):
-        concat_command = select_concatenation_command(
+    return make_command_product(
+        str(sector["concat_path"]),
+        lambda partial_path: select_concatenation_command(
             prepared_paths,
-            str(sector["concat_path"]),
+            partial_path,
             data_colname=str(sector["data_colname"]),
             concat_property="time",
-        )
-        run_external_command(
-            concat_command,
-            pipeline_working_dir,
-            execution_config,
-            shell_operation_cls=shell_operation_cls,
-        )
-    return require_directory(str(sector["concat_path"]), "Concatenated imaging MS")
+        ),
+        _command_runner(pipeline_working_dir, execution_config, shell_operation_cls),
+        description="Concatenated imaging MS",
+        inputs=prepared_paths,
+        directory=True,
+    )
+
+
+def _command_runner(pipeline_working_dir, execution_config, shell_operation_cls):
+    return lambda command: run_external_command(
+        command,
+        pipeline_working_dir,
+        execution_config,
+        shell_operation_cls=shell_operation_cls,
+    )
 
 
 def ensure_imaging_mask(

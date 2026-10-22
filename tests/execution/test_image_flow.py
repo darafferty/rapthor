@@ -1771,6 +1771,10 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
         "sector_1.true_sky_rms.fits",
     ]
     assert all(not (tmp_path / name).exists() for name in intermediates)
+    # The cleanup removes the record of the removed concat MS, but keeps those of
+    # the prepared MSs, which are outputs.
+    assert not (tmp_path / ".sector_1_concat.ms.product.json").exists()
+    assert (tmp_path / ".sector_1_obs_0_prep.ms.product.json").is_file()
     assert all(path.read_text() == "retain" for path in protected_paths)
     for record in outputs["sector_I_images"][0] + outputs["sector_extra_images"][0]:
         assert Path(record["path"]).is_file()
@@ -1834,12 +1838,13 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
                 str(tmp_path / "sector_1_obs_0_prep.ms"),
                 str(tmp_path / "sector_1_obs_1_prep.ms"),
             ],
-            "output_file": str(tmp_path / "sector_1_concat.ms"),
+            "output_file": str(tmp_path / ".sector_1_concat.ms.partial"),
             "data_colname": "DATA",
             "concat_property": "time",
             "overwrite": False,
         }
     ]
+    assert not (tmp_path / ".sector_1_concat.ms.partial").exists()
     assert fake_direct_image_helpers["blank_image"] == [
         {
             "output_image": str(tmp_path / "sector_1_mask.fits"),
@@ -2065,6 +2070,9 @@ def test_run_image_flow_allows_missing_source_filtering_mask(
 def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
     prefect_server, tmp_path, fake_image_shell_operation_cls
 ):
+    # Measurement Sets without a record of how they were made (for example,
+    # left by a command that was stopped) are made again; WSClean images are
+    # reused.
     for ms_name in ["sector_1_obs_0_prep.ms", "sector_1_obs_1_prep.ms", "sector_1_concat.ms"]:
         (tmp_path / ms_name).mkdir()
     for filename in [
@@ -2088,7 +2096,49 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
         _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert command_names == [FILTER_SKYMODEL_COMMAND_NAME]
+    assert command_names == ["DP3", "DP3", "taql", FILTER_SKYMODEL_COMMAND_NAME]
+
+
+def test_run_image_flow_restart_reuses_complete_measurement_sets(
+    prefect_server, tmp_path, fake_image_shell_operation_cls
+):
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
+
+    class WscleanFailsShellOperation(fake_image_shell_operation_cls):
+        def run(self):
+            if shlex.split(self.kwargs["commands"][-1])[0] == "wsclean":
+                raise RuntimeError("image failed")
+            return super().run()
+
+    with pytest.raises(RuntimeError, match="image failed"):
+        run_flow_for_test(
+            image_flow,
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=WscleanFailsShellOperation,
+        )
+    assert (tmp_path / "sector_1_concat.ms").is_dir()
+    fake_image_shell_operation_cls.instances.clear()
+
+    outputs = run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    command_names = [
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == ["wsclean", FILTER_SKYMODEL_COMMAND_NAME]
+    assert outputs["visibilities"] == [
+        [
+            directory_record(tmp_path / "sector_1_obs_0_prep.ms"),
+            directory_record(tmp_path / "sector_1_obs_1_prep.ms"),
+        ]
+    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
 
 
 def test_run_image_flow_restores_bright_sources_before_filtering(
