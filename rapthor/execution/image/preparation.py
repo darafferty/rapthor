@@ -11,8 +11,9 @@ from rapthor.execution.image.commands import (
 )
 from rapthor.execution.image.masking import blank_image
 from rapthor.execution.image.payloads import ImageSectorPayload
-from rapthor.execution.outputs import make_product, partial_product_path, require_file
+from rapthor.execution.outputs import make_product, require_file
 from rapthor.execution.regions import make_ds9_region_from_skymodel
+from rapthor.lib.records import partial_product_path
 
 
 def prepare_visibility_ms(

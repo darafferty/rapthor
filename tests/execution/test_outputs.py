@@ -5,12 +5,8 @@ import pytest
 
 import rapthor.execution.outputs as outputs_module
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.outputs import (
-    cleanup_intermediate_outputs,
-    make_product,
-    partial_product_path,
-)
-from rapthor.lib.records import directory_record, file_record
+from rapthor.execution.outputs import cleanup_intermediate_outputs, make_product
+from rapthor.lib.records import directory_record, file_record, partial_product_path
 from tests.conftest import file_tree_state
 
 
