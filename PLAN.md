@@ -243,22 +243,15 @@ Measurement Sets; preserve serializable worker payloads and complete
 output/finalizer/restart records.
 
 This update fetched branch refs and checked each listed branch against
-`62907d14`, by merging it in memory or, for squash merges, by comparing the
-files it changes with the merged commit. The GEC-672 branches and
-`gec-664-pre-fetch-test-data` passed the full non-integration suite, lint and the
-docs build on `62907d14`. `gec-672-restart-safety` (with its DP3 and `fpack`
-integration tests) and `gec-672-remove-retries` passed the same checks on
-`27e36a20`. All five GEC-672 branches merged together on `27e36a20` as
-`gec-672-combined-test` (`0e4da8e9`: restart-safety at `91737cd1`,
-remove-retries at `e3d76980`, reset at `5cfeb5d0`, model-mosaic at `e05097cd`,
-plot-outputs at `b75c1232`) passed the non-integration suite (4 serial, 1,602
-parallel), lint, the docs build and the integration lane (45 passed, 1 Slurm
-test skipped, 4 expected failures that are also marked on `main`). The removal
-of `prefect_retries` merged as `006264d2` has the same content as
-`e3d76980`; the GEC-672 and `pytest-8-threads` branches still merge cleanly
-with it, and the GEC-673 conflicts were found by merging in memory. Other
-branch tests were inspected, not rerun. This review does not establish CI,
-scientific-equivalence or cluster validation.
+`f5bc99d0` by merging it in memory. `gec-672-restart-safety` (`54c83946`) and
+`gec-672-reset` (`7348172f`) merged together on `f5bc99d0`, in a throwaway
+worktree, passed the non-integration suite (4 serial, 1,621 parallel), lint,
+the import-order check, the docs build and the integration lane (45 passed, 1
+Slurm test skipped, 4 expected failures that are also marked on `main`).
+`gec-672-restart-safety` alone passed the same checks on `f5bc99d0`; one
+integration test there failed once on a lost Prefect server connection and
+passed when rerun. Other branch tests were inspected, not rerun. This review
+does not establish CI, scientific-equivalence or cluster validation.
 Unchanged findings retain the earlier source-review baseline.
 
 Detailed review-ID mappings, source references and dated runtime evidence are
