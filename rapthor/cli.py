@@ -8,9 +8,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from rapthor.reset import reset
 from rapthor._version import __version__ as version
 from rapthor.execution.working_dir_lock import WorkingDirectoryLockError
+from rapthor.reset import reset
 
 
 def _build_parser() -> optparse.OptionParser:
