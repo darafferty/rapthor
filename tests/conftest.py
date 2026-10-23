@@ -27,12 +27,20 @@ from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
-from rapthor.lib.parset import parset_read
+from rapthor.lib.parset import Parset, prepare_run
 from rapthor.lib.sector import Sector
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
 RESOURCE_DIR = TEST_ROOT_DIR / "resources"
+
+
+def read_parset(parset_file, use_log_file=True):
+    """Read a parset file and prepare the run it describes, as a run does under the lock."""
+    parset = Parset(str(parset_file)).as_parset_dict()
+    prepare_run(parset, use_log_file=use_log_file)
+    return parset
+
 
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
@@ -349,7 +357,7 @@ def parset(test_ms, tmp_path):
     with parset_file.open("w") as fh:
         cfg.write(fh)
 
-    yield parset_read(parset_file, use_log_file=False)
+    yield read_parset(parset_file, use_log_file=False)
 
 
 @pytest.fixture
@@ -738,7 +746,7 @@ def parset_for_field_test(tmp_path_factory, test_ms):
         RESOURCE_DIR / "test_true_sky.txt",
         RESOURCE_DIR / "test_apparent_sky.txt",
     )
-    return parset_read(target)
+    return read_parset(target)
 
 
 def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):
