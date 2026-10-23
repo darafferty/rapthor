@@ -157,6 +157,21 @@ WSClean prediction channels
     Related documentation: :term:`wsclean_predict_bw` controls prediction
     frequency grouping.
 
+Model images of several sectors
+    When several sectors are imaged, ``field-MFS-model-pb.fits`` and
+    ``field-MFS-filtered-model.fits`` are now drawn by WSClean from the
+    true-sky and apparent-sky sky models of the sectors. With
+    :term:`filter_skymodel` = ``True``, the model image therefore shows only the
+    components used for calibration in the next cycle, and the filtered model
+    image is no longer restored with a one-pixel beam. Version 2 regridded the
+    sector model images with interpolation, which blanked most of these mostly
+    zero images and lost the flux of isolated components. Set
+    :term:`model_mosaic_method` = ``sparse_fits`` to mosaic the sector images
+    without interpolation. Runs with a single sector are unchanged. In a cycle
+    that also images Stokes Q, U and V, no filtered model image is made.
+
+    Related documentation: :ref:`model_mosaics`.
+
 Output records
     File and directory entries in the operation's JSON output records contain
     ``class`` and ``path``. They omit the checksums and file-size metadata

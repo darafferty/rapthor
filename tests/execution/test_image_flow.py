@@ -3050,6 +3050,7 @@ def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
     field.save_supplementary_images = True
     field.save_visibilities = True
     operation = Image(field, index=1)
+    operation.set_parset_parameters()
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(
