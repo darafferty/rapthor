@@ -863,9 +863,7 @@ def test_run_pipeline_repeats_final_cycle_on_the_data_of_the_cycle_before():
     """Only the first final cycle starts again from the input data, with the outlier
     peeling of the first selfcal cycle; its repeats reuse the data before them."""
     parset = _pipeline_parset(ntimes_to_repeat_final_cycle=2)
-    selfcal_steps = [
-        _single_step({"dd": ["fast_phase"]}, do_check=True, peel_outliers=True) for _ in range(3)
-    ]
+    selfcal_steps = [_single_step({"dd": ["fast_phase"]}, do_check=True, peel_outliers=True)] * 3
     final_step = _single_step({"dd": ["fast_phase"]}, do_check=False, peel_outliers=False)
     lifecycle = RecordingPipelineLifecycle(
         parset=parset,
@@ -881,18 +879,19 @@ def test_run_pipeline_repeats_final_cycle_on_the_data_of_the_cycle_before():
     )
 
     assert field.updates == [(1, 0, True), (2, 1, True), (3, 2, True), (4, 3, True)]
+    # The data is chunked once for all selfcal cycles and once for the first final cycle
     chunks = [event["data_fraction"] for event in field.events if event["operation"] == "chunk"]
     assert chunks == [parset["selfcal_data_fraction"], parset["final_data_fraction"]]
     calibrated = [event["index"] for event in field.events if event["operation"] == "calibrate"]
     assert calibrated == [1, 2, 3, 4]
 
 
-def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory():
+def test_run_pipeline_refuses_to_start_with_a_locked_working_directory():
     parset = _pipeline_parset()
     lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
 
-    with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
-        with pytest.raises(WorkingDirectoryInUse, match="locked by a Rapthor reset"):
+    with working_directory_lock(parset["dir_working"], "a Rapthor test", required=True):
+        with pytest.raises(WorkingDirectoryInUse, match="locked by a Rapthor test"):
             run_pipeline(
                 "input.parset",
                 operation_factories=RECORDING_FACTORIES,
@@ -903,7 +902,7 @@ def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory
     assert lifecycle.field is None
 
 
-def test_run_pipeline_prepares_the_run_only_once_it_holds_the_working_directory():
+def test_run_pipeline_locks_the_working_directory_before_preparing_the_run():
     parset = _pipeline_parset()
     lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
 
