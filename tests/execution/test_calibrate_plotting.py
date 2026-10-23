@@ -76,5 +76,4 @@ def test_plot_solutions_writes_plots_with_the_default_root_into_output_dir(tmp_p
     )
 
     assert output_dir.is_dir()
-    # LoSoTo writes each plot to <prefix><generated name>.png
     assert plot_runner.calls[0][1]["prefix"] == f"{output_dir}/scalarphase_"
