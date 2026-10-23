@@ -104,10 +104,12 @@ def run_concatenate_epoch(
     """
     config = execution_config or ExecutionConfig(task_runner="sync")
     output_path = epoch["output_path"]
+    # A stopped attempt may have left a partial output, which is replaced
     command = select_concatenation_command(
         epoch["input_filenames"],
         partial_product_path(output_path),
         data_colname,
+        overwrite=True,
         use_array_beam=use_array_beam,
     )
     return make_product(

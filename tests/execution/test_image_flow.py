@@ -1814,7 +1814,7 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
             "output_file": str(tmp_path / ".sector_1_concat.ms.partial"),
             "data_colname": "DATA",
             "concat_property": "time",
-            "overwrite": False,
+            "overwrite": True,
         }
     ]
     assert not (tmp_path / ".sector_1_concat.ms.partial").exists()

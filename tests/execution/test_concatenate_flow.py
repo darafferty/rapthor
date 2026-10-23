@@ -10,6 +10,7 @@ from rapthor.execution.concatenate.flow import (
     concatenate_flow,
     run_concatenate_epoch,
 )
+from rapthor.execution.concatenate.measurement_sets import select_concatenation_command
 from rapthor.execution.concatenate.payloads import concatenate_payload_from_inputs
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
@@ -241,7 +242,7 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
             "output_file": str(tmp_path / ".epoch_0_concatenated.ms.partial"),
             "data_colname": "DATA",
             "concat_property": "frequency",
-            "overwrite": False,
+            "overwrite": True,
             "use_array_beam": True,
         }
     ]
@@ -631,3 +632,27 @@ def test_concatenate_epoch_reuses_an_output_of_an_earlier_attempt(
     assert output == directory_record(tmp_path / "epoch_0_concatenated.ms")
     assert (tmp_path / "epoch_0_concatenated.ms" / "table.dat").read_text() == "earlier attempt"
     assert fake_shell_operation_cls.instances == []
+
+
+def test_concatenate_epoch_replaces_a_partial_output_of_a_stopped_attempt(
+    tmp_path, monkeypatch, fake_shell_operation_cls
+):
+    """The command selection must not refuse the partial output that a stopped attempt left."""
+    monkeypatch.setattr(
+        concatenate_module, "select_concatenation_command", select_concatenation_command
+    )
+    (tmp_path / "epoch_0_input_0.ms").mkdir()
+    (tmp_path / ".epoch_0_concatenated.ms.partial").mkdir()
+    epoch = {
+        "input_filenames": [str(tmp_path / "epoch_0_input_0.ms")],
+        "output_filename": "epoch_0_concatenated.ms",
+        "output_path": str(tmp_path / "epoch_0_concatenated.ms"),
+    }
+
+    output = run_concatenate_epoch(
+        epoch, "DATA", str(tmp_path), shell_operation_cls=fake_shell_operation_cls
+    )
+
+    assert output == directory_record(tmp_path / "epoch_0_concatenated.ms")
+    assert not (tmp_path / ".epoch_0_concatenated.ms.partial").exists()
+    assert len(fake_shell_operation_cls.instances) == 1

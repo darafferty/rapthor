@@ -71,11 +71,13 @@ def concatenate_prepared_visibilities(
 ) -> dict:
     """Concatenate prepared imaging Measurement Sets for one sector, or reuse a complete one."""
     concat_path = str(sector["concat_path"])
+    # A stopped attempt may have left a partial output, which is replaced
     command = select_concatenation_command(
         [record["path"] for record in prepared_records],
         partial_product_path(concat_path),
         data_colname=str(sector["data_colname"]),
         concat_property="time",
+        overwrite=True,
     )
     return make_product(
         concat_path,

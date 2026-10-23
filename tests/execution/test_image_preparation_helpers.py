@@ -135,6 +135,8 @@ class _MeasurementSetCommands:
                     output = next(token[6:] for token in tokens if token.startswith("msout="))
                     source = next(token[5:] for token in tokens if token.startswith("msin="))
                     assert Path(source, "table.dat").read_text() == "original"
+                elif tokens[0] == "cp":
+                    output = tokens[-1]
                 else:
                     output = tokens[tokens.index("giving") + 1].strip('"')
                 output = Path(kwargs["working_dir"], output)
@@ -270,3 +272,24 @@ def test_imaging_preparation_second_restart_reuses_complete_outputs(imaging_rest
         "sector_1_obs_0_prep.ms",
         "sector_1_obs_1_prep.ms",
     ]
+
+
+def test_concatenation_replaces_a_partial_ms_of_a_stopped_attempt(tmp_path):
+    """The command selection must not refuse the partial MS that a stopped attempt left."""
+    prepared = tmp_path / "sector_1_obs_0_prep.ms"
+    prepared.mkdir()
+    (tmp_path / ".sector_1_concat.ms.partial").mkdir()
+    sector = {"data_colname": "DATA", "concat_path": str(tmp_path / "sector_1_concat.ms")}
+    commands = _MeasurementSetCommands()
+
+    record = concatenate_prepared_visibilities(
+        sector,
+        [directory_record(prepared)],
+        str(tmp_path),
+        ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=commands.shell_operation_cls,
+    )
+
+    assert record == directory_record(tmp_path / "sector_1_concat.ms")
+    assert commands.commands == ["cp"]
+    assert not (tmp_path / ".sector_1_concat.ms.partial").exists()
