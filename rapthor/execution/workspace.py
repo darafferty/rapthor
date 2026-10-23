@@ -32,7 +32,7 @@ def shared_scratch_workspace(
         yield
         return
 
-    workdir = Path(os.path.abspath(pipeline_working_dir))
+    workdir = Path(pipeline_working_dir).absolute()
     recover_scratch_workspace(str(workdir))
     if workdir.is_symlink():
         workspace = workdir.resolve()
@@ -97,7 +97,7 @@ def recover_scratch_workspace(pipeline_working_dir: str) -> None:
     real operation directory is authoritative; otherwise the original backup
     or the scratch workspace still owns the data.
     """
-    workdir = Path(os.path.abspath(pipeline_working_dir))
+    workdir = Path(pipeline_working_dir).absolute()
     recovery_dir = _recovery_directory(workdir)
     if not recovery_dir.exists():
         return
@@ -135,13 +135,13 @@ def recover_scratch_workspace(pipeline_working_dir: str) -> None:
 
 
 def remove_operation_workspace(pipeline_working_dir: str) -> None:
-    """Remove an operation path with the scratch workspace and recovery record it owns.
+    """Remove both the scratch workspace and recovery record for an operation.
 
     A reset may find the operation at any point of a move to or from shared
     scratch. A workspace is removed only if its marker names this operation path;
     any other link is removed without following it.
     """
-    workdir = Path(os.path.abspath(pipeline_working_dir))
+    workdir = Path(pipeline_working_dir).absolute()
     recovery_dir = _recovery_directory(workdir)
     workspaces = [workdir.resolve()] if workdir.is_symlink() else []
     try:
