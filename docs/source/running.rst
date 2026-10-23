@@ -491,6 +491,7 @@ second stops with a message naming the holder. If the lock cannot be taken at
 all, for example because the file system does not support ``flock``, a reset
 refuses to run and a run continues with a warning. On a shared file system, the
 lock only keeps out other machines if the mount provides cluster-wide locks (for
-example, NFS without ``local_lock=flock`` or Lustre with ``flock``). If you
-started the Dask scheduler yourself (see :term:`dask_scheduler`), make sure its
-workers have stopped before you reset.
+example, NFS without ``local_lock=flock`` or Lustre with ``flock``).
+
+If you started the Dask scheduler yourself (see :term:`dask_scheduler`), make
+sure its workers have stopped before you reset.
