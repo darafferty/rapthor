@@ -1,6 +1,4 @@
-"""
-Module that modifies the state of the pipeline
-"""
+"""Reset operations of a Rapthor run."""
 
 import filecmp
 import glob
@@ -62,21 +60,6 @@ def _suppressed_loggers(*names, level=logging.ERROR):
     finally:
         for logger, previous_level in zip(loggers, previous_levels):
             logger.setLevel(previous_level)
-
-
-def run(parset_file):
-    """
-    Modifies the state of one or more operations
-
-    Parameters
-    ----------
-    parset_file : str
-        Filename of parset containing processing parameters
-    """
-    # The parset messages were already shown when the run started, so suppress
-    # them while the state is read and modified.
-    with _suppressed_loggers("rapthor:parset"):
-        _run(parset_file)
 
 
 def _parse_operation(name):
@@ -197,18 +180,32 @@ def _record_operation(line):
     return record.get("operation") if isinstance(record, dict) else None
 
 
-def _run(parset_file):
-    # A reset needs the settings only, not the input data or the log file
-    log.info("Reading parset and checking state...")
-    parset = Parset(parset_file).as_parset_dict()
+def reset(parset_file):
+    """
+    Reset operations of a run interactively.
 
-    # Hold the working directory while operations are listed and removed
-    try:
-        with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
-            _reset(parset)
-    except WorkingDirectoryLockError as error:
-        print(f"{error}\nNo reset can be done.")
-        sys.exit(1)
+    Lists the operations started in the working directory, asks which one to
+    reset, and removes it and the operations after it together with their
+    products, so that the next run makes them again.
+
+    Parameters
+    ----------
+    parset_file : str
+        Filename of parset containing processing parameters
+    """
+    # The parset messages were already shown when the run started, so suppress
+    # them while the state is read and modified. A reset needs the settings only,
+    # not the input data or the log file.
+    log.info("Reading parset and checking state...")
+    with _suppressed_loggers("rapthor:parset"):
+        parset = Parset(parset_file).as_parset_dict()
+        # Hold the working directory while operations are listed and removed
+        try:
+            with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
+                _reset(parset)
+        except WorkingDirectoryLockError as error:
+            print(f"{error}\nNo reset can be done.")
+            sys.exit(1)
 
 
 def _reset(parset):

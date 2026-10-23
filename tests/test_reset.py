@@ -1,5 +1,5 @@
 """
-Test cases for the `rapthor.modifystate` module.
+Test cases for the `rapthor.reset` module.
 """
 
 import errno
@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import rapthor.modifystate as modifystate
+import rapthor.reset as reset_module
 from rapthor.execution import working_dir_lock
 from tests.execution.scratch_transitions import exit_at_scratch_transition
 
@@ -62,18 +62,18 @@ def _write_output_subdir(working_dir, dirname, operation_name):
     return output_dir
 
 
-def _patch_modifystate_lifecycle(monkeypatch, working_dir):
+def _patch_reset_lifecycle(monkeypatch, working_dir):
     parset = {"dir_working": str(working_dir), "strategy": "test-strategy"}
 
     monkeypatch.setattr(
-        modifystate, "Parset", lambda parset_file: SimpleNamespace(as_parset_dict=lambda: parset)
+        reset_module, "Parset", lambda parset_file: SimpleNamespace(as_parset_dict=lambda: parset)
     )
 
 
 @pytest.fixture
 def working_dir(tmp_path, monkeypatch):
     working_dir = _prepare_working_dir(tmp_path)
-    _patch_modifystate_lifecycle(monkeypatch, working_dir)
+    _patch_reset_lifecycle(monkeypatch, working_dir)
     return working_dir
 
 
@@ -82,7 +82,7 @@ def _reset(monkeypatch, *answers):
     remaining = iter(answers)
     monkeypatch.setattr("builtins.input", lambda prompt: next(remaining))
     with pytest.raises(SystemExit) as exc:
-        modifystate.run("input.parset")
+        reset_module.reset("input.parset")
     return exc.value.code
 
 
@@ -94,11 +94,11 @@ def _read_jsonl(path):
     return [json.loads(line) for line in path.read_text().splitlines()]
 
 
-def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state(
+def test_reset_resets_from_selected_operation_and_preserves_upstream_prefect_state(
     tmp_path, monkeypatch, capsys
 ):
     working_dir = _prepare_working_dir(tmp_path)
-    _patch_modifystate_lifecycle(monkeypatch, working_dir)
+    _patch_reset_lifecycle(monkeypatch, working_dir)
 
     upstream_calibrate = _write_prefect_operation_state(working_dir, "calibrate_1")
     upstream_predict = _write_prefect_operation_state(working_dir, "predict_1")
@@ -114,7 +114,7 @@ def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
 
     with pytest.raises(SystemExit) as exc:
-        modifystate.run("input.parset")
+        reset_module.reset("input.parset")
 
     assert exc.value.code == 0
     assert "Reset complete." in capsys.readouterr().out
@@ -135,22 +135,22 @@ def test_run_resets_from_selected_operation_and_preserves_upstream_prefect_state
     assert not downstream_logs.exists()
 
 
-def test_run_restores_logger_levels_after_exit(tmp_path, monkeypatch):
-    """Suppressing the parset logger must not leak out of run()."""
-    _patch_modifystate_lifecycle(monkeypatch, tmp_path)
+def test_reset_restores_logger_levels_after_exit(tmp_path, monkeypatch):
+    """Suppressing the parset logger must not leak out of reset()."""
+    _patch_reset_lifecycle(monkeypatch, tmp_path)
     logger = logging.getLogger("rapthor:parset")
     monkeypatch.setattr(logger, "level", logging.INFO)
 
-    # Without any pipeline directory there is nothing to reset and run() exits.
+    # Without any pipeline directory there is nothing to reset and reset() exits.
     with pytest.raises(SystemExit):
-        modifystate.run("input.parset")
+        reset_module.reset("input.parset")
 
     assert logger.level == logging.INFO
 
 
-def test_run_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch, capsys):
+def test_reset_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch, capsys):
     working_dir = _prepare_working_dir(tmp_path, omitted_output_dirs={"plots", "visibilities"})
-    _patch_modifystate_lifecycle(monkeypatch, working_dir)
+    _patch_reset_lifecycle(monkeypatch, working_dir)
 
     image_state = _write_prefect_operation_state(working_dir, "image_1")
     image_output = _write_output_subdir(working_dir, "images", "image_1")
@@ -159,7 +159,7 @@ def test_run_reset_ignores_missing_optional_output_directories(tmp_path, monkeyp
     monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
 
     with pytest.raises(SystemExit) as exc:
-        modifystate.run("input.parset")
+        reset_module.reset("input.parset")
 
     assert exc.value.code == 0
     assert "Reset complete." in capsys.readouterr().out
@@ -169,12 +169,12 @@ def test_run_reset_ignores_missing_optional_output_directories(tmp_path, monkeyp
     assert not (working_dir / "visibilities").exists()
 
 
-def test_run_exits_without_reset_when_no_pipeline_state_exists(tmp_path, monkeypatch, capsys):
+def test_reset_exits_without_reset_when_no_pipeline_state_exists(tmp_path, monkeypatch, capsys):
     working_dir = _prepare_working_dir(tmp_path)
-    _patch_modifystate_lifecycle(monkeypatch, working_dir)
+    _patch_reset_lifecycle(monkeypatch, working_dir)
 
     with pytest.raises(SystemExit) as exc:
-        modifystate.run("input.parset")
+        reset_module.reset("input.parset")
 
     assert exc.value.code == 0
     output = capsys.readouterr().out
@@ -191,7 +191,7 @@ def test_find_operations_orders_directories_by_cycle_and_operation(tmp_path):
     # An operation stopped while moving to or from scratch may only have this record
     (tmp_path / ".calibrate_1.scratch").mkdir()
 
-    assert modifystate.find_operations(str(tmp_path)) == [
+    assert reset_module.find_operations(str(tmp_path)) == [
         "concatenate_1",
         "initial_image",
         "calibrate_1",
@@ -203,7 +203,7 @@ def test_find_operations_orders_directories_by_cycle_and_operation(tmp_path):
     ]
 
 
-def test_run_resets_repeated_final_cycles_found_on_disk(working_dir, monkeypatch, capsys):
+def test_reset_resets_repeated_final_cycles_found_on_disk(working_dir, monkeypatch, capsys):
     """The list comes from the cycles on disk, not from the current strategy."""
     operations = [
         _write_prefect_operation_state(working_dir, f"{name}_{cycle}")
@@ -220,7 +220,7 @@ def test_run_resets_repeated_final_cycles_found_on_disk(working_dir, monkeypatch
 
 
 @pytest.mark.parametrize("selected", ["predict_di_2", "calibrate_di_2"])
-def test_run_resets_all_calibration_operations_of_a_cycle_together(
+def test_reset_resets_all_calibration_operations_of_a_cycle_together(
     working_dir, monkeypatch, capsys, selected
 ):
     """A DI-first cycle runs predict_di and calibrate_di before calibrate, although
@@ -240,7 +240,7 @@ def test_run_resets_all_calibration_operations_of_a_cycle_together(
     assert remaining == sorted(names[:4])
 
 
-def test_run_resets_operations_with_their_scratch_workspaces(tmp_path, working_dir, monkeypatch):
+def test_reset_resets_operations_with_their_scratch_workspaces(tmp_path, working_dir, monkeypatch):
     pipelines_dir = working_dir / "pipelines"
     scratch = tmp_path / "scratch"
     exit_at_scratch_transition(pipelines_dir / "calibrate_1", scratch, "flow")
@@ -269,7 +269,7 @@ def test_archive_reset_logs_moves_records_to_a_file_per_attempt(tmp_path):
     _write_jsonl(tmp_path / "tasks.jsonl", tasks)
     (tmp_path / "rapthor.log").write_text("attempt 1\n")
 
-    attempt = modifystate.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
+    attempt = reset_module.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
 
     assert attempt == "reset-20250102T030405Z"
     assert (tmp_path / "commands.jsonl").read_text() == (
@@ -283,10 +283,10 @@ def test_archive_reset_logs_moves_records_to_a_file_per_attempt(tmp_path):
 
     # A second reset within the same second gets its own files
     (tmp_path / "rapthor.log").write_text("attempt 2\n")
-    attempt = modifystate.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME)
+    attempt = reset_module.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME)
     assert attempt == "reset-20250102T030405Z-2"
     assert (tmp_path / f"rapthor.{attempt}.log").read_text() == "attempt 2\n"
-    assert modifystate.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME) is None
+    assert reset_module.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME) is None
 
 
 def test_archive_reset_logs_archives_each_record_once_after_an_interrupted_reset(
@@ -299,12 +299,12 @@ def test_archive_reset_logs_archives_each_record_once_after_an_interrupted_reset
         raise OSError("disk error")
 
     with monkeypatch.context() as patch:
-        patch.setattr(modifystate.os, "replace", fail_to_replace)
+        patch.setattr(reset_module.os, "replace", fail_to_replace)
         with pytest.raises(OSError, match="disk error"):
-            modifystate.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
+            reset_module.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
     assert _read_jsonl(tmp_path / "commands.jsonl") == commands
 
-    modifystate.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
+    reset_module.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
 
     assert sorted(path.name for path in tmp_path.iterdir()) == [
         "commands.jsonl",
@@ -319,20 +319,20 @@ def test_archive_reset_logs_counts_each_archived_copy_of_a_record_once(tmp_path)
     (tmp_path / "commands.reset-20250101T000000Z.jsonl").write_text(record)
     (tmp_path / "commands.jsonl").write_text(record + record)
 
-    attempt = modifystate.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME)
+    attempt = reset_module.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME)
 
     assert (tmp_path / f"commands.{attempt}.jsonl").read_text() == record
     assert (tmp_path / "commands.jsonl").read_text() == ""
 
 
-def test_run_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypatch, capsys):
+def test_reset_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypatch, capsys):
     operations = ("calibrate_1", "image_1", "mosaic_1")
     for name in operations:
         _write_prefect_operation_state(working_dir, name)
     logs_dir = working_dir / "logs"
     _write_jsonl(logs_dir / "commands.jsonl", [{"operation": name} for name in operations])
     (logs_dir / "rapthor.log").write_text("first attempt\n")
-    remove_operation_workspace = modifystate.remove_operation_workspace
+    remove_operation_workspace = reset_module.remove_operation_workspace
 
     def fail_on_mosaic(path):
         if path.endswith("mosaic_1"):
@@ -340,7 +340,7 @@ def test_run_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypat
         remove_operation_workspace(path)
 
     with monkeypatch.context() as patch:
-        patch.setattr(modifystate, "remove_operation_workspace", fail_on_mosaic)
+        patch.setattr(reset_module, "remove_operation_workspace", fail_on_mosaic)
         with pytest.raises(OSError, match="disk error"):
             _reset(patch, "2", "y")
     assert "Logs of the reset operations were moved to logs/*.reset-" in capsys.readouterr().out
@@ -357,7 +357,7 @@ def test_run_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypat
 
 
 @pytest.mark.parametrize("cause", ["held-by-a-run", "flock-unsupported"])
-def test_run_refuses_to_reset_without_the_working_directory_lock(
+def test_reset_refuses_to_reset_without_the_working_directory_lock(
     working_dir, monkeypatch, capsys, cause
 ):
     image = _write_prefect_operation_state(working_dir, "image_1")

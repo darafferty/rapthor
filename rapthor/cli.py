@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from rapthor import modifystate
+from rapthor.reset import reset
 from rapthor._version import __version__ as version
 from rapthor.execution.working_dir_lock import WorkingDirectoryLockError
 
@@ -69,7 +69,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parset_file = args[0]
 
     if options.r:
-        modifystate.run(parset_file)
+        reset(parset_file)
         return 0
 
     try:
