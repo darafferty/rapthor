@@ -15,7 +15,7 @@ feature-branch implementations remain open until reviewed, validated and merged.
 GEC-672 branches (WS-D) and the now-merged removal of `prefect_retries` it is
 merged together, for testing only, on `gec-672-combined-test` (see
 [existing branches](#existing-branches-to-integrate)). The only conflict is
-between `gec-672-restart-safety` and `gec-672-reset` in
+between `gec-672-restart-safety` and `gec-672-plot-outputs` in
 `tests/lib/test_records.py`, where both add a test at the same place; whichever
 merges second keeps both. Resolve the separate
 phase-only DD product decision (P1-DEC-01) before release; the merged strategy
