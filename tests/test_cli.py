@@ -49,7 +49,7 @@ def test_main_applies_logging_options(monkeypatch, option, logging_level):
 def test_main_runs_state_reset(monkeypatch):
     calls = []
 
-    monkeypatch.setattr(cli.modifystate, "run", calls.append)
+    monkeypatch.setattr(cli, "reset", calls.append)
 
     assert cli.main(["-r", "input.parset"]) == 0
     assert calls == ["input.parset"]
