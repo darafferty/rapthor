@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from rapthor.lib.parset import parset_read
+from tests.conftest import read_parset
 
 
 def _write_parset(tmp_path, sections):
@@ -30,7 +30,7 @@ def _write_parset(tmp_path, sections):
 
 
 def _read_parset(tmp_path, sections):
-    return parset_read(_write_parset(tmp_path, sections), use_log_file=False)
+    return read_parset(_write_parset(tmp_path, sections), use_log_file=False)
 
 
 def _section_value(parset, section, option):

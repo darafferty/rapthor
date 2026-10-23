@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 from rapthor.execution.working_dir_lock import WorkingDirectoryLockError, working_directory_lock
 from rapthor.execution.workspace import remove_operation_workspace
-from rapthor.lib.parset import parset_read
+from rapthor.lib.parset import Parset
 
 log = logging.getLogger("rapthor:state")
 
@@ -198,9 +198,9 @@ def _record_operation(line):
 
 
 def _run(parset_file):
-    # Read parset
+    # A reset needs the settings only, not the input data or the log file
     log.info("Reading parset and checking state...")
-    parset = parset_read(parset_file, use_log_file=False)
+    parset = Parset(parset_file).as_parset_dict()
 
     # Hold the working directory while operations are listed and removed
     try:

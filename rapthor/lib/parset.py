@@ -499,35 +499,6 @@ class Parset:
         return parset
 
 
-def parset_read(parset_file, use_log_file=True):
-    """
-    Read a rapthor-formatted parset file and return dict of parameters
-
-    Parameters
-    ----------
-    parset_file : str
-        Filename of rapthor-formated parset file
-    use_log_file : bool, optional
-        Use a log file as well as outputing to the screen
-
-    Returns
-    -------
-    parset_dict : dict
-        Dict of parset parameters
-
-    Raises
-    ------
-        RuntimeError
-            If the working directory cannot be created.
-        FileNotFoundError
-            If no input MS files can be found; or
-            if the sky model file cannot be found and download is not requested.
-    """
-    parset_dict = Parset(parset_file).as_parset_dict()
-    prepare_run(parset_dict, use_log_file=use_log_file)
-    return parset_dict
-
-
 def prepare_run(parset_dict, use_log_file=True):
     """
     Create the working directory, start the log file and find the input MS files

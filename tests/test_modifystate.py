@@ -8,6 +8,7 @@ import logging
 from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -65,9 +66,7 @@ def _patch_modifystate_lifecycle(monkeypatch, working_dir):
     parset = {"dir_working": str(working_dir), "strategy": "test-strategy"}
 
     monkeypatch.setattr(
-        modifystate,
-        "parset_read",
-        lambda parset_file, use_log_file=False: parset,
+        modifystate, "Parset", lambda parset_file: SimpleNamespace(as_parset_dict=lambda: parset)
     )
 
 

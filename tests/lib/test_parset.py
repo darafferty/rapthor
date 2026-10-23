@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from rapthor.lib.parset import Parset, check_and_adjust_skymodel_settings, parset_read, prepare_run
+from rapthor.lib.parset import Parset, check_and_adjust_skymodel_settings, prepare_run
+from tests.conftest import read_parset
 
 RESOURCE_DIR = Path(__file__).parents[1] / "resources"
 
@@ -79,18 +80,18 @@ def test_missing_parset_file(parset_scenario):
     parset_scenario.parset.unlink()
 
     with pytest.raises(FileNotFoundError):
-        parset_read(str(parset_scenario.parset))
+        read_parset(str(parset_scenario.parset))
 
 
 def test_empty_parset_file(parset_scenario):
     parset_scenario.parset.write_text("", encoding="utf-8")
 
     with pytest.raises(ValueError, match=r"Missing required option\(s\) in section \[global\]:"):
-        parset_read(str(parset_scenario.parset))
+        read_parset(str(parset_scenario.parset))
 
 
 def test_minimal_parset(parset_scenario):
-    parset_dict = parset_read(str(parset_scenario.parset))
+    parset_dict = read_parset(str(parset_scenario.parset))
 
     assert parset_dict["dir_working"] == str(parset_scenario.working_dir)
     assert parset_dict["input_ms"] == str(parset_scenario.input_ms)
@@ -112,7 +113,7 @@ def test_misspelled_section(parset_scenario, caplog):
     _append_to_parset(parset_scenario.parset, f"\n[{section}]\n")
     caplog.set_level("WARNING", logger="rapthor:parset")
 
-    parset_read(str(parset_scenario.parset))
+    read_parset(str(parset_scenario.parset))
 
     assert any(f"Section [{section}] is invalid" in message for message in caplog.messages)
 
@@ -122,7 +123,7 @@ def test_misspelled_option(parset_scenario, caplog):
     _append_to_parset(parset_scenario.parset, f"\n{option} = some value\n")
     caplog.set_level("WARNING", logger="rapthor:parset")
 
-    parset_read(str(parset_scenario.parset))
+    read_parset(str(parset_scenario.parset))
 
     assert any(
         f"Option '{option}' in section [global] is invalid" in message
@@ -136,7 +137,7 @@ def test_removed_dir_local_is_invalid_and_does_not_configure_scratch(parset_scen
     _append_to_parset(parset_scenario.parset, f"\n{section}\n{option} = some value\n")
     caplog.set_level("WARNING", logger="rapthor:parset")
 
-    parset = parset_read(str(parset_scenario.parset))
+    parset = read_parset(str(parset_scenario.parset))
 
     assert any(
         f"Option '{option}' in section {section} is invalid" in message
@@ -155,7 +156,7 @@ def test_fraction_out_of_range(parset_scenario):
         ValueError,
         match=f"The {option} parameter is {value}; it must be > 0 and <= 1",
     ):
-        parset_read(str(parset_scenario.parset))
+        read_parset(str(parset_scenario.parset))
 
 
 def test_invalid_idg_mode(parset_scenario):
@@ -164,7 +165,7 @@ def test_invalid_idg_mode(parset_scenario):
     _append_to_parset(parset_scenario.parset, f"\n[imaging]\n{option} = {value}\n")
 
     with pytest.raises(ValueError, match=f"The option '{option}' must be one of"):
-        parset_read(str(parset_scenario.parset))
+        read_parset(str(parset_scenario.parset))
 
 
 def test_invalid_model_mosaic_method(parset_scenario):
@@ -173,7 +174,7 @@ def test_invalid_model_mosaic_method(parset_scenario):
     _append_to_parset(parset_scenario.parset, f"\n[imaging]\n{option} = {value}\n")
 
     with pytest.raises(ValueError, match=f"The option '{option}' must be one of"):
-        parset_read(str(parset_scenario.parset))
+        read_parset(str(parset_scenario.parset))
 
 
 def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
@@ -186,11 +187,11 @@ def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
         ValueError,
         match="filter_skymodel_ncores.*greater than 0",
     ):
-        parset_read(str(parset_scenario.parset))
+        read_parset(str(parset_scenario.parset))
 
 
 def test_filter_skymodel_ncores_default_is_proposed_production_value(parset_scenario):
-    parset = parset_read(str(parset_scenario.parset))
+    parset = read_parset(str(parset_scenario.parset))
 
     assert parset["cluster_specific"]["filter_skymodel_ncores"] == 15
 
@@ -201,13 +202,13 @@ def test_calibration_oom_risk_policy_is_boolean(parset_scenario):
         "\n[cluster]\nfail_on_calibration_oom_risk = True\n",
     )
 
-    parset = parset_read(str(parset_scenario.parset))
+    parset = read_parset(str(parset_scenario.parset))
 
     assert parset["cluster_specific"]["fail_on_calibration_oom_risk"] is True
 
 
 def test_default_imaging_frequency_bda_uses_production_value(parset_scenario):
-    parset = parset_read(str(parset_scenario.parset))
+    parset = read_parset(str(parset_scenario.parset))
 
     assert parset["imaging_specific"]["bda_frequencybase"] == 5000.0
 
@@ -218,7 +219,7 @@ def test_filter_skymodel_ncores_zero_uses_max_threads(parset_scenario):
         "\n[cluster]\nmax_threads = 12\nfilter_skymodel_ncores = 0\n",
     )
 
-    parset = parset_read(str(parset_scenario.parset))
+    parset = read_parset(str(parset_scenario.parset))
 
     assert parset["cluster_specific"]["max_threads"] == 12
     assert parset["cluster_specific"]["filter_skymodel_ncores"] == 12
@@ -231,7 +232,7 @@ def test_unequal_sector_list_lengths(parset_scenario):
         ValueError,
         match="The options .* must all have the same number of entries",
     ):
-        parset_read(str(parset_scenario.parset))
+        read_parset(str(parset_scenario.parset))
 
 
 def test_default_parset_contents(parset_scenario, monkeypatch):
@@ -245,7 +246,7 @@ def test_default_parset_contents(parset_scenario, monkeypatch):
         encoding="utf-8",
     )
 
-    parset = parset_read(str(parset_scenario.parset))
+    parset = read_parset(str(parset_scenario.parset))
     ref_parset = ast.literal_eval(
         _render_resource_template(
             "rapthor_minimal.parset_dict.template",
@@ -268,7 +269,7 @@ def test_complete_parset_contents(parset_scenario, monkeypatch):
         encoding="utf-8",
     )
 
-    parset = parset_read(str(parset_scenario.parset))
+    parset = read_parset(str(parset_scenario.parset))
     ref_parset = ast.literal_eval(
         _render_resource_template(
             "rapthor_complete.parset_dict.template",
