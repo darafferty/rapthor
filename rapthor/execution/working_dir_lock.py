@@ -62,8 +62,9 @@ def working_directory_lock(
             ) from error
         log.warning(
             "Could not lock the working directory %s (%s). The run continues without "
-            "the lock, so reset protection is off: nothing stops a reset of this working "
-            "directory while the run is active. Do not reset until the run has stopped.",
+            "the lock, so nothing stops another Rapthor run from using this working "
+            "directory at the same time, and a reset here is refused until the lock "
+            "can be taken.",
             dir_working,
             error,
         )

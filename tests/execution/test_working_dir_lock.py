@@ -71,4 +71,4 @@ def test_unavailable_lock_stops_a_reset_but_not_a_run(tmp_path, monkeypatch, cap
             with pytest.raises(WorkingDirectoryLockError, match="Could not lock the working"):
                 with working_directory_lock(str(tmp_path), "a Rapthor reset", required=True):
                     pytest.fail("a reset must not go ahead without the lock")
-    assert "reset protection is off" in caplog.text
+    assert "nothing stops another Rapthor run" in caplog.text
