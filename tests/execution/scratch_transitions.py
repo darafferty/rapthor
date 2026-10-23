@@ -21,7 +21,8 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch
+
+import pytest
 
 from rapthor.execution import workspace
 
@@ -96,16 +97,15 @@ def _run_flow_and_exit(workdir, scratch, stage):
         exit_if(stage == "link" and path == workdir)
         return result
 
-    with (
-        patch.object(workspace, "_copy_workspace", copy_workspace),
-        patch.object(Path, "rename", rename),
-        patch.object(Path, "unlink", unlink),
-        patch.object(Path, "symlink_to", symlink_to),
-        workspace.shared_scratch_workspace(str(workdir), str(scratch)),
-    ):
-        (workdir / "result.fits").write_text("result")
-        (workdir / "result-link.fits").symlink_to((workdir / "result.fits").resolve())
-        exit_if(stage == "flow")
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(workspace, "_copy_workspace", copy_workspace)
+        monkeypatch.setattr(Path, "rename", rename)
+        monkeypatch.setattr(Path, "unlink", unlink)
+        monkeypatch.setattr(Path, "symlink_to", symlink_to)
+        with workspace.shared_scratch_workspace(str(workdir), str(scratch)):
+            (workdir / "result.fits").write_text("result")
+            (workdir / "result-link.fits").symlink_to((workdir / "result.fits").resolve())
+            exit_if(stage == "flow")
 
 
 if __name__ == "__main__":
