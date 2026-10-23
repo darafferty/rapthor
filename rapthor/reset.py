@@ -116,11 +116,12 @@ def archive_reset_logs(logs_dir, operations, now=None):
     """
     Move the log records of reset operations to files named after the reset.
 
-    The records are moved from commands.jsonl and tasks.jsonl to, for example,
-    commands.reset-20250102T030405Z.jsonl, so that the logs only describe the work
-    whose products are kept. rapthor.log cannot be split by operation, so it is
-    renamed in the same way. Returns the name of the reset attempt, or None if
-    nothing was archived.
+    commands.jsonl and tasks.jsonl hold one record per line for the whole run,
+    each naming its operation. The records of the reset operations are moved to,
+    for example, commands.reset-20250102T030405Z.jsonl and the others stay, so
+    that the logs only describe the work whose products are kept. rapthor.log has
+    no record per operation and cannot be split, so it is renamed in the same way.
+    Returns the name of the reset attempt, or None if nothing was archived.
     """
     logs_dir = Path(logs_dir)
     now = now or datetime.now(timezone.utc)
@@ -138,41 +139,49 @@ def archive_reset_logs(logs_dir, operations, now=None):
     archived_any = False
     for filename in OPERATION_RECORD_LOGS:
         path = logs_dir / filename
-        if not path.is_file():
-            continue
-        lines = path.read_text(encoding="utf-8").splitlines()
-        kept, moved = [], []
-        for line in lines:
-            (moved if _record_operation(line) in operations else kept).append(line)
-        if not moved:
-            continue
-        # A reset that stopped after writing an archive but before replacing the
-        # log left its records in both, so archive each record once
-        archived = Counter()
-        for archive in logs_dir.glob(_archive_path(logs_dir, filename, "reset-*").name):
-            archived.update(archive.read_text(encoding="utf-8").splitlines())
-        moved = list((Counter(moved) - archived).elements())
-        if moved:
-            with _archive_path(logs_dir, filename, attempt).open("a", encoding="utf-8") as archive:
-                archive.writelines(f"{line}\n" for line in moved)
-            archived_any = True
-        # Replace the log in one step, so it is never left partly written
-        with tempfile.NamedTemporaryFile(
-            "w", encoding="utf-8", dir=logs_dir, prefix=f".{filename}.", delete=False
-        ) as replacement:
-            replacement.writelines(f"{line}\n" for line in kept)
-        try:
-            shutil.copymode(path, replacement.name)
-            Path(replacement.name).replace(path)
-        except BaseException:
-            Path(replacement.name).unlink()
-            raise
-
+        if path.is_file():
+            archive_path = _archive_path(logs_dir, filename, attempt)
+            archived_any |= _move_records(path, archive_path, operations)
     main_log = logs_dir / MAIN_LOG
     if main_log.is_file():
         main_log.replace(_archive_path(logs_dir, MAIN_LOG, attempt))
         archived_any = True
     return attempt if archived_any else None
+
+
+def _move_records(path, archive_path, operations):
+    """
+    Move the records of the given operations from a record log to an archive.
+
+    Returns whether any record was archived. A reset that stopped after writing
+    its archive but before replacing the log left its records in both, so a record
+    that an earlier archive of this log already holds is removed from the log
+    without being archived again.
+    """
+    kept, moved = [], []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        (moved if _record_operation(line) in operations else kept).append(line)
+    if not moved:
+        return False
+    archived = Counter()
+    for archive in path.parent.glob(f"{path.stem}.reset-*{path.suffix}"):
+        archived.update(archive.read_text(encoding="utf-8").splitlines())
+    moved = list((Counter(moved) - archived).elements())
+    if moved:
+        with archive_path.open("a", encoding="utf-8") as archive:
+            archive.writelines(f"{line}\n" for line in moved)
+    # Replace the log in one step, so it is never left partly written
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=path.parent, prefix=f".{path.name}.", delete=False
+    ) as replacement:
+        replacement.writelines(f"{line}\n" for line in kept)
+    try:
+        shutil.copymode(path, replacement.name)
+        Path(replacement.name).replace(path)
+    except BaseException:
+        Path(replacement.name).unlink()
+        raise
+    return bool(moved)
 
 
 def _archive_path(logs_dir, filename, attempt):
