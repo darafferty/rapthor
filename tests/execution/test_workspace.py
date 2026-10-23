@@ -327,6 +327,19 @@ def test_measurement_set_tables_survive_scratch_promotion(tmp_path, monkeypatch,
                 assert Path(antenna.name()).is_relative_to(workdir)
 
 
+def test_reset_removes_the_workspace_of_an_operation_path_with_dot_dot(tmp_path):
+    """The marker holds the normalised path, so the given path is normalised too."""
+    workdir = tmp_path / "pipelines" / "image_1"
+    scratch = tmp_path / "scratch"
+    workdir.mkdir(parents=True)
+    exit_at_scratch_transition(workdir, scratch, "flow")
+
+    remove_operation_workspace(tmp_path / "pipelines" / "other" / ".." / "image_1")
+
+    assert list(workdir.parent.iterdir()) == []
+    assert list(scratch.iterdir()) == []
+
+
 @pytest.mark.parametrize("stage", [None, "copy", "backup", "flow", "cross-copy", "rename"])
 def test_reset_removes_operation_with_its_scratch_workspace(tmp_path, stage):
     """Reset leaves nothing of an operation behind, whatever state it stopped in."""
