@@ -10,7 +10,7 @@ import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 log = logging.getLogger("rapthor:workspace")
 WORKSPACE_MARKER = ".rapthor-workspace.json"
@@ -134,7 +134,7 @@ def recover_scratch_workspace(pipeline_working_dir: str) -> None:
         _remove_workspace(recovery_dir)
 
 
-def remove_operation_workspace(pipeline_working_dir: str) -> None:
+def remove_operation_workspace(pipeline_working_dir: Union[str, os.PathLike]) -> None:
     """Remove both the scratch workspace and recovery record for an operation.
 
     While an operation runs with ``global_scratch_dir`` set, its directory is a

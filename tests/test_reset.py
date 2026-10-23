@@ -299,7 +299,7 @@ def test_archive_reset_logs_archives_each_record_once_after_an_interrupted_reset
         raise OSError("disk error")
 
     with monkeypatch.context() as patch:
-        patch.setattr(reset_module.os, "replace", fail_to_replace)
+        patch.setattr(reset_module.Path, "replace", fail_to_replace)
         with pytest.raises(OSError, match="disk error"):
             reset_module.archive_reset_logs(str(tmp_path), ["image_1", "mosaic_1"], RESET_TIME)
     assert _read_jsonl(tmp_path / "commands.jsonl") == commands
@@ -325,7 +325,7 @@ def test_archive_reset_logs_counts_each_archived_copy_of_a_record_once(tmp_path)
     assert (tmp_path / "commands.jsonl").read_text() == ""
 
 
-def test_reset_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypatch, capsys):
+def test_reset_can_be_repeated_after_failing_part_way(working_dir, monkeypatch, capsys):
     operations = ("calibrate_1", "image_1", "mosaic_1")
     for name in operations:
         _write_prefect_operation_state(working_dir, name)
@@ -335,7 +335,7 @@ def test_reset_reset_can_be_repeated_after_failing_part_way(working_dir, monkeyp
     remove_operation_workspace = reset_module.remove_operation_workspace
 
     def fail_on_mosaic(path):
-        if path.endswith("mosaic_1"):
+        if Path(path).name == "mosaic_1":
             raise OSError("disk error")
         remove_operation_workspace(path)
 
