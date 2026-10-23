@@ -9,7 +9,7 @@ import sys
 import tempfile
 from collections import Counter
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from rapthor.execution.working_dir_lock import WorkingDirectoryLockError, working_directory_lock
@@ -105,10 +105,11 @@ def _reset_start(pipelines, selected):
     index, operation = _parse_operation(pipelines[selected])
     if operation not in CALIBRATION_OPERATIONS:
         return selected
-    calibration = {(index, name) for name in CALIBRATION_OPERATIONS}
-    return next(
-        position for position, name in enumerate(pipelines) if _parse_operation(name) in calibration
-    )
+    # The first calibration operation of the same cycle
+    for position, name in enumerate(pipelines):
+        operation_index, operation_name = _parse_operation(name)
+        if operation_index == index and operation_name in CALIBRATION_OPERATIONS:
+            return position
 
 
 def archive_reset_logs(logs_dir, operations, now=None):
@@ -123,15 +124,16 @@ def archive_reset_logs(logs_dir, operations, now=None):
     """
     logs_dir = Path(logs_dir)
     now = now or datetime.now(timezone.utc)
-    stamp = attempt = f"reset-{now:%Y%m%dT%H%M%SZ}"
-    number = 1
-    # Two resets within the same second get distinct names
-    while any(
-        _archive_path(logs_dir, filename, attempt).exists()
-        for filename in (*OPERATION_RECORD_LOGS, MAIN_LOG)
-    ):
-        number += 1
-        attempt = f"{stamp}-{number}"
+    # The Z marks the time as UTC. A second reset within the same second is named
+    # after the next second, so that it gets its own files.
+    while True:
+        attempt = f"reset-{now:%Y%m%dT%H%M%SZ}"
+        if not any(
+            _archive_path(logs_dir, filename, attempt).exists()
+            for filename in (*OPERATION_RECORD_LOGS, MAIN_LOG)
+        ):
+            break
+        now += timedelta(seconds=1)
 
     archived_any = False
     for filename in OPERATION_RECORD_LOGS:

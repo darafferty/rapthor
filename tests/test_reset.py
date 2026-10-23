@@ -148,7 +148,7 @@ def test_reset_restores_logger_levels_after_exit(tmp_path, monkeypatch):
     assert logger.level == logging.INFO
 
 
-def test_reset_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch, capsys):
+def test_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch, capsys):
     working_dir = _prepare_working_dir(tmp_path, omitted_output_dirs={"plots", "visibilities"})
     _patch_reset_lifecycle(monkeypatch, working_dir)
 
@@ -281,10 +281,10 @@ def test_archive_reset_logs_moves_records_to_a_file_per_attempt(tmp_path):
     assert (tmp_path / f"rapthor.{attempt}.log").read_text() == "attempt 1\n"
     assert not (tmp_path / "rapthor.log").exists()
 
-    # A second reset within the same second gets its own files
+    # A second reset within the same second is named after the next second
     (tmp_path / "rapthor.log").write_text("attempt 2\n")
     attempt = reset_module.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME)
-    assert attempt == "reset-20250102T030405Z-2"
+    assert attempt == "reset-20250102T030406Z"
     assert (tmp_path / f"rapthor.{attempt}.log").read_text() == "attempt 2\n"
     assert reset_module.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME) is None
 
