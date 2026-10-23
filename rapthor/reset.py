@@ -63,14 +63,21 @@ def _suppressed_loggers(*names, level=logging.ERROR):
 
 
 def _parse_operation(name):
-    """Return the cycle index and operation of an operation directory, or None."""
+    """
+    Extract the operation and cycle index from an operation directory name.
+
+    Returns (cycle index, operation) or None if they were not found.
+    """
     match = _OPERATION_DIRECTORY.fullmatch(name)
     if match is None or match["operation"] not in OPERATION_ORDER:
         return None
-    # Only the initial sky-model image, made before the first cycle, has no index
-    if (match["index"] is None) != (match["operation"] == "initial_image"):
+    index, operation = match["index"], match["operation"]
+    if operation == "initial_image":
+        # The initial sky-model image is made before the first cycle and has no index
+        return (1, operation) if index is None else None
+    if index is None:
         return None
-    return int(match["index"] or 1), match["operation"]
+    return int(index), operation
 
 
 def find_operations(pipelines_dir):
