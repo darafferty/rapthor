@@ -351,7 +351,7 @@ def test_parse_gnu_time_metrics_handles_resource_fields(tmp_path):
     }
 
 
-@pytest.mark.parametrize("profile_mode", ["auto", "time"])
+@pytest.mark.parametrize("profile_mode", ["auto", "time", "off"])
 def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_path, profile_mode):
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "profile_1"
     pipeline_working_dir.mkdir(parents=True)
@@ -367,14 +367,19 @@ def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_pat
 
     assert result == ["profiled"]
     record = json.loads((tmp_path / "work" / "logs" / "commands.jsonl").read_text())
-    profile = record["profile"]
-    assert profile["mode"] == profile_mode
-    assert profile["status"] in {"resource", "time"}
-    assert profile["resource_source"] in {"python_resource", "gnu_time"}
-    if "artifacts" in profile:
-        assert Path(profile["artifacts"]["gnu_time"]).is_file()
-    assert profile["resource_metrics"]["max_rss_kb"] > 0
-    assert profile["resource_metrics"]["elapsed_seconds"] >= 0
+    assert record["duration_seconds"] >= 0  # Total duration is always measured.
+    if profile_mode != "off":
+        profile = record["profile"]
+        assert profile["mode"] == profile_mode
+        assert profile["status"] in {"resource", "time"}
+        assert profile["resource_source"] in {"python_resource", "gnu_time"}
+        if "artifacts" in profile:
+            assert Path(profile["artifacts"]["gnu_time"]).is_file()
+        assert profile["resource_metrics"]["max_rss_kb"] > 0
+        profile_elapsed_seconds = profile["resource_metrics"]["elapsed_seconds"]
+        assert profile_elapsed_seconds >= 0
+        # The duration recorded in the profile should not exceed the total duration.
+        assert profile_elapsed_seconds <= record["duration_seconds"]
     output_log_path = tmp_path / "work" / "logs" / "profile_1" / "profiled-step.log"
     assert record["output_log"] == str(output_log_path)
     output_log = output_log_path.read_text(encoding="utf-8")
