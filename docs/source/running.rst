@@ -482,9 +482,11 @@ logs) are removed from the working directory.
 
 The list comes from the operation directories in ``dir_working/pipelines``, so
 it includes every cycle that was started, such as repeated final cycles, even if
-the strategy has changed since. The calibration operations of a cycle
-(``calibrate_N``, ``predict_di_N`` and ``calibrate_di_N``) use each other's
-solutions, so resetting one of them resets them all.
+the strategy has changed since. The direction-dependent (``calibrate_N``) and
+direction-independent (``predict_di_N`` and ``calibrate_di_N``) calibration
+operations of a cycle run in the order set by the calibration strategy, and the
+one that runs second uses the solutions of the first. The list does not show
+that order, so selecting any of them resets all of them.
 
 A reset also removes the scratch workspace of an operation that was stopped
 while using :term:`global_scratch_dir`, together with its link and recovery

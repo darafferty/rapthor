@@ -34,8 +34,10 @@ OPERATION_ORDER = (
     "image",
     "mosaic",
 )
-# The DI and DD calibration operations of a cycle run in the order set by its
-# calibration strategy and use each other's solutions, so they are reset together
+# The DD (calibrate) and DI (predict_di, calibrate_di) calibration operations of a
+# cycle run in the order set by the calibration strategy, and the one that runs
+# second uses the solutions of the first. The list of operations has a fixed order
+# and the strategy is not read, so selecting any of them resets all of them.
 CALIBRATION_OPERATIONS = {"predict_nc", "calibrate", "predict_di", "calibrate_di"}
 # Logs with one JSON record per line, each naming its operation
 OPERATION_RECORD_LOGS = ("commands.jsonl", "tasks.jsonl")
@@ -246,8 +248,9 @@ def _reset(parset):
         pipeline = pipelines[start]
         if start != int(p_number_raw) - 1:
             print(
-                "The calibration operations of a cycle are reset together, as they "
-                "depend on each other's solutions."
+                "The calibration operations of a cycle are reset together: the one that "
+                "ran second used the solutions of the first, in the order set by the "
+                "calibration strategy."
             )
 
         # Ask for confirmation
