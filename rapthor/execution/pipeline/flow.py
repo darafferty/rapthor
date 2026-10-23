@@ -411,7 +411,6 @@ def _sync_execution_config_to_parset(parset: dict, execution_config: ExecutionCo
             "prefect_run_tags": (
                 ",".join(execution_config.run_tags) if execution_config.run_tags else None
             ),
-            "prefect_retries": execution_config.retries,
             "prefect_log_commands": execution_config.log_commands,
             "prefect_command_profile": execution_config.command_profile,
             "prefect_publish_fits_previews": execution_config.publish_fits_previews,

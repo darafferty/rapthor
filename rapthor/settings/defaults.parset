@@ -478,7 +478,6 @@ dask_scheduler = None
 dask_dashboard_address = None
 prefect_stream_output = True
 prefect_run_tags = None
-prefect_retries = 0
 prefect_log_commands = True
 prefect_command_profile = auto
 prefect_publish_fits_previews = False
