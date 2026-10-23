@@ -421,6 +421,21 @@ can be inspected.
 Resetting an operation
 ----------------------
 
+A reset is not needed to continue after a failure or an interruption: running
+Rapthor again with the same parset resumes the run (see
+:ref:`resuming_rapthor`). This also holds after changing settings that only
+affect how the run is executed, such as those in the ``[cluster]`` section, or
+settings of cycles that have not started yet. Reset an operation only when work
+that has already finished should be done again, for example:
+
+* after changing settings, or the strategy, of cycles that have already
+  finished. Rapthor does not compare the settings of finished operations, so
+  without a reset it keeps their results;
+* when a problem outside Rapthor, such as faulty input data or software,
+  spoiled the results of an operation that nevertheless finished.
+
+The selected operation is redone along with everything after it.
+
 Rapthor allows for the processing of an operation to be reset:
 
 .. code-block:: console
