@@ -23,7 +23,7 @@ class WorkingDirectoryInUse(WorkingDirectoryLockError):
 def working_directory_lock(
     dir_working: str, purpose: str, *, required: bool = False
 ) -> Generator[None, None, None]:
-    """Hold the working directory for this process, or raise WorkingDirectoryInUse.
+    """Lock the working directory for this process, or raise WorkingDirectoryInUse.
 
     Runs and resets take this advisory ``flock``, so that a reset cannot change
     the files of a running pipeline and two runs cannot share a working
@@ -48,7 +48,7 @@ def working_directory_lock(
             lock_file.seek(0)
             holder = lock_file.read().strip()
         raise WorkingDirectoryInUse(
-            f"The working directory {dir_working} is in use by "
+            f"The working directory {dir_working} is locked by "
             f"{holder or 'another Rapthor process'}. Wait for it to finish, or stop it, "
             "before trying again."
         ) from None

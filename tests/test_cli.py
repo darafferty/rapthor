@@ -185,12 +185,12 @@ def test_main_prints_help_without_parset(capsys):
 
 def test_main_reports_a_working_directory_in_use_without_a_traceback(monkeypatch, caplog):
     def refuse(parset_file, *, logging_level):
-        raise WorkingDirectoryInUse("The working directory work is in use by a Rapthor reset.")
+        raise WorkingDirectoryInUse("The working directory work is locked by a Rapthor reset.")
 
     monkeypatch.setattr(cli, "_run_pipeline", refuse)
 
     assert cli.main(["input.parset"]) == 1
 
     (record,) = [record for record in caplog.records if record.levelname == "ERROR"]
-    assert "is in use by a Rapthor reset" in record.getMessage()
+    assert "is locked by a Rapthor reset" in record.getMessage()
     assert record.exc_info is None

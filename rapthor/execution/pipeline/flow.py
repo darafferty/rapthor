@@ -123,7 +123,7 @@ def _run_locked_pipeline(
     hooks: PipelineLifecycleHooks,
     execution_config: Optional[ExecutionConfig],
 ) -> Optional[object]:
-    """Run the pipeline lifecycle while this process holds the working directory."""
+    """Run the pipeline while this process holds the working directory lock."""
     hooks.prepare_run(parset)
     config = execution_config or ExecutionConfig.from_parset(parset)
     _sync_execution_config_to_parset(parset, config)

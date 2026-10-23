@@ -892,7 +892,7 @@ def test_run_pipeline_refuses_to_start_while_a_reset_holds_the_working_directory
     lifecycle = RecordingPipelineLifecycle(parset=parset, strategy_steps=[_image_step()])
 
     with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
-        with pytest.raises(WorkingDirectoryInUse, match="in use by a Rapthor reset"):
+        with pytest.raises(WorkingDirectoryInUse, match="locked by a Rapthor reset"):
             run_pipeline(
                 "input.parset",
                 operation_factories=RECORDING_FACTORIES,
@@ -909,7 +909,7 @@ def test_run_pipeline_prepares_the_run_only_once_it_holds_the_working_directory(
 
     def prepare_run(prepared_parset):
         # The run must already hold the lock when it opens its log
-        with pytest.raises(WorkingDirectoryInUse, match="in use by a Rapthor run"):
+        with pytest.raises(WorkingDirectoryInUse, match="locked by a Rapthor run"):
             with working_directory_lock(prepared_parset["dir_working"], "a probe", required=True):
                 pass
         lifecycle.prepare_run(prepared_parset)

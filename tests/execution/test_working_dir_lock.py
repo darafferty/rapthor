@@ -27,7 +27,7 @@ with working_directory_lock(sys.argv[1], "a Rapthor run"):
 def test_second_lock_is_refused_even_in_the_same_process(tmp_path):
     with working_directory_lock(str(tmp_path), "a Rapthor run"):
         with pytest.raises(
-            WorkingDirectoryInUse, match=r"in use by a Rapthor run \(process \d+ on "
+            WorkingDirectoryInUse, match=r"locked by a Rapthor run \(process \d+ on "
         ):
             with working_directory_lock(str(tmp_path), "a Rapthor reset", required=True):
                 pytest.fail("a second holder must be refused")
