@@ -32,7 +32,7 @@ def shared_scratch_workspace(
         yield
         return
 
-    workdir = Path(pipeline_working_dir).absolute()
+    workdir = _operation_path(pipeline_working_dir)
     recover_scratch_workspace(str(workdir))
     if workdir.is_symlink():
         workspace = workdir.resolve()
@@ -75,6 +75,12 @@ def shared_scratch_workspace(
         _restore_workspace(workdir, workspace)
 
 
+def _operation_path(pipeline_working_dir: Union[str, os.PathLike]) -> Path:
+    # Normalise ".." as well, which Path.absolute() does not, so that the path
+    # compares equal to the one stored in the marker and the recovery record
+    return Path(os.path.abspath(pipeline_working_dir))
+
+
 def _recovery_directory(workdir: Path) -> Path:
     return workdir.with_name(f".{workdir.name}.scratch")
 
@@ -97,7 +103,7 @@ def recover_scratch_workspace(pipeline_working_dir: str) -> None:
     real operation directory is authoritative; otherwise the original backup
     or the scratch workspace still owns the data.
     """
-    workdir = Path(pipeline_working_dir).absolute()
+    workdir = _operation_path(pipeline_working_dir)
     recovery_dir = _recovery_directory(workdir)
     if not recovery_dir.exists():
         return
@@ -146,7 +152,7 @@ def remove_operation_workspace(pipeline_working_dir: Union[str, os.PathLike]) ->
     operation directory; a symbolic link to anything else is removed without
     following it.
     """
-    workdir = Path(pipeline_working_dir).absolute()
+    workdir = _operation_path(pipeline_working_dir)
     recovery_dir = _recovery_directory(workdir)
     workspaces = [workdir.resolve()] if workdir.is_symlink() else []
     try:
