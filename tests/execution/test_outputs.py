@@ -5,9 +5,40 @@ import pytest
 
 import rapthor.execution.outputs as outputs_module
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.outputs import cleanup_intermediate_outputs, make_product
+from rapthor.execution.outputs import cleanup_intermediate_outputs, is_model_image, make_product
 from rapthor.lib.records import directory_record, file_record, partial_product_path
 from tests.conftest import file_tree_state
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/work/sector_1-MFS-I-model-pb.fits",
+        "sector_1-MFS-Q-model-pb.fits",
+        "sector_1-MFS-filtered-model.fits.fz",
+        "mosaic_1-MFS-model-pb.fits",
+        "mosaic_1-MFS-filtered-model.fits.fz",
+    ],
+)
+def test_is_model_image_recognizes_model_images_and_their_mosaics(path):
+    assert is_model_image(path)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "sector_1-MFS-I-image.fits",
+        "sector_1-MFS-I-image-pb.fits",
+        "sector_1-MFS-I-image-pb-ast.fits",
+        "sector_1-MFS-I-residual.fits",
+        "sector_1-MFS-I-dirty.fits",
+        "mosaic_1-MFS-image-pb.fits.fz",
+        "mosaic_1-MFS-image-pb.fits.mask.fits",
+        "/work/model-pb.fits/sector_1-MFS-I-image.fits",
+    ],
+)
+def test_is_model_image_rejects_other_images(path):
+    assert not is_model_image(path)
 
 
 @pytest.mark.parametrize("scratch_workspace", [False, True])

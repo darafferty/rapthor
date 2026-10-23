@@ -18,6 +18,20 @@ from rapthor.lib.records import (
 
 log = logging.getLogger("rapthor:outputs")
 
+# Model images of a sector, and the mosaics made from them
+_MODEL_IMAGE_SUFFIXES = ("model-pb.fits", "filtered-model.fits")
+
+
+def is_model_image(path: str) -> bool:
+    """
+    Return whether ``path`` names a model image, compressed or not.
+
+    These are the true-sky model images made by WSClean and the images of the
+    filtered sky model, and their mosaics. They hold the flux of the sky-model
+    components on a background of zeros, unlike the other images, which hold noise.
+    """
+    return os.path.basename(path).removesuffix(".fz").endswith(_MODEL_IMAGE_SUFFIXES)
+
 
 def require_file(path: str, description: str) -> dict:
     """Return a File record for a required output path."""

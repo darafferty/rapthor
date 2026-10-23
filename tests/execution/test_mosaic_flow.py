@@ -5,11 +5,10 @@ from pathlib import Path
 import pytest
 
 import rapthor.execution.mosaic.flow as mosaic_module
-from rapthor.execution.commands import normalize_command
+from rapthor.execution.commands import build_fpack_command, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.mosaic.commands import (
     DrawModelMosaicOptions,
-    build_compress_mosaic_command,
     build_draw_model_mosaic_command,
 )
 from rapthor.execution.mosaic.flow import (
@@ -235,7 +234,7 @@ def test_mosaic_command_builders_match_reference_fixtures():
     commands = json.loads((FIXTURE_DIR / "command_reference.json").read_text())
 
     assert (
-        build_compress_mosaic_command("mosaic_1-I-image.fits", ".mosaic_1-I-image.fits.fz.partial")
+        build_fpack_command("mosaic_1-I-image.fits", ".mosaic_1-I-image.fits.fz.partial")
         == commands["mosaic"]["compress_mosaic_image"]
     )
     assert (
@@ -713,6 +712,63 @@ def test_run_mosaic_flow_returns_compressed_records(
             str(tmp_path / ".mosaic_1-I-image.fits.fz.partial"),
             "mosaic_1-I-image.fits",
         ],
+    ]
+
+
+@pytest.mark.parametrize("draw_with_wsclean", [True, False])
+def test_run_mosaic_flow_compresses_model_mosaics_without_loss(
+    prefect_server,
+    tmp_path,
+    fake_mosaic_shell_operation_cls,
+    fake_direct_mosaic_helpers,
+    draw_with_wsclean,
+):
+    payload = _mosaic_payload(tmp_path, compress_images=True)
+    image_product = payload["mosaic_products"][0]
+    for suffix in ("MFS-model-pb.fits", "MFS-filtered-model.fits"):
+        skymodels = None
+        if draw_with_wsclean:
+            skymodels = [f"sector_{i}-{suffix}.skymodel" for i in (1, 2)]
+            for skymodel in skymodels:
+                (tmp_path / skymodel).write_text("sky model")
+        payload["mosaic_products"].append(
+            {
+                **image_product,
+                "sector_image_filenames": [f"sector_{i}-{suffix}" for i in (1, 2)],
+                "sector_model_skymodel_filenames": skymodels,
+                "regridded_image_filenames": [f"sector_{i}-{suffix}.regridded" for i in (1, 2)],
+                "mosaic_filename": f"mosaic_1-{suffix}",
+                "mosaic_path": str(tmp_path / f"mosaic_1-{suffix}"),
+            }
+        )
+
+    run_flow_for_test(
+        mosaic_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_mosaic_shell_operation_cls,
+    )
+
+    def expected_fpack_command(name, *options):
+        return ["fpack", *options, "-O", str(tmp_path / f".{name}.fz.partial"), name]
+
+    rendered = [
+        Path(call["output_image"]).name
+        for call in fake_direct_mosaic_helpers["render_model_mosaic_with_wsclean"]
+    ]
+    assert sorted(rendered) == (
+        ["mosaic_1-MFS-filtered-model.fits", "mosaic_1-MFS-model-pb.fits"]
+        if draw_with_wsclean
+        else []
+    )
+    commands = [
+        shlex.split(instance.kwargs["commands"][0])
+        for instance in fake_mosaic_shell_operation_cls.instances
+    ]
+    assert sorted(commands, key=lambda command: command[-1]) == [
+        expected_fpack_command("mosaic_1-I-image.fits"),
+        expected_fpack_command("mosaic_1-MFS-filtered-model.fits", "-g", "-q", "0"),
+        expected_fpack_command("mosaic_1-MFS-model-pb.fits", "-g", "-q", "0"),
     ]
 
 

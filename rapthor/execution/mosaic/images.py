@@ -1,7 +1,6 @@
 """FITS image helpers used by mosaic execution scripts."""
 
 import os
-import re
 import shutil
 from typing import Sequence
 
@@ -15,13 +14,6 @@ from shapely.geometry import Polygon
 
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.fitsimage import FITSImage
-
-_SPARSE_MODEL_PRODUCT = re.compile(r"(^|[-_])(?:filtered[-_])?model([-_.]|$)")
-
-
-def is_sparse_model_product(filename: str) -> bool:
-    """Return true for sparse WSClean model-image mosaic products."""
-    return bool(_SPARSE_MODEL_PRODUCT.search(os.path.basename(filename).lower()))
 
 
 def make_mosaic_template(

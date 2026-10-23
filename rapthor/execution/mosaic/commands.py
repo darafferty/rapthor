@@ -17,11 +17,6 @@ class DrawModelMosaicOptions:
     num_terms: int = 1
 
 
-def build_compress_mosaic_command(mosaic_filename: str, output_filename: str) -> list[str]:
-    """Build the `fpack` command that compresses one mosaic image into ``output_filename``."""
-    return ["fpack", "-O", output_filename, mosaic_filename]
-
-
 def build_draw_model_mosaic_command(options: DrawModelMosaicOptions) -> list[str]:
     """Build the WSClean command that renders one model mosaic image."""
     return [

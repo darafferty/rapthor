@@ -645,7 +645,7 @@ common ancestor.
      - ``restore_skymodel``
    * - ``compress_sector_images``
      - ``fpack``
-     - ``build_compress_image_command``
+     - ``build_fpack_command``
      - ``compress_images``
    * - ``make_mosaic_template``, ``regrid_image``, ``make_mosaic``
      - scripts
@@ -653,7 +653,7 @@ common ancestor.
      - ``make_mosaic_template``, ``mosaic_<image type>``
    * - ``compress_mosaic_image``
      - ``fpack``
-     - ``mosaic/commands.py`` (``build_compress_mosaic_command``)
+     - ``build_fpack_command``
      - ``mosaic_<image type>``
    * - —
      - WSClean

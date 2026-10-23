@@ -585,6 +585,8 @@ The available options are described below under their respective sections.
         ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_
         for details on precision. Some tools may be unable to read compressed fits files and will
         require decompression to be run first. This can be done with the ``funpack`` tool .
+        The model images made by WSClean and the mosaics of model images are, however,
+        compressed without loss, so that their pixel values are kept exactly.
 
     compress_final_images
         Compress the final images to reduce storage space (default = ``False``).

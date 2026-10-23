@@ -167,12 +167,6 @@ def build_prepare_imaging_data_command(options: PrepareImagingDataOptions) -> li
     return command
 
 
-def build_compress_image_command(image: str, output: str, *, lossless: bool = False) -> list[str]:
-    """Build the `fpack` command that compresses one sector image into ``output``."""
-    options = ["-g", "-q", "0"] if lossless else []
-    return ["fpack", *options, "-O", output, image]
-
-
 def build_wsclean_restore_command(
     residual_image: str,
     source_list: str,

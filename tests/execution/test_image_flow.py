@@ -11,7 +11,7 @@ import rapthor.execution.image.outputs as image_outputs_module
 import rapthor.execution.image.preparation as image_preparation_module
 import rapthor.execution.image.sector as image_sector_module
 import rapthor.execution.image.wsclean as image_wsclean_module
-from rapthor.execution.commands import normalize_command
+from rapthor.execution.commands import build_fpack_command, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.commands import (
@@ -23,7 +23,6 @@ from rapthor.execution.image.commands import (
     WscleanOptions,
     WscleanScreenOptions,
     build_aterm_config_content,
-    build_compress_image_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
     build_make_residual_visibilities_command,
@@ -1082,7 +1081,7 @@ def test_image_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
-            build_compress_image_command(
+            build_fpack_command(
                 "sector_1-MFS-I-image.fits", ".sector_1-MFS-I-image.fits.fz.partial"
             )
         )
@@ -1275,23 +1274,6 @@ def test_image_support_command_builders_create_expected_tokens():
         "beam.update_interval = 120\n"
         "beam.usechannelfreq = true\n"
     )
-    assert build_compress_image_command("sector_1-MFS-I-image.fits", "image.fz.partial") == [
-        "fpack",
-        "-O",
-        "image.fz.partial",
-        "sector_1-MFS-I-image.fits",
-    ]
-    assert build_compress_image_command(
-        "sector_1-MFS-I-model-pb.fits", "model.fz.partial", lossless=True
-    ) == [
-        "fpack",
-        "-g",
-        "-q",
-        "0",
-        "-O",
-        "model.fz.partial",
-        "sector_1-MFS-I-model-pb.fits",
-    ]
     assert build_wsclean_restore_command(
         "sector_1-MFS-I-image-pb.fits",
         "bright_sources_pb.txt",
@@ -2497,7 +2479,7 @@ def test_run_image_flow_returns_compressed_image_outputs(
             str(tmp_path / name),
         ]
 
-    # Each image is compressed on its own; the sparse model image losslessly.
+    # Each image is compressed on its own; the model image without loss.
     assert fpack_commands == [
         fpack("sector_1-MFS-I-image.fits"),
         fpack("sector_1-MFS-I-image-pb.fits"),

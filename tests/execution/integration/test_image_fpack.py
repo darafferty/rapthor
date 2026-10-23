@@ -39,6 +39,9 @@ def test_compression_restart_replaces_a_stopped_output(tmp_path):
     for image in images:
         with fits.open(f"{image}.fz") as compressed, fits.open(image) as original:
             assert compressed[1].data.shape == original[0].data.shape
+            # Only the model image is compressed without loss
+            exact = np.array_equal(compressed[1].data, original[0].data)
+            assert exact is image.name.endswith("model-pb.fits")
 
     # A resumed run compresses the complete images again
     assert compress() == records

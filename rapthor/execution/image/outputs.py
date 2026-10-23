@@ -5,11 +5,11 @@ import os
 from pathlib import Path
 from typing import Mapping, Optional
 
+from rapthor.execution.commands import build_fpack_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.environments import filter_skymodel_environment
 from rapthor.execution.image.commands import (
     ATERM_CONFIG_FILENAME,
-    build_compress_image_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
 )
@@ -20,6 +20,7 @@ from rapthor.execution.image.restoration import restore_skymodel
 from rapthor.execution.outputs import (
     cleanup_intermediate_outputs,
     file_records_for_required_patterns,
+    is_model_image,
     make_product,
     require_file,
 )
@@ -122,8 +123,8 @@ def compress_image_records(
     def compress(record: dict, description: str) -> dict:
         image = record["path"]
         compressed = f"{image}.fz"
-        command = build_compress_image_command(
-            image, partial_product_path(compressed), lossless=_is_sparse_model_image(image)
+        command = build_fpack_command(
+            image, partial_product_path(compressed), lossless=is_model_image(image)
         )
         return make_product(
             compressed,
@@ -356,8 +357,3 @@ def make_filtered_model_image(
         Path(str(sector["filtered_model_image_path"])),
     )
     return require_file(str(sector["filtered_model_image_path"]), "Filtered skymodel image")
-
-
-def _is_sparse_model_image(path: str) -> bool:
-    """Return whether ``path`` is a sparse WSClean model image."""
-    return os.path.basename(path).endswith("model-pb.fits")
