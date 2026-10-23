@@ -2,7 +2,6 @@
 Calibration operation adapter.
 """
 
-import glob
 import os
 import shutil
 
@@ -889,7 +888,13 @@ class Calibrate(FlowOperation):
         field = self.field
         # set up directories for copying solutions and plots
         workdir = self.parset["dir_working"]
-        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, "*.png"))
+        # Copy only the plots recorded in the outputs, not those of earlier attempts
+        plot_filenames = [
+            record["path"]
+            for key, records in sorted(self.outputs.items())
+            if key.endswith("_plots")
+            for record in records
+        ]
         sol_dir = os.path.join(workdir, "solutions", self.name)
         plot_dir = os.path.join(workdir, "plots", self.name)
 

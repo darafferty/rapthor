@@ -10,7 +10,7 @@ from typing import List, Union
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.flow import image_flow
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.lib.records import DirectoryRecord, FileRecord, move_record_recursive
 from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 from rapthor.operations.image.diagnostics import report_sector_diagnostics
 from rapthor.operations.image.plan import (
@@ -27,6 +27,7 @@ from rapthor.operations.image.plan import (
 log = logging.getLogger("rapthor:image")
 
 NON_FULLJONES_SOLVES = {"fast_phase", "medium_phase", "slow_gains"}
+SECTOR_DIAGNOSTICS_KEYS = {"sector_diagnostics", "sector_diagnostic_plots", "sector_offsets"}
 
 
 class Image(FlowOperation):
@@ -808,25 +809,16 @@ class Image(FlowOperation):
                     move=True,
                 )
 
-            # The astrometry and photometry plots and diagnostics file
+            # The astrometry and photometry plots, image diagnostics file, and astrometry
+            # offsets file (made only when offsets were found)
             diagnostics_dest_dir = os.path.join(
                 self.parset["dir_working"], "plots", f"image_{self.index}"
             )
-            diagnotics = {"sector_diagnostics"}
-            if self.outputs["sector_diagnostic_plots"][index]:
-                diagnotics.update({"sector_diagnostic_plots"})
-            self.copy_outputs_to(
-                diagnostics_dest_dir,
-                index=index,
-                include=diagnotics,
-                move=True,
-            )
+            self._save_sector_diagnostics(diagnostics_dest_dir, index)
+            leave_in_place.update(SECTOR_DIAGNOSTICS_KEYS)
 
             # Read in the image diagnostics and log a summary of them
-            diagnostics_file = os.path.join(
-                diagnostics_dest_dir,
-                os.path.basename(self.outputs["sector_diagnostics"][index]["path"]),
-            )
+            diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
             with open(diagnostics_file, "r") as f:
                 diagnostics_dict = json.load(f)
             diagnostics_dict["cycle_number"] = self.index
@@ -842,6 +834,14 @@ class Image(FlowOperation):
 
         # Finally call finalize() in the parent class
         super().finalize()
+
+    def _save_sector_diagnostics(self, dest_dir, index):
+        """
+        Move a sector's diagnostics files to dest_dir and point their output records there,
+        so that they survive cleanup and can be read again when a run is resumed.
+        """
+        for key in SECTOR_DIAGNOSTICS_KEYS:
+            self.outputs[key][index] = move_record_recursive(self.outputs[key][index], dest_dir)
 
     @staticmethod
     def find_in_file_list(file_list):

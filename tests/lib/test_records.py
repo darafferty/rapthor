@@ -7,6 +7,7 @@ from rapthor.lib.records import (
     file_record,
     file_record_path,
     is_output_record,
+    move_record_recursive,
     optional_file_record_path,
     output_record_path,
     validate_output_record,
@@ -61,3 +62,19 @@ def test_record_path_helpers_reject_wrong_or_malformed_records(tmp_path):
 
     with pytest.raises(OutputRecordError, match="Expected a Directory output record"):
         directory_record_path({"class": "Directory", "path": ""})
+
+
+def test_move_record_recursive_moves_files_and_returns_their_new_records(tmp_path):
+    (tmp_path / "a.json").write_text("a")
+    (tmp_path / "b.pdf").write_text("b")
+    dest_dir = tmp_path / "plots"
+    moved = [file_record(dest_dir / "a.json"), [file_record(dest_dir / "b.pdf")], None]
+
+    records = [file_record(tmp_path / "a.json"), [file_record(tmp_path / "b.pdf")], None]
+    assert move_record_recursive(records, str(dest_dir)) == moved
+    # Moving the new records again, as a resumed run does, leaves the files in place
+    assert move_record_recursive(moved, str(dest_dir)) == moved
+
+    assert (dest_dir / "a.json").read_text() == "a"
+    assert (dest_dir / "b.pdf").read_text() == "b"
+    assert not (tmp_path / "a.json").exists()

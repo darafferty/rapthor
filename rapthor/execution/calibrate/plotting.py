@@ -1,6 +1,7 @@
 """Calibration solution plotting helpers."""
 
 import logging
+import os
 from typing import Optional
 
 log = logging.getLogger("rapthor:calibrate:plotting")
@@ -14,6 +15,7 @@ def plot_solutions(
     soltab: Optional[str] = None,
     direction: Optional[str] = None,
     first_dir: bool = False,
+    output_dir: Optional[str] = None,
     h5parm_factory=None,
     plot_runner=None,
 ) -> None:
@@ -21,7 +23,10 @@ def plot_solutions(
     Plot calibration solutions from an h5parm file.
 
     Parameters mirror the historical plotting command, but the implementation
-    is importable so flows can call or wrap it directly.
+    is importable so flows can call or wrap it directly. LoSoTo names each plot
+    ``<root><generated name>.png``, so ``root`` is the start of a file name.
+    Plots are written to ``output_dir`` when given, otherwise to the current
+    directory.
     """
     if h5parm_factory is None or plot_runner is None:
         default_h5parm_factory, default_plot_runner = _load_plotting_backend()
@@ -45,6 +50,9 @@ def plot_solutions(
 
         if root is None:
             root = f"{'scalar' if 'pol' not in solution_table.axesNames else ''}{soltype}_"
+        if output_dir is not None:
+            os.makedirs(output_dir, exist_ok=True)
+            root = os.path.join(output_dir, root)
         if refstat is not None:
             reference_station = refstat
 
