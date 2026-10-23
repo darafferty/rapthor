@@ -35,8 +35,8 @@ REPO_ROOT_DIR = TEST_ROOT_DIR.parent
 RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 
 
-def read_parset(parset_file, use_log_file=True):
-    """Read a parset file and prepare the run it describes, as a run does under the lock."""
+def prepare_run_from_parset(parset_file, use_log_file=True):
+    """Read a parset file and prepare its run (working directory, log, input MSs) as a run does."""
     parset = Parset(str(parset_file)).as_parset_dict()
     prepare_run(parset, use_log_file=use_log_file)
     return parset
@@ -357,7 +357,7 @@ def parset(test_ms, tmp_path):
     with parset_file.open("w") as fh:
         cfg.write(fh)
 
-    yield read_parset(parset_file, use_log_file=False)
+    yield prepare_run_from_parset(parset_file, use_log_file=False)
 
 
 @pytest.fixture
@@ -746,7 +746,7 @@ def parset_for_field_test(tmp_path_factory, test_ms):
         RESOURCE_DIR / "test_true_sky.txt",
         RESOURCE_DIR / "test_apparent_sky.txt",
     )
-    return read_parset(target)
+    return prepare_run_from_parset(target)
 
 
 def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):
