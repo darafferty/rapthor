@@ -1,10 +1,8 @@
 """Reset operations of a Rapthor run."""
 
 import filecmp
-import glob
 import json
 import logging
-import os
 import re
 import shutil
 import sys
@@ -12,6 +10,7 @@ import tempfile
 from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 
 from rapthor.execution.working_dir_lock import WorkingDirectoryLockError, working_directory_lock
 from rapthor.execution.workspace import remove_operation_workspace
@@ -88,11 +87,12 @@ def find_operations(pipelines_dir):
     so that it includes cycles that the current settings would no longer run,
     such as repeated final cycles.
     """
-    if not os.path.isdir(pipelines_dir):
+    pipelines_dir = Path(pipelines_dir)
+    if not pipelines_dir.is_dir():
         return []
     # An operation stopped while moving to or from shared scratch may only have
     # its recovery record, ".<operation>.scratch"
-    names = {re.sub(r"^\.(.+)\.scratch$", r"\1", name) for name in os.listdir(pipelines_dir)}
+    names = {re.sub(r"^\.(.+)\.scratch$", r"\1", path.name) for path in pipelines_dir.iterdir()}
     operations = {name: _parse_operation(name) for name in names}
     return sorted(
         (name for name, parsed in operations.items() if parsed),
@@ -121,12 +121,13 @@ def archive_reset_logs(logs_dir, operations, now=None):
     renamed in the same way. Returns the name of the reset attempt, or None if
     nothing was archived.
     """
+    logs_dir = Path(logs_dir)
     now = now or datetime.now(timezone.utc)
     stamp = attempt = f"reset-{now:%Y%m%dT%H%M%SZ}"
     number = 1
     # Two resets within the same second get distinct names
     while any(
-        os.path.exists(_archive_path(logs_dir, filename, attempt))
+        _archive_path(logs_dir, filename, attempt).exists()
         for filename in (*OPERATION_RECORD_LOGS, MAIN_LOG)
     ):
         number += 1
@@ -134,11 +135,10 @@ def archive_reset_logs(logs_dir, operations, now=None):
 
     archived_any = False
     for filename in OPERATION_RECORD_LOGS:
-        path = os.path.join(logs_dir, filename)
-        if not os.path.isfile(path):
+        path = logs_dir / filename
+        if not path.is_file():
             continue
-        with open(path, encoding="utf-8") as log_file:
-            lines = log_file.read().splitlines()
+        lines = path.read_text(encoding="utf-8").splitlines()
         kept, moved = [], []
         for line in lines:
             (moved if _record_operation(line) in operations else kept).append(line)
@@ -147,12 +147,11 @@ def archive_reset_logs(logs_dir, operations, now=None):
         # A reset that stopped after writing an archive but before replacing the
         # log left its records in both, so archive each record once
         archived = Counter()
-        for archive in glob.glob(_archive_path(glob.escape(logs_dir), filename, "reset-*")):
-            with open(archive, encoding="utf-8") as archive_file:
-                archived.update(archive_file.read().splitlines())
+        for archive in logs_dir.glob(_archive_path(logs_dir, filename, "reset-*").name):
+            archived.update(archive.read_text(encoding="utf-8").splitlines())
         moved = list((Counter(moved) - archived).elements())
         if moved:
-            with open(_archive_path(logs_dir, filename, attempt), "a", encoding="utf-8") as archive:
+            with _archive_path(logs_dir, filename, attempt).open("a", encoding="utf-8") as archive:
                 archive.writelines(f"{line}\n" for line in moved)
             archived_any = True
         # Replace the log in one step, so it is never left partly written
@@ -162,21 +161,21 @@ def archive_reset_logs(logs_dir, operations, now=None):
             replacement.writelines(f"{line}\n" for line in kept)
         try:
             shutil.copymode(path, replacement.name)
-            os.replace(replacement.name, path)
+            Path(replacement.name).replace(path)
         except BaseException:
-            os.remove(replacement.name)
+            Path(replacement.name).unlink()
             raise
 
-    main_log = os.path.join(logs_dir, MAIN_LOG)
-    if os.path.isfile(main_log):
-        os.replace(main_log, _archive_path(logs_dir, MAIN_LOG, attempt))
+    main_log = logs_dir / MAIN_LOG
+    if main_log.is_file():
+        main_log.replace(_archive_path(logs_dir, MAIN_LOG, attempt))
         archived_any = True
     return attempt if archived_any else None
 
 
 def _archive_path(logs_dir, filename, attempt):
-    stem, extension = os.path.splitext(filename)
-    return os.path.join(logs_dir, f"{stem}.{attempt}{extension}")
+    path = Path(logs_dir, filename)
+    return path.with_stem(f"{path.stem}.{attempt}")
 
 
 def _record_operation(line):
@@ -216,7 +215,8 @@ def reset(parset_file):
 
 
 def _reset(parset):
-    pipelines_dir = os.path.join(parset["dir_working"], "pipelines")
+    working_dir = Path(parset["dir_working"])
+    pipelines_dir = working_dir / "pipelines"
 
     while True:
         # Check for started operations (workflows)
@@ -278,8 +278,8 @@ def _reset(parset):
             print("Reseting state...")
             # Move the logs of the reset work first, so that a reset that stops part
             # way still lists the operations and can be repeated
-            logs_dir = os.path.join(parset["dir_working"], "logs")
-            if os.path.isdir(logs_dir):
+            logs_dir = working_dir / "logs"
+            if logs_dir.is_dir():
                 attempt = archive_reset_logs(logs_dir, pipelines[start:])
                 if attempt is not None:
                     print(f"Logs of the reset operations were moved to logs/*.{attempt}.*")
@@ -288,7 +288,7 @@ def _reset(parset):
                 # Remove the operation working directory to ensure files from previous
                 # runs are not kept and used in subsequent ones. Its shared scratch
                 # workspace and recovery record are removed as well.
-                remove_operation_workspace(os.path.join(pipelines_dir, pipeline))
+                remove_operation_workspace(pipelines_dir / pipeline)
 
             # Now remove any sub-directories in the other output directories, that
             # are _not_ present in the 'pipelines' directory.
@@ -301,14 +301,11 @@ def _reset(parset):
                 "images",
                 "visibilities",
             ):
-                output_dir = os.path.join(parset["dir_working"], dirname)
-                if not os.path.exists(output_dir):
+                output_dir = working_dir / dirname
+                if not output_dir.exists():
                     continue
-                dcmp = filecmp.dircmp(
-                    os.path.join(parset["dir_working"], "pipelines"),
-                    output_dir,
-                )
-                for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):
-                    shutil.rmtree(path, ignore_errors=True)
+                dcmp = filecmp.dircmp(pipelines_dir, output_dir)
+                for item in dcmp.right_only:
+                    shutil.rmtree(output_dir / item, ignore_errors=True)
 
             print("Reset complete.")
