@@ -110,13 +110,7 @@ def test_reset_resets_from_selected_operation_and_preserves_upstream_prefect_sta
     downstream_images = _write_output_subdir(working_dir, "images", "image_1")
     downstream_logs = _write_output_subdir(working_dir, "logs", "mosaic_1")
 
-    answers = iter(["3", "y", "q"])
-    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
-
-    with pytest.raises(SystemExit) as exc:
-        reset_module.reset("input.parset")
-
-    assert exc.value.code == 0
+    assert _reset(monkeypatch, ["3", "y", "q"]) == 0
     assert "Reset complete." in capsys.readouterr().out
 
     assert upstream_calibrate.is_dir()
@@ -155,13 +149,7 @@ def test_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch
     image_state = _write_prefect_operation_state(working_dir, "image_1")
     image_output = _write_output_subdir(working_dir, "images", "image_1")
 
-    answers = iter(["1", "y", "q"])
-    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
-
-    with pytest.raises(SystemExit) as exc:
-        reset_module.reset("input.parset")
-
-    assert exc.value.code == 0
+    assert _reset(monkeypath, ["1", "y", "q"]) == 0
     assert "Reset complete." in capsys.readouterr().out
     assert not image_state.exists()
     assert not image_output.exists()
