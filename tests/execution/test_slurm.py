@@ -33,7 +33,9 @@ def test_slurm_cluster_spec_uses_slurm_allocation_environment(monkeypatch):
     assert spec.memory_per_node_gb == 256
 
 
-def test_slurm_cluster_spec_uses_execution_config_without_slurm_environment():
+def test_slurm_cluster_spec_uses_execution_config_without_slurm_environment(monkeypatch):
+    monkeypatch.setattr("os.environ", {})
+
     spec = slurm_cluster_spec(
         ExecutionConfig(
             task_runner="external_dask",
