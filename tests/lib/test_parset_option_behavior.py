@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from rapthor.lib.parset import parset_read
+from tests.conftest import prepare_run_from_parset
 
 
 def _write_parset(tmp_path, sections):
@@ -29,8 +29,8 @@ def _write_parset(tmp_path, sections):
     return parset_path
 
 
-def _read_parset(tmp_path, sections):
-    return parset_read(_write_parset(tmp_path, sections), use_log_file=False)
+def _prepare_run_from_parset(tmp_path, sections):
+    return prepare_run_from_parset(_write_parset(tmp_path, sections), use_log_file=False)
 
 
 def _section_value(parset, section, option):
@@ -103,13 +103,13 @@ def _section_value(parset, section, option):
 def test_less_common_global_and_calibration_options_are_parsed(
     tmp_path, section, option, value, expected
 ):
-    parset = _read_parset(tmp_path, {section: {option: value}})
+    parset = _prepare_run_from_parset(tmp_path, {section: {option: value}})
 
     assert _section_value(parset, section, option) == expected
 
 
 def test_custom_imaging_grid_options_are_parsed(tmp_path):
-    parset = _read_parset(
+    parset = _prepare_run_from_parset(
         tmp_path,
         {
             "imaging": {
@@ -131,7 +131,7 @@ def test_custom_imaging_grid_options_are_parsed(tmp_path):
 
 
 def test_custom_sector_geometry_options_are_parsed(tmp_path):
-    parset = _read_parset(
+    parset = _prepare_run_from_parset(
         tmp_path,
         {
             "imaging": {
@@ -154,7 +154,7 @@ def test_custom_sector_geometry_options_are_parsed(tmp_path):
 
 def test_mismatched_time_frequency_smearing_options_warn(tmp_path, caplog):
     with caplog.at_level(logging.WARNING, logger="rapthor:parset"):
-        parset = _read_parset(
+        parset = _prepare_run_from_parset(
             tmp_path,
             {
                 "calibration": {"correct_time_frequency_smearing": "True"},

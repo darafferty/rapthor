@@ -73,7 +73,9 @@ is in progress:
     the run finishes.
 
 These files do not depend on the dashboards described below. They are written
-when :term:`prefect_log_commands` is set, which is the default.
+when :term:`prefect_log_commands` is set, which is the default. A resumed run
+adds to them; a reset moves the entries of the reset operations to separate
+files (see :ref:`resetting_rapthor`).
 
 
 Environment of commands
@@ -432,6 +434,21 @@ The intermediate files of an operation that failed are kept in
 Resetting an operation
 ----------------------
 
+A reset is not needed to continue after a failure or an interruption: running
+Rapthor again with the same parset resumes the run (see
+:ref:`resuming_rapthor`). This also holds after changing settings that only
+affect how the run is executed, such as those in the ``[cluster]`` section, or
+settings of cycles that have not started yet. Reset an operation only when work
+that has already finished should be done again, for example:
+
+* after changing settings, or the strategy, of cycles that have already
+  finished. Rapthor does not compare the settings of finished operations, so
+  without a reset it keeps their results;
+* when a problem outside Rapthor, such as faulty input data or software,
+  spoiled the results of an operation that nevertheless finished.
+
+The selected operation is redone along with everything after it.
+
 Rapthor allows for the processing of an operation to be reset:
 
 .. code-block:: console
@@ -462,3 +479,32 @@ operation to reset:
 All operations after the selected one will also be reset. The files that
 these operations produced (their images, solutions, sky models, plots and
 logs) are removed from the working directory.
+
+The list comes from the operation directories in ``dir_working/pipelines``, so
+it includes every cycle that was started, such as repeated final cycles, even if
+the strategy has changed since. The direction-dependent (``calibrate_N``) and
+direction-independent (``predict_di_N`` and ``calibrate_di_N``) calibration
+operations of a cycle run in the order set by the calibration strategy, and the
+one that runs second uses the solutions of the first. The list does not show
+that order, so selecting any of them resets all of them.
+
+A reset also removes the scratch workspace of an operation that was stopped
+while using :term:`global_scratch_dir`, together with its link and recovery
+record (``.<operation>.scratch``) in ``dir_working/pipelines``. Files behind a
+link that does not point to such a workspace are left alone.
+
+The entries of the reset operations in ``logs/commands.jsonl`` and
+``logs/tasks.jsonl`` are moved to ``*.reset-<time>.jsonl`` files, named after
+the UTC time of the reset, and ``logs/rapthor.log`` is renamed in the same way.
+The remaining records describe only the work whose products are kept.
+
+A run and a reset, or two runs, cannot share a working directory: each locks
+``dir_working/.rapthor.lock`` until its process ends, and the one that starts
+second stops with a message naming the holder. If the lock cannot be taken at
+all, for example because the file system does not support ``flock``, a reset
+refuses to run and a run continues with a warning. On a shared file system, the
+lock only keeps out other machines if the mount provides cluster-wide locks (for
+example, NFS without ``local_lock=flock`` or Lustre with ``flock``).
+
+If you started the Dask scheduler yourself (see :term:`dask_scheduler`), make
+sure its workers have stopped before you reset.

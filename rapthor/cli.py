@@ -8,8 +8,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from rapthor import modifystate
 from rapthor._version import __version__ as version
+from rapthor.execution.working_dir_lock import WorkingDirectoryLockError
+from rapthor.reset import reset
 
 
 def _build_parser() -> optparse.OptionParser:
@@ -68,11 +69,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parset_file = args[0]
 
     if options.r:
-        modifystate.run(parset_file)
+        reset(parset_file)
         return 0
 
     try:
         _run_pipeline(parset_file, logging_level=_logging_level(options))
+    except WorkingDirectoryLockError as exc:
+        logging.getLogger("rapthor").error(exc)
+        return 1
     except Exception as exc:
         logging.getLogger("rapthor").exception(exc)
         return 1

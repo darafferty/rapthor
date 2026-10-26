@@ -231,7 +231,7 @@ What stayed the same
      - 2
      - 1
      - 0
-   * - ``rapthor/_logging.py``, ``rapthor/modifystate.py``
+   * - ``rapthor/_logging.py``, ``rapthor/reset.py``
      - 5
      - 1
      - 4
@@ -922,7 +922,7 @@ CWL, parset and RST files are counted whole.
      - 3,028
      - 4,193
      - —
-   * - ``rapthor`` top level (``process``, ``cli``, ``modifystate``, ``_logging``, ``testing``)
+   * - ``rapthor`` top level (``process``, ``cli``, ``reset``, ``_logging``, ``testing``)
      - 484
      - 650
      - 228
@@ -1027,7 +1027,7 @@ WSClean.
      - 7
      - 17
      - 14
-     - ``test_cli.py`` replaces ``test_process.py``; ``test_modifystate.py``
+     - ``test_cli.py`` replaces ``test_process.py``; ``test_reset.py``
        and ``test_integration_defaults.py``.
    * - **Total**
      - **404**

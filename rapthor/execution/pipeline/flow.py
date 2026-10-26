@@ -20,6 +20,7 @@ from rapthor.execution.pipeline.plan import (
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.task_runner import run_flow_with_task_runner
+from rapthor.execution.working_dir_lock import working_directory_lock
 from rapthor.lib.calibration_memory import check_calibration_memory
 
 log = logging.getLogger("rapthor")
@@ -43,6 +44,7 @@ class PipelineLifecycleHooks:
     """Top-level pipeline collaborators outside operation execution."""
 
     read_parset: Callable[[object], dict]
+    prepare_run: Callable[[dict], None]
     set_logging_level: Callable[[str], None]
     build_field: Callable[[dict], object]
     set_strategy: Callable[[object], list[dict]]
@@ -105,7 +107,24 @@ def run_pipeline(
     factories = operation_factories or default_pipeline_operation_factories()
     hooks = lifecycle_hooks or default_pipeline_lifecycle_hooks()
 
+    # Only read the settings here: the log file is opened under the lock, so that
+    # a refused run does not write into the log of the active one
     parset = hooks.read_parset(parset_file)
+    # Keep resets and other runs out of the working directory (for the CLI and
+    # direct calls alike)
+    with working_directory_lock(parset["dir_working"], "a Rapthor run"):
+        return _run_locked_pipeline(parset, logging_level, factories, hooks, execution_config)
+
+
+def _run_locked_pipeline(
+    parset: dict,
+    logging_level: str,
+    factories: PipelineOperationFactories,
+    hooks: PipelineLifecycleHooks,
+    execution_config: Optional[ExecutionConfig],
+) -> Optional[object]:
+    """Run the pipeline while this process holds the working directory lock."""
+    hooks.prepare_run(parset)
     config = execution_config or ExecutionConfig.from_parset(parset)
     _sync_execution_config_to_parset(parset, config)
 
@@ -348,11 +367,12 @@ def default_pipeline_lifecycle_hooks() -> PipelineLifecycleHooks:
     from rapthor import _logging
     from rapthor.execution.pipeline.lifecycle import chunk_observations, do_final_pass, make_report
     from rapthor.lib.field import Field
-    from rapthor.lib.parset import parset_read
+    from rapthor.lib.parset import Parset, prepare_run
     from rapthor.lib.strategy import set_strategy, validate_strategy
 
     return PipelineLifecycleHooks(
-        read_parset=parset_read,
+        read_parset=lambda parset_file: Parset(parset_file).as_parset_dict(),
+        prepare_run=prepare_run,
         set_logging_level=_logging.set_level,
         build_field=Field,
         set_strategy=set_strategy,

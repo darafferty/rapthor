@@ -130,7 +130,9 @@ The available options are described below under their respective sections.
     ntimes_to_repeat_final_cycle
         Number of times to repeat the final cycle, if done (default = 0). Setting this
         parameter to a value of one or more may improve the final results but will increase
-        the processing time
+        the processing time. The first final cycle starts from the input data and peels
+        outliers if the first selfcal cycle did; each repeat uses the data of the cycle
+        before it, so outliers are not peeled again.
 
     input_h5parm
         Full path to an H5parm file with scalar phase or diagonal slow-gain
