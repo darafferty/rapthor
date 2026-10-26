@@ -1725,9 +1725,9 @@ class Field(object):
             return int(match.group(1))
         return None
 
-    def _scan_scalar_h5parm(self, filename, derive_solution_timesteps=False):
+    def _scan_h5parm(self, filename, derive_solution_timesteps=False):
         """
-        Check the structure of a scalar (non-full-Jones) solution h5parm.
+        Check the structure of a solution h5parm.
 
         Returns True when the file holds amplitude solutions alongside the
         required phase solutions, for either the sol000 or the coefficients000
@@ -1740,13 +1740,17 @@ class Field(object):
         derive_solution_timesteps : bool
             If True, attempt to derive the solution time steps from the
             solutions. These time steps are stored in the same attributes set
-            by the calibration strategy. If this parameter is False, the
-            exiting values of these attributes are not altered.
+            by the calibration strategy. If this parameter is False or the
+            steps cannot be derived, the exiting values of these attributes are
+            not altered.
         """
         filename = str(filename)
 
         def get_timestep(soltab):
-            return np.min(soltab.time[1:] - soltab.time[:-1])
+            if soltab.time.size > 1:
+                return np.min(soltab.time[1:] - soltab.time[:-1])
+            else:
+                return None
 
         with h5parm(filename) as solutions:
             if "coefficients000" in solutions.getSolsetNames():
@@ -1757,13 +1761,15 @@ class Field(object):
                         "have a phase_coefficients soltab."
                     )
                     if derive_solution_timesteps:
-                        self.fast_timestep_sec = get_timestep(
-                            solset.getSoltab("phase_coefficients")
+                        self.fast_timestep_sec = (
+                            get_timestep(solset.getSoltab("phase_coefficients"))
+                            or self.fast_timestep_sec
                         )
                 if "amplitude1_coefficients" in solset.getSoltabNames():
                     if derive_solution_timesteps:
-                        self.slow_timestep_sec = get_timestep(
-                            solset.getSoltab("amplitude1_coefficients")
+                        self.slow_timestep_sec = (
+                            get_timestep(solset.getSoltab("amplitude1_coefficients"))
+                            or self.slow_timestep_sec
                         )
                     return True
                 else:
@@ -1772,20 +1778,35 @@ class Field(object):
                 solset = solutions.getSolset("sol000")
                 if "phase000" not in solset.getSoltabNames():
                     raise ValueError(
-                        f"The direction-dependent solutions file {filename!r} must "
-                        "have a phase000 soltab."
+                        f"The solutions file {filename!r} must have a phase000 soltab."
                     )
+                phase_soltab = solset.getSoltab("phase000")
+                is_fulljones = "pol" in phase_soltab.axesNames and phase_soltab.pol.size == 4
                 if derive_solution_timesteps:
-                    self.fast_timestep_sec = get_timestep(solset.getSoltab("phase000"))
+                    if is_fulljones:
+                        self.fulljones_timestep_sec = (
+                            get_timestep(phase_soltab) or self.fulljones_timestep_sec
+                        )
+                    else:
+                        self.fast_timestep_sec = (
+                            get_timestep(phase_soltab) or self.fast_timestep_sec
+                        )
                 if "amplitude000" in solset.getSoltabNames():
-                    if derive_solution_timesteps:
-                        self.slow_timestep_sec = get_timestep(solset.getSoltab("amplitude000"))
+                    if derive_solution_timesteps and not is_fulljones:
+                        self.slow_timestep_sec = (
+                            get_timestep(solset.getSoltab("amplitude000")) or self.slow_timestep_sec
+                        )
                     return True
                 else:
+                    if is_fulljones:
+                        raise ValueError(
+                            f"The full-Jones solution file {filename!r} must have"
+                            "both a phase000 soltab and a amplitude000 soltab."
+                        )
                     return False
             raise ValueError(
-                f"The direction-dependent solutions file {filename!r} must "
-                "have the solutions stored in the sol000 or coefficients000 solset."
+                f"The solutions file {filename!r} must have the solutions "
+                "stored in the sol000 or coefficients000 solset."
             )
 
     def scan_h5parms(self, derive_solution_timesteps=False):
@@ -1810,50 +1831,32 @@ class Field(object):
         self.di_apply_amplitudes = False
         scanned = {}
 
-        def has_amplitudes(filename, derive_solution_timesteps=False):
+        def scan_h5parm(filename, derive_solution_timesteps=False):
             if filename not in scanned:
-                scanned[filename] = self._scan_scalar_h5parm(
+                scanned[filename] = self._scan_h5parm(
                     filename, derive_solution_timesteps=derive_solution_timesteps
                 )
             return scanned[filename]
 
         if self.h5parm_filename is not None:
-            self.apply_amplitudes = has_amplitudes(self.h5parm_filename, derive_solution_timesteps)
+            self.apply_amplitudes = scan_h5parm(self.h5parm_filename, derive_solution_timesteps)
         else:
             self.apply_amplitudes = False
 
         if self.dd_h5parm_filename is not None:
-            self.dd_apply_amplitudes = has_amplitudes(self.dd_h5parm_filename)
+            self.dd_apply_amplitudes = scan_h5parm(self.dd_h5parm_filename)
         elif self.h5parm_filename is not None and self.di_h5parm_filename is None:
             # A supplied h5parm without DI or DD ownership is applied as the DD
             # product (legacy single-file state).
             self.dd_apply_amplitudes = self.apply_amplitudes
 
         if self.di_h5parm_filename is not None:
-            self.di_apply_amplitudes = has_amplitudes(self.di_h5parm_filename)
+            self.di_apply_amplitudes = scan_h5parm(self.di_h5parm_filename)
 
         if self.fulljones_h5parm_filename is not None:
-            self.apply_fulljones = True
-            with h5parm(self.fulljones_h5parm_filename) as solutions:
-                if "sol000" not in solutions.getSolsetNames():
-                    raise ValueError(
-                        f"The full-Jones solution file {self.fulljones_h5parm_filename!r} must have"
-                        " the solutions stored in the sol000 solset."
-                    )
-                solset = solutions.getSolset("sol000")
-                if (
-                    "phase000" not in solset.getSoltabNames()
-                    or "amplitude000" not in solset.getSoltabNames()
-                ):
-                    raise ValueError(
-                        f"The full-Jones solution file {self.fulljones_h5parm_filename!r} must have"
-                        "both a phase000 soltab and a amplitude000 soltab."
-                    )
-                if derive_solution_timesteps:
-                    self.fulljones_timestep_sec = np.min(
-                        solset.getSoltab("phase000").time[1:]
-                        - solset.getSoltab("phase000").time[:-1]
-                    )
+            self.apply_fulljones = scan_h5parm(
+                self.fulljones_h5parm_filename, derive_solution_timesteps
+            )
         else:
             self.apply_fulljones = False
 
