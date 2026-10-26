@@ -149,7 +149,7 @@ def test_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch
     image_state = _write_prefect_operation_state(working_dir, "image_1")
     image_output = _write_output_subdir(working_dir, "images", "image_1")
 
-    assert _reset(monkeypath, ["1", "y", "q"]) == 0
+    assert _reset(monkeypatch, ["1", "y", "q"]) == 0
     assert "Reset complete." in capsys.readouterr().out
     assert not image_state.exists()
     assert not image_output.exists()
