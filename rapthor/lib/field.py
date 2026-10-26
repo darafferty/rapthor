@@ -1760,11 +1760,11 @@ class Field(object):
                         f"The screen solutions file {filename!r} must "
                         "have a phase_coefficients soltab."
                     )
-                    if derive_solution_timesteps:
-                        self.fast_timestep_sec = (
-                            get_timestep(solset.getSoltab("phase_coefficients"))
-                            or self.fast_timestep_sec
-                        )
+                if derive_solution_timesteps:
+                    self.fast_timestep_sec = (
+                        get_timestep(solset.getSoltab("phase_coefficients"))
+                        or self.fast_timestep_sec
+                    )
                 if "amplitude1_coefficients" in solset.getSoltabNames():
                     if derive_solution_timesteps:
                         self.slow_timestep_sec = (

@@ -960,3 +960,38 @@ def test_scan_h5parms_with_single_solution_in_time(solution_state_field, tmp_pat
     assert field.fast_timestep_sec == 8
     assert field.slow_timestep_sec == 32
     assert field.fulljones_timestep_sec == 32
+
+
+def test_scan_h5parms_with_screen_solutions(solution_state_field, tmp_path):
+    field = solution_state_field
+    field.fast_timestep_sec = 0
+    field.slow_timestep_sec = 0
+
+    path = tmp_path / "field_solutions.h5"
+    pols = np.array(["XX", "YY"])  # diagonal solve
+    with h5parm(str(path), readonly=False) as solutions:
+        solset = solutions.makeSolset("coefficients000")
+        times = np.arange(0, 3600, 600)  # 600 s solution interval
+        solset.makeSoltab(
+            "amplitude",
+            "amplitude1_coefficients",
+            axesNames=["ant", "time", "pol"],
+            axesVals=[ANTENNAS, times, pols],
+            vals=np.ones((len(ANTENNAS), len(times), len(pols))),
+            weights=np.ones((len(ANTENNAS), len(times), len(pols))),
+        )
+        times = np.arange(0, 3600, 30)  # 30 s solution interval
+        solset.makeSoltab(
+            "phase",
+            "phase_coefficients",
+            axesNames=["ant", "time", "pol"],
+            axesVals=[ANTENNAS, times, pols],
+            vals=np.ones((len(ANTENNAS), len(times), len(pols))),
+            weights=np.ones((len(ANTENNAS), len(times), len(pols))),
+        )
+    field.h5parm_filename = str(path)
+
+    field.scan_h5parms(derive_solution_timesteps=True)
+
+    assert field.fast_timestep_sec == 30
+    assert field.slow_timestep_sec == 600
