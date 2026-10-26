@@ -26,7 +26,7 @@ def test_slurm_external_dask_environment_is_usable():
         max_nodes=0,
         cpus_per_task=0,
     )
-    spec = slurm_cluster_spec(config, environ=os.environ)
+    spec = slurm_cluster_spec(config)
 
     assert spec.node_count >= 1
     assert (

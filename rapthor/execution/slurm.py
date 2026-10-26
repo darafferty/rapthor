@@ -1,5 +1,6 @@
 """Helpers for Rapthor's supported Slurm and external-Dask execution mode."""
 
+import os
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
@@ -24,20 +25,16 @@ class SlurmClusterSpec:
     memory_per_node_gb: int
 
 
-def slurm_cluster_spec(
-    execution_config: ExecutionConfig,
-    environ: Optional[Mapping[str, str]] = None,
-) -> SlurmClusterSpec:
+def slurm_cluster_spec(execution_config: ExecutionConfig) -> SlurmClusterSpec:
     """Resolve Slurm allocation settings into the Dask worker layout.
 
     The supported model starts one single-threaded Dask worker per allocated
     node. External command parallelism is tracked separately through the
     ``command_threads_per_task`` budget.
     """
-    environment = {} if environ is None else environ
     node_count = (
         _first_positive_int(
-            environment,
+            os.environ,
             SLURM_NODE_COUNT_ENV,
         )
         or execution_config.max_nodes
@@ -45,10 +42,10 @@ def slurm_cluster_spec(
     if not node_count:
         node_count = 1
 
-    task_count = _first_positive_int(environment, SLURM_TASK_COUNT_ENV) or node_count
+    task_count = _first_positive_int(os.environ, SLURM_TASK_COUNT_ENV) or node_count
     cpus_per_task = (
         execution_config.cpus_per_task
-        or _positive_int(environment.get(SLURM_CPUS_PER_TASK_ENV), SLURM_CPUS_PER_TASK_ENV)
+        or _positive_int(os.environ.get(SLURM_CPUS_PER_TASK_ENV), SLURM_CPUS_PER_TASK_ENV)
         or 1
     )
     return SlurmClusterSpec(
@@ -62,10 +59,7 @@ def slurm_cluster_spec(
     )
 
 
-def collect_slurm_config_issues(
-    execution_config: ExecutionConfig,
-    environ: Optional[Mapping[str, str]] = None,
-) -> list[tuple[str, str]]:
+def collect_slurm_config_issues(execution_config: ExecutionConfig) -> list[tuple[str, str]]:
     """Collect Slurm allocation issues that are independent of command requests."""
     if str(execution_config.batch_system).lower() not in SLURM_BATCH_SYSTEMS:
         return []
@@ -80,7 +74,7 @@ def collect_slurm_config_issues(
         )
 
     try:
-        spec = slurm_cluster_spec(execution_config, environ=environ)
+        spec = slurm_cluster_spec(execution_config)
     except ValueError as err:
         issues.append(("invalid_slurm_allocation", str(err)))
         return issues
