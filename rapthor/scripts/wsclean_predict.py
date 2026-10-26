@@ -24,6 +24,12 @@ from scipy import constants
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+def ra_dec_pair(value):
+    """Parse an 'RA,Dec' string into [RA, Dec] ..."""
+    ra_dec = value.split(",")
+    if len(ra_dec) != 2:
+        raise argparse.ArgumentTypeError(f"expected 'RA,Dec', got {value!r}")
+    return ra_dec
 
 def make_writable(msfile):
     """
@@ -327,8 +333,7 @@ def main():
     parser.add_argument(
         "--ra_dec",
         help="RA and Dec coordinates of model image center",
-        type=str,
-        nargs=2,
+        type=ra_dec_pair,
         default=[],
     )
     parser.add_argument(

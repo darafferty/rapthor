@@ -45,7 +45,9 @@ inputs:
       The RA and Dec in hmsdms of the center of the output images.
     type: string[]
     inputBinding:
-      prefix: --ra_dec
+      prefix: --ra_dec=
+      separate: false
+      itemSeparator: ","
 
   - id: frequency_bandwidth
     label: Frequency and full bandwidth of data
