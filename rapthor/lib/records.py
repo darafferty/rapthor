@@ -287,9 +287,30 @@ def remove_or_log_error(path: Path):
         if path.is_file():
             path.unlink()
         elif path.is_dir():
-            shutil.rmtree(path)
+            remove_directory(path)
     except FileNotFoundError:
         logger.warning("Cannot remove non-existing path: %s", path)
+
+
+def partial_product_path(path):
+    """
+    Return the hidden sibling path of a product that is not complete.
+
+    A product is made there and gets its final name once it is complete, and a
+    directory is moved there before it is removed, so that a product with its
+    final name is always complete.
+    """
+    directory, name = os.path.split(str(path))
+    return os.path.join(directory, f".{name}.partial")
+
+
+def remove_directory(path):
+    """Move a directory tree to its partial path, then remove it there."""
+    partial_path = partial_product_path(path)
+    if os.path.lexists(partial_path):
+        shutil.rmtree(partial_path)
+    os.rename(path, partial_path)
+    shutil.rmtree(partial_path)
 
 
 def clean_if_file_or_directory_record(src_obj):

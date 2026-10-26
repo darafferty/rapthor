@@ -182,6 +182,15 @@ Output records
     Related documentation: :ref:`products` lists record locations and restart
     files.
 
+Compressed model images
+    When images are compressed (see :term:`compress_selfcal_images`), the
+    model images made by WSClean and the mosaics of model images are
+    compressed without loss, so that their pixel values are kept exactly. The
+    CWL version compressed them like the other images, which reduces the
+    precision of the pixel values.
+
+    Related documentation: :ref:`image` lists the model images.
+
 Task counts and timing
     Prefect exposes more processing steps as separate tasks and records their
     runtime metrics. Task counts therefore cannot be compared directly with

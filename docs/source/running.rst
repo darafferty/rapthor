@@ -407,11 +407,24 @@ that were successfully completed previously. In this way, one can quickly resume
 reduction that was halted (either by the user or due to some problem) by simply
 re-running Rapthor with the same parset.
 
-An operation that had not finished is run again from its start, with one
-exception: if WSClean had already finished making the images of a sector,
-those images are used again and WSClean is not rerun. The intermediate files
-of an operation that failed are kept in ``dir_working/pipelines`` so that they
-can be inspected.
+An operation that had not finished is run again from its start, but reuses
+the Measurement Sets that an earlier attempt had completed (those made by the
+Concatenate operation, and the prepared and concatenated data of each imaging
+sector) and the images of a sector that WSClean had finished. Images are
+compressed again, since some of them are written again by every attempt.
+
+Rapthor makes each Measurement Set and compressed image under a temporary name,
+``.<name>.partial``, which is also the name shown in ``logs/commands.jsonl``,
+and gives it its final name only once the command that makes it has succeeded;
+a product that is no longer needed is moved back to that name before it is
+removed. A product with its final name is therefore complete, while a
+``.partial`` file left by a run that was stopped is made again. As for a finished operation,
+the settings are not compared: to make the products with other settings, reset
+the operation (see :ref:`resetting_rapthor`). The input Measurement Sets are
+only read, never changed or removed.
+
+The intermediate files of an operation that failed are kept in
+``dir_working/pipelines`` so that they can be inspected.
 
 
 .. _resetting_rapthor:

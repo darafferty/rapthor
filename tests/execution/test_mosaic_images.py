@@ -5,7 +5,6 @@ from astropy.io import fits
 from astropy.wcs import WCS
 
 from rapthor.execution.mosaic.images import (
-    is_sparse_model_product,
     make_mosaic,
     make_mosaic_template,
     regrid_image,
@@ -150,13 +149,6 @@ def test_regrid_image_skip_copies_input_image(tmp_path):
 
     with fits.open(output_image) as hdul:
         assert np.allclose(hdul[0].data, 5.0)
-
-
-def test_sparse_model_product_detection_uses_mosaic_product_filenames():
-    assert is_sparse_model_product("mosaic_1-MFS-model-pb.fits")
-    assert is_sparse_model_product("mosaic_1-filtered-model.fits.fz")
-    assert not is_sparse_model_product("mosaic_1-MFS-image-pb.fits")
-    assert not is_sparse_model_product("mosaic_1-MFS-residual.fits")
 
 
 def test_make_mosaic_averages_finite_regridded_images(tmp_path):

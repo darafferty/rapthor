@@ -8,10 +8,9 @@ from typing import Mapping, Optional
 from prefect import flow, task
 
 from rapthor.execution.artifacts import publish_fits_image_artifacts
+from rapthor.execution.commands import build_fpack_command
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.mosaic.commands import build_compress_mosaic_command
 from rapthor.execution.mosaic.images import (
-    is_sparse_model_product,
     make_mosaic,
     make_mosaic_template,
     regrid_image,
@@ -22,14 +21,18 @@ from rapthor.execution.mosaic.model_rendering import (
     render_model_mosaic_with_wsclean,
 )
 from rapthor.execution.mosaic.payloads import MosaicProductPayload, validate_mosaic_payload
-from rapthor.execution.outputs import cleanup_intermediate_outputs, require_file
+from rapthor.execution.outputs import (
+    cleanup_intermediate_outputs,
+    is_model_image,
+    make_product,
+    require_file,
+)
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_name, task_run_options
-from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
-from rapthor.lib.records import file_record_path, validate_output_record
+from rapthor.lib.records import file_record_path, partial_product_path, validate_output_record
 
 log = logging.getLogger("rapthor:mosaic")
 
@@ -111,7 +114,7 @@ def _run_mosaic_prefect_tasks(
                 inputs.extend(
                     _work_path(payload["pipeline_working_dir"], name) for name in product[key] or []
                 )
-            if product["sector_model_skymodel_filenames"] and is_sparse_model_product(
+            if product["sector_model_skymodel_filenames"] and is_model_image(
                 product["mosaic_filename"]
             ):
                 paths.extend(model_mosaic_intermediate_paths(product["mosaic_path"]))
@@ -213,7 +216,7 @@ def run_mosaic_product(
         ", ".join(os.path.basename(image) for image in resolved_sector_images),
     )
     require_file(template_path, "Mosaic output")
-    if sector_model_skymodels and is_sparse_model_product(mosaic_filename):
+    if sector_model_skymodels and is_model_image(mosaic_filename):
         resolved_sector_skymodels = [
             _work_path(pipeline_working_dir, skymodel) for skymodel in sector_model_skymodels
         ]
@@ -240,7 +243,7 @@ def run_mosaic_product(
             shell_operation_cls=shell_operation_cls,
         )
 
-    regrid = regrid_sparse_model_image if is_sparse_model_product(mosaic_filename) else regrid_image
+    regrid = regrid_sparse_model_image if is_model_image(mosaic_filename) else regrid_image
     for sector_image, vertices_file, regridded_image in zip(
         resolved_sector_images, resolved_sector_vertices, resolved_regridded_images
     ):
@@ -273,7 +276,7 @@ def _mosaic_task_run_name(mosaic_product: MosaicProductPayload, index: int) -> s
 def _mosaic_task_tags(mosaic_product: MosaicProductPayload, compress_images: bool) -> list[str]:
     """Return tool/runtime tags for one mosaic product task."""
     tags = ["python"]
-    if mosaic_product["sector_model_skymodel_filenames"] and is_sparse_model_product(
+    if mosaic_product["sector_model_skymodel_filenames"] and is_model_image(
         mosaic_product["mosaic_filename"]
     ):
         tags.append("wsclean")
@@ -307,12 +310,19 @@ def _finalize_mosaic_output(
 ) -> dict:
     """Compress and/or publish one mosaic output record."""
     if compress_images:
+        # Every attempt writes the mosaic again, so it is compressed again too
         compressed_path = f"{mosaic_path}.fz"
-        output_record = _run_command_and_require_file(
-            build_compress_mosaic_command(mosaic_filename),
+        output_record = make_product(
             compressed_path,
+            build_fpack_command(
+                mosaic_filename,
+                partial_product_path(compressed_path),
+                lossless=is_model_image(mosaic_filename),
+            ),
+            "Mosaic output",
             pipeline_working_dir,
             execution_config,
+            reuse=False,
             shell_operation_cls=shell_operation_cls,
         )
     if execution_config.publish_fits_previews:
@@ -322,22 +332,6 @@ def _finalize_mosaic_output(
             clip_percentile=execution_config.fits_preview_clip_percentile,
         )
     return output_record
-
-
-def _run_command_and_require_file(
-    command: list[str],
-    output_path: str,
-    pipeline_working_dir: str,
-    execution_config: ExecutionConfig,
-    shell_operation_cls=None,
-) -> dict:
-    run_external_command(
-        command,
-        pipeline_working_dir,
-        execution_config,
-        shell_operation_cls=shell_operation_cls,
-    )
-    return require_file(output_path, "Mosaic output")
 
 
 def _work_path(pipeline_working_dir: str, filename: str) -> str:

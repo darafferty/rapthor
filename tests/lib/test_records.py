@@ -1,5 +1,8 @@
+from pathlib import Path
+
 import pytest
 
+import rapthor.lib.records as records_module
 from rapthor.lib.records import (
     OutputRecordError,
     directory_record,
@@ -78,3 +81,27 @@ def test_move_record_recursive_moves_files_and_returns_their_new_records(tmp_pat
     assert (dest_dir / "a.json").read_text() == "a"
     assert (dest_dir / "b.pdf").read_text() == "b"
     assert not (tmp_path / "a.json").exists()
+
+
+def test_clean_record_moves_a_directory_aside_before_removing_it(tmp_path, monkeypatch):
+    directory = tmp_path / "prep.ms"
+    directory.mkdir()
+    (directory / "table.dat").write_text("data")
+    record = records_module.directory_record(directory)
+    partial = Path(records_module.partial_product_path(directory))
+
+    def stop(path):
+        raise KeyboardInterrupt
+
+    with monkeypatch.context() as patch:
+        patch.setattr(records_module.shutil, "rmtree", stop)
+        with pytest.raises(KeyboardInterrupt):
+            records_module.clean_if_file_or_directory_record(record)
+    # A removal that is stopped leaves no incomplete directory under its final name
+    assert not directory.exists()
+    assert (partial / "table.dat").is_file()
+
+    directory.mkdir()
+    records_module.clean_if_file_or_directory_record(record)
+    assert not directory.exists()
+    assert not partial.exists()

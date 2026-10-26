@@ -8,11 +8,14 @@ import rapthor.execution.concatenate.flow as concatenate_module
 from rapthor.execution.concatenate.flow import (
     concatenate_epoch_task,
     concatenate_flow,
+    run_concatenate_epoch,
 )
+from rapthor.execution.concatenate.measurement_sets import select_concatenation_command
 from rapthor.execution.concatenate.payloads import concatenate_payload_from_inputs
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.records import directory_record, validate_output_record
 from rapthor.operations.concatenate import Concatenate
+from tests.conftest import file_tree_state
 from tests.execution.conftest import run_flow_for_test
 
 
@@ -232,13 +235,14 @@ def test_run_concatenate_flow_executes_commands_and_returns_records(
     validate_output_record(outputs["concatenated_filenames"])
     assert (tmp_path / "epoch_0_concatenated.ms").is_dir()
     assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
+    assert not (tmp_path / ".epoch_0_concatenated.ms.partial").exists()
     assert fake_select_concatenation_command == [
         {
             "msfiles": ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
-            "output_file": str(tmp_path / "epoch_0_concatenated.ms"),
+            "output_file": str(tmp_path / ".epoch_0_concatenated.ms.partial"),
             "data_colname": "DATA",
             "concat_property": "frequency",
-            "overwrite": False,
+            "overwrite": True,
             "use_array_beam": True,
         }
     ]
@@ -338,7 +342,7 @@ def test_concatenate_prefect_flow_entrypoint_runs_with_mocked_shell(
         "DP3",
         "msin=[epoch_0_input_0.ms,epoch_0_input_1.ms]",
         "msin.datacolumn=DATA",
-        f"msout={tmp_path / 'epoch_0_concatenated.ms'}",
+        f"msout={tmp_path / '.epoch_0_concatenated.ms.partial'}",
         "steps=[]",
     ]
     assert fake_shell_operation_cls.instances[0].kwargs["working_dir"] == str(tmp_path)
@@ -543,3 +547,112 @@ def test_concatenate_operation_run_failure_does_not_mark_done(
     assert field.ms_filenames == []
     assert field.data_colname == "CORRECTED_DATA"
     assert field.scan_count == 0
+
+
+def test_concatenate_operation_restarts_with_complete_outputs(
+    prefect_server, tmp_path, monkeypatch, fake_shell_operation_cls
+):
+    inputs = []
+    for epoch in range(2):
+        for index in range(2):
+            original = tmp_path / "data" / f"epoch_{epoch}_input_{index}.ms"
+            original.mkdir(parents=True)
+            (original / "table.dat").write_text("original")
+            inputs.append(original)
+    original_state = [file_tree_state(path) for path in inputs]
+
+    class StoppedShellOperation(fake_shell_operation_cls):
+        def run(self):
+            # The second epoch writes part of its output, then fails.
+            super().run()
+            if "epoch_1" in self.kwargs["commands"][0]:
+                raise RuntimeError("concat failed")
+            return "OK"
+
+    def run_operation(shell_operation_cls):
+        monkeypatch.setattr(
+            "rapthor.execution.shell._load_shell_operation_cls",
+            lambda: shell_operation_cls,
+        )
+        field = FieldStub(
+            _operation_parset(tmp_path),
+            epoch_observations=[
+                [ObservationStub(str(path)) for path in inputs[:2]],
+                [ObservationStub(str(path)) for path in inputs[2:]],
+            ],
+        )
+        operation = Concatenate(field, index=0)
+        operation.run()
+        return operation
+
+    with pytest.raises(RuntimeError, match="concat failed"):
+        run_operation(StoppedShellOperation)
+    pipeline_dir = tmp_path / "working" / "pipelines" / "concatenate_0"
+    assert (pipeline_dir / "epoch_0_concatenated.ms").is_dir()
+    assert (pipeline_dir / ".epoch_1_concatenated.ms.partial").is_dir()
+    assert not (pipeline_dir / "epoch_1_concatenated.ms").exists()
+    assert not (pipeline_dir / ".done").exists()
+
+    fake_shell_operation_cls.instances.clear()
+    operation = run_operation(fake_shell_operation_cls)
+
+    # Only the epoch that had not finished is concatenated again.
+    assert len(fake_shell_operation_cls.instances) == 1
+    assert "epoch_1" in fake_shell_operation_cls.instances[0].kwargs["commands"][0]
+    expected = {
+        "concatenated_filenames": [
+            directory_record(pipeline_dir / "epoch_0_concatenated.ms"),
+            directory_record(pipeline_dir / "epoch_1_concatenated.ms"),
+        ]
+    }
+    assert operation.outputs == expected
+    assert json.loads(Path(operation.outputs_file).read_text()) == expected
+    assert Path(operation.done_file).is_file()
+    assert not (pipeline_dir / ".epoch_1_concatenated.ms.partial").exists()
+    assert [file_tree_state(path) for path in inputs] == original_state
+
+
+def test_concatenate_epoch_reuses_an_output_of_an_earlier_attempt(
+    tmp_path, fake_shell_operation_cls
+):
+    epoch = {
+        "input_filenames": ["epoch_0_input_0.ms", "epoch_0_input_1.ms"],
+        "output_filename": "epoch_0_concatenated.ms",
+        "output_path": str(tmp_path / "epoch_0_concatenated.ms"),
+    }
+    # An output with its final name is complete, as a stopped command leaves a
+    # partial one.
+    (tmp_path / "epoch_0_concatenated.ms").mkdir()
+    (tmp_path / "epoch_0_concatenated.ms" / "table.dat").write_text("earlier attempt")
+
+    output = run_concatenate_epoch(
+        epoch, "DATA", str(tmp_path), shell_operation_cls=fake_shell_operation_cls
+    )
+
+    assert output == directory_record(tmp_path / "epoch_0_concatenated.ms")
+    assert (tmp_path / "epoch_0_concatenated.ms" / "table.dat").read_text() == "earlier attempt"
+    assert fake_shell_operation_cls.instances == []
+
+
+def test_concatenate_epoch_replaces_a_partial_output_of_a_stopped_attempt(
+    tmp_path, monkeypatch, fake_shell_operation_cls
+):
+    """The command selection must not refuse the partial output that a stopped attempt left."""
+    monkeypatch.setattr(
+        concatenate_module, "select_concatenation_command", select_concatenation_command
+    )
+    (tmp_path / "epoch_0_input_0.ms").mkdir()
+    (tmp_path / ".epoch_0_concatenated.ms.partial").mkdir()
+    epoch = {
+        "input_filenames": [str(tmp_path / "epoch_0_input_0.ms")],
+        "output_filename": "epoch_0_concatenated.ms",
+        "output_path": str(tmp_path / "epoch_0_concatenated.ms"),
+    }
+
+    output = run_concatenate_epoch(
+        epoch, "DATA", str(tmp_path), shell_operation_cls=fake_shell_operation_cls
+    )
+
+    assert output == directory_record(tmp_path / "epoch_0_concatenated.ms")
+    assert not (tmp_path / ".epoch_0_concatenated.ms.partial").exists()
+    assert len(fake_shell_operation_cls.instances) == 1

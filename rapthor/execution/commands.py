@@ -63,6 +63,18 @@ def append_key_value(command: list[str], key: str, value: object) -> None:
     command.append(f"{key}={value}")
 
 
+def build_fpack_command(image: str, output: str, *, lossless: bool = False) -> list[str]:
+    """
+    Build the `fpack` command that compresses one FITS image into ``output``.
+
+    By default, fpack quantises floating-point pixels to a fraction of the image
+    noise. ``lossless`` keeps every pixel value exactly instead (``-g -q 0``: GZIP
+    without quantisation), which suits model images that are mostly zeros.
+    """
+    options = ["-g", "-q", "0"] if lossless else []
+    return ["fpack", *options, "-O", output, image]
+
+
 def python_module_command(module: str, *args: object) -> list[str]:
     """Build a command that runs an importable Python module."""
     return ["python3", "-m", module, *(str(arg) for arg in args)]
