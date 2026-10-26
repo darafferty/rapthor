@@ -61,3 +61,19 @@ def test_plot_solutions_first_dir_selects_first_available_direction():
 
     assert soltab.selected_dir == "[Patch_A]"
     assert plot_runner.calls
+
+
+def test_plot_solutions_writes_plots_with_the_default_root_into_output_dir(tmp_path):
+    plot_runner = FakePlotRunner()
+    output_dir = tmp_path / "plots" / "solve1_phase"
+
+    plot_solutions(
+        "solutions.h5parm",
+        "phase",
+        output_dir=str(output_dir),
+        h5parm_factory=lambda filename: FakeH5parm(FakeSoltab()),
+        plot_runner=plot_runner,
+    )
+
+    assert output_dir.is_dir()
+    assert plot_runner.calls[0][1]["prefix"] == f"{output_dir}/scalarphase_"

@@ -8,9 +8,11 @@ import pytest
 from losoto.h5parm import h5parm
 from matplotlib import pyplot as plt
 
+from rapthor.execution.pipeline.lifecycle import chunk_observations
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
 from rapthor.lib.observation import Observation
 from rapthor.lib.strategy import check_and_adjust_parameters, set_user_strategy
+from rapthor.operations.predict import Predict
 from tests.conftest import write_scalar_h5parm
 
 
@@ -266,6 +268,86 @@ def test_update_sets_skymodel_flags_in_repeated_final_cycles(field, monkeypatch)
 
     assert captured["combine_current_and_initial"] is False
     assert field.imaged_sources_only is True
+
+
+def _cycle_step(peel_outliers):
+    return {
+        "do_calibrate": True,
+        "calibration_strategy": {"dd": ["fast_phase"]},
+        # The first cycle regroups the input sky model as set in the parset
+        "regroup_model": False,
+        "target_flux": None,
+        "max_directions": 5,
+        "max_distance": None,
+        "peel_outliers": peel_outliers,
+        "peel_bright_sources": False,
+        "reweight": False,
+        "compress_selfcal_images": False,
+        "compress_final_images": False,
+    }
+
+
+def _finish_cycle(field, cycle, tmp_path):
+    """Finalize Predict without its workflow, and stand in for Image with sky models
+    that hold the input sources inside each imaging sector."""
+    if field.do_predict:
+        for sector in field.sectors:
+            sector.set_prediction_parameters()
+        Predict("dd", field, cycle).finalize()
+    for sector in field.imaging_sectors:
+        skymodel = sector.filter_skymodel(lsmtool.load(field.parset["input_skymodel"]))
+        skymodel.group("single")
+        skymodel_file = tmp_path / f"{sector.name}_cycle{cycle}_true_sky.txt"
+        skymodel.write(str(skymodel_file))
+        sector.image_skymodel_file_true_sky = str(skymodel_file)
+        sector.image_skymodel_file_apparent_sky = None
+
+
+@pytest.mark.parametrize("peel_outliers", [True, False], ids=["peeled", "not-peeled"])
+def test_final_passes_peel_outliers_once_from_the_input_data(
+    parset_for_field_test, tmp_path, peel_outliers
+):
+    """The final pass peels the input data again; its repeat reuses the peeled data.
+
+    The full data of a single node are used, so observations are not chunked.
+    """
+    parset = parset_for_field_test
+    parset["cluster_specific"]["max_nodes"] = 1
+    # A small imaging sector leaves sources of the input sky model outside it
+    parset["imaging_specific"]["grid_width_ra_deg"] = 1.5
+    parset["imaging_specific"]["grid_width_dec_deg"] = 1.5
+    field = Field(parset)
+    input_ms = [obs.ms_filename for obs in field.full_observations]
+    step = _cycle_step(peel_outliers)
+
+    passes = []
+    for cycle, final_cycle_number in ((1, 0), (2, 1), (3, 2)):
+        if final_cycle_number <= 1:
+            chunk_observations(field, [step], 1.0)
+        field.update(dict(step), cycle, final_cycle_number=final_cycle_number)
+        calibration_skymodel = lsmtool.load(field.calibration_skymodel_file)
+        passes.append(
+            {
+                "calibrated_ms": [obs.ms_filename for obs in field.observations],
+                "peels_outliers": bool(field.outlier_sectors and field.peel_outliers),
+                "calibration_sources": len(calibration_skymodel),
+            }
+        )
+        _finish_cycle(field, cycle, tmp_path)
+
+    assert [obs.ms_filename for obs in field.full_observations] == input_ms
+    selfcal, final_pass, repeat = passes
+    assert selfcal["calibrated_ms"] == input_ms
+    assert final_pass["calibrated_ms"] == input_ms
+    if peel_outliers:
+        assert [entry["peels_outliers"] for entry in passes] == [True, True, False]
+        predict_dir = Path(field.working_dir, "pipelines", "predict_2")
+        assert all(Path(ms).parent == predict_dir for ms in repeat["calibrated_ms"])
+        # The repeat calibrates only the imaged sources, as the outliers are gone
+        assert repeat["calibration_sources"] < final_pass["calibration_sources"]
+    else:
+        assert [entry["peels_outliers"] for entry in passes] == [False, False, False]
+        assert repeat["calibrated_ms"] == input_ms
 
 
 def test_update_skymodels_allows_target_number_without_target_flux(parset_for_field_test):

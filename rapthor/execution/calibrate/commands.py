@@ -331,6 +331,7 @@ def build_plot_solutions_command(
     soltype: str,
     root: Optional[str] = None,
     first_dir: bool = False,
+    output_dir: Optional[str] = None,
 ) -> list[str]:
     """Build the solution plotting command."""
     command = python_module_command(PLOT_SOLUTIONS_MODULE, h5parm, soltype)
@@ -338,6 +339,8 @@ def build_plot_solutions_command(
         command.append(f"--root={root}")
     if first_dir:
         command.append("--first-dir")
+    if output_dir is not None:
+        command.append(f"--output-dir={output_dir}")
     return command
 
 

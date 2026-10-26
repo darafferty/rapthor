@@ -146,7 +146,6 @@
         "dask_dashboard_address": null,
         "prefect_stream_output": true,
         "prefect_run_tags": null,
-        "prefect_retries": 0,
         "prefect_log_commands": true,
         "prefect_command_profile": "auto",
         "prefect_publish_fits_previews": false,

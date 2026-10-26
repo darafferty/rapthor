@@ -11,7 +11,7 @@ import rapthor.execution.image.outputs as image_outputs_module
 import rapthor.execution.image.preparation as image_preparation_module
 import rapthor.execution.image.sector as image_sector_module
 import rapthor.execution.image.wsclean as image_wsclean_module
-from rapthor.execution.commands import normalize_command
+from rapthor.execution.commands import build_fpack_command, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.commands import (
@@ -23,7 +23,6 @@ from rapthor.execution.image.commands import (
     WscleanOptions,
     WscleanScreenOptions,
     build_aterm_config_content,
-    build_compress_sector_images_command,
     build_filter_skymodel_command,
     build_make_catalog_from_image_cube_command,
     build_make_residual_visibilities_command,
@@ -359,17 +358,8 @@ def fake_image_shell_operation_cls():
                     for suffix in ["-sources.txt", "-sources-pb.txt"]:
                         (cwd / f"{image_name}{suffix}").write_text("skymodel")
             elif tokens[0] == "fpack":
-                skip_next = False
-                for image in tokens[1:]:
-                    if skip_next:
-                        skip_next = False
-                        continue
-                    if image in {"-O", "-R", "-q", "-s", "-n", "-t"}:
-                        skip_next = True
-                        continue
-                    if image.startswith("-"):
-                        continue
-                    Path(f"{image}.fz").write_text("compressed")
+                assert Path(tokens[-1]).is_file()
+                Path(tokens[tokens.index("-O") + 1]).write_text("compressed")
             elif _is_filter_skymodel_command(tokens):
                 filter_args = _filter_skymodel_args(tokens)
                 output_root = Path(filter_args[4])
@@ -829,15 +819,26 @@ def _two_sector_image_input_parms():
     return input_parms
 
 
+def _image_plots_dir(operation):
+    # Image.finalize() moves the image diagnostics here
+    return Path(operation.parset["dir_working"]) / "plots" / f"image_{operation.index}"
+
+
+def _diagnostics_outputs(diagnostics_dir):
+    return {
+        "sector_diagnostics": [file_record(diagnostics_dir / "sector_1.image_diagnostics.json")],
+        "sector_offsets": [file_record(diagnostics_dir / "sector_1.astrometry_offsets.json")],
+        "sector_diagnostic_plots": [[file_record(diagnostics_dir / "sector_1.photometry.pdf")]],
+    }
+
+
 def _expected_image_operation_outputs(operation):
     pipeline_dir = Path(operation.pipeline_working_dir)
     return {
         "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
         "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
         "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
-        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
-        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
-        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        **_diagnostics_outputs(_image_plots_dir(operation)),
         "visibilities": [
             [
                 directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
@@ -900,9 +901,7 @@ def _expected_full_stokes_image_operation_outputs(operation):
         "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
         "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
         "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
-        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
-        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
-        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        **_diagnostics_outputs(_image_plots_dir(operation)),
         "visibilities": [
             [
                 directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
@@ -923,9 +922,7 @@ def _expected_compressed_image_operation_outputs(operation):
         "filtered_skymodel_true_sky": [file_record(pipeline_dir / "sector_1.true_sky.txt")],
         "filtered_skymodel_apparent_sky": [file_record(pipeline_dir / "sector_1.apparent_sky.txt")],
         "pybdsf_catalog": [file_record(pipeline_dir / "sector_1.source_catalog.fits")],
-        "sector_diagnostics": [file_record(pipeline_dir / "sector_1.image_diagnostics.json")],
-        "sector_offsets": [file_record(pipeline_dir / "sector_1.astrometry_offsets.json")],
-        "sector_diagnostic_plots": [[file_record(pipeline_dir / "sector_1.photometry.pdf")]],
+        **_diagnostics_outputs(_image_plots_dir(operation)),
         "visibilities": [
             [
                 directory_record(pipeline_dir / "sector_1_obs_0_prep.ms"),
@@ -980,6 +977,8 @@ def _expected_normalize_image_operation_outputs(operation):
     pipeline_dir = Path(operation.pipeline_working_dir)
     outputs = _expected_image_cube_operation_outputs(operation)
     outputs.pop("sector_skymodels")
+    # The normalize operation does not save the image diagnostics.
+    outputs.update(_diagnostics_outputs(pipeline_dir))
     outputs["sector_source_catalog"] = [file_record(pipeline_dir / "sector_1_source_catalog.fits")]
     outputs["sector_normalize_h5parm"] = [file_record(pipeline_dir / "sector_1_normalize.h5parm")]
     return outputs
@@ -1082,17 +1081,11 @@ def test_image_command_builders_match_reference_fixtures():
     )
     assert (
         normalize_command(
-            build_compress_sector_images_command(
-                images=[
-                    "sector_1-MFS-I-image.fits",
-                    "sector_1-MFS-I-image-pb.fits",
-                    "sector_1-MFS-I-residual.fits",
-                    "sector_1-MFS-I-model-pb.fits",
-                    "sector_1-MFS-I-dirty.fits",
-                ]
+            build_fpack_command(
+                "sector_1-MFS-I-image.fits", ".sector_1-MFS-I-image.fits.fz.partial"
             )
         )
-        == commands["image"]["compress_sector_images"]
+        == commands["image"]["compress_sector_image"]
     )
     assert (
         normalize_command(
@@ -1281,22 +1274,6 @@ def test_image_support_command_builders_create_expected_tokens():
         "beam.update_interval = 120\n"
         "beam.usechannelfreq = true\n"
     )
-    assert build_compress_sector_images_command(
-        ["sector_1-MFS-I-image.fits", "sector_1-MFS-I-image-pb.fits"]
-    ) == [
-        "fpack",
-        "sector_1-MFS-I-image.fits",
-        "sector_1-MFS-I-image-pb.fits",
-    ]
-    assert build_compress_sector_images_command(
-        ["sector_1-MFS-I-model-pb.fits"], lossless=True
-    ) == [
-        "fpack",
-        "-g",
-        "-q",
-        "0",
-        "sector_1-MFS-I-model-pb.fits",
-    ]
     assert build_wsclean_restore_command(
         "sector_1-MFS-I-image-pb.fits",
         "bright_sources_pb.txt",
@@ -1834,12 +1811,13 @@ def test_run_image_flow_executes_no_dde_commands_and_returns_records(
                 str(tmp_path / "sector_1_obs_0_prep.ms"),
                 str(tmp_path / "sector_1_obs_1_prep.ms"),
             ],
-            "output_file": str(tmp_path / "sector_1_concat.ms"),
+            "output_file": str(tmp_path / ".sector_1_concat.ms.partial"),
             "data_colname": "DATA",
             "concat_property": "time",
-            "overwrite": False,
+            "overwrite": True,
         }
     ]
+    assert not (tmp_path / ".sector_1_concat.ms.partial").exists()
     assert fake_direct_image_helpers["blank_image"] == [
         {
             "output_image": str(tmp_path / "sector_1_mask.fits"),
@@ -2089,6 +2067,48 @@ def test_run_image_flow_reuses_existing_wsclean_products_on_restart(
         for instance in fake_image_shell_operation_cls.instances
     ]
     assert command_names == [FILTER_SKYMODEL_COMMAND_NAME]
+
+
+def test_run_image_flow_restart_reuses_complete_measurement_sets(
+    prefect_server, tmp_path, fake_image_shell_operation_cls
+):
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path)
+
+    class WscleanFailsShellOperation(fake_image_shell_operation_cls):
+        def run(self):
+            if shlex.split(self.kwargs["commands"][-1])[0] == "wsclean":
+                raise RuntimeError("image failed")
+            return super().run()
+
+    with pytest.raises(RuntimeError, match="image failed"):
+        run_flow_for_test(
+            image_flow,
+            payload,
+            execution_config=ExecutionConfig(task_runner="sync"),
+            shell_operation_cls=WscleanFailsShellOperation,
+        )
+    assert (tmp_path / "sector_1_concat.ms").is_dir()
+    fake_image_shell_operation_cls.instances.clear()
+
+    outputs = run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    command_names = [
+        _command_name(shlex.split(instance.kwargs["commands"][-1]))
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert command_names == ["wsclean", FILTER_SKYMODEL_COMMAND_NAME]
+    assert outputs["visibilities"] == [
+        [
+            directory_record(tmp_path / "sector_1_obs_0_prep.ms"),
+            directory_record(tmp_path / "sector_1_obs_1_prep.ms"),
+        ]
+    ]
+    assert outputs["sector_I_images"] == [_sector_i_image_records(tmp_path)]
 
 
 def test_run_image_flow_restores_bright_sources_before_filtering(
@@ -2433,35 +2453,81 @@ def test_run_image_flow_returns_compressed_image_outputs(
         _command_name(shlex.split(instance.kwargs["commands"][-1]))
         for instance in fake_image_shell_operation_cls.instances
     ]
-    assert command_names == [
-        "DP3",
-        "DP3",
-        "taql",
-        "wsclean",
-        FILTER_SKYMODEL_COMMAND_NAME,
-        "fpack",
-        "fpack",
-    ]
+    assert (
+        command_names
+        == [
+            "DP3",
+            "DP3",
+            "taql",
+            "wsclean",
+            FILTER_SKYMODEL_COMMAND_NAME,
+        ]
+        + ["fpack"] * 6
+    )
     fpack_commands = [
         shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
         if _command_name(shlex.split(instance.kwargs["commands"][-1])) == "fpack"
     ]
-    assert fpack_commands[0] == [
-        "fpack",
-        str(tmp_path / "sector_1-MFS-I-image.fits"),
-        str(tmp_path / "sector_1-MFS-I-image-pb.fits"),
-        str(tmp_path / "sector_1-MFS-I-image-pb-ast.fits"),
-        str(tmp_path / "sector_1-MFS-I-residual.fits"),
-        str(tmp_path / "sector_1-MFS-I-dirty.fits"),
+
+    def fpack(name, *options):
+        return [
+            "fpack",
+            *options,
+            "-O",
+            str(tmp_path / f".{name}.fz.partial"),
+            str(tmp_path / name),
+        ]
+
+    # Each image is compressed on its own; the model image without loss.
+    assert fpack_commands == [
+        fpack("sector_1-MFS-I-image.fits"),
+        fpack("sector_1-MFS-I-image-pb.fits"),
+        fpack("sector_1-MFS-I-image-pb-ast.fits"),
+        fpack("sector_1-MFS-I-residual.fits"),
+        fpack("sector_1-MFS-I-model-pb.fits", "-g", "-q", "0"),
+        fpack("sector_1-MFS-I-dirty.fits"),
     ]
-    assert fpack_commands[1] == [
-        "fpack",
-        "-g",
-        "-q",
-        "0",
-        str(tmp_path / "sector_1-MFS-I-model-pb.fits"),
-    ]
+    assert not list(tmp_path.glob(".*.partial"))
+
+
+def test_run_image_flow_restart_compresses_images_again(
+    prefect_server, tmp_path, fake_image_shell_operation_cls
+):
+    payload = image_payload_from_inputs(_image_input_parms(), tmp_path, compress_images=True)
+    # Keep the uncompressed images, so that WSClean is not run again.
+    config = ExecutionConfig(task_runner="sync", keep_temporary_files=True)
+    # A compressed image left by fpack when it was stopped.
+    stopped = tmp_path / "sector_1-MFS-I-image.fits.fz"
+    stopped.write_text("partial")
+
+    def fpack_inputs():
+        commands = [
+            shlex.split(instance.kwargs["commands"][-1])
+            for instance in fake_image_shell_operation_cls.instances
+        ]
+        fake_image_shell_operation_cls.instances.clear()
+        return [Path(command[-1]).name for command in commands if command[0] == "fpack"]
+
+    first = run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    assert len(fpack_inputs()) == 6
+    assert stopped.read_text() == "compressed"
+
+    # Some images are written again by every attempt, so all are compressed again.
+    second = run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=config,
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+    assert second["sector_I_images"] == first["sector_I_images"]
+    assert second["sector_extra_images"] == first["sector_extra_images"]
+    assert len(fpack_inputs()) == 6
 
 
 def test_run_image_flow_returns_filtered_model_image(
@@ -3050,6 +3116,7 @@ def test_image_finalizer_accepts_prefect_outputs_for_selfcal(
     field.save_supplementary_images = True
     field.save_visibilities = True
     operation = Image(field, index=1)
+    operation.set_parset_parameters()
     outputs = run_flow_for_test(
         image_flow,
         image_payload_from_inputs(

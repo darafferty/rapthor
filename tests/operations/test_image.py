@@ -51,6 +51,7 @@ def _mock_image_flow(monkeypatch, expected_outputs):
         sectors = payload["sectors"]
         outputs = {key: materialize(pipeline_dir, value) for key, value in expected_outputs.items()}
         outputs.setdefault("sector_diagnostic_plots", [[] for _ in sectors])
+        outputs.setdefault("sector_offsets", [None for _ in sectors])
         outputs.setdefault("visibilities", [[] for _ in sectors])
 
         if any(sector["save_source_list"] for sector in sectors):
@@ -274,7 +275,11 @@ class TestImage:
         image.run()
         image.finalize()
 
-    def test_finalize_uses_matching_diagnostics_for_each_sector(self, field, monkeypatch):
+    @pytest.mark.parametrize("keep_temporary_files", [False, True])
+    def test_finalize_uses_matching_diagnostics_for_each_sector(
+        self, field, monkeypatch, keep_temporary_files
+    ):
+        field.parset["cluster_specific"]["keep_temporary_files"] = keep_temporary_files
         _prepare_field_for_image(field)
         first_sector = field.imaging_sectors[0]
         second_sector = deepcopy(first_sector)
@@ -313,6 +318,7 @@ class TestImage:
             ],
             "pybdsf_catalog": ["sector_1.source_catalog.fits", "sector_2.source_catalog.fits"],
             "sector_diagnostics": ["sector_1_diagnostics.json", "sector_2_diagnostics.json"],
+            "sector_offsets": ["sector_1_offsets.json", "sector_2_offsets.json"],
             "source_filtering_mask": ["sector_1_mask.fits", "sector_2_mask.fits"],
         }
         _mock_image_flow(monkeypatch, expected_outputs)
@@ -328,6 +334,24 @@ class TestImage:
 
         assert first_sector.diagnostics == [{"sector": 1, "cycle_number": 1}]
         assert second_sector.diagnostics == [{"sector": 2, "cycle_number": 1}]
+        # The diagnostics files are moved to plots/image_1 and kept on cleanup
+        plots_dir = Path(field.parset["dir_working"]) / "plots" / "image_1"
+        expected_offsets = [file_record(plots_dir / f"sector_{n}_offsets.json") for n in (1, 2)]
+        assert image.outputs["sector_offsets"] == expected_offsets
+        assert image.outputs["sector_diagnostics"][1] == file_record(
+            plots_dir / "sector_2_diagnostics.json"
+        )
+        assert all(Path(record["path"]).is_file() for record in expected_offsets)
+
+        # A resumed run finalizes the operation again from its stored outputs
+        image.store_outputs()
+        resumed_image = Image(field=field, index=1)
+        resumed_image.run()
+        assert second_sector.diagnostics[-1] == {"sector": 2, "cycle_number": 1}
+        assert resumed_image.outputs["sector_offsets"] == expected_offsets
+        assert all(
+            json.loads(Path(record["path"]).read_text()) == {} for record in expected_offsets
+        )
 
     def test_run(self, image):
         image.run()
@@ -1312,6 +1336,15 @@ class TestImageInitial:
         image_initial.run()
         assert image_initial.is_done()
 
+    def test_finalize_saves_astrometry_offsets(self, image_initial):
+        image_initial.run()
+
+        plots_dir = Path(image_initial.parset["dir_working"]) / "plots" / "initial_image"
+        assert image_initial.outputs["sector_offsets"] == [
+            file_record(plots_dir / "sector_1_offsets.txt")
+        ]
+        assert (plots_dir / "sector_1_offsets.txt").is_file()
+
     @pytest.mark.parametrize("dde_method", ["single", "full"])
     def test_initial_image_with_dde_method_single_does_not_raise(self, field, dde_method):
         """
@@ -1501,3 +1534,34 @@ def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_core_divisor(
     max_cores, requested_tasks, max_work_units, expected
 ):
     assert adjust_parallel_gridding_tasks(max_cores, requested_tasks, max_work_units) == expected
+
+
+@pytest.mark.parametrize("image_pol, makes_filtered_model", [("I", True), ("IQUV", False)])
+def test_filtered_model_image_is_made_only_for_stokes_i(
+    field, monkeypatch, image_pol, makes_filtered_model
+):
+    # With Stokes QUV there is no filtered sky model to draw, and the image of
+    # an earlier cycle must not be mosaicked as this cycle's product
+    field.parset["imaging_specific"]["save_filtered_model_image"] = True
+    _prepare_field_for_image(field)
+    field.image_pol = image_pol
+    sector = field.imaging_sectors[0]
+    sector.filtered_model_file_apparent_sky = "image_0/sector_1-filtered-model.fits"
+    _mock_image_flow(
+        monkeypatch,
+        {
+            "sector_I_images": [["sector_1-MFS-I-image-pb.fits", "sector_1-MFS-I-image.fits"]],
+            "sector_extra_images": [[f"sector_1-MFS-{pol}-model-pb.fits" for pol in image_pol]],
+            "filtered_skymodel_true_sky": ["sector_1.true_sky.txt"],
+            "filtered_skymodel_apparent_sky": ["sector_1.apparent_sky.txt"],
+            "pybdsf_catalog": ["sector_1.source_catalog.fits"],
+            "sector_diagnostics": ["sector_1_diagnostics.json"],
+        },
+    )
+    image = _initialize_operation(Image(field=field, index=1), do_predict=False)
+
+    assert image.input_parms["save_filtered_model_image"] is makes_filtered_model
+    image.run()
+    filtered_model = getattr(sector, "filtered_model_file_apparent_sky", None)
+    assert (filtered_model is not None) is makes_filtered_model
+    assert filtered_model != "image_0/sector_1-filtered-model.fits"

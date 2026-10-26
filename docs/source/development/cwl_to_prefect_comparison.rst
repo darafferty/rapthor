@@ -231,7 +231,7 @@ What stayed the same
      - 2
      - 1
      - 0
-   * - ``rapthor/_logging.py``, ``rapthor/modifystate.py``
+   * - ``rapthor/_logging.py``, ``rapthor/reset.py``
      - 5
      - 1
      - 4
@@ -645,7 +645,7 @@ common ancestor.
      - ``restore_skymodel``
    * - ``compress_sector_images``
      - ``fpack``
-     - ``build_compress_sector_images_command``
+     - ``build_fpack_command``
      - ``compress_images``
    * - ``make_mosaic_template``, ``regrid_image``, ``make_mosaic``
      - scripts
@@ -653,7 +653,7 @@ common ancestor.
      - ``make_mosaic_template``, ``mosaic_<image type>``
    * - ``compress_mosaic_image``
      - ``fpack``
-     - ``mosaic/commands.py`` (``build_compress_mosaic_command``)
+     - ``build_fpack_command``
      - ``mosaic_<image type>``
    * - —
      - WSClean
@@ -922,7 +922,7 @@ CWL, parset and RST files are counted whole.
      - 3,028
      - 4,193
      - —
-   * - ``rapthor`` top level (``process``, ``cli``, ``modifystate``, ``_logging``, ``testing``)
+   * - ``rapthor`` top level (``process``, ``cli``, ``reset``, ``_logging``, ``testing``)
      - 484
      - 650
      - 228
@@ -1027,7 +1027,7 @@ WSClean.
      - 7
      - 17
      - 14
-     - ``test_cli.py`` replaces ``test_process.py``; ``test_modifystate.py``
+     - ``test_cli.py`` replaces ``test_process.py``; ``test_reset.py``
        and ``test_integration_defaults.py``.
    * - **Total**
      - **404**
@@ -1066,7 +1066,7 @@ Parset options
    * - Added to ``[cluster]``
      - ``local_dask_workers``, ``dask_scheduler``, ``dask_dashboard_address``,
        ``prefect_task_runner``, ``prefect_api_url``, ``prefect_api_mode``,
-       ``prefect_run_tags``, ``prefect_retries``, ``prefect_log_commands``,
+       ``prefect_run_tags``, ``prefect_log_commands``,
        ``prefect_stream_output``, ``prefect_command_profile``,
        ``prefect_publish_fits_previews``,
        ``prefect_publish_postage_stamp_previews``,

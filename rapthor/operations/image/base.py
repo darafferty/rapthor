@@ -10,7 +10,7 @@ from typing import List, Union
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.flow import image_flow
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.records import DirectoryRecord, FileRecord
+from rapthor.lib.records import DirectoryRecord, FileRecord, move_record_recursive
 from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
 from rapthor.operations.image.diagnostics import report_sector_diagnostics
 from rapthor.operations.image.plan import (
@@ -27,6 +27,7 @@ from rapthor.operations.image.plan import (
 log = logging.getLogger("rapthor:image")
 
 NON_FULLJONES_SOLVES = {"fast_phase", "medium_phase", "slow_gains"}
+SECTOR_DIAGNOSTICS_KEYS = {"sector_diagnostics", "sector_diagnostic_plots", "sector_offsets"}
 
 
 class Image(FlowOperation):
@@ -50,6 +51,7 @@ class Image(FlowOperation):
         self.dde_method = None
         self.use_facets = None
         self.save_source_list = None
+        self.save_filtered_model_image = None
         self.image_pol: Union[List[str], str, None] = None
         self.peel_bright_sources = None
         self.imaging_sectors = None
@@ -88,6 +90,12 @@ class Image(FlowOperation):
             self.image_pol = self.field.image_pol  # set by process-step orchestration
         if self.save_source_list is None:
             self.save_source_list = is_only_pol_I(self.image_pol)
+        if self.save_filtered_model_image is None:
+            # With Stokes QUV, WSClean writes no source list, so there is no
+            # filtered sky model to make the filtered model image from
+            self.save_filtered_model_image = self.field.parset["imaging_specific"][
+                "save_filtered_model_image"
+            ] and is_only_pol_I(self.image_pol)
         if self.preapply_dd_solutions is None:
             self.preapply_dd_solutions = self.dde_method == "single" and not self.apply_none
         if self.compress_images is None:
@@ -555,9 +563,7 @@ class Image(FlowOperation):
                 self.field.parset["cluster_specific"]["max_threads"],
             ),
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
-            "save_filtered_model_image": self.field.parset["imaging_specific"][
-                "save_filtered_model_image"
-            ],
+            "save_filtered_model_image": self.save_filtered_model_image,
             "make_residual_visibilities": self.make_residual_visibilities,
             "filtered_model_image_name": sector_inputs["filtered_model_image_name"],
             "allow_internet_access": self.allow_internet_access,
@@ -663,9 +669,12 @@ class Image(FlowOperation):
         if self.field.save_supplementary_images:
             file_list.append(self.outputs["source_filtering_mask"][index]["path"])
             leave_in_place.update({"source_filtering_mask"})
-        if self.field.parset["imaging_specific"]["save_filtered_model_image"]:
+        if self.save_filtered_model_image:
             file_list.append(self.outputs["sector_skymodel_image_fits"][index]["path"])
             leave_in_place.update({"sector_skymodel_image_fits"})
+        elif hasattr(sector, "filtered_model_file_apparent_sky"):
+            # Do not let the mosaic publish an earlier cycle's image as this one's
+            del sector.filtered_model_file_apparent_sky
 
         type_path_map = Image.find_in_file_list(file_list)
         for output_type, paths in type_path_map.items():
@@ -800,25 +809,16 @@ class Image(FlowOperation):
                     move=True,
                 )
 
-            # The astrometry and photometry plots and diagnostics file
+            # The astrometry and photometry plots, image diagnostics file, and astrometry
+            # offsets file (made only when offsets were found)
             diagnostics_dest_dir = os.path.join(
                 self.parset["dir_working"], "plots", f"image_{self.index}"
             )
-            diagnotics = {"sector_diagnostics"}
-            if self.outputs["sector_diagnostic_plots"][index]:
-                diagnotics.update({"sector_diagnostic_plots"})
-            self.copy_outputs_to(
-                diagnostics_dest_dir,
-                index=index,
-                include=diagnotics,
-                move=True,
-            )
+            self._save_sector_diagnostics(diagnostics_dest_dir, index)
+            leave_in_place.update(SECTOR_DIAGNOSTICS_KEYS)
 
             # Read in the image diagnostics and log a summary of them
-            diagnostics_file = os.path.join(
-                diagnostics_dest_dir,
-                os.path.basename(self.outputs["sector_diagnostics"][index]["path"]),
-            )
+            diagnostics_file = self.outputs["sector_diagnostics"][index]["path"]
             with open(diagnostics_file, "r") as f:
                 diagnostics_dict = json.load(f)
             diagnostics_dict["cycle_number"] = self.index
@@ -834,6 +834,14 @@ class Image(FlowOperation):
 
         # Finally call finalize() in the parent class
         super().finalize()
+
+    def _save_sector_diagnostics(self, dest_dir, index):
+        """
+        Move a sector's diagnostics files to dest_dir and point their output records there,
+        so that they survive cleanup and can be read again when a run is resumed.
+        """
+        for key in SECTOR_DIAGNOSTICS_KEYS:
+            self.outputs[key][index] = move_record_recursive(self.outputs[key][index], dest_dir)
 
     @staticmethod
     def find_in_file_list(file_list):

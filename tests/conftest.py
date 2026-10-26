@@ -4,12 +4,16 @@ for this directory.
 """
 
 import configparser
+import fcntl
 import inspect
 import logging
 import os
 import shutil
 import tarfile
 import tempfile
+import warnings
+import zlib
+from contextlib import contextmanager
 from pathlib import Path
 
 import casacore.tables as pt
@@ -23,16 +27,26 @@ from lsmtool.facet import Facet
 
 from rapthor.lib.field import Field
 from rapthor.lib.observation import Observation
-from rapthor.lib.parset import parset_read
+from rapthor.lib.parset import Parset, prepare_run
 from rapthor.lib.sector import Sector
 
 TEST_ROOT_DIR = Path(__file__).parent
 REPO_ROOT_DIR = TEST_ROOT_DIR.parent
 RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 
+
+def prepare_run_from_parset(parset_file, use_log_file=True):
+    """Read a parset file and prepare its run (working directory, log, input MSs) as a run does."""
+    parset = Parset(str(parset_file)).as_parset_dict()
+    prepare_run(parset, use_log_file=use_log_file)
+    return parset
+
+
 TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
+# Fail fast when the server is unreachable, but allow a slow transfer
+TEST_MS_DOWNLOAD_TIMEOUT = (30, 300)
 # The visibilities in the downloaded test MS are about four orders of magnitude
 # below what the test sky models predict, so DDECal recovers gain amplitudes
 # near 0.01. The slow-gain processing clamps its lower flagging threshold at
@@ -42,9 +56,19 @@ TEST_MS_DIRNAME = "test.ms"
 TEST_MS_DATA_SCALE = 1.5e4
 
 
+def file_tree_state(path):
+    """Return the relative path, size and modification time of every file under ``path``."""
+    path = Path(path)
+    return sorted(
+        (str(item.relative_to(path)), item.stat().st_size, item.stat().st_mtime_ns)
+        for item in path.rglob("*")
+        if item.is_file()
+    )
+
+
 def download_test_ms(destination: Path) -> None:
     """Download the shared small Measurement Set used by the tests."""
-    response = requests.get(TEST_MS_ARCHIVE_URL, timeout=300)
+    response = requests.get(TEST_MS_ARCHIVE_URL, timeout=TEST_MS_DOWNLOAD_TIMEOUT)
     response.raise_for_status()
 
     with tempfile.TemporaryDirectory(dir=destination.parent) as tmp_dir_name:
@@ -200,6 +224,40 @@ def _prepare_prefect_home(config):
     _set_prefect_home(worker_id, force=worker_id != "main")
 
 
+@contextmanager
+def _test_ms_download_lock():
+    """Let one process download the test MS while others wait for it."""
+    with open(RESOURCE_DIR / f".{TEST_MS_DIRNAME}.lock", "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        yield
+
+
+def pytest_collection_finish(session):
+    """Fetch the shared test MS before any selected test needs it.
+
+    A test would otherwise download it from the first fixture that asks for it,
+    which fails when that test carries the ``disable_socket`` marker. Only runs
+    that will use the MS fetch it. Each xdist worker collects every test, so the
+    workers share one download through a lock.
+    """
+    if session.config.option.collectonly:
+        return
+    if not any("test_ms" in getattr(item, "fixturenames", ()) for item in session.items):
+        return
+    try:
+        with _test_ms_download_lock():
+            ensure_test_ms(RESOURCE_DIR)
+    except (
+        OSError,
+        EOFError,
+        zlib.error,
+        tarfile.TarError,
+        requests.RequestException,
+    ) as error:
+        # The tests that need the MS fail with the cause; the others still run.
+        warnings.warn(pytest.PytestWarning(f"Could not fetch the shared test MS: {error}"))
+
+
 def pytest_configure(config):
     config.resource_dir = RESOURCE_DIR
     _quiet_async_runtime_loggers()
@@ -309,7 +367,7 @@ def parset(test_ms, tmp_path):
     with parset_file.open("w") as fh:
         cfg.write(fh)
 
-    yield parset_read(parset_file, use_log_file=False)
+    yield prepare_run_from_parset(parset_file, use_log_file=False)
 
 
 @pytest.fixture
@@ -698,7 +756,7 @@ def parset_for_field_test(tmp_path_factory, test_ms):
         RESOURCE_DIR / "test_true_sky.txt",
         RESOURCE_DIR / "test_apparent_sky.txt",
     )
-    return parset_read(target)
+    return prepare_run_from_parset(target)
 
 
 def _make_source_catalog(n_channels=8, n_sources=8, alpha=-0.7, ref_flux=1.0, outliers=False):

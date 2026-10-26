@@ -121,6 +121,29 @@ def test_finalize_marks_operation_done(tmp_path):
     assert Path(operation.done_file).is_file()
 
 
+def test_finalize_stores_outputs_before_marking_operation_done(tmp_path, monkeypatch):
+    operation = _operation(tmp_path)
+    operation.outputs = {"result": {"class": "File", "path": "result.txt"}}
+    Path(operation.outputs_file).write_text("{}")
+
+    def stop(*args):
+        raise KeyboardInterrupt
+
+    # A run stopped while storing the outputs keeps the previous file and is
+    # not marked done.
+    with monkeypatch.context() as patch:
+        patch.setattr("rapthor.lib.operation.os.replace", stop)
+        with pytest.raises(KeyboardInterrupt):
+            operation.finalize()
+    assert not Path(operation.done_file).exists()
+    assert json.loads(Path(operation.outputs_file).read_text()) == {}
+
+    operation.finalize()
+
+    assert json.loads(Path(operation.outputs_file).read_text()) == operation.outputs
+    assert Path(operation.done_file).is_file()
+
+
 def test_run_executes_workflow_stores_outputs_and_marks_done(tmp_path):
     operation = _operation(tmp_path)
 

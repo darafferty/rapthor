@@ -9,6 +9,7 @@ from rapthor.execution.commands import (
     append_prefixed_value,
     bool_token,
     bracketed_list_token,
+    build_fpack_command,
     comma_join,
     command_to_string,
     normalize_command,
@@ -101,6 +102,24 @@ def test_python_module_command_builds_module_adapter_command():
         "rapthor.execution.image.helper_cli",
         "input.ms",
         "4",
+    ]
+
+
+def test_build_fpack_command_compresses_without_loss_only_on_request():
+    assert build_fpack_command("image.fits", ".image.fits.fz.partial") == [
+        "fpack",
+        "-O",
+        ".image.fits.fz.partial",
+        "image.fits",
+    ]
+    assert build_fpack_command("model.fits", ".model.fits.fz.partial", lossless=True) == [
+        "fpack",
+        "-g",
+        "-q",
+        "0",
+        "-O",
+        ".model.fits.fz.partial",
+        "model.fits",
     ]
 
 

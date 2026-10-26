@@ -1,5 +1,8 @@
+from pathlib import Path
+
 import pytest
 
+import rapthor.lib.records as records_module
 from rapthor.lib.records import (
     OutputRecordError,
     directory_record,
@@ -7,6 +10,7 @@ from rapthor.lib.records import (
     file_record,
     file_record_path,
     is_output_record,
+    move_record_recursive,
     optional_file_record_path,
     output_record_path,
     validate_output_record,
@@ -61,3 +65,43 @@ def test_record_path_helpers_reject_wrong_or_malformed_records(tmp_path):
 
     with pytest.raises(OutputRecordError, match="Expected a Directory output record"):
         directory_record_path({"class": "Directory", "path": ""})
+
+
+def test_move_record_recursive_moves_files_and_returns_their_new_records(tmp_path):
+    (tmp_path / "a.json").write_text("a")
+    (tmp_path / "b.pdf").write_text("b")
+    dest_dir = tmp_path / "plots"
+    moved = [file_record(dest_dir / "a.json"), [file_record(dest_dir / "b.pdf")], None]
+
+    records = [file_record(tmp_path / "a.json"), [file_record(tmp_path / "b.pdf")], None]
+    assert move_record_recursive(records, str(dest_dir)) == moved
+    # Moving the new records again, as a resumed run does, leaves the files in place
+    assert move_record_recursive(moved, str(dest_dir)) == moved
+
+    assert (dest_dir / "a.json").read_text() == "a"
+    assert (dest_dir / "b.pdf").read_text() == "b"
+    assert not (tmp_path / "a.json").exists()
+
+
+def test_clean_record_moves_a_directory_aside_before_removing_it(tmp_path, monkeypatch):
+    directory = tmp_path / "prep.ms"
+    directory.mkdir()
+    (directory / "table.dat").write_text("data")
+    record = records_module.directory_record(directory)
+    partial = Path(records_module.partial_product_path(directory))
+
+    def stop(path):
+        raise KeyboardInterrupt
+
+    with monkeypatch.context() as patch:
+        patch.setattr(records_module.shutil, "rmtree", stop)
+        with pytest.raises(KeyboardInterrupt):
+            records_module.clean_if_file_or_directory_record(record)
+    # A removal that is stopped leaves no incomplete directory under its final name
+    assert not directory.exists()
+    assert (partial / "table.dat").is_file()
+
+    directory.mkdir()
+    records_module.clean_if_file_or_directory_record(record)
+    assert not directory.exists()
+    assert not partial.exists()

@@ -1,12 +1,22 @@
+import shlex
 from pathlib import Path
 
 import numpy as np
 import pytest
 from astropy.io import fits
 
+import rapthor.execution.image.preparation as preparation_module
+import rapthor.execution.outputs as outputs_module
+from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.beam import ensure_image_beam
 from rapthor.execution.image.masking import blank_image
+from rapthor.execution.image.preparation import (
+    concatenate_prepared_visibilities,
+    prepare_visibility_ms,
+)
 from rapthor.execution.regions import make_ds9_region_from_skymodel
+from rapthor.lib.records import directory_record
+from tests.conftest import file_tree_state
 
 RESOURCE_DIR = Path(__file__).resolve().parents[1] / "resources"
 
@@ -105,3 +115,181 @@ def test_make_ds9_region_from_skymodel_writes_regions(tmp_path):
     assert "polygon(" in region_text
     assert "point(" in region_text
     assert "Patch_patch_1" in region_text
+
+
+class _MeasurementSetCommands:
+    """Fake DP3 and TaQL commands that write an MS and can fail part-way."""
+
+    def __init__(self):
+        self.commands = []
+        self.fail = set()
+
+    def shell_operation_cls(self, **kwargs):
+        commands = self
+
+        class Operation:
+            def run(self):
+                tokens = shlex.split(kwargs["commands"][-1])
+                commands.commands.append(tokens[0])
+                if tokens[0] == "DP3":
+                    output = next(token[6:] for token in tokens if token.startswith("msout="))
+                    source = next(token[5:] for token in tokens if token.startswith("msin="))
+                    assert Path(source, "table.dat").read_text() == "original"
+                elif tokens[0] == "cp":
+                    output = tokens[-1]
+                else:
+                    output = tokens[tokens.index("giving") + 1].strip('"')
+                output = Path(kwargs["working_dir"], output)
+                output.mkdir()
+                (output / "table.dat").write_text(tokens[0])
+                if tokens[0] in commands.fail:
+                    raise RuntimeError(f"{tokens[0]} failed")
+                return "OK"
+
+        return Operation()
+
+
+@pytest.fixture
+def imaging_restart(tmp_path, monkeypatch):
+    """Prepare and concatenate two observations as the image flow does."""
+    monkeypatch.setattr(
+        preparation_module,
+        "select_concatenation_command",
+        lambda msfiles, output, **kwargs: ["taql", "select", "from", "giving", f'"{output}"'],
+    )
+    workdir = tmp_path / "image_1"
+    workdir.mkdir()
+    inputs = []
+    for index in range(2):
+        original = tmp_path / f"obs_{index}.ms"
+        original.mkdir()
+        (original / "table.dat").write_text("original")
+        inputs.append(original)
+    original_state = [file_tree_state(path) for path in inputs]
+    sector = {
+        "data_colname": "DATA",
+        "phasecenter": "[0deg, 0deg]",
+        "max_threads": 1,
+        "prepare_data_steps": "[shift]",
+        "concat_path": str(workdir / "sector_1_concat.ms"),
+    }
+    tasks = [
+        {
+            "msin": str(original),
+            "msout": f"sector_1_obs_{index}_prep.ms",
+            "msout_path": str(workdir / f"sector_1_obs_{index}_prep.ms"),
+            "starttime": "50000.0",
+            "ntimes": 10,
+            "freqstep": 1,
+            "timestep": 1,
+            "minchannels": 1,
+        }
+        for index, original in enumerate(inputs)
+    ]
+    commands = _MeasurementSetCommands()
+
+    def run():
+        config = ExecutionConfig(task_runner="sync")
+        prepared = [
+            prepare_visibility_ms(
+                sector, task, str(workdir), config, shell_operation_cls=commands.shell_operation_cls
+            )
+            for task in tasks
+        ]
+        concat = concatenate_prepared_visibilities(
+            sector, prepared, str(workdir), config, shell_operation_cls=commands.shell_operation_cls
+        )
+        return prepared, concat
+
+    yield workdir, commands, run
+    assert [file_tree_state(path) for path in inputs] == original_state
+
+
+def _expected_records(workdir):
+    return [
+        directory_record(workdir / "sector_1_obs_0_prep.ms"),
+        directory_record(workdir / "sector_1_obs_1_prep.ms"),
+    ], directory_record(workdir / "sector_1_concat.ms")
+
+
+def test_imaging_preparation_restarts_after_a_failure_during_creation(imaging_restart):
+    workdir, commands, run = imaging_restart
+    commands.fail = {"taql"}
+    with pytest.raises(RuntimeError, match="taql failed"):
+        run()
+    # The partial concat MS is kept for inspection but is not promoted.
+    assert (workdir / ".sector_1_concat.ms.partial").is_dir()
+    assert not (workdir / "sector_1_concat.ms").exists()
+
+    commands.fail = set()
+    commands.commands.clear()
+    assert run() == _expected_records(workdir)
+    # The prepared MSs were complete and are reused.
+    assert commands.commands == ["taql"]
+    assert not (workdir / ".sector_1_concat.ms.partial").exists()
+    assert (workdir / "sector_1_concat.ms" / "table.dat").read_text() == "taql"
+
+
+def test_imaging_preparation_restarts_after_a_failure_before_promotion(
+    imaging_restart, monkeypatch
+):
+    workdir, commands, run = imaging_restart
+    # Stop after the second DP3 command succeeded, before its MS gets its final name.
+    promotions = []
+
+    def stop_second_promotion(source, destination):
+        promotions.append(destination)
+        if len(promotions) == 2:
+            raise KeyboardInterrupt
+        return original_replace(source, destination)
+
+    original_replace = outputs_module.os.replace
+    with monkeypatch.context() as patch:
+        patch.setattr(outputs_module.os, "replace", stop_second_promotion)
+        with pytest.raises(KeyboardInterrupt):
+            run()
+    assert (workdir / "sector_1_obs_0_prep.ms").is_dir()
+    assert not (workdir / "sector_1_obs_1_prep.ms").exists()
+
+    commands.commands.clear()
+    assert run() == _expected_records(workdir)
+    assert commands.commands == ["DP3", "taql"]
+
+
+def test_imaging_preparation_second_restart_reuses_complete_outputs(imaging_restart):
+    workdir, commands, run = imaging_restart
+    commands.fail = {"taql"}
+    with pytest.raises(RuntimeError, match="taql failed"):
+        run()
+    commands.fail = set()
+    first_records = run()
+    commands.commands.clear()
+
+    assert run() == first_records == _expected_records(workdir)
+    assert commands.commands == []
+    assert sorted(path.name for path in workdir.iterdir()) == [
+        "sector_1_concat.ms",
+        "sector_1_obs_0_prep.ms",
+        "sector_1_obs_1_prep.ms",
+    ]
+
+
+def test_concatenation_replaces_a_partial_ms_of_a_stopped_attempt(tmp_path):
+    """The command selection must not refuse the partial MS that a stopped attempt left."""
+    prepared = tmp_path / "sector_1_obs_0_prep.ms"
+    prepared.mkdir()
+    (tmp_path / ".sector_1_concat.ms.partial").mkdir()
+    sector = {"data_colname": "DATA", "concat_path": str(tmp_path / "sector_1_concat.ms")}
+    commands = _MeasurementSetCommands()
+
+    record = concatenate_prepared_visibilities(
+        sector,
+        [directory_record(prepared)],
+        str(tmp_path),
+        ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=commands.shell_operation_cls,
+    )
+
+    assert record == directory_record(tmp_path / "sector_1_concat.ms")
+    assert commands.commands == ["cp"]
+    assert not (tmp_path / ".sector_1_concat.ms.partial").exists()

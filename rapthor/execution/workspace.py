@@ -10,7 +10,7 @@ import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 log = logging.getLogger("rapthor:workspace")
 WORKSPACE_MARKER = ".rapthor-workspace.json"
@@ -32,7 +32,7 @@ def shared_scratch_workspace(
         yield
         return
 
-    workdir = Path(os.path.abspath(pipeline_working_dir))
+    workdir = _operation_path(pipeline_working_dir)
     recover_scratch_workspace(str(workdir))
     if workdir.is_symlink():
         workspace = workdir.resolve()
@@ -75,6 +75,12 @@ def shared_scratch_workspace(
         _restore_workspace(workdir, workspace)
 
 
+def _operation_path(pipeline_working_dir: Union[str, os.PathLike]) -> Path:
+    # Normalise ".." as well, which Path.absolute() does not, so that the path
+    # compares equal to the one stored in the marker and the recovery record
+    return Path(os.path.abspath(pipeline_working_dir))
+
+
 def _recovery_directory(workdir: Path) -> Path:
     return workdir.with_name(f".{workdir.name}.scratch")
 
@@ -97,7 +103,7 @@ def recover_scratch_workspace(pipeline_working_dir: str) -> None:
     real operation directory is authoritative; otherwise the original backup
     or the scratch workspace still owns the data.
     """
-    workdir = Path(os.path.abspath(pipeline_working_dir))
+    workdir = _operation_path(pipeline_working_dir)
     recovery_dir = _recovery_directory(workdir)
     if not recovery_dir.exists():
         return
@@ -132,6 +138,38 @@ def recover_scratch_workspace(pipeline_working_dir: str) -> None:
         if workspace.parent.exists():
             _remove_workspace(workspace.parent)
         _remove_workspace(recovery_dir)
+
+
+def remove_operation_workspace(pipeline_working_dir: Union[str, os.PathLike]) -> None:
+    """Remove both the scratch workspace and recovery record for an operation.
+
+    While an operation runs with ``global_scratch_dir`` set, its directory is a
+    symbolic link to a workspace on the scratch disk, which sits next to a marker
+    file (``WORKSPACE_MARKER``) naming the operation directory it belongs to; a
+    recovery record beside the operation directory tracks the moves. See
+    :func:`shared_scratch_workspace` for the moves. A reset may find the operation
+    at any point of them. A workspace is removed only if its marker names this
+    operation directory; a symbolic link to anything else is removed without
+    following it.
+    """
+    workdir = _operation_path(pipeline_working_dir)
+    recovery_dir = _recovery_directory(workdir)
+    workspaces = [workdir.resolve()] if workdir.is_symlink() else []
+    try:
+        record = json.loads((recovery_dir / WORKSPACE_MARKER).read_text())
+        workspaces.append(Path(record["workspace"]))
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    for workspace in workspaces:
+        if _workspace_owner(workspace) == str(workdir):
+            _remove_workspace(workspace.parent)
+        elif workspace.exists():
+            log.warning("Keeping %s, which does not belong to %s", workspace, workdir)
+    for path in (workdir, recovery_dir):
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.exists():
+            _remove_workspace(path)
 
 
 def _workspace_owner(workspace: Path) -> Optional[str]:

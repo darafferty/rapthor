@@ -1,12 +1,36 @@
 """Shared output discovery helpers for execution tasks."""
 
 import glob
+import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Iterable, Mapping, Optional, Union
+from typing import Iterable, Mapping, Optional, Sequence, Union
 
-from rapthor.lib.records import directory_record, file_record
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.shell import run_external_command
+from rapthor.lib.records import (
+    directory_record,
+    file_record,
+    partial_product_path,
+    remove_directory,
+)
+
+log = logging.getLogger("rapthor:outputs")
+
+# Model images of a sector, and the mosaics made from them
+_MODEL_IMAGE_SUFFIXES = ("model-pb.fits", "filtered-model.fits")
+
+
+def is_model_image(path: str) -> bool:
+    """
+    Return whether ``path`` names a model image, compressed or not.
+
+    These are the true-sky model images made by WSClean and the images of the
+    filtered sky model, and their mosaics. They hold the flux of the sky-model
+    components on a background of zeros, unlike the other images, which hold noise.
+    """
+    return os.path.basename(path).removesuffix(".fz").endswith(_MODEL_IMAGE_SUFFIXES)
 
 
 def require_file(path: str, description: str) -> dict:
@@ -67,9 +91,43 @@ def file_records_for_required_patterns(patterns: list[str], description: str) ->
     return records
 
 
-def compressed_file_record(record: dict, description: str) -> dict:
-    """Return a File record for the compressed version of an output record."""
-    return require_file(f"{record['path']}.fz", description)
+def make_product(
+    output_path: str,
+    command: Sequence[str],
+    description: str,
+    pipeline_working_dir: Optional[str],
+    execution_config: ExecutionConfig,
+    *,
+    directory: bool = False,
+    reuse: bool = True,
+    **run_options,
+) -> dict:
+    """
+    Run a command that writes a product to its partial path, then give it its final name.
+
+    A product at ``output_path`` is therefore complete. It is reused if ``reuse``
+    is set, as a resumed run reuses finished operations; otherwise it is made
+    again. Anything at the partial path was left by a stopped attempt and is
+    removed. ``run_options`` are passed on to :func:`run_external_command`.
+    """
+    require = require_directory if directory else require_file
+    _remove_path(partial_product_path(output_path))
+    if reuse and (os.path.isdir(output_path) if directory else os.path.isfile(output_path)):
+        log.info("Using the %s made by an earlier attempt: %s", description, output_path)
+        return require(output_path, description)
+    _remove_path(output_path)
+    run_external_command(command, pipeline_working_dir, execution_config, **run_options)
+    require(partial_product_path(output_path), description)
+    os.replace(partial_product_path(output_path), output_path)
+    return require(output_path, description)
+
+
+def _remove_path(path: str) -> None:
+    """Remove a file, link or directory tree, without following links."""
+    if os.path.islink(path) or os.path.isfile(path):
+        os.unlink(path)
+    elif os.path.isdir(path):
+        shutil.rmtree(path)
 
 
 def cleanup_intermediate_outputs(
@@ -115,4 +173,4 @@ def cleanup_intermediate_outputs(
         if path.is_symlink() or path.is_file():
             path.unlink()
         elif path.is_dir():
-            shutil.rmtree(path)
+            remove_directory(path)

@@ -10,14 +10,13 @@ from rapthor.execution.concatenate.payloads import (
     validate_concatenate_payload,
 )
 from rapthor.execution.config import ExecutionConfig
-from rapthor.execution.outputs import require_directory
+from rapthor.execution.outputs import make_product
 from rapthor.execution.payloads import assert_serializable_payload
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
 from rapthor.execution.run_names import operation_run_name, task_run_options
-from rapthor.execution.shell import run_external_command
 from rapthor.execution.task_metrics import record_task_runtime
 from rapthor.execution.task_runner import run_flow_with_task_runner
-from rapthor.lib.records import validate_output_record
+from rapthor.lib.records import partial_product_path, validate_output_record
 
 
 def concatenate_flow(
@@ -98,24 +97,31 @@ def run_concatenate_epoch(
     execution_config: Optional[ExecutionConfig] = None,
     shell_operation_cls=None,
 ) -> dict:
-    """Run concatenation for one epoch and return a directory output record."""
+    """
+    Run concatenation for one epoch and return a directory output record.
+
+    A concatenated MS that an earlier attempt completed is reused.
+    """
     config = execution_config or ExecutionConfig(task_runner="sync")
-    input_filenames = epoch["input_filenames"]
     output_path = epoch["output_path"]
+    # A stopped attempt may have left a partial output, which is replaced
     command = select_concatenation_command(
-        input_filenames,
-        output_path,
+        epoch["input_filenames"],
+        partial_product_path(output_path),
         data_colname,
+        overwrite=True,
         use_array_beam=use_array_beam,
     )
-    run_external_command(
+    return make_product(
+        output_path,
         command,
+        "Concatenate output",
         pipeline_working_dir,
         config,
+        directory=True,
         name="concatenate_epoch",
         shell_operation_cls=shell_operation_cls,
     )
-    return require_directory(output_path, "Concatenate output")
 
 
 def _result_from_epoch_records(outputs: list[dict]) -> dict:

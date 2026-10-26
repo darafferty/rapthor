@@ -367,7 +367,6 @@ def compress_image_sector_products(
         diagnostics_result,
     )
     output_sector_images, output_extra_images = compress_image_records(
-        str(sector["image_name"]),
         sector_images,
         extra_images,
         pipeline_working_dir,

@@ -130,7 +130,9 @@ The available options are described below under their respective sections.
     ntimes_to_repeat_final_cycle
         Number of times to repeat the final cycle, if done (default = 0). Setting this
         parameter to a value of one or more may improve the final results but will increase
-        the processing time
+        the processing time. The first final cycle starts from the input data and peels
+        outliers if the first selfcal cycle did; each repeat uses the data of the cycle
+        before it, so outliers are not peeled again.
 
     input_h5parm
         Full path to an H5parm file with scalar phase or diagonal slow-gain
@@ -569,20 +571,24 @@ The available options are described below under their respective sections.
 
     save_filtered_model_image
         Save images of the filtered sky model made during each imaging cycle
-        (default = ``False``).
+        (default = ``False``). No image is made in a cycle that also images
+        Stokes Q, U and V. See :ref:`model_mosaics`.
 
     model_mosaic_method
         Method used to generate model mosaics from multiple imaging sectors
         (default = ``wsclean``). With ``wsclean``, the model mosaic is drawn by
         WSClean from the sky models of the sectors. With ``sparse_fits``, the
         model images of the sectors are regridded instead; this method is
-        intended mainly for testing.
+        intended mainly for testing. See :ref:`model_mosaics` for what each
+        method produces, and for cycles that image Stokes Q, U and V.
 
     compress_selfcal_images
         Compress intermediate selfcal images to reduce storage space (default = ``True``). Uses default
-        ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_ 
+        ``fpack`` compression parameters, see `fpack documentation <https://heasarc.gsfc.nasa.gov/fitsio/fpack/>`_
         for details on precision. Some tools may be unable to read compressed fits files and will
         require decompression to be run first. This can be done with the ``funpack`` tool .
+        The model images made by WSClean and the mosaics of model images are, however,
+        compressed without loss, so that their pixel values are kept exactly.
 
     compress_final_images
         Compress the final images to reduce storage space (default = ``False``).
@@ -662,10 +668,10 @@ The available options are described below under their respective sections.
 
     shared_facet_rw
         When using facet-based imaging runs WSClean with the options
-        -shared-facet-reads and -shared-facet-writes 
+        -shared-facet-reads and -shared-facet-writes
         (https://wsclean.readthedocs.io/en/latest/facet_based_imaging.html#enabling-shared-reads).
-        
-        .. warning:: 
+
+        .. warning::
             This option is currently experimental and should be used with caution.
 
     reweight
@@ -712,7 +718,7 @@ The available options are described below under their respective sections.
         Max desired peak flux density reduction at center of the image edges due to
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
-        smearing away from the image centers. Note this option is not considered if 
+        smearing away from the image centers. Note this option is not considered if
         :term:`average_visibilities` = ``False``.
 
     correct_time_frequency_smearing (imaging)
@@ -744,15 +750,15 @@ The available options are described below under their respective sections.
         in wsclean.
 
     photometry_skymodel
-        Full path to the sky model file for photometry comparison when generating 
-        image diagnostics. If this is not set, a sky model will be downloaded from 
+        Full path to the sky model file for photometry comparison when generating
+        image diagnostics. If this is not set, a sky model will be downloaded from
         the TGSS and LOTSS catalogs. If this is not possible a backup sky model will be
-        downloaded from the NVSS catalog. Default = ``None`` (sky model will be 
+        downloaded from the NVSS catalog. Default = ``None`` (sky model will be
         downloaded by default).
 
     astrometry_skymodel
-        Full path to the sky model file for astrometry comparison when generating 
-        image diagnostics. If this is not set, a sky model will be downloaded from 
+        Full path to the sky model file for astrometry comparison when generating
+        image diagnostics. If this is not set, a sky model will be downloaded from
         Pan-STARRS. Default = ``None`` (sky model will be downloaded by default).
 
     normalization_skymodels
@@ -995,10 +1001,6 @@ for how these options are used.
         test-robust`` (default = ``None``). The labels can be used in the
         dashboard to find the run and everything that belongs to it.
 
-    prefect_retries
-        Number of times that a step that failed is tried again before the
-        operation is stopped (default = ``0``).
-
     prefect_log_commands
         Record every command that is run in ``dir_working/logs/commands.jsonl``
         and write its output to ``dir_working/logs/<operation>/<task>.log``
@@ -1013,11 +1015,10 @@ for how these options are used.
 
     prefect_command_profile
         Sets how the resource use of each command is measured: ``auto``,
-        ``time``, or ``off`` (default = ``auto``). If ``auto`` or
-        ``time``, the CPU time, memory use, and disk I/O of each command are
-        recorded in ``dir_working/logs/commands.jsonl``, using
-        ``/usr/bin/time`` when it is available. If ``off``, only the run time
-        of each command is recorded.
+        ``time``, or ``off`` (default = ``auto``). If ``off`` only the run
+        time of each command is recorded. If ``auto`` or ``time``, memory
+        usage and disk I/O of are also recorded.
+        The profile output is stored in ``dir_working/logs/commands.jsonl``.
 
     prefect_publish_fits_previews
         Make PNG previews of the images and show them in the Prefect dashboard
@@ -1070,7 +1071,7 @@ for how these options are used.
     allow_internet_access
         Allow internet access for downloading sky models when these are not provided.
         Default = ``True``. If ``False``, then the user must either provide the path
-        to a sky model (see :term:`input_skymodel`) or set 
+        to a sky model (see :term:`input_skymodel`) or set
         :term:`generate_initial_skymodel` = ``True``. If photometry and/or astrometry
         skymodels are not provided, then these will not be downloaded and the image
         diagnostics will not be generated.
