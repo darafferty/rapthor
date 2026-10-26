@@ -371,7 +371,7 @@ skip_corner_sectors = False
 photometry_skymodel = None
 astrometry_skymodel = None
 # List of (at least two) paths to sky model files and their reference frequencies
-# for flux normalization if this is enabled in the strategy file (default None 
+# for flux normalization if this is enabled in the strategy file (default None
 # will attempt to download sky models if internet access is allowed)
 normalization_skymodels = None
 normalization_reference_frequencies = None
@@ -398,9 +398,9 @@ batch_system = single_machine
 # value to the number of processors per node, one can ensure that each task gets
 # the entire node to itself, which is the recommended way of running Rapthor.
 #
-# For the single_machine batch system, the number of Dask workers to start can
-# be specified with the local_dask_workers option (default = 0 = one worker).
-# Each worker runs one step of the processing at a time
+# The total number of Dask workers to start can be specified with the
+# local_dask_workers option (default = 0 = one worker per node).
+# Each worker runs one processing step at a time.
 max_nodes = 0
 local_dask_workers = 0
 cpus_per_task = 0
