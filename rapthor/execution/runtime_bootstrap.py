@@ -220,7 +220,6 @@ def bootstrapped_runtime(
             local_dashboard_url = getattr(local_dask_cluster, "dashboard_url", None)
             effective_config = replace(
                 execution_config,
-                task_runner="external_dask",
                 dask_scheduler=local_scheduler,
             )
             plan = replace(

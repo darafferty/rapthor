@@ -265,7 +265,7 @@ def test_bootstrapped_runtime_reuses_one_local_dask_scheduler_for_run(caplog):
         assert plan.dask_scheduler == "tcp://127.0.0.1:8786"
         assert plan.dask_worker_count == 2
         assert plan.dask_dashboard_url == "http://127.0.0.1:8787/status"
-        assert plan.execution_config.task_runner == "external_dask"
+        assert plan.execution_config.task_runner == "local_dask"
         assert plan.execution_config.dask_scheduler == "tcp://127.0.0.1:8786"
         assert clusters[0].closed is False
 
@@ -292,7 +292,7 @@ def test_bootstrapped_runtime_reuses_one_local_dask_scheduler_for_run(caplog):
             None,
             None,
             "tcp://local-dask:8786",
-            "external_dask",
+            "local_dask",
             1,
             [],
             id="no-prefect-no-dask",
@@ -303,7 +303,7 @@ def test_bootstrapped_runtime_reuses_one_local_dask_scheduler_for_run(caplog):
             None,
             "http://prefect.example:4200/api",
             "tcp://local-dask:8786",
-            "external_dask",
+            "local_dask",
             1,
             [],
             id="existing-prefect-no-dask",
