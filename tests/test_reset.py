@@ -350,8 +350,8 @@ def test_reset_refuses_to_reset_without_the_working_directory_lock(
 ):
     image = _write_prefect_operation_state(working_dir, "image_1")
     if cause == "held-by-a-run":
-        lock = working_dir_lock.working_directory_lock(str(working_dir), "a Rapthor run")
-        expected = "is locked by a Rapthor run"
+        lock = working_dir_lock.working_directory_lock(str(working_dir), "a Rapthor test")
+        expected = "is locked by a Rapthor test"
     else:
         lock = nullcontext()
         expected = "Could not lock the working directory"
