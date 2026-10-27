@@ -126,7 +126,7 @@
     "cluster": {
         "batch_system": "single_machine",
         "max_nodes": 0,
-        "local_dask_workers": 0,
+        "local_dask_workers": 1,
         "cpus_per_task": 0,
         "mem_per_node_gb": 0,
         "fail_on_calibration_oom_risk": false,

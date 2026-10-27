@@ -809,8 +809,9 @@ for how these options are used.
         at the same time.
 
     local_dask_workers
-        Number of Dask workers to start when Rapthor is run on a single machine
-        (default = 0 = one worker). Each worker runs one step of the
+        Number of Dask workers to start when Rapthor uses the ``single_machine``
+        batch system (default = 1). For other batch systems, Rapthor ignores
+        this setting. Each worker runs one step of the
         processing at a time, so this is the number of DP3 or WSClean commands
         that can be run at the same time. See :ref:`local_dask_runtime` for
         when it is useful to set this.

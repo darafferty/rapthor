@@ -204,19 +204,13 @@ def test_execution_config_resolves_only_shared_scratch_on_driver(tmp_path, monke
 
 
 def test_execution_config_exposes_effective_local_dask_capacity():
-    config = ExecutionConfig(max_nodes=0, cpus_per_task=0)
+    config = ExecutionConfig(cpus_per_task=0)
 
     assert config.local_dask_worker_count == 1
     assert config.local_dask_threads_per_worker == 1
     assert config.command_threads_per_task == 1
 
-    config = ExecutionConfig(max_nodes=4, local_dask_workers=0, cpus_per_task=8)
-
-    assert config.local_dask_worker_count == 4
-    assert config.local_dask_threads_per_worker == 1
-    assert config.command_threads_per_task == 8
-
-    config = ExecutionConfig(max_nodes=1, local_dask_workers=4, cpus_per_task=8)
+    config = ExecutionConfig(local_dask_workers=4, cpus_per_task=8)
 
     assert config.local_dask_worker_count == 4
     assert config.local_dask_threads_per_worker == 1
@@ -252,9 +246,10 @@ def test_execution_config_treats_none_command_profile_as_auto():
     assert config.command_profile == "auto"
 
 
-def test_execution_config_rejects_negative_local_dask_workers():
+@pytest.mark.parametrize("workers", [0, -1])
+def test_execution_config_rejects_invalid_local_dask_workers(workers):
     with pytest.raises(ValueError, match="local_dask_workers"):
-        ExecutionConfig.from_parset({"cluster_specific": {"local_dask_workers": -1}})
+        ExecutionConfig.from_parset({"cluster_specific": {"local_dask_workers": workers}})
 
 
 def test_execution_config_rejects_invalid_fits_preview_artifact_flag():

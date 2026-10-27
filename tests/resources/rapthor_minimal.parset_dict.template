@@ -48,7 +48,7 @@
                       'global_scratch_dir': None,
                       'keep_temporary_files': False,
                       'allow_internet_access': True,
-                      'local_dask_workers': 0,
+                      'local_dask_workers': 1,
                       'max_cores': 8,
                       'max_nodes': 1,
                       'max_threads': 8,
