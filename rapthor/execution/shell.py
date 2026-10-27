@@ -9,7 +9,6 @@ import re
 import resource
 import shutil
 import subprocess
-import tempfile
 import threading
 import time
 from dataclasses import dataclass, field, replace
@@ -410,7 +409,6 @@ def _run_captured_shell_command(
     output_lines = []
     process = None
     reader_thread = None
-    temp_file = None
     output_log_handle = None
     try:
         if output_log_path is not None:
@@ -423,14 +421,6 @@ def _run_captured_shell_command(
                 task_metadata=task_metadata,
             )
 
-        temp_file = tempfile.NamedTemporaryFile(
-            prefix="rapthor-prefect-",
-            suffix=".sh",
-            delete=False,
-        )
-        temp_file.write(shell_command.command_string.encode())
-        temp_file.close()
-
         env = os.environ.copy()
         for key, value in shell_command.environment.items():
             if value is None:
@@ -438,7 +428,7 @@ def _run_captured_shell_command(
             else:
                 env[key] = value
         process_args = _profiled_process_args(
-            ["bash", temp_file.name],
+            normalize_command(shell_command.command),
             shell_command,
             execution_config,
             started_at,
@@ -514,8 +504,6 @@ def _run_captured_shell_command(
             process.wait()
         if reader_thread is not None:
             reader_thread.join(timeout=1)
-        if temp_file is not None and os.path.exists(temp_file.name):
-            os.remove(temp_file.name)
         if output_log_handle is not None:
             _write_command_output_footer(
                 output_log_handle,
