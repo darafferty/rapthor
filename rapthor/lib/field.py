@@ -1741,7 +1741,7 @@ class Field(object):
             If True, attempt to derive the solution time steps from the
             solutions. These time steps are stored in the same attributes set
             by the calibration strategy. If this parameter is False or the
-            steps cannot be derived, the exiting values of these attributes are
+            steps cannot be derived, the existing values of these attributes are
             not altered.
         """
         filename = str(filename)
@@ -1801,7 +1801,7 @@ class Field(object):
                     if is_fulljones:
                         raise ValueError(
                             f"The full-Jones solution file {filename!r} must have"
-                            "both a phase000 soltab and a amplitude000 soltab."
+                            "both a phase000 soltab and an amplitude000 soltab."
                         )
                     return False
             raise ValueError(
