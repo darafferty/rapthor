@@ -159,7 +159,7 @@ def preflight_runtime(
         log.info(
             "Using local Dask with %s single-threaded worker(s); "
             "external commands may use up to %s thread(s) per task.",
-            execution_config.local_dask_worker_count,
+            execution_config.local_dask_workers,
             execution_config.command_threads_per_task,
         )
     else:

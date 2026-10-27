@@ -141,11 +141,6 @@ class ExecutionConfig:
         return _optional_path(self.local_scratch_dir)
 
     @property
-    def local_dask_worker_count(self) -> int:
-        """Return the worker count used for a local Dask cluster."""
-        return self.local_dask_workers
-
-    @property
     def local_dask_threads_per_worker(self) -> int:
         """Return the Dask task-engine thread count for each local worker.
 

@@ -105,7 +105,7 @@ def local_cluster_kwargs(execution_config: ExecutionConfig) -> dict:
     parallelism is controlled separately by ``cpus_per_task``.
     """
     kwargs = {
-        "n_workers": execution_config.local_dask_worker_count,
+        "n_workers": execution_config.local_dask_workers,
         "threads_per_worker": execution_config.local_dask_threads_per_worker,
         "processes": True,
     }
@@ -132,7 +132,7 @@ def start_local_dask_cluster(
         cluster_cls = cluster_cls or loaded_cluster_cls
         client_cls = client_cls or loaded_client_cls
 
-    worker_count = execution_config.local_dask_worker_count
+    worker_count = execution_config.local_dask_workers
     cluster = cluster_cls(**local_cluster_kwargs(execution_config))
     client = None
     try:

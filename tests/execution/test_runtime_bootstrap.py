@@ -248,7 +248,7 @@ def test_bootstrapped_runtime_reuses_one_local_dask_scheduler_for_run(caplog):
     clusters = []
 
     def start_cluster(execution_config):
-        clusters.append(FakeLocalDaskCluster(worker_count=execution_config.local_dask_worker_count))
+        clusters.append(FakeLocalDaskCluster(worker_count=execution_config.local_dask_workers))
         return clusters[-1]
 
     with bootstrapped_runtime(
@@ -357,7 +357,7 @@ def test_bootstrapped_runtime_launch_matrix(
     def start_cluster(execution_config):
         cluster = FakeLocalDaskCluster(
             scheduler_address="tcp://local-dask:8786",
-            worker_count=execution_config.local_dask_worker_count,
+            worker_count=execution_config.local_dask_workers,
         )
         clusters.append(cluster)
         return cluster

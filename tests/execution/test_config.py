@@ -206,13 +206,13 @@ def test_execution_config_resolves_only_shared_scratch_on_driver(tmp_path, monke
 def test_execution_config_exposes_effective_local_dask_capacity():
     config = ExecutionConfig(cpus_per_task=0)
 
-    assert config.local_dask_worker_count == 1
+    assert config.local_dask_workers == 1
     assert config.local_dask_threads_per_worker == 1
     assert config.command_threads_per_task == 1
 
     config = ExecutionConfig(local_dask_workers=4, cpus_per_task=8)
 
-    assert config.local_dask_worker_count == 4
+    assert config.local_dask_workers == 4
     assert config.local_dask_threads_per_worker == 1
     assert config.command_threads_per_task == 8
 
