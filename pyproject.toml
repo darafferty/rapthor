@@ -175,7 +175,9 @@ deps = [
 # EveryBeam looks for its coefficient files under $VIRTUAL_ENV/share/everybeam
 # when EVERYBEAM_DATADIR is unset, and tox points VIRTUAL_ENV at its own
 # environment, so pass the image's setting through to DP3 and WSClean.
-pass_env = ["EVERYBEAM_DATADIR"]
+# The PYTEST_XDIST_AUTO_NUM_WORKERS variable allows reducing the number of pytest
+# workers, e.g., for CI runners, which otherwise run out of memory.
+pass_env = ["EVERYBEAM_DATADIR", "PYTEST_XDIST_AUTO_NUM_WORKERS"]
 commands = [
     # Tests marked `serial` launch Python subprocesses that start their own Prefect
     # server and Dask cluster. Run them first, on their own, because under the
