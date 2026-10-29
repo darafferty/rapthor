@@ -154,23 +154,10 @@ def test_command_environment_is_isolated_from_worker_and_later_commands(
     }
 
 
-def test_run_shell_command_uses_injected_operation_class():
-    FakeShellOperation.instances = []
-
-    result = run_shell_command(
-        ShellCommand(["echo", "hello"]),
-        ExecutionConfig(),
-        shell_operation_cls=FakeShellOperation,
-    )
-
-    assert result == "OK"
-    assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
-
-
 def test_run_external_command_builds_shell_command_metadata():
     FakeShellOperation.instances = []
 
-    result = run_external_command(
+    run_external_command(
         ["echo", "hello"],
         "/tmp/task",
         ExecutionConfig(),
@@ -179,7 +166,6 @@ def test_run_external_command_builds_shell_command_metadata():
         shell_operation_cls=FakeShellOperation,
     )
 
-    assert result == "OK"
     assert FakeShellOperation.instances[0].kwargs["commands"] == ["echo hello"]
     assert FakeShellOperation.instances[0].kwargs["working_dir"] == "/tmp/task"
     assert FakeShellOperation.instances[0].kwargs["env"] == {"OMP_NUM_THREADS": "4"}
@@ -356,7 +342,7 @@ def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_pat
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "profile_1"
     pipeline_working_dir.mkdir(parents=True)
 
-    result = run_shell_command(
+    run_shell_command(
         ShellCommand(
             [sys.executable, "-c", "print('profiled')"],
             working_directory=str(pipeline_working_dir),
@@ -365,7 +351,6 @@ def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_pat
         ExecutionConfig(stream_output=True, command_profile=profile_mode),
     )
 
-    assert result == ["profiled"]
     record = json.loads((tmp_path / "work" / "logs" / "commands.jsonl").read_text())
     assert record["duration_seconds"] >= 0  # Total duration is always measured.
     if profile_mode != "off":
@@ -391,7 +376,7 @@ def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_pat
 def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):
     caplog.set_level(logging.INFO, logger="rapthor:shell")
 
-    result = run_shell_command(
+    run_shell_command(
         ShellCommand(
             [sys.executable, "-c", "print('clean line')"],
             working_directory=str(tmp_path),
@@ -399,7 +384,6 @@ def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):
         ExecutionConfig(stream_output=True),
     )
 
-    assert result == ["clean line"]
     assert "clean line" in caplog.text
     assert "PID" not in caplog.text
     assert "stream output" not in caplog.text
@@ -408,7 +392,7 @@ def test_run_shell_command_streams_clean_output_to_logger(tmp_path, caplog):
 def test_run_shell_command_batches_nearby_output_lines(tmp_path, caplog):
     caplog.set_level(logging.INFO, logger="rapthor:shell")
 
-    result = run_shell_command(
+    run_shell_command(
         ShellCommand(
             [sys.executable, "-c", "print('first'); print('second'); print('third')"],
             working_directory=str(tmp_path),
@@ -417,7 +401,6 @@ def test_run_shell_command_batches_nearby_output_lines(tmp_path, caplog):
     )
 
     messages = [record.getMessage() for record in caplog.records if record.name == "rapthor:shell"]
-    assert result == ["first", "second", "third"]
     assert len(messages) == 1
     assert "first\nsecond\nthird" in messages[0]
     assert "first" not in messages
@@ -438,7 +421,7 @@ def test_run_shell_command_writes_output_without_streaming(tmp_path, caplog, mon
         },
     )
 
-    result = run_shell_command(
+    run_shell_command(
         ShellCommand(
             [sys.executable, "-c", "print('durable output')"],
             working_directory=str(pipeline_working_dir),
@@ -447,7 +430,6 @@ def test_run_shell_command_writes_output_without_streaming(tmp_path, caplog, mon
         ExecutionConfig(stream_output=False, command_profile="off"),
     )
 
-    assert result == ["durable output"]
     assert "durable output" not in caplog.text
     output_log_path = tmp_path / "work" / "logs" / "image_1" / "quiet-step.log"
     output_log = output_log_path.read_text(encoding="utf-8")
@@ -464,7 +446,7 @@ def test_run_shell_command_does_not_write_output_when_command_logging_is_disable
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "image_1"
     pipeline_working_dir.mkdir(parents=True)
 
-    result = run_shell_command(
+    run_shell_command(
         ShellCommand(
             [sys.executable, "-c", "print('unrecorded output')"],
             working_directory=str(pipeline_working_dir),
@@ -477,7 +459,6 @@ def test_run_shell_command_does_not_write_output_when_command_logging_is_disable
         ),
     )
 
-    assert result == ["unrecorded output"]
     assert not (tmp_path / "work" / "logs").exists()
 
 
