@@ -7,7 +7,7 @@ from rapthor.execution.slurm import collect_slurm_config_issues, slurm_cluster_s
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_slurm_cluster_spec_uses_slurm_allocation_environment():
+def test_slurm_cluster_spec_uses_slurm_allocation_environment(monkeypatch):
     config = ExecutionConfig(
         task_runner="external_dask",
         batch_system="slurm",
@@ -21,7 +21,8 @@ def test_slurm_cluster_spec_uses_slurm_allocation_environment():
         "SLURM_CPUS_PER_TASK": "32",
     }
 
-    spec = slurm_cluster_spec(config, environ=environ)
+    monkeypatch.setattr("os.environ", environ)
+    spec = slurm_cluster_spec(config)
 
     assert spec.node_count == 4
     assert spec.task_count == 4
@@ -32,7 +33,9 @@ def test_slurm_cluster_spec_uses_slurm_allocation_environment():
     assert spec.memory_per_node_gb == 256
 
 
-def test_slurm_cluster_spec_uses_execution_config_without_slurm_environment():
+def test_slurm_cluster_spec_uses_execution_config_without_slurm_environment(monkeypatch):
+    monkeypatch.setattr("os.environ", {})
+
     spec = slurm_cluster_spec(
         ExecutionConfig(
             task_runner="external_dask",
@@ -63,15 +66,16 @@ def test_slurm_cluster_spec_keeps_prefect_task_execution_single_threaded():
     assert spec.command_threads_per_task == 8
 
 
-def test_collect_slurm_config_issues_reports_too_few_tasks():
+def test_collect_slurm_config_issues_reports_too_few_tasks(monkeypatch):
+    monkeypatch.setattr("os.environ", {"SLURM_NNODES": "4", "SLURM_NTASKS": "2"})
+
     issues = collect_slurm_config_issues(
         ExecutionConfig(
             task_runner="external_dask",
             dask_scheduler="tcp://scheduler:8786",
             batch_system="slurm",
             max_nodes=0,
-        ),
-        environ={"SLURM_NNODES": "4", "SLURM_NTASKS": "2"},
+        )
     )
 
     assert issues == [
@@ -83,10 +87,11 @@ def test_collect_slurm_config_issues_reports_too_few_tasks():
     ]
 
 
-def test_collect_slurm_config_issues_rejects_invalid_environment():
+def test_collect_slurm_config_issues_rejects_invalid_environment(monkeypatch):
+    monkeypatch.setattr("os.environ", {"SLURM_NNODES": "many"})
+
     issues = collect_slurm_config_issues(
-        ExecutionConfig(task_runner="external_dask", batch_system="slurm"),
-        environ={"SLURM_NNODES": "many"},
+        ExecutionConfig(task_runner="external_dask", batch_system="slurm")
     )
 
     assert issues == [("invalid_slurm_allocation", "SLURM_NNODES must be an integer")]
