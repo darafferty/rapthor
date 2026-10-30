@@ -81,13 +81,14 @@ def test_shell_operation_kwargs_separate_environment_removals():
     assert kwargs["env"] == {"OMP_NUM_THREADS": "4"}
 
 
-@pytest.mark.parametrize("injected_runner", [False, True])
 @pytest.mark.parametrize("inherited_trim", [None, "65536"])
 @pytest.mark.parametrize("command_string", [False, True])
 def test_command_environment_is_isolated_from_worker_and_later_commands(
-    tmp_path, monkeypatch, injected_runner, inherited_trim, command_string
+    tmp_path, caplog, monkeypatch, inherited_trim, command_string
 ):
     from prefect_shell import ShellOperation
+
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
 
     if inherited_trim is None:
         monkeypatch.delenv("MALLOC_TRIM_THRESHOLD_", raising=False)
@@ -118,34 +119,38 @@ def test_command_environment_is_isolated_from_worker_and_later_commands(
         "RAPTHOR_TEST_VALUE": "literal spaces ' $HOME ;",
         "RAPTHOR_TEST_EMPTY": "",
     }
-    config = ExecutionConfig(log_commands=False, stream_output=False, command_profile="off")
-    runner = ShellOperation if injected_runner else None
+    config = ExecutionConfig(log_commands=False, command_profile="off")
 
-    output = run_external_command(
-        command, str(tmp_path), config, environment=overrides, shell_operation_cls=runner
+    run_external_command(
+        command, str(tmp_path), config, environment=overrides
     )
 
-    expected = {
+    # Extract JSON string from log message, which has ANSI color codes around it.
+    output = caplog.messages[-1]
+    output = output[output.find("{"):output.rfind("}")+1]
+    assert json.loads(output) == {
         "MALLOC_TRIM_THRESHOLD_": None,
         "OMP_NUM_THREADS": "4",
         "RAPTHOR_TEST_KEEP": "inherited",
         "RAPTHOR_TEST_VALUE": overrides["RAPTHOR_TEST_VALUE"],
         "RAPTHOR_TEST_EMPTY": "",
     }
-    assert [json.loads(line) for line in output] == [expected]
+
     for key in keys:
         assert os.environ.get(key) == original_environment.get(key)
     assert overrides["MALLOC_TRIM_THRESHOLD_"] is None
 
     # A subsequent command, such as WSClean, still inherits the worker's allocator setting.
-    output = run_external_command(
+    run_external_command(
         command,
         str(tmp_path),
         config,
-        environment={"OMP_NUM_THREADS": "2"},
-        shell_operation_cls=runner,
+        environment={"OMP_NUM_THREADS": "2"}
     )
-    assert json.loads(output[-1]) == {
+
+    output = caplog.messages[-1]
+    output = output[output.find("{"):output.rfind("}")+1]
+    assert json.loads(output) == {
         "MALLOC_TRIM_THRESHOLD_": inherited_trim,
         "OMP_NUM_THREADS": "2",
         "RAPTHOR_TEST_KEEP": "inherited",
@@ -338,7 +343,8 @@ def test_parse_gnu_time_metrics_handles_resource_fields(tmp_path):
 
 
 @pytest.mark.parametrize("profile_mode", ["auto", "time", "off"])
-def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_path, profile_mode):
+@pytest.mark.parametrize("stream_output", [True, False])
+def test_run_shell_command_records_resource_profile(tmp_path, profile_mode, stream_output):
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "profile_1"
     pipeline_working_dir.mkdir(parents=True)
 
@@ -348,7 +354,7 @@ def test_run_shell_command_records_resource_profile_for_streamed_command(tmp_pat
             working_directory=str(pipeline_working_dir),
             name="profiled-step",
         ),
-        ExecutionConfig(stream_output=True, command_profile=profile_mode),
+        ExecutionConfig(stream_output=stream_output, command_profile=profile_mode),
     )
 
     record = json.loads((tmp_path / "work" / "logs" / "commands.jsonl").read_text())
