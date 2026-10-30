@@ -87,7 +87,7 @@ def run_external_command(
     shell_operation_cls=None,
 ):
     """Execute a command with child-only environment overrides (None means unset)."""
-    return run_shell_command(
+    run_shell_command(
         ShellCommand(
             command=command,
             environment={} if environment is None else dict(environment),
@@ -110,7 +110,8 @@ def run_shell_command(
     and PyBDSF. Other commands receive an isolated local scratch directory.
     """
     if "TMPDIR" in shell_command.environment:
-        return _run_shell_command(shell_command, execution_config, shell_operation_cls)
+        _run_shell_command(shell_command, execution_config, shell_operation_cls)
+        return
     with task_temporary_directory(
         execution_config, name=shell_command.name or "command"
     ) as temporary_directory:
@@ -122,7 +123,7 @@ def run_shell_command(
                     **shell_command.environment,
                 },
             )
-        return _run_shell_command(shell_command, execution_config, shell_operation_cls)
+        _run_shell_command(shell_command, execution_config, shell_operation_cls)
 
 
 def _run_shell_command(
@@ -147,7 +148,7 @@ def _run_shell_command(
                     shell_command,
                     task_metadata=task_metadata,
                 )
-            return _run_captured_shell_command(
+            _run_captured_shell_command(
                 shell_command,
                 execution_config,
                 started_at,
@@ -157,7 +158,7 @@ def _run_shell_command(
             )
 
         operation = operation_cls(**shell_operation_kwargs(shell_command, execution_config))
-        return operation.run()
+        operation.run()
     except ShellCommandError as err:
         status = "failed"
         returncode = err.returncode
@@ -406,7 +407,6 @@ def _run_captured_shell_command(
 ) -> list[str]:
     command_logger = _get_command_logger() if execution_config.stream_output else None
     buffered_log_lines = []
-    output_lines = []
     process = None
     reader_thread = None
     output_log_handle = None
@@ -469,7 +469,6 @@ def _run_captured_shell_command(
                 break
 
             lines = _output_lines(raw_line)
-            output_lines.extend(lines)
             if output_log_handle is not None:
                 output_log_handle.write(raw_line.decode(errors="replace"))
             if command_logger is not None:
@@ -510,8 +509,6 @@ def _run_captured_shell_command(
                 returncode=None if process is None else process.returncode,
             )
             output_log_handle.close()
-
-    return output_lines
 
 
 def _profile_directory(shell_command: ShellCommand, started_at: datetime) -> Optional[Path]:
