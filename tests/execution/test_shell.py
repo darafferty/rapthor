@@ -35,6 +35,14 @@ class FakeShellOperation:
         pass
 
 
+def extract_json_from_log(caplog):
+    """Extract JSON from last log message."""
+    message = caplog.messages[-1]
+    # Remove any ANSI color codes from the message.
+    message = message[message.find("{"):message.rfind("}")+1]
+    return json.loads(message)
+
+
 def test_shell_command_formats_tokens():
     command = ShellCommand(["echo", "hello world"])
 
@@ -125,10 +133,7 @@ def test_command_environment_is_isolated_from_worker_and_later_commands(
         command, str(tmp_path), config, environment=overrides
     )
 
-    # Extract JSON string from log message, which has ANSI color codes around it.
-    output = caplog.messages[-1]
-    output = output[output.find("{"):output.rfind("}")+1]
-    assert json.loads(output) == {
+    assert extract_json_from_log(caplog) == {
         "MALLOC_TRIM_THRESHOLD_": None,
         "OMP_NUM_THREADS": "4",
         "RAPTHOR_TEST_KEEP": "inherited",
@@ -148,9 +153,7 @@ def test_command_environment_is_isolated_from_worker_and_later_commands(
         environment={"OMP_NUM_THREADS": "2"}
     )
 
-    output = caplog.messages[-1]
-    output = output[output.find("{"):output.rfind("}")+1]
-    assert json.loads(output) == {
+    assert extract_json_from_log(caplog) == {
         "MALLOC_TRIM_THRESHOLD_": inherited_trim,
         "OMP_NUM_THREADS": "2",
         "RAPTHOR_TEST_KEEP": "inherited",
@@ -201,11 +204,7 @@ def test_command_scratch_environment_is_child_only_and_cleaned(
     )
     run_external_command(command, str(tmp_path), config)
 
-    # Extract JSON string from log message, which has ANSI color codes around it.
-    output = caplog.messages[-1]
-    output = output[output.find("{"):output.rfind("}")+1]
-    environment = json.loads(output)
-
+    environment = extract_json_from_log(caplog)
     temporary_directory = Path(environment["TMPDIR"])
     assert temporary_directory.parent == scratch_root
     assert environment == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory))
@@ -262,11 +261,7 @@ def test_explicit_short_temp_environment_overrides_configured_scratch(
         environment=dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp"),
     )
 
-    # Extract JSON string from log message, which has ANSI color codes around it.
-    output = caplog.messages[-1]
-    output = output[output.find("{"):output.rfind("}")+1]
-
-    assert json.loads(output) == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp")
+    assert extract_json_from_log(caplog) == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp")
     assert dict(os.environ) == original_environment
 
 
