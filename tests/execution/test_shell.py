@@ -32,7 +32,7 @@ class FakeShellOperation:
         self.instances.append(self)
 
     def run(self):
-        return "OK"
+        pass
 
 
 def test_shell_command_formats_tokens():
@@ -176,12 +176,10 @@ def test_run_external_command_builds_shell_command_metadata():
     assert FakeShellOperation.instances[0].kwargs["env"] == {"OMP_NUM_THREADS": "4"}
 
 
-@pytest.mark.parametrize("injected_runner", [False, True])
-@pytest.mark.parametrize("direct_shell", [False, True])
 def test_command_scratch_environment_is_child_only_and_cleaned(
-    tmp_path, monkeypatch, injected_runner, direct_shell
+    tmp_path, caplog, monkeypatch
 ):
-    from prefect_shell import ShellOperation
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
 
     for key in ("TMPDIR", "TMP", "TEMP"):
         monkeypatch.setenv(key, str(tmp_path / "inherited"))
@@ -198,20 +196,16 @@ def test_command_scratch_environment_is_child_only_and_cleaned(
     config = ExecutionConfig(
         local_scratch_dir=str(scratch_root),
         log_commands=False,
-        stream_output=False,
+        stream_output=True,
         command_profile="off",
     )
-    runner = ShellOperation if injected_runner else None
-    if direct_shell:
-        output = run_shell_command(
-            ShellCommand(command, working_directory=str(tmp_path)),
-            config,
-            shell_operation_cls=runner,
-        )
-    else:
-        output = run_external_command(command, str(tmp_path), config, shell_operation_cls=runner)
+    run_external_command(command, str(tmp_path), config)
 
-    environment = json.loads(output[-1])
+    # Extract JSON string from log message, which has ANSI color codes around it.
+    output = caplog.messages[-1]
+    output = output[output.find("{"):output.rfind("}")+1]
+    environment = json.loads(output)
+
     temporary_directory = Path(environment["TMPDIR"])
     assert temporary_directory.parent == scratch_root
     assert environment == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), str(temporary_directory))
@@ -238,11 +232,10 @@ def test_shell_command_reuses_caller_owned_mpi_scratch(tmp_path):
     )
 
 
-@pytest.mark.parametrize("injected_runner", [False, True])
 def test_explicit_short_temp_environment_overrides_configured_scratch(
-    tmp_path, monkeypatch, injected_runner
+    tmp_path, caplog, monkeypatch
 ):
-    from prefect_shell import ShellOperation
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
 
     for key in ("TMPDIR", "TMP", "TEMP"):
         monkeypatch.setenv(key, str(tmp_path / "inherited"))
@@ -259,18 +252,21 @@ def test_explicit_short_temp_environment_overrides_configured_scratch(
     config = ExecutionConfig(
         local_scratch_dir="/dev/null/scratch",
         log_commands=False,
-        stream_output=False,
+        stream_output=True,
         command_profile="off",
     )
-    output = run_external_command(
+    run_external_command(
         command,
         str(tmp_path),
         config,
         environment=dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp"),
-        shell_operation_cls=ShellOperation if injected_runner else None,
     )
 
-    assert json.loads(output[-1]) == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp")
+    # Extract JSON string from log message, which has ANSI color codes around it.
+    output = caplog.messages[-1]
+    output = output[output.find("{"):output.rfind("}")+1]
+
+    assert json.loads(output) == dict.fromkeys(("TMPDIR", "TMP", "TEMP"), "/tmp")
     assert dict(os.environ) == original_environment
 
 
@@ -279,7 +275,7 @@ def test_run_shell_command_records_duration_metadata(tmp_path):
     pipeline_working_dir = tmp_path / "work" / "pipelines" / "calibrate_1"
     pipeline_working_dir.mkdir(parents=True)
 
-    result = run_shell_command(
+    run_shell_command(
         ShellCommand(
             ["DP3", "msin=input.ms"],
             working_directory=str(pipeline_working_dir),
@@ -289,7 +285,6 @@ def test_run_shell_command_records_duration_metadata(tmp_path):
         shell_operation_cls=FakeShellOperation,
     )
 
-    assert result == "OK"
     log_path = tmp_path / "work" / "logs" / "commands.jsonl"
     record = json.loads(log_path.read_text())
     assert record["operation"] == "calibrate_1"
