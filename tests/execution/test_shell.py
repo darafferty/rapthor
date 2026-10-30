@@ -212,7 +212,8 @@ def test_command_scratch_environment_is_child_only_and_cleaned(
     assert dict(os.environ) == original_environment
 
 
-def test_shell_command_reuses_caller_owned_mpi_scratch(tmp_path):
+def test_shell_command_uses_tmpdir_over_local_scratch(tmp_path):
+    """local_scratch_dir should be ignored when the environment overrides TMPDIR."""
     FakeShellOperation.instances = []
     temporary_directory = tmp_path / "shared-task"
     temporary_directory.mkdir()
