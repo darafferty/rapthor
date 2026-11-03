@@ -2,6 +2,8 @@
 Test cases for the calibration operation modules.
 """
 
+from pathlib import Path
+
 import pytest
 
 from rapthor.execution.calibrate.builders import calibrate_payload_from_inputs
@@ -750,6 +752,41 @@ class TestCalibrate:
 
         # finalize() should create a .done file (via the base Operation class).
         assert (pipelines_path / ".done").exists()
+
+    @pytest.mark.parametrize(
+        "solves, active_input_key",
+        [
+            (["fast_phase"], "collected_solve1_h5parm"),
+            (["fast_phase", "medium_phase"], "combined_phase_1_2_h5parm"),
+            (["fast_phase", "medium_phase", "slow_gains"], "combined_h5parms"),
+        ],
+    )
+    def test_finalize_makes_all_requested_dd_solves_the_active_solutions(
+        self, mocker, calibrate_field, tmp_path, solves, active_input_key
+    ):
+        field = calibrate_field
+        field.calibration_strategy = {"dd": solves, "di": []}
+        field._calibration_strategy_defaulted = False
+        mocker.patch("rapthor.lib.miscellaneous.get_flagged_solution_fraction", return_value=0.0)
+
+        workdir_path = tmp_path / "working"
+        pipelines_path = workdir_path / "pipelines" / "calibrate_1"
+        plots_path = workdir_path / "plots" / "calibrate_1"
+        plot_outputs = finalize_prepare_plots(pipelines_path, plots_path)
+
+        calibrate = Calibrate(mode="dd", field=field, index=1)
+        calibrate.set_input_parameters()
+        calibrate.outputs = plot_outputs
+        # Give each file that the flow was told to write content that identifies it
+        for key, filename in calibrate.input_parms.items():
+            if key.startswith(("collected_solve", "combined_")) and filename != "unused":
+                (pipelines_path / filename).write_text(filename)
+
+        calibrate.finalize()
+
+        assert Path(field.h5parm_filename).read_text() == calibrate.input_parms[active_input_key]
+        # The fast phases are also kept on their own, to seed later solves
+        assert Path(field.fast_phases_h5parm_filename).read_text() == "fast_phases.h5parm"
 
     @pytest.mark.parametrize(
         "mode, generate_screens, use_image_based_predict, calibration_strategy, has_slow_gain_solve",

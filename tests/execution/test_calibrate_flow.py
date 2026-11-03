@@ -3709,7 +3709,7 @@ def test_calibrate_dd_fast_medium_operation_run_uses_prefect_flow(
     assert field.h5parm_filename == str(solutions_dir / "field-solutions.h5")
     assert field.dd_h5parm_filename == str(solutions_dir / "field-solutions.h5")
     assert field.fast_phases_h5parm_filename == str(solutions_dir / "field-solutions-fast-phase.h5")
-    assert (solutions_dir / "field-solutions.h5").read_text() == "collected"
+    assert (solutions_dir / "field-solutions.h5").read_text() == "combined"
     assert (solutions_dir / "field-solutions-fast-phase.h5").read_text() == "collected"
     assert (solutions_dir / "field-solutions-medium1-phase.h5").read_text() == "collected"
     assert (plots_dir / "phase_solutions.png").is_file()
