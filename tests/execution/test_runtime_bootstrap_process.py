@@ -172,10 +172,9 @@ def test_runtime_bootstrap_process_matrix(tmp_path, scenario):
 
     assert result["flow_result"]["computed"] == 2
     assert result["flow_result"]["analytics"] == "false"
-    assert result["effective_task_runner"] == "external_dask"
     assert result["dask_worker_count"] == 1
 
-    if scenario.startswith("prefect"):
+    if scenario.startswith("prefect-"):
         assert result["plan_prefect_api_url"] == result["input_prefect_api_url"]
         assert result["flow_result"]["prefect_api_url"] == result["input_prefect_api_url"]
     else:
@@ -183,10 +182,12 @@ def test_runtime_bootstrap_process_matrix(tmp_path, scenario):
         assert result["flow_result"]["prefect_api_url"] == ""
         assert result["flow_result"]["prefect_home"] != result["outer_prefect_home"]
 
-    if "external-dask" in scenario:
+    if scenario.endswith("-external-dask"):
+        assert result["effective_task_runner"] == "external_dask"
         assert result["plan_dask_scheduler"] == result["input_dask_scheduler"]
         assert result["effective_dask_scheduler"] == result["input_dask_scheduler"]
     else:
+        assert result["effective_task_runner"] == "local_dask"
         assert result["input_dask_scheduler"] is None
         assert result["plan_dask_scheduler"].startswith("tcp://")
         assert result["effective_dask_scheduler"] == result["plan_dask_scheduler"]
