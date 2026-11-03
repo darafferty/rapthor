@@ -39,7 +39,7 @@ def extract_json_from_log(caplog):
     """Extract JSON from last log message."""
     message = caplog.messages[-1]
     # Remove any ANSI color codes from the message.
-    message = message[message.find("{"):message.rfind("}")+1]
+    message = message[message.find("{") : message.rfind("}") + 1]
     return json.loads(message)
 
 
@@ -129,9 +129,7 @@ def test_command_environment_is_isolated_from_worker_and_later_commands(
     }
     config = ExecutionConfig(log_commands=False, command_profile="off")
 
-    run_external_command(
-        command, str(tmp_path), config, environment=overrides
-    )
+    run_external_command(command, str(tmp_path), config, environment=overrides)
 
     assert extract_json_from_log(caplog) == {
         "MALLOC_TRIM_THRESHOLD_": None,
@@ -146,12 +144,7 @@ def test_command_environment_is_isolated_from_worker_and_later_commands(
     assert overrides["MALLOC_TRIM_THRESHOLD_"] is None
 
     # A subsequent command, such as WSClean, still inherits the worker's allocator setting.
-    run_external_command(
-        command,
-        str(tmp_path),
-        config,
-        environment={"OMP_NUM_THREADS": "2"}
-    )
+    run_external_command(command, str(tmp_path), config, environment={"OMP_NUM_THREADS": "2"})
 
     assert extract_json_from_log(caplog) == {
         "MALLOC_TRIM_THRESHOLD_": inherited_trim,
@@ -179,9 +172,7 @@ def test_run_external_command_builds_shell_command_metadata():
     assert FakeShellOperation.instances[0].kwargs["env"] == {"OMP_NUM_THREADS": "4"}
 
 
-def test_command_scratch_environment_is_child_only_and_cleaned(
-    tmp_path, caplog, monkeypatch
-):
+def test_command_scratch_environment_is_child_only_and_cleaned(tmp_path, caplog, monkeypatch):
     caplog.set_level(logging.INFO, logger="rapthor:shell")
 
     for key in ("TMPDIR", "TMP", "TEMP"):
