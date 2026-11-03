@@ -1,8 +1,10 @@
 # Post-Merge Development Plan
 
-Updated: 2026-10-23. Release baseline: `origin/main` at `f5bc99d0`;
-CWL reference: `origin/master` at `b83cf9bc` (v2.2) and `origin/rapthor-cwl` at
-`24307de9` (v2.2 plus BDA averaging and the BDA applycal restriction).
+Updated: 2026-11-03. Release baseline: `origin/main` at `ef12dafe`;
+CWL reference: `origin/releases/v2.2` at `b83cf9bc` (v2.2) and
+`origin/rapthor-cwl` at `24307de9` (v2.2 plus BDA averaging and the BDA applycal
+restriction). The remote no longer has a `master` branch; "master" below means
+that CWL line.
 
 This is the actionable backlog for the first Prefect/Dask release and later
 improvements. Task IDs are unchanged. **Merged** means present on `main`;
@@ -10,18 +12,17 @@ feature-branch implementations remain open until reviewed, validated and merged.
 
 ## Recommended next item
 
-**Review and merge the last two GEC-672 branches.** The last P0 blocker, restart
-safety (P0-BUG-05), is implemented on `gec-672-restart-safety`; the rest of
-P2-BUG-03 and P2-BUG-04 are on `gec-672-reset` (see
-[existing branches](#existing-branches-to-integrate)). Both are rebased onto
-`f5bc99d0`, merge cleanly with each other and were tested together. Resolve the
-separate phase-only DD product decision (P1-DEC-01) before release; the merged
-strategy fixes do not change that selector.
+**Resolve the phase-only DD product decision (P1-DEC-01).** All P0 blockers and
+the GEC-672 restart and reset work are merged, and this is the one remaining
+item the plan requires before any release; the merged strategy fixes do not
+change that selector. Then decide which P1 feature gates apply to the first
+release. `gec-673-do-not-return-output` and `get-673-subprocess-run` conflict
+and both change the command runner, so settle them before P1-BUG-01 (see
+[existing branches](#existing-branches-to-integrate)).
 
 ## Release status
 
-Eight P0 fixes are merged; **the last, restart safety (P0-BUG-05), is
-implemented on an unmerged branch rebased onto `main`**.
+All nine P0 fixes are merged.
 P1 items gate the features named below. P2/P3 work can follow release if
 applicable limitations are recorded in the [upgrade guide](docs/source/upgrading.rst).
 
@@ -37,6 +38,7 @@ applicable limitations are recorded in the [upgrade guide](docs/source/upgrading
 | P0-BUG-07 | The final step is a deep copy of the last selfcal step, including nested solve lists, so default final/last-selfcal widths stay 4/8 MHz and differing steps trigger a final pass even with equal data fractions. CWL remains unfixed. | `352468c7` (GEC-671) |
 | P0-BUG-09 | DD solve chains end with `null`, protecting input DATA/FLAG; DDECal-only DI behavior is retained. Includes command and real-DP3 regression checks. | `98a06302` (GEC-678 implementation; merge title says GEC-669) |
 | P0-BUG-08 | `prefect_retries` is removed from defaults, execution settings, flow wiring, docs, the demo parset and templates; a parset that still sets it gets the usual invalid-option warning. No retry behaviour is added. | `006264d2` (GEC-672) |
+| P0-BUG-05 | Image preparation and concatenation (in imaging and the standalone operation) write each Measurement Set to `.<name>.partial` and rename it into place only after the command succeeds, so a product under its final name is complete and a resumed run reuses it, as it reuses a finished operation; leftover partial products are removed and made again. Settings are not compared: a reset makes the products again with other settings. Compressed images and mosaics are always made again; model images and their mosaics are compressed without loss. Every removal of a directory record first moves it to its partial name. Inputs are refused as outputs, and `.outputs.json` is written before `.done`. Follow-ups are under [WS-D](#restart-and-output-ownership-ws-d). | `2cf9b62a` (GEC-672). Its merge message still describes the earlier digest design; the code is the final-name design above. |
 
 GEC-670 does **not** fix phase-only DD product selection (P1-DEC-01) or
 image-only solution/layout carry-forward (P2-BUG-01); the GEC-671 fixes keep the
@@ -53,8 +55,13 @@ Also merged since `98a06302`, with the tasks they complete or advance:
 | `62907d14` | Astron/SKA CI split, Docker dependency-version helper and docs, v2.2 changelog. CWL's `run-rapthor.sh` was deliberately not copied. | P3-PORT-02 helper/docs |
 | `27e36a20` | The test MS is downloaded after collection, only when a selected test uses it; one download is shared between xdist workers and a damaged archive gives a warning. | Test fixture |
 | `ee00555b` | Command profiling finds `time` only through `PATH`, fixes the `resource` fallback and documents `prefect_command_profile`; that text in `parset.rst` still has a slip ("disk I/O of are also recorded"). | Was `gec-673-get-time-path`; supports B3 |
-| `2fcb74db` | Model mosaics for all-empty models, single-threaded tasks and Stokes IQUV. | P2-BUG-06 |
-| `f5bc99d0` | Each calibration plot call writes to its own directory; per-sector astrometry offsets and diagnostics move to `plots/image_N`. | P2-BUG-02, P2-BUG-05 |
+| `2fcb74db` | All-empty sector models give an all-zero model mosaic with valid records; WSClean draws model mosaics with at least two threads and fails clearly when memory would force one; Stokes IQUV cycles omit filtered-model products; both methods are documented. | P2-BUG-06 |
+| `f5bc99d0` | Each calibration plot call writes to its own directory, cleared before a rerun, so concurrent tasks and reruns return all and only their own plots; each plot has one Prefect artifact key. Per-sector astrometry offsets, diagnostics and diagnostic plots move to `plots/image_N` and survive cleanup and restart. | P2-BUG-02, P2-BUG-05 |
+| `a25fffc9` | Reset lists operations from the actual `pipelines/` directories (including cycles the current settings no longer run), resets a cycle's DI and DD calibration operations together, and copies the observations so unchunked input data is not peeled twice. It removes owned scratch workspaces, links and recovery records together, and moves the log records of reset operations to per-attempt files. A `flock` on the working directory keeps a reset and a run apart. The running guide says when a reset is needed rather than a plain rerun; `rapthor/modifystate.py` becomes `rapthor/reset.py`. | Rest of P2-BUG-03, P2-BUG-04 |
+| `3102f60a` | Commands run directly instead of through a temporary `.sh` file, and the predict flow loses its own runner helper. | GEC-673; shares the runner with P1-BUG-01 |
+| `6057f490` | Solution time steps are derived from supplied h5parms at startup, to set BDA parameters when no calibration is done; single-sample and screen solutions are tested. | Was `RAP-1444-get-BDA-parms-no_cal`; does not fix P2-BUG-01 |
+| `6e90be48` | Tox forwards `PYTEST_XDIST_AUTO_NUM_WORKERS`, so CI runners short of memory can use fewer workers. | Part of P3-TEST-01 |
+| `45c1c978`, `ef12dafe` | Slurm sizing reads `os.environ`. The bootstrap keeps the requested runner when it starts a local Dask scheduler; `local_dask_workers` defaults to 1, must be positive, no longer follows `max_nodes` and its `local_dask_worker_count` alias is removed. | Most of P1-BUG-02 |
 
 `35731c8e` also changes repeated final cycles **without** peeling: they now
 calibrate against the imaged sources only, where they previously kept the
@@ -63,17 +70,15 @@ already behave this way; confirm that this is intended.
 
 ### P0 — release blockers
 
-| Task | Status / owner | Required result |
-| --- | --- | --- |
-| P0-BUG-05 | **Implemented, unmerged:** `gec-672-restart-safety`. | Image preparation, concatenation (in imaging and the standalone operation) write each Measurement Set to `.<name>.partial` and rename it into place only after the command succeeds, so a product under its final name is complete and a resumed run reuses it, as it reuses a finished operation; leftover partial products, including a partial concatenation output left by a stopped DP3 or TaQL command, are removed and made again. Settings are not compared: a reset makes the products again with other settings. Compressed images and mosaics are always made again, since some of their inputs are rewritten by every attempt. One `fpack` command builder serves images and mosaics, and model images and their mosaics are compressed without loss. Every removal of a directory record first moves it to its partial name, so a stopped removal leaves nothing incomplete under a final name. Inputs are refused as outputs, and `.outputs.json` is written before `.done`. Follow-ups: the residual-visibility MS, mask and region still treat "exists" as done; an interrupted finalizer move (`copy_record_object(move=True)`) can nest an MS. |
+None open; all nine are [merged](#merged).
 
 ### P1 — decisions and feature-specific release gates
 
 | Task | Scope / owner | Required result |
 | --- | --- | --- |
 | P1-DEC-01 | Phase-only DD cycles; `Calibrate._dd_active_solution()`. | Decide whether to apply combined fast+medium phases or omit the unused medium solve. Test selected product contents, restart and downstream prediction/imaging; update products/science documentation. |
-| P1-BUG-01 | Cancellation, especially clusters; `execution/shell.py`. | Terminate command descendants with a process-group TERM/KILL sequence. Bound captured output. Test Prefect cancellation, worker shutdown and MPI wrappers. `get-673-subprocess-run` (see [existing branches](#existing-branches-to-integrate)) changes the same runner; settle the runner there before adding process-group handling. |
-| P1-BUG-02 | Slurm; bootstrap/config/slurm owners. | Validate the requested runner before bootstrap rewrites it; resolve the documented one-worker default and read Slurm environment values by default. Test CLI, precedence and missing-scheduler cases. |
+| P1-BUG-01 | Cancellation, especially clusters; `execution/shell.py`. | Terminate command descendants with a process-group TERM/KILL sequence. Bound captured output: `_run_captured_shell_command()` still keeps all output in memory, although no caller uses it. Test Prefect cancellation, worker shutdown and MPI wrappers. `gec-673-do-not-return-output` and `get-673-subprocess-run` (see [existing branches](#existing-branches-to-integrate)) change the same runner; settle them first. |
+| P1-BUG-02 | Slurm; bootstrap/config/slurm owners. | **Code merged** (`45c1c978`, `ef12dafe`): the Slurm guard now sees the requested runner, the one-worker default is resolved and Slurm environment values are read. Test the CLI, precedence and missing-scheduler cases. |
 | P1-BUG-03 | Long dashboard-enabled runs; artifacts/pipeline owners. | Deduplicate publication, bound bytes, provide a plot-publication switch and make monitoring errors warning-only. Test repeated operations and measure database growth. |
 | P1-BUG-04 | Multi-chunk prediction; `execution/predict/flow.py`. | Return exact chunk-owned paths instead of broad shared-directory globs. Test two chunks with DI addition, DD subtraction, peeling and restart. |
 | P1-PORT-01 | Standalone container; Docker/CI builds and sector subtraction. | Align NumPy build/runtime, replace `np.NaN`, and verify NumPy/PyBDSF/casacore imports plus source finding in final images. |
@@ -98,22 +103,20 @@ splitting work into issues. Existing branch implementations are mapped below.
 
 | Task | Remaining work |
 | --- | --- |
-| P2-BUG-01 | Associate applied h5parms with their producing sky-model/facet layout; preserve that association across consecutive image-only cycles. GEC-671 preserves the solve list, not this product/layout association. Align prediction and imaging without weakening optimizer-seed rules. Test multiple sectors, outliers, peeling/reweighting and repeated finals. |
+| P2-BUG-01 | Associate applied h5parms with their producing sky-model/facet layout; preserve that association across consecutive image-only cycles. GEC-671 preserves the solve list and `6057f490` derives time steps from supplied h5parms; neither gives this product/layout association. Align prediction and imaging without weakening optimizer-seed rules. Test multiple sectors, outliers, peeling/reweighting and repeated finals. |
 | P2-DEC-01 | Inventory CWL solve sequences rejected by Prefect. Port required combinations with solve/application/product tests, or document deliberate restrictions; parsing alone does not establish support. |
 | P2-BUG-07 | A calibrating cycle whose sky model has no sources (logged as "Sky model contains no sources") stops with `ValueError: min() iterable argument is empty` in `Observation.set_calibration_parameters()` (`rapthor/lib/observation.py`); present since the migration (`c6196cb4`). Fail with a clear message, or handle the empty model deliberately; test an empty sky model. Seen with the unscaled `tests/resources/test.ms`. |
 
 ### Restart and output ownership (WS-D)
 
-P2-BUG-02, P2-BUG-05 and P2-BUG-06 are merged. The rest of P2-BUG-03 and
-P2-BUG-04 are on `gec-672-reset`, rebased onto `f5bc99d0`.
+P0-BUG-05 and P2-BUG-02 to P2-BUG-06 are [merged](#merged). Their follow-ups and
+one new bug remain.
 
 | Task | Remaining work |
 | --- | --- |
-| P2-BUG-02 | **Merged** (`f5bc99d0`). Each calibration plot call writes to its own directory, cleared before a rerun, so concurrent tasks and reruns return all and only their own plots; each plot has one Prefect artifact key. |
-| P2-BUG-03 | **Partly merged** (`35731c8e`, repeated finals reuse the peeled data). **Rest implemented, unmerged:** `gec-672-reset` lists reset operations from the actual `pipelines/` directories (including cycles the current settings no longer run), resets a cycle's DI and DD calibration operations together, and copies the observations so unchunked input data is not peeled twice. |
-| P2-BUG-04 | **Implemented, unmerged:** `gec-672-reset`. Reset removes owned scratch workspaces, links and recovery records together without following unowned links, and moves the log records of reset operations to per-attempt files. A `flock` on the working directory keeps a reset and a run apart; a run takes it before opening its log. The running guide says when a reset is needed rather than a plain rerun. `rapthor/modifystate.py` becomes `rapthor/reset.py` and the unused `parset_read` is removed. Follow-up: reset refuses where the file system has no `flock` support (for example Lustre mounted without `flock`), and `localflock` only protects within one node. |
-| P2-BUG-05 | **Merged** (`f5bc99d0`). Per-sector offsets, diagnostics and diagnostic plots move to `plots/image_N` with repointed records and survive cleanup and restart. |
-| P2-BUG-06 | **Merged** (`2fcb74db`). All-empty sector models give an all-zero model mosaic with valid records; WSClean draws model mosaics with at least two threads and fails clearly when memory would force one; Stokes IQUV cycles omit filtered-model products; both methods are documented. Follow-ups: calibration's WSClean model drawing has the same one-thread exposure; report the WSClean 3.7 single-thread `-draw-model` bug upstream; drawn mosaics can sit up to one pixel off the regridded grid; `sparse_fits` halves components in sector overlaps. |
+| P0-BUG-05 follow-ups | The residual-visibility MS, mask and region still treat "exists" as done; an interrupted finalizer move (`copy_record_object(move=True)`) can nest an MS. |
+| P2-BUG-04 follow-up | Reset refuses where the file system has no `flock` support (for example Lustre mounted without `flock`), and `localflock` only protects within one node. |
+| P2-BUG-06 follow-ups | Calibration's WSClean model drawing has the same one-thread exposure; report the WSClean 3.7 single-thread `-draw-model` bug upstream; drawn mosaics can sit up to one pixel off the regridded grid; `sparse_fits` halves components in sector overlaps. |
 | P2-BUG-08 | The sector filtered-model image is written uncompressed under a `.fits.fz` name (`compress_image_if_needed()` in `rapthor/execution/image/restoration.py` writes a plain HDU), whatever the compression settings. Decide whether to compress it without loss (for example `CompImageHDU` with `quantize_level=0.0`) or name it `.fits`; check against CWL and downstream readers. |
 
 ### Logging and failures (WS-E)
@@ -148,7 +151,7 @@ P2-BUG-04 are on `gec-672-reset`, rebased onto `f5bc99d0`.
 | P2-PORT-08 | Reconcile Python/package metadata, license/build requirements and tox access to compiled astronomy dependencies; verify the supported Prefect environment. |
 | P2-TEST-01 | Mark real-WSClean restoration tests as integration and verify non-integration selection excludes them. |
 | P2-TEST-02 | Reset flags and weights in the synthetic normalization MS before prediction (`da442dfc`). GEC-664's scaled integration fixture and h5parm assertions are separate improvements; this reset remains unimplemented. |
-| P3-TEST-01 | Astron/SKA CI separation (`62907d14`), the serial/parallel split with shared Prefect servers and duration-balanced integration shards (`d91e2dfe`) are merged. Bounded CPU counts remain: `pytest-8-threads` fixes the parallel lane at eight workers. Record measured speed-ups and refresh `.test_durations` when integration tests change. |
+| P3-TEST-01 | Astron/SKA CI separation (`62907d14`), the serial/parallel split with shared Prefect servers and duration-balanced integration shards (`d91e2dfe`) are merged, and CI can now lower the worker count (`6e90be48`). Decide whether `pytest-8-threads`, which fixes the parallel lane at eight workers, is still needed. Record measured speed-ups and refresh `.test_durations` when integration tests change. |
 | P3-TEST-02 | Add real-run facet-RMS JSON assertions and the missing sky-model-download failure cases; runtime handling is already present. |
 | P3-TEST-03 | Restore the task-count 1/2, full/single DDE and serial/MPI gridding matrix using command records. Adapt two-sector cases without CWL mocks. |
 | P3-PORT-02 | Helper and usage docs are merged (`62907d14`). Add a fake-Docker test covering labels, missing labels and inspect failure. |
@@ -164,27 +167,25 @@ using focused changes; avoid replaying pre-squash migration history or temporary
 `rapthor3` CLI overlays. CWL branches are porting sources, not implementations
 in the Prefect version.
 
-The GEC-672 branches were refactored after their first review; the tips below
-include that refactoring. `gec-672-combined-test` (`0e4da8e9`) predates the
-merges of `2fcb74db` and `f5bc99d0` and is out of date; it was for testing only
-and is not for merging.
+All GEC-672 branches are merged. `gec-672-combined-test` (`0e4da8e9`) was for
+testing only, is out of date and can be deleted.
 
 | Branch / reviewed tip | Disposition and next action |
 | --- | --- |
-| `gec-672-restart-safety` — `54c83946` | P0-BUG-05, nine commits on `f5bc99d0`, including real DP3 and `fpack` integration tests. Review and merge. |
-| `gec-672-reset` — `7348172f` | P2-BUG-03 (rest) and P2-BUG-04, 27 commits on `f5bc99d0`, most of them review follow-ups (reset guidance, the `reset` module rename, path normalisation and test tidying); consider squashing on merge. Review and merge. |
 | `gec-664-integration-coverage` — `2400779c` | Combines unit and integration coverage into one report. Its test-speed commits are merged as `d91e2dfe` and its pre-fetch commit is superseded by MR !536; rebase the two coverage commits onto the Astron/SKA CI split. It now conflicts with `main` in CI, tox and test files. |
-| `pytest-8-threads` — `22e0f88f` | Part of P3-TEST-01, on `27e36a20` and still merging cleanly with `main`: the parallel tox lane uses eight xdist workers instead of `auto`. Check it against CI runner and local CPU limits before merging. |
-| `get-673-subprocess-run` — `263814d9` | Four commits on `27e36a20` (it contains `gec-673-direct-shell-command`, `b944aede`): commands run directly with `subprocess.run` instead of through a temporary `.sh` file, and the mosaic and predict flows lose their own runner helpers. Output is now captured whole and logged when the command ends, so `prefect_stream_output` no longer streams and memory use grows with the output; reconcile with the bounded output and process-group termination of P1-BUG-01 and the failure tail of P2-PORT-06. Conflicts with `main` in `rapthor/execution/shell.py` (since `ee00555b`) and with `gec-672-restart-safety` also in `rapthor/execution/mosaic/flow.py`. |
-| `RAP-1444-get-BDA-parms-no_cal` — `98c48866` | Supplied-h5parm interval inference related to P2-BUG-01, now with a field test. Reconcile with GEC-670 scanning; test single-sample/irregular time axes. Does not fix direction-layout ownership. |
-| `fix-references-to-master-branch` — `1ff897db` | Part of P3-PORT-03, rebased onto `main`: two `master` references in the docs become `main`. Preparation guidance and docstring fixes remain. |
+| `pytest-8-threads` — `22e0f88f` | Part of P3-TEST-01, on `27e36a20` and still merging cleanly with `main`: the parallel tox lane uses eight xdist workers instead of `auto`. `6e90be48` now lets CI choose the count, so check whether this is still needed. |
+| `gec-673-do-not-return-output` — `9f5de785` | Eight commits on `45c1c978`, merging cleanly with `main`: `run_external_command` returns nothing and the runner stops keeping output in memory, which is part of P1-BUG-01; tests read the output from the log instead. Conflicts with `get-673-subprocess-run` in `rapthor/execution/shell.py`. |
+| `get-673-subprocess-run` — `2dfe6011` | One commit on `3102f60a` (its direct-execution work is merged), merging cleanly with `main`: `subprocess.run` replaces `Popen`. Output is captured whole and logged when the command ends, so `prefect_stream_output` no longer streams, memory use grows with the output, and a stopped command leaves no output or footer in its log. Reconcile with the bounded output and process-group termination of P1-BUG-01 and the failure tail of P2-PORT-06. |
+| `gec-673-one-worker-per-node` — `7aa11c34` | Documents 0 as one Dask worker per node. Superseded by `ef12dafe`, which removes that behaviour; it conflicts with `main` and can be closed. |
+| `fix-references-to-master-branch` — `1ff897db` | Part of P3-PORT-03, rebased onto `main`: two `master` references in the docs become `main`. The remote `master` branch is gone, so the `blob/master` link to `defaults.parset` in `parset.rst` no longer resolves; merge this soon. Preparation guidance and docstring fixes remain. |
 | `use-local-git-mirror` — `3cd82217` | Build/CI URL changes in the Dockerfile, commit-hash script and CI base image; verify mirror refs and reproducibility. Does not fix NumPy/APT gaps or pin `HEAD`. |
 | `rapthor-cwl` — `c0509eae`, `24307de9` (CWL) | Merged CWL versions of `RAP1418-enable-averaging` and `RAP1418-remove-applycal`: BDA averaging with a BDA on/off WSClean-prediction integration case, and no pre-applying applycal with BDA. P2-DEC-02/P3-PORT-01 sources; adapt averaged-MS outputs, serializable records, scratch lifetime and calibration consumers, and keep the Prefect guard until validated. |
 | `add-multi-sector-tests` — `b7537329` (CWL) | Source for P3-TEST-03/B4; adapt per-sector assertions to Prefect records and retain real-tool coverage. |
-| `RAP-1405_add-run-script` — `bfb06c9f` (CWL) | Merged there as `6052b19d`; port under P3-PORT-04. |
 
 Merged and no longer listed: both GEC-671 branches, `gec-672-remove-retries`,
-`gec-672-model-mosaic`, `gec-672-plot-outputs`, `gec-673-get-time-path`,
+`gec-672-restart-safety`, `gec-672-reset`, `gec-672-model-mosaic`,
+`gec-672-plot-outputs`, `gec-673-direct-shell-command`, `gec-673-get-time-path`,
+`RAP-1444-get-BDA-parms-no_cal`,
 `gec-664-pre-fetch-test-data`, `gec-664-scale-test-ms-data`,
 `gec-664-speed-up-unit-tests`, `correct-calibration-beam-application`,
 `sync-with-master` and `RAP-1392-skip-outlier-subtraction` (see
@@ -243,15 +244,16 @@ Measurement Sets; preserve serializable worker payloads and complete
 output/finalizer/restart records.
 
 This update fetched branch refs and checked each listed branch against
-`f5bc99d0` by merging it in memory. `gec-672-restart-safety` (`54c83946`) and
-`gec-672-reset` (`7348172f`) merged together on `f5bc99d0`, in a throwaway
-worktree, passed the non-integration suite (4 serial, 1,621 parallel), lint,
-the import-order check, the docs build and the integration lane (45 passed, 1
-Slurm test skipped, 4 expected failures that are also marked on `main`).
-`gec-672-restart-safety` alone passed the same checks on `f5bc99d0`; one
-integration test there failed once on a lost Prefect server connection and
-passed when rerun. Other branch tests were inspected, not rerun. This review
-does not establish CI, scientific-equivalence or cluster validation.
+`ef12dafe` by merging it in memory, and read the commits merged since
+`f5bc99d0`. `gec-672-restart-safety` (`54c83946`) and `gec-672-reset`
+(`7348172f`), merged together on `f5bc99d0`, passed the non-integration suite
+(4 serial, 1,621 parallel), lint, the import-order check, the docs build and the
+integration lane (45 passed, 1 Slurm test skipped, 4 expected failures that are
+also marked on `main`). `2cf9b62a` has the same tree as `54c83946`, and
+`a25fffc9` differs from that merge only in a full stop in the docs and tidied
+tests. The tests were not rerun on `ef12dafe` for this update, and other branch
+tests were inspected, not rerun. This review does not establish CI,
+scientific-equivalence or cluster validation.
 Unchanged findings retain the earlier source-review baseline.
 
 Detailed review-ID mappings, source references and dated runtime evidence are
