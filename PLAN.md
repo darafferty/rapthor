@@ -12,11 +12,11 @@ feature-branch implementations remain open until reviewed, validated and merged.
 
 ## Recommended next item
 
-**Resolve the phase-only DD product decision (P1-DEC-01).** All P0 blockers and
-the GEC-672 restart and reset work are merged, and this is the one remaining
-item the plan requires before any release; the merged strategy fixes do not
-change that selector. Then decide which P1 feature gates apply to the first
-release. `gec-673-do-not-return-output` and `get-673-subprocess-run` conflict
+**Decide the phase-only DD product (P1-DEC-01).** All P0 blockers and the GEC-672
+restart and reset work are merged, and this is the one remaining item the plan
+requires before any release. `gec-697-apply-combined-dd-phases` implements the
+combined-phases option; compare imaging on a phase-only cycle, then review and
+merge it. Then decide which P1 feature gates apply to the first release. `gec-673-do-not-return-output` and `get-673-subprocess-run` conflict
 and both change the command runner, so settle them before P1-BUG-01 (see
 [existing branches](#existing-branches-to-integrate)).
 
@@ -76,16 +76,15 @@ None open; all nine are [merged](#merged).
 
 | Task | Scope / owner | Required result |
 | --- | --- | --- |
-| P1-DEC-01 | Phase-only DD cycles; `Calibrate._dd_active_solution()`. | Decide whether to apply combined fast+medium phases or omit the unused medium solve. Test selected product contents, restart and downstream prediction/imaging; update products/science documentation. |
+| P1-DEC-01 | Phase-only DD cycles; `Calibrate._dd_active_solution()`. | **Implemented, unmerged:** `gec-697-apply-combined-dd-phases` selects the combined fast+medium phases for `field-solutions.h5` and keeps the separate fast and medium files for seeding; it tests the selected file for fast-only, fast+medium and phase-plus-slow-gain sequences, checks in a real run that the active phases differ from the fast phases, and adds an upgrade-guide entry. Remaining: compare imaging products for a phase-only cycle to confirm this option over omitting the medium solve, and test the selected product on restart. |
 | P1-BUG-01 | Cancellation, especially clusters; `execution/shell.py`. | Terminate command descendants with a process-group TERM/KILL sequence. Bound captured output: `_run_captured_shell_command()` still keeps all output in memory, although no caller uses it. Test Prefect cancellation, worker shutdown and MPI wrappers. `gec-673-do-not-return-output` and `get-673-subprocess-run` (see [existing branches](#existing-branches-to-integrate)) change the same runner; settle them first. |
 | P1-BUG-02 | Slurm; bootstrap/config/slurm owners. | **Code merged** (`45c1c978`, `ef12dafe`): the Slurm guard now sees the requested runner, the one-worker default is resolved and Slurm environment values are read. Test the CLI, precedence and missing-scheduler cases. |
 | P1-BUG-03 | Long dashboard-enabled runs; artifacts/pipeline owners. | Deduplicate publication, bound bytes, provide a plot-publication switch and make monitoring errors warning-only. Test repeated operations and measure database growth. |
 | P1-BUG-04 | Multi-chunk prediction; `execution/predict/flow.py`. | Return exact chunk-owned paths instead of broad shared-directory globs. Test two chunks with DI addition, DD subtraction, peeling and restart. |
 | P1-PORT-01 | Standalone container; Docker/CI builds and sector subtraction. | Align NumPy build/runtime, replace `np.NaN`, and verify NumPy/PyBDSF/casacore imports plus source finding in final images. |
-| P1-TEST-01 | Multi-node Slurm; running docs/runtime. | Validate a reachable shared Prefect API, remote-worker settings, real calibration and MPI imaging, rank placement and resource exclusivity. Document tested configurations or reject unsupported ones. |
 | P1-DEC-02 | SKA-Low configuration. | Choose an in-repository preset or ICAL interface; test and document migration. Do not restore CWL's `defaults_skalow.parset` unchanged: it refers to an absent custom script. |
 
-**P1-DEC-01 clarification:** both CWL and current Prefect select the first
+**P1-DEC-01 clarification:** both CWL and `main` select the first
 fast-phase product for `[fast_phase, medium_phase]`, although a combined product
 is generated. The medium contribution is discarded during finalization, not
 optimizer seeding. With slow gains, combined phases are already selected and
@@ -172,6 +171,7 @@ testing only, is out of date and can be deleted.
 
 | Branch / reviewed tip | Disposition and next action |
 | --- | --- |
+| `gec-697-apply-combined-dd-phases` — `968a9ce3` | P1-DEC-01, one commit on `ef12dafe`. Compare imaging on a phase-only cycle, then review and merge. |
 | `gec-664-integration-coverage` — `2400779c` | Combines unit and integration coverage into one report. Its test-speed commits are merged as `d91e2dfe` and its pre-fetch commit is superseded by MR !536; rebase the two coverage commits onto the Astron/SKA CI split. It now conflicts with `main` in CI, tox and test files. |
 | `pytest-8-threads` — `22e0f88f` | Part of P3-TEST-01, on `27e36a20` and still merging cleanly with `main`: the parallel tox lane uses eight xdist workers instead of `auto`. `6e90be48` now lets CI choose the count, so check whether this is still needed. |
 | `gec-673-do-not-return-output` — `9f5de785` | Eight commits on `45c1c978`, merging cleanly with `main`: `run_external_command` returns nothing and the runner stops keeping output in memory, which is part of P1-BUG-01; tests read the output from the log instead. Conflicts with `get-673-subprocess-run` in `rapthor/execution/shell.py`. |
@@ -215,7 +215,7 @@ options through defaults, parsing, payloads, validators, commands, docs and test
   Compare affinity, throughput, memory and products before changing defaults.
 - **B2 — Cluster service.** Provide an optional managed Postgres-backed Prefect
   service with startup/recovery guidance; keep isolated standalone execution.
-  Coordinate with P1-TEST-01 and bounded artifact publication. Retain Ubuntu
+  Coordinate with bounded artifact publication. Retain Ubuntu
   24.04 while reported Ubuntu 26.04 memory problems are investigated.
 - **B3 — Measured performance.** Fix or label unreliable `RUSAGE_CHILDREN`
   fallback metrics before profiling. Measure filtering, imaging and I/O; cache
@@ -251,10 +251,13 @@ This update fetched branch refs and checked each listed branch against
 integration lane (45 passed, 1 Slurm test skipped, 4 expected failures that are
 also marked on `main`). `2cf9b62a` has the same tree as `54c83946`, and
 `a25fffc9` differs from that merge only in a full stop in the docs and tidied
-tests. The tests were not rerun on `ef12dafe` for this update, and other branch
-tests were inspected, not rerun. This review does not establish CI,
-scientific-equivalence or cluster validation.
-Unchanged findings retain the earlier source-review baseline.
+tests. `gec-697-apply-combined-dd-phases` passed the non-integration suite
+(4 serial, 1,628 parallel), lint, the import-order check, the docs build and
+the integration lane (44 passed, 1 Slurm test skipped, 4 expected failures); the
+one failure, `test_rapthor_run_single_loop_with_do_normalize`, could not reach
+`vizier.u-strasbg.fr` and failed the same way on `ef12dafe`. Other branch tests
+were inspected, not rerun. This review does not establish CI or scientific
+equivalence. Unchanged findings retain the earlier source-review baseline.
 
 Detailed review-ID mappings, source references and dated runtime evidence are
 preserved in the previous plan at commit `b228d6b6`:
