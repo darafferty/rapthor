@@ -404,7 +404,7 @@ def _run_captured_shell_command(
     *,
     output_log_path: Optional[Path],
     task_metadata: Mapping[str, object],
-) -> list[str]:
+):
     command_logger = _get_command_logger() if execution_config.stream_output else None
     buffered_log_lines = []
     process = None
