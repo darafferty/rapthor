@@ -1,7 +1,6 @@
 """Command-line adapter for preparing sky models for a run without internet access."""
 
 import argparse
-import sys
 from typing import Optional, Sequence
 
 from rapthor.execution.image.catalog_preparation import (
@@ -46,12 +45,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except (OSError, ValueError) as err:
         raise SystemExit(f"Error: {err}") from err
     if catalogs.failures:
-        print(
+        raise SystemExit(
             f"Error: could not download {', '.join(catalogs.failures)}. Rerun this command to "
-            "try again; the sky models that were downloaded are kept.",
-            file=sys.stderr,
+            "try again; the sky models that were downloaded are kept."
         )
-        return 1
     print(parset_options(catalogs))
     return 0
 

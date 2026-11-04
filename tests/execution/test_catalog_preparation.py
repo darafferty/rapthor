@@ -61,7 +61,7 @@ def test_prepare_catalogs_downloads_every_survey_around_the_pointing(
 ):
     output_dir = tmp_path / "catalogs"
 
-    catalogs = prepare_catalogs(measurement_set, str(output_dir), radius_deg=3.5)
+    catalogs = prepare_catalogs(measurement_set, output_dir, radius_deg=3.5)
 
     assert [call["survey"] for call in fake_download.calls] == ALL_SURVEYS
     for call in fake_download.calls:
@@ -84,7 +84,7 @@ def test_prepare_catalogs_reads_the_pointing_of_the_measurement_set(tmp_path, te
     monkeypatch.setattr(catalog_preparation, "download_skymodel", download)
     ra_rad, dec_rad = get_field_phase_center(test_ms)
 
-    prepare_catalogs(test_ms, str(tmp_path / "catalogs"))
+    prepare_catalogs(test_ms, tmp_path / "catalogs")
 
     assert download.calls[0]["cone"]["ra"] == pytest.approx(np.degrees(ra_rad))
     assert download.calls[0]["cone"]["dec"] == pytest.approx(np.degrees(dec_rad))
@@ -99,13 +99,13 @@ def test_prepare_catalogs_keeps_what_is_present_unless_told_to_overwrite(
     tgss = output_dir / "TGSS_model.txt"
     tgss.write_text("earlier download")
 
-    catalogs = prepare_catalogs(measurement_set, str(output_dir))
+    catalogs = prepare_catalogs(measurement_set, output_dir)
 
     assert [call["survey"] for call in fake_download.calls] == ALL_SURVEYS[1:]
     assert catalogs.paths["TGSS"] == str(tgss)
     assert tgss.read_text() == "earlier download"
 
-    prepare_catalogs(measurement_set, str(output_dir), overwrite=True)
+    prepare_catalogs(measurement_set, output_dir, overwrite=True)
 
     assert tgss.read_text() == "TGSS"
 
@@ -114,8 +114,8 @@ def test_each_download_writes_to_its_own_temporary_file(measurement_set, tmp_pat
     output_dir = tmp_path / "catalogs"
 
     # Runs that overlap would otherwise write to, move or remove the same file
-    prepare_catalogs(measurement_set, str(output_dir))
-    prepare_catalogs(measurement_set, str(output_dir), overwrite=True)
+    prepare_catalogs(measurement_set, output_dir)
+    prepare_catalogs(measurement_set, output_dir, overwrite=True)
 
     tgss_paths = [Path(call["path"]) for call in fake_download.calls if call["survey"] == "TGSS"]
     assert len(tgss_paths) == 2
@@ -134,7 +134,7 @@ def test_a_failed_download_leaves_no_file_and_does_not_stop_the_others(
     )
     output_dir = tmp_path / "catalogs"
 
-    catalogs = prepare_catalogs(measurement_set, str(output_dir))
+    catalogs = prepare_catalogs(measurement_set, output_dir)
 
     assert catalogs.failures == {"PANSTARRS": "PANSTARRS server is down"}
     assert sorted(catalogs.paths) == ["TGSS", "VLSSR", "WENSS"]
@@ -152,7 +152,7 @@ def test_a_failed_overwrite_keeps_the_earlier_file(measurement_set, tmp_path, mo
     tgss = output_dir / "TGSS_model.txt"
     tgss.write_text("earlier download")
 
-    catalogs = prepare_catalogs(measurement_set, str(output_dir), overwrite=True)
+    catalogs = prepare_catalogs(measurement_set, output_dir, overwrite=True)
 
     assert "TGSS" in catalogs.failures
     assert tgss.read_text() == "earlier download"
@@ -163,13 +163,13 @@ def test_prepare_catalogs_rejects_a_radius_that_is_not_positive(
     measurement_set, tmp_path, fake_download, radius
 ):
     with pytest.raises(ValueError, match="radius must be positive"):
-        prepare_catalogs(measurement_set, str(tmp_path / "catalogs"), radius_deg=radius)
+        prepare_catalogs(measurement_set, tmp_path / "catalogs", radius_deg=radius)
     assert fake_download.calls == []
 
 
 def test_prepare_catalogs_rejects_a_missing_measurement_set(tmp_path, fake_download):
     with pytest.raises(FileNotFoundError, match="missing.ms"):
-        prepare_catalogs(str(tmp_path / "missing.ms"), str(tmp_path / "catalogs"))
+        prepare_catalogs(tmp_path / "missing.ms", tmp_path / "catalogs")
     assert fake_download.calls == []
 
 
@@ -178,7 +178,7 @@ def test_parset_options_name_the_sky_models_and_their_frequencies(
 ):
     output_dir = tmp_path / "catalogs"
 
-    options = parset_options(prepare_catalogs(measurement_set, str(output_dir)))
+    options = parset_options(prepare_catalogs(measurement_set, output_dir))
 
     assert options.splitlines() == [
         "[imaging]",
@@ -206,11 +206,10 @@ def test_main_reports_failed_downloads_without_parset_options(
 ):
     monkeypatch.setattr(catalog_preparation, "download_skymodel", FakeDownload(failing=("WENSS",)))
 
-    assert main([measurement_set, str(tmp_path / "catalogs")]) == 1
+    with pytest.raises(SystemExit, match="could not download WENSS"):
+        main([measurement_set, str(tmp_path / "catalogs")])
 
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "could not download WENSS" in captured.err
+    assert capsys.readouterr().out == ""
 
 
 def test_main_reports_a_missing_measurement_set(tmp_path, fake_download):
@@ -238,7 +237,7 @@ def test_astrometry_check_uses_a_downloaded_sky_model(
     monkeypatch.setattr(
         "lsmtool.download_skymodel.download_skymodel_from_survey", write_survey_model
     )
-    catalogs = prepare_catalogs(measurement_set, str(tmp_path / "catalogs"))
+    catalogs = prepare_catalogs(measurement_set, tmp_path / "catalogs")
     assert catalogs.failures == {}
     input_catalog = tmp_path / "catalog.fits"
     Table(
