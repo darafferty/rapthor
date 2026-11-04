@@ -43,6 +43,7 @@ def normalize_flux_scale(
     ignore_frequency_dependence=False,
     reference_skymodels=None,
     reference_skymodels_frequencies=None,
+    other_ms_files=(),
 ):
     """
     Calculate flux-scale normalization corrections.
@@ -83,6 +84,9 @@ def normalize_flux_scale(
         Filenames of reference sky models to use for normalization (instead of external survey catalogs)
     reference_skymodels_frequencies : list of float, optional
         Frequencies corresponding to the reference sky models (only needed if reference_skymodels is given)
+    other_ms_files : sequence of str, optional
+        Filenames of any other MS files used for imaging, when they were not concatenated
+        with ms_file. The corrections also cover the frequencies of these files
     """
     source_catalog_data, n_chan = read_source_catalog(source_catalog)
     phase_center_ra, phase_center_dec = get_field_phase_center(ms_file)
@@ -143,7 +147,7 @@ def normalize_flux_scale(
     #
     # TODO: Test whether a coarser grid would work (it just needs to be fine enough to
     # capture the frequency behavior of the corrections sufficiently well)
-    output_frequencies = get_output_frequencies(ms_file)
+    output_frequencies = get_output_frequencies(ms_file, *other_ms_files)
     if do_normalization:
         # Make arrays of flux density vs. frequency for each source, for both
         # the observed fluxes and the catalog fluxes, and find the corrections
@@ -334,30 +338,32 @@ def filter_sources(
     return source_coords_filtered, source_catalog_data_filtered
 
 
-def get_output_frequencies(ms_file):
+def get_output_frequencies(*ms_files):
     """
-    Get the output frequencies for the normalization corrections from the input MS.
+    Get the output frequencies for the normalization corrections from the input MS files.
 
     Parameters
     ----------
-    ms_file : str
-        Filename of the MS file used for imaging (needed to get the channel frequencies from the
-        SPECTRAL_WINDOW table)
+    *ms_files : str
+        Filenames of the MS files used for imaging (needed to get the channel frequencies from
+        their SPECTRAL_WINDOW tables)
     Returns
     -------
     output_frequencies : numpy array
-        Array of frequencies in Hz corresponding to the channels of the input MS,
+        Array of the frequencies in Hz corresponding to the channels of the input MS files,
         ordered from low to high
     """
-    spectral_window_file = ms_file + "::SPECTRAL_WINDOW"
-    with pt.table(spectral_window_file, ack=False) as sw:
-        min_frequency = np.min(sw.col("CHAN_FREQ")[0])
-        max_frequency = np.max(sw.col("CHAN_FREQ")[0])
-        channel_width = sw.col("CHAN_WIDTH")[0][0]
-    output_frequencies = np.arange(
-        min_frequency - channel_width, max_frequency + channel_width, channel_width
-    )
-    return output_frequencies
+    output_frequencies = []
+    for ms_file in ms_files:
+        spectral_window_file = ms_file + "::SPECTRAL_WINDOW"
+        with pt.table(spectral_window_file, ack=False) as sw:
+            min_frequency = np.min(sw.col("CHAN_FREQ")[0])
+            max_frequency = np.max(sw.col("CHAN_FREQ")[0])
+            channel_width = sw.col("CHAN_WIDTH")[0][0]
+        output_frequencies.append(
+            np.arange(min_frequency - channel_width, max_frequency + channel_width, channel_width)
+        )
+    return np.unique(np.concatenate(output_frequencies))
 
 
 def fit_sed(fluxes, errors, frequencies):

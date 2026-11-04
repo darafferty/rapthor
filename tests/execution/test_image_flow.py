@@ -2653,6 +2653,35 @@ def test_wsclean_images_the_concatenated_data_with_the_same_stations(
     assert not any(path.endswith("_prep.ms") for path in command)
 
 
+@pytest.mark.parametrize(
+    "concat_in_time, other_ms_files",
+    [(True, []), (False, ["sector_1_obs_1_prep.ms"])],
+)
+def test_normalization_covers_the_bands_of_every_imaged_measurement_set(
+    tmp_path, monkeypatch, concat_in_time, other_ms_files
+):
+    sector = image_payload_from_inputs(
+        {**_image_input_parms(), "concat_in_time": concat_in_time}, tmp_path
+    )["sectors"][0]
+    sector["normalization_skymodels"] = None
+    sector["normalization_reference_frequencies"] = None
+    sector["output_normalize_h5parm_path"] = str(tmp_path / "normalization.h5parm")
+    calls = []
+
+    def fake_normalize_flux_scale(source_catalog, ms_file, output_h5parm, **kwargs):
+        calls.append({"ms_file": ms_file, **kwargs})
+        Path(output_h5parm).write_text("h5parm")
+
+    monkeypatch.setattr(image_outputs_module, "normalize_flux_scale", fake_normalize_flux_scale)
+
+    image_outputs_module.make_normalization_record(
+        {"path": "catalog.fits"}, {"path": "imaged.ms"}, sector
+    )
+
+    assert calls[0]["ms_file"] == "imaged.ms"
+    assert [Path(path).name for path in calls[0]["other_ms_files"]] == other_ms_files
+
+
 def test_image_payload_rejects_residual_visibilities_with_different_stations(tmp_path):
     with pytest.raises(ValueError, match="Residual visibilities require"):
         image_payload_from_inputs(

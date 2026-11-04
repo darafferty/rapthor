@@ -7,6 +7,7 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 from astropy.io import fits
+from losoto.h5parm import h5parm
 
 from tests.conftest import copy_ms_to_later_epoch, copy_ms_to_next_band
 
@@ -126,31 +127,43 @@ def test_rapthor_run_images_epochs_with_different_stations(
     ],
     indirect=True,
 )
-def test_rapthor_run_normalizes_epochs_with_different_stations(
+def test_rapthor_run_normalizes_epochs_with_different_stations_and_bands(
     generated_parset_path_normalisation,
     single_loop_do_normalize_strategy_path,
     ms_for_normalisation,
     normalization_reference_inputs,
     tmp_path,
 ):
-    later_epoch = copy_ms_to_later_epoch(
-        _copy_ms_without_station(ms_for_normalisation, tmp_path / "without_station.ms"),
+    # The first epoch lacks a station that the later one has, and they are in different bands
+    first_epoch = _copy_ms_without_station(ms_for_normalisation, tmp_path / "first_epoch.ms")
+    later_epoch = copy_ms_to_next_band(
+        copy_ms_to_later_epoch(ms_for_normalisation, tmp_path / "later_time.ms"),
         tmp_path / "later_epoch.ms",
     )
     parset_path = _parset_for(
         generated_parset_path_normalisation,
         single_loop_do_normalize_strategy_path,
-        [ms_for_normalisation, later_epoch],
+        [first_epoch, later_epoch],
         **normalization_reference_inputs,
     )
 
     output = run_rapthor(parset_path)
 
     assert "Operation normalize_1 completed" in output
+    assert "Operation image_1 completed" in output
     working_dir = Path(get_working_dir_from_parset(parset_path))
     assert len(_wsclean_measurement_sets(working_dir, operation="normalize_1")) == 2
     log_text = output + (working_dir / "logs/rapthor.log").read_text()
     assert "Using reference sky models provided as input for normalization" in log_text
+    normalization_h5parm = next((working_dir / "solutions").glob("**/*normalize*.h5*"))
+    with h5parm(str(normalization_h5parm), readonly=True) as solutions:
+        frequencies = solutions.getSolset("sol000").getSoltab("amplitude000").getAxisValues("freq")
+    with pt.table(f"{later_epoch}::SPECTRAL_WINDOW", ack=False) as table:
+        later_band = table.getcol("CHAN_FREQ")[0]
+    with pt.table(f"{first_epoch}::SPECTRAL_WINDOW", ack=False) as table:
+        first_band = table.getcol("CHAN_FREQ")[0]
+    assert frequencies.min() <= first_band.min()
+    assert frequencies.max() >= later_band.max()
 
 
 @pytest.mark.parametrize("generated_parset_path", [SKY_MODELS], indirect=True)

@@ -31,6 +31,7 @@ from rapthor.execution.image.flux_normalization import (
     normalize_flux_scale,
     read_source_catalog,
 )
+from tests.conftest import copy_ms_to_next_band
 
 
 @pytest.fixture
@@ -285,6 +286,18 @@ def test_find_normalizations_single_flux_returns_nan():
         output_frequencies=np.array([100e6]),  # Frequencies in Hz
     )
     assert np.isnan(normalizations).all(), f"Expected [nan], got {normalizations}"
+
+
+def test_get_output_frequencies_covers_every_measurement_set(test_ms, tmp_path):
+    """Test that the frequencies of all the imaged MS files are included, once each."""
+    other_band = str(copy_ms_to_next_band(test_ms, tmp_path / "other_band.ms"))
+
+    frequencies = get_output_frequencies(test_ms, other_band, test_ms)
+
+    first_band = get_output_frequencies(test_ms)
+    second_band = get_output_frequencies(other_band)
+    assert second_band.min() > first_band.max()
+    np.testing.assert_array_equal(frequencies, np.concatenate([first_band, second_band]))
 
 
 def test_create_normalization_h5parm(test_ms, tmp_path):
