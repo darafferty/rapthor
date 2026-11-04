@@ -459,8 +459,8 @@ ancestor.
      - ``finalize`` (Image)
    * - ``fetch_skymodel.py`` †
      - 56
-     - —
-     - Removed; only the top-level CWL workflow used it.
+     - ``image/catalog_preparation.py``
+     - The ``fetch_skymodels`` command; the top-level CWL workflow that used it was removed.
    * - ``filter_skymodel.py``
      - 298
      - ``image/skymodel_filter.py``, ``skymodel_filter_cli.py``
@@ -696,7 +696,8 @@ branch, so a plain merge keeps them. Each row names the branch's counterpart.
    * - ``steps/make_residual_data.cwl``
      - ``build_make_residual_visibilities_command``
    * - ``rapthor/scripts/fetch_skymodel.py``, ``pipeline/execution/fetch_model.cwl``
-     - Nothing (the top-level CWL workflow was removed)
+     - ``rapthor/execution/image/catalog_preparation.py`` and the ``fetch_skymodels``
+       command (the top-level CWL workflow was removed)
    * - ``rapthor/testing.py``, ``tests/test_testing.py``
      - ``tests/conftest.py``
    * - ``rapthor/lib/calibration.py`` (``resolve_calibration_strategy``,
@@ -1100,7 +1101,8 @@ Dependencies and packaging
        (1.9.0 or later) instead of the git repository; a ``docs`` dependency
        group with Sphinx and ``sphinxcontrib-mermaid``
    * - Entry points
-     - ``[project.scripts]`` defines ``rapthor`` and ``concat_linc_files``.
+     - ``[project.scripts]`` defines ``rapthor``, ``concat_linc_files`` and
+       ``fetch_skymodels``.
        The ``script-files`` list of 22 scripts and the explicit ``packages``
        list are replaced by ``packages.find``. ``plotrapthor`` is gone.
    * - Tests

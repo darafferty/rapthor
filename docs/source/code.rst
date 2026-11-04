@@ -31,7 +31,8 @@ In the folder structure above:
 - ``tests`` contains files used for testing.
 
 The package also installs the ``concat_linc_files`` command for preparing LINC
-measurement sets.
+measurement sets and the ``fetch_skymodels`` command for downloading sky models
+before a run without internet access (see :ref:`offline_sky_models`).
 
 An overview of how these parts work together is given in :ref:`architecture`.
 

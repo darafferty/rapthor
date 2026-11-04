@@ -1079,3 +1079,4 @@ for how these options are used.
         :term:`generate_initial_skymodel` = ``True``. If photometry and/or astrometry
         skymodels are not provided, then these will not be downloaded and the image
         diagnostics will not be generated.
+        See :ref:`offline_sky_models` for how to download them beforehand.
