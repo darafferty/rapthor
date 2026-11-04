@@ -319,6 +319,12 @@ class Field(object):
         self.observations_share_stations = all(
             list(obs.stations) == list(obs0.stations) for obs in self.full_observations
         )
+        # Screen solutions are collected by position, which needs the same antenna list
+        if self.dde_mode == "hybrid" and not self.observations_share_stations:
+            raise ValueError(
+                "The input observations have different stations, which is not supported "
+                "with dde_mode = hybrid."
+            )
 
         # Find mean elevation and FOV over all observations
         self.diam = np.mean([obs.diam for obs in self.full_observations])

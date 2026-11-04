@@ -113,6 +113,25 @@ def test_scan_observations_treats_a_different_station_order_as_different(
     assert not reordered_field.observations_share_stations
 
 
+@pytest.mark.parametrize(
+    "dde_mode, rejected",
+    [("hybrid", True), ("faceting", False)],
+)
+def test_scan_observations_rejects_screens_with_different_stations(
+    parset_for_field_test, test_ms, tmp_path, dde_mode, rejected
+):
+    # Screen solutions are collected by position, so the stations must line up
+    later_epoch = copy_ms_to_later_epoch(test_ms, tmp_path / "later_epoch.ms")
+    _set_station_names(later_epoch, [*_station_names(test_ms)[1:], "NEW_STATION"])
+    parset = {**parset_for_field_test, "dde_mode": dde_mode}
+
+    if rejected:
+        with pytest.raises(ValueError, match="dde_mode = hybrid"):
+            _field_for(parset, test_ms, later_epoch)
+    else:
+        assert not _field_for(parset, test_ms, later_epoch).observations_share_stations
+
+
 def test_scan_observations_accepts_bands_of_an_epoch_with_the_same_stations(
     parset_for_field_test, test_ms, tmp_path
 ):

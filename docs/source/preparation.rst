@@ -26,7 +26,8 @@ observations cannot be concatenated in time, so they are imaged together as
 separate Measurement Sets and residual visibilities are not saved (see
 :term:`save_residual_visibilities`). The Measurement Sets of one epoch, such as
 its frequency bands, are concatenated in frequency, so they must have the same
-stations in the same order.
+stations in the same order. Different stations are not supported with
+:term:`dde_mode` = ``hybrid``.
 
 Sky model
 ---------
