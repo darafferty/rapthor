@@ -45,7 +45,6 @@ branches are porting sources, not Prefect implementations.
 | Task | Outstanding |
 | --- | --- |
 | P1-PORT-01 | Standalone container (`7eb0b03f`). `Docker/Dockerfile` still installs `numpy<2`. Align the NumPy build and runtime versions and verify NumPy, PyBDSF and casacore imports plus source finding in final images. |
-| P1-DEC-02 | SKA-Low configuration (`defaults_skalow.parset`). Choose an in-repository preset or ICAL interface; test and document migration. The CWL file refers to an absent script, so do not restore it unchanged. |
 | P2-PORT-01 | Full beam in WSClean prediction (`23ed80e9`). Port image-based `applybeam.beammode=array_factor`, `wsclean_predict_beam_interval`, facet-beam flags and full-beam model images, with DP3 beam modes coordinated to prevent double application. Test both `use_array_beam` settings and compare DP3 and WSClean multi-facet fluxes. |
 | P2-PORT-02 | Supplied-survey metadata (`dfa7f11a`, `6d4df857`). Restore flux and error metadata and the missing JSON reference-frequency default. Supplied and downloaded versions of a survey must normalize consistently; cover unknown frequencies and offline inputs. |
 | P2-PORT-03 | Mixed station sets (`4c00305d`). Use a deterministic union and per-MS imaging inputs instead of unconditional time concatenation. Disable or validate residual-MS creation; cover serial and MPI runs, normalization and restart. |
