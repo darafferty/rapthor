@@ -284,6 +284,17 @@ class Field(object):
                             f"following input MS files: {ms1} and {ms2}"
                         )
 
+                # The MS files of an epoch are concatenated in frequency by DP3, which
+                # needs their antenna tables to match
+                for obs in epoch_observations[1:]:
+                    if list(obs.stations) != list(epoch_observations[0].stations):
+                        raise ValueError(
+                            f"Stations in MS {obs.ms_filename} differ from those in MS "
+                            f"{epoch_observations[0].ms_filename} of the same epoch. The MS "
+                            "files of an epoch are concatenated in frequency, which requires "
+                            "the same stations in the same order."
+                        )
+
         # Check that all observations have the same pointing up to some tolerance level
         self.ra = obs0.ra
         self.dec = obs0.dec

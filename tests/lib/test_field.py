@@ -13,7 +13,7 @@ from rapthor.lib.field import Field, _ensure_skymodel_write_units
 from rapthor.lib.observation import Observation
 from rapthor.lib.strategy import check_and_adjust_parameters, set_user_strategy
 from rapthor.operations.predict import Predict
-from tests.conftest import write_scalar_h5parm
+from tests.conftest import copy_ms_to_later_epoch, copy_ms_to_next_band, write_scalar_h5parm
 
 
 @pytest.fixture
@@ -44,26 +44,14 @@ def test_scan_observations_uses_mean_station_diameter(
     test_ms,
     tmp_path,
 ):
-    second_ms = tmp_path / "different_diameter.ms"
-    shutil.copytree(test_ms, second_ms)
-
-    with pt.table(f"{second_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
-        channel_freq = table.getcol("CHAN_FREQ")
-        channel_width = table.getcol("CHAN_WIDTH")
-        frequency_offset = float(
-            channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max()
-        )
-        table.putcol("CHAN_FREQ", channel_freq + frequency_offset)
-        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + frequency_offset)
+    second_ms = copy_ms_to_next_band(test_ms, tmp_path / "different_diameter.ms")
 
     with pt.table(f"{test_ms}::ANTENNA", ack=False) as table:
         first_diameter = float(table.getcol("DISH_DIAMETER")[0])
     with pt.table(f"{second_ms}::ANTENNA", readonly=False, ack=False) as table:
         table.putcol("DISH_DIAMETER", table.getcol("DISH_DIAMETER") * 2.0)
 
-    parset = parset_for_field_test.copy()
-    parset["mss"] = [test_ms, str(second_ms)]
-    mixed_field = Field(parset, minimal=True)
+    mixed_field = _field_for(parset_for_field_test, test_ms, second_ms)
 
     expected_diameter = 1.5 * first_diameter
     mean_reference_frequency = np.mean(
@@ -74,40 +62,38 @@ def test_scan_observations_uses_mean_station_diameter(
     assert mixed_field.fwhm_ra_deg == pytest.approx(expected_fwhm_ra)
 
 
-def _copy_ms_in_new_band(source_ms, target_ms):
-    """Copy an MS to frequencies that do not overlap the source, as another band of the epoch."""
-    shutil.copytree(source_ms, target_ms)
-    with pt.table(f"{target_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
-        channel_freq = table.getcol("CHAN_FREQ")
-        channel_width = table.getcol("CHAN_WIDTH")
-        frequency_offset = float(
-            channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max()
-        )
-        table.putcol("CHAN_FREQ", channel_freq + frequency_offset)
-        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + frequency_offset)
-    return str(target_ms)
+def _field_for(parset_for_field_test, *ms_files):
+    return Field(
+        {**parset_for_field_test, "mss": [str(ms_file) for ms_file in ms_files]}, minimal=True
+    )
+
+
+def _station_names(ms_file):
+    with pt.table(f"{ms_file}::ANTENNA", ack=False) as table:
+        return table.getcol("NAME")
+
+
+def _set_station_names(ms_file, names):
+    with pt.table(f"{ms_file}::ANTENNA", readonly=False, ack=False) as table:
+        table.putcol("NAME", names)
 
 
 def test_scan_observations_with_the_same_stations(parset_for_field_test, test_ms, tmp_path):
-    parset = parset_for_field_test.copy()
-    parset["mss"] = [test_ms, _copy_ms_in_new_band(test_ms, tmp_path / "other.ms")]
+    later_epoch = copy_ms_to_later_epoch(test_ms, tmp_path / "later_epoch.ms")
 
-    same_stations_field = Field(parset, minimal=True)
+    same_stations_field = _field_for(parset_for_field_test, test_ms, later_epoch)
 
-    assert same_stations_field.stations == same_stations_field.full_observations[0].stations
+    assert same_stations_field.stations == _station_names(test_ms)
     assert same_stations_field.observations_share_stations
 
 
 def test_scan_observations_with_different_stations(parset_for_field_test, test_ms, tmp_path):
-    # The second observation lacks the first station and has one the first observation lacks
-    second_ms = _copy_ms_in_new_band(test_ms, tmp_path / "other.ms")
-    with pt.table(f"{second_ms}::ANTENNA", readonly=False, ack=False) as table:
-        names = table.getcol("NAME")
-        table.putcol("NAME", [*names[1:], "NEW_STATION"])
-    parset = parset_for_field_test.copy()
-    parset["mss"] = [test_ms, second_ms]
+    # The later epoch lacks the first station and has one that the first epoch lacks
+    later_epoch = copy_ms_to_later_epoch(test_ms, tmp_path / "later_epoch.ms")
+    names = _station_names(test_ms)
+    _set_station_names(later_epoch, [*names[1:], "NEW_STATION"])
 
-    mixed_field = Field(parset, minimal=True)
+    mixed_field = _field_for(parset_for_field_test, test_ms, later_epoch)
 
     assert mixed_field.stations == [*names, "NEW_STATION"]
     assert not mixed_field.observations_share_stations
@@ -117,16 +103,40 @@ def test_scan_observations_treats_a_different_station_order_as_different(
     parset_for_field_test, test_ms, tmp_path
 ):
     # Antenna indices differ between such observations, so they cannot be concatenated
-    second_ms = _copy_ms_in_new_band(test_ms, tmp_path / "other.ms")
-    with pt.table(f"{second_ms}::ANTENNA", readonly=False, ack=False) as table:
-        table.putcol("NAME", table.getcol("NAME")[::-1])
-    parset = parset_for_field_test.copy()
-    parset["mss"] = [test_ms, second_ms]
+    later_epoch = copy_ms_to_later_epoch(test_ms, tmp_path / "later_epoch.ms")
+    names = _station_names(test_ms)
+    _set_station_names(later_epoch, names[::-1])
 
-    reordered_field = Field(parset, minimal=True)
+    reordered_field = _field_for(parset_for_field_test, test_ms, later_epoch)
 
-    assert reordered_field.stations == reordered_field.full_observations[0].stations
+    assert reordered_field.stations == names
     assert not reordered_field.observations_share_stations
+
+
+def test_scan_observations_accepts_bands_of_an_epoch_with_the_same_stations(
+    parset_for_field_test, test_ms, tmp_path
+):
+    other_band = copy_ms_to_next_band(test_ms, tmp_path / "other_band.ms")
+
+    assert _field_for(parset_for_field_test, test_ms, other_band).observations_share_stations
+
+
+@pytest.mark.parametrize(
+    "change_stations",
+    [
+        pytest.param(lambda names: [*names[1:], "NEW_STATION"], id="different"),
+        pytest.param(lambda names: names[::-1], id="reordered"),
+    ],
+)
+def test_scan_observations_rejects_bands_of_an_epoch_with_different_stations(
+    parset_for_field_test, test_ms, tmp_path, change_stations
+):
+    # DP3 concatenates the bands of an epoch, which needs their antenna tables to match
+    other_band = copy_ms_to_next_band(test_ms, tmp_path / "other_band.ms")
+    _set_station_names(other_band, change_stations(_station_names(test_ms)))
+
+    with pytest.raises(ValueError, match="differ from those in MS .* of the same epoch"):
+        _field_for(parset_for_field_test, test_ms, other_band)
 
 
 def test_regular_frequency_spacing(field):
