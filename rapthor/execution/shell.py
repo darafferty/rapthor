@@ -4,10 +4,12 @@ import hashlib
 import json
 import logging
 import os
+import queue
 import re
 import resource
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
@@ -39,6 +41,7 @@ class ShellCommandError(RuntimeError):
 
 
 log = logging.getLogger("rapthor:shell")
+STREAM_LOG_FLUSH_INTERVAL_SECONDS = 1.0
 STREAM_LOG_MAX_LINES_PER_RECORD = 40
 TIME_PROFILE_MODES = {"auto", "time"}
 
@@ -402,7 +405,6 @@ def _run_captured_shell_command(
     task_metadata: Mapping[str, object],
 ):
     command_logger = _get_command_logger() if execution_config.stream_output else None
-    buffered_log_lines = []
     process = None
     output_log_handle = None
     try:
@@ -444,18 +446,7 @@ def _run_captured_shell_command(
             start_new_session=True,
         )
 
-        for raw_line in iter(process.stdout.readline, b""):
-            line = raw_line.decode(errors="replace")
-            if output_log_handle is not None:
-                output_log_handle.write(line)
-            if command_logger is not None:
-                text = line.rstrip("\r\n")
-                buffered_log_lines.extend(text.splitlines() or [text])
-                if len(buffered_log_lines) >= STREAM_LOG_MAX_LINES_PER_RECORD:
-                    _flush_stream_log(command_logger, buffered_log_lines)
-
-        if command_logger is not None:
-            _flush_stream_log(command_logger, buffered_log_lines)
+        _forward_output(process, output_log_handle, command_logger)
 
         process.wait()
 
@@ -552,6 +543,55 @@ def _resource_usage_metrics(before, after, elapsed_seconds: float) -> dict:
     return metrics
 
 
+def _forward_output(process, output_log_handle, command_logger):
+    """Forward output from 'process' to the loggers."""
+    if output_log_handle is None and command_logger is None:
+        return
+
+    # Read until either the buffer contains STREAM_LOG_MAX_LINES_PER_RECORD lines or
+    # STREAM_LOG_FLUSH_INTERVAL_SECONDS seconds have passed.
+    # Since process.stdout is blocking, read the output in a separate thread which
+    # stores it in a Queue. In the main thread, use Queue.get, which does support
+    # non-blocking reads with a timeout.
+    def read_output(process, output_queue):
+        try:
+            for line in iter(process.stdout.readline, b""):
+                output_queue.put(line)
+        finally:
+            # shutdown() did not work: The queue still raised queue.Empty instead of
+            # queue.ShutDown. Instead, putting "None" signals the end.
+            output_queue.put(None)
+
+    output_queue = queue.Queue()
+    reader_thread = threading.Thread(target=read_output, args=(process, output_queue))
+    reader_thread.start()
+
+    buffer = []
+    while True:
+        try:
+            raw_line = output_queue.get(timeout=STREAM_LOG_FLUSH_INTERVAL_SECONDS)
+        except queue.Empty:  # Timeout reached, flush buffer.
+            if buffer:
+                _flush_stream_log(command_logger, buffer)
+            continue
+        if raw_line is None:  # End of output.
+            break
+
+        line = raw_line.decode(errors="replace")
+        if output_log_handle is not None:
+            output_log_handle.write(line)
+        if command_logger is not None:
+            text = line.rstrip("\r\n")
+            buffer.extend(text.splitlines() or [text])
+            if len(buffer) >= STREAM_LOG_MAX_LINES_PER_RECORD:
+                _flush_stream_log(command_logger, buffer)
+
+    if buffer:
+        _flush_stream_log(command_logger, buffer)
+
+    reader_thread.join(timeout=1)
+
+
 def _write_command_output_header(
     handle,
     shell_command: ShellCommand,
@@ -581,8 +621,6 @@ def _write_command_output_footer(handle, *, returncode: Optional[int]) -> None:
 
 
 def _flush_stream_log(command_logger, buffered_lines: list[str]) -> None:
-    if not buffered_lines:
-        return
     message = "\n".join(buffered_lines).rstrip("\n")
     buffered_lines.clear()
     if message:
