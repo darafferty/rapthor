@@ -1,13 +1,16 @@
 """Tests for preparing sky models for a run without internet access."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from astropy.table import Table
 
 import rapthor.execution.image.catalog_preparation as catalog_preparation
 from rapthor.execution.image.catalog_cli import main
 from rapthor.execution.image.catalog_preparation import parset_options, prepare_catalogs
+from rapthor.execution.image.diagnostic_calculation import check_astrometry
 from rapthor.execution.image.flux_normalization import get_field_phase_center
 
 ALL_SURVEYS = ["TGSS", "PANSTARRS", "VLSSR", "WENSS"]
@@ -213,6 +216,61 @@ def test_main_reports_failed_downloads_without_parset_options(
 def test_main_reports_a_missing_measurement_set(tmp_path, fake_download):
     with pytest.raises(SystemExit, match="Measurement Set not found"):
         main([str(tmp_path / "missing.ms"), str(tmp_path / "catalogs")])
+
+
+def test_astrometry_check_uses_a_downloaded_sky_model(
+    measurement_set, tmp_path, monkeypatch, mocker
+):
+    """The sky model from a download, in which LSMTool groups the sources, can be compared."""
+    ra, dec = 10.0, 50.0
+    offsets_deg = np.linspace(-0.05, 0.05, 10)
+    dec_shift_deg = 1 / 3600
+
+    def write_survey_model(_cone_params, _survey, skymodel_path):
+        lines = [
+            f"s{index}, POINT, {ra + offset}, {dec + offset + dec_shift_deg}, 1.0"
+            for index, offset in enumerate(offsets_deg)
+        ]
+        Path(skymodel_path).write_text(
+            "\n".join(["FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency=150e6", *lines])
+        )
+
+    monkeypatch.setattr(
+        "lsmtool.download_skymodel.download_skymodel_from_survey", write_survey_model
+    )
+    catalogs = prepare_catalogs(measurement_set, str(tmp_path / "catalogs"))
+    assert catalogs.failures == {}
+    input_catalog = tmp_path / "catalog.fits"
+    Table(
+        {
+            "Source_id": np.arange(len(offsets_deg)),
+            "RA": ra + offsets_deg,
+            "DEC": dec + offsets_deg,
+            "Isl_Total_flux": np.ones(len(offsets_deg)),
+            "DC_Maj": np.full(len(offsets_deg), 1 / 3600),
+            "E_RA": np.full(len(offsets_deg), 0.1 / 3600),
+            "E_DEC": np.full(len(offsets_deg), 0.1 / 3600),
+        }
+    ).write(input_catalog, format="fits")
+    mocker.patch("rapthor.execution.image.diagnostic_calculation.plot_astrometry_offsets")
+    output_root = tmp_path / "check"
+    # The comparison writes its statistics to the current directory
+    monkeypatch.chdir(tmp_path)
+
+    result = check_astrometry(
+        SimpleNamespace(ra=ra, dec=dec),
+        input_catalog,
+        SimpleNamespace(freq=150e6, img_data=np.zeros((100, 100)), img_hdr={"CDELT1": 0.01}),
+        None,
+        min_number=5,
+        output_root=output_root,
+        comparison_skymodel=catalogs.paths["PANSTARRS"],
+        allow_internet_access=False,
+    )
+
+    assert abs(result["meanDecOffsetDeg"]) == pytest.approx(dec_shift_deg, rel=0.01)
+    assert result["meanRAOffsetDeg"] == pytest.approx(0.0, abs=dec_shift_deg / 10)
+    assert output_root.with_suffix(".astrometry_offsets.json").exists()
 
 
 def test_command_is_installed():

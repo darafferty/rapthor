@@ -1,5 +1,6 @@
 """Integration tests for the Rapthor pipeline when using the do_normalize step."""
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -11,6 +12,12 @@ from losoto.h5parm import h5parm
 from rapthor.execution.image.catalog_cli import main as fetch_skymodels
 
 from .utils import get_working_dir_from_parset, update_parset_path
+
+
+def _normalization_amplitudes(working_dir):
+    normalization_file = working_dir / "solutions/normalize_1/sector_1_normalize.h5parm"
+    with h5parm(str(normalization_file), readonly=True) as h5:
+        return h5.getSolset("sol000").getSoltab("amplitude000").getValues(retAxesVals=False)
 
 
 class SkyModelServerUnavailable(Exception):
@@ -165,9 +172,7 @@ def test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_mode
     assert "Downloading wenss catalog for this field" not in log_text
     assert "Flux density scale normalization will be skipped" not in log_text
 
-    normalization_file = working_dir / "solutions/normalize_1/sector_1_normalize.h5parm"
-    with h5parm(str(normalization_file), readonly=True) as h5:
-        amplitudes = h5.getSolset("sol000").getSoltab("amplitude000").getValues(retAxesVals=False)
+    amplitudes = _normalization_amplitudes(working_dir)
     assert np.all(np.isfinite(amplitudes))
     assert not np.allclose(amplitudes, 1.0)
 
@@ -219,9 +224,7 @@ def test_rapthor_run_single_loop_with_do_normalize_no_matching_sources_skips_nor
     assert "Flux density scale normalization will be skipped" in log_text
     assert "Downloading vlssr catalog for this field" not in log_text
     assert "Downloading wenss catalog for this field" not in log_text
-    normalization_file = working_dir / "solutions/normalize_1/sector_1_normalize.h5parm"
-    with h5parm(str(normalization_file), readonly=True) as h5:
-        amplitudes = h5.getSolset("sol000").getSoltab("amplitude000").getValues(retAxesVals=False)
+    amplitudes = _normalization_amplitudes(working_dir)
     assert amplitudes == pytest.approx(1.0)
 
 
@@ -283,10 +286,16 @@ def test_rapthor_run_without_internet_on_sky_models_from_fetch_skymodels(
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation normalize_1 completed" in output
     assert "Operation image_1 completed" in output
-    log_text = (
-        output
-        + (Path(get_working_dir_from_parset(updated_parset_path)) / "logs/rapthor.log").read_text()
-    )
+    working_dir = Path(get_working_dir_from_parset(updated_parset_path))
+    log_text = output + (working_dir / "logs/rapthor.log").read_text()
     assert "Using reference sky models provided as input for normalization" in log_text
-    assert "check will be skipped" not in log_text
     assert "Downloading vlssr catalog for this field" not in log_text
+    assert "Flux density scale normalization will be skipped" not in log_text
+    # A failed fit still writes corrections, but they are all one
+    amplitudes = _normalization_amplitudes(working_dir)
+    assert np.all(np.isfinite(amplitudes))
+    assert not np.allclose(amplitudes, 1.0)
+    # The photometry check can be skipped without failing the run. The sources of this image
+    # are too coarse for the cuts of the astrometry check, which test_catalog_preparation covers
+    diagnostics_file = next((working_dir / "plots/image_1").glob("*.image_diagnostics.json"))
+    assert "meanRatio_USER_SUPPLIED" in json.loads(diagnostics_file.read_text())

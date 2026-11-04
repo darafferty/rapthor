@@ -30,6 +30,7 @@
     "tests/integration/test_do_normalize.py::test_rapthor_run_single_loop_with_do_normalize_no_internet_provided_sky_models_ok[generated_parset_path_normalisation0]": 104.37352249199466,
     "tests/integration/test_do_normalize.py::test_rapthor_run_single_loop_with_do_normalize_no_internet_raises_error[generated_parset_path0]": 22.831691426996258,
     "tests/integration/test_do_normalize.py::test_rapthor_run_single_loop_with_do_normalize_no_matching_sources_skips_normalization[generated_parset_path_normalisation0-None]": 80.41327204501431,
+    "tests/integration/test_do_normalize.py::test_rapthor_run_without_internet_on_sky_models_from_fetch_skymodels[generated_parset_path_normalisation0]": 82.80700471800083,
     "tests/integration/test_focused_scenarios.py::test_prepare_frequency_only_imaging_bda_with_dp3": 2.0751728460018057,
     "tests/integration/test_focused_scenarios.py::test_rapthor_run_concatenates_multiple_measurement_sets[generated_parset_path0]": 67.68376964097843,
     "tests/integration/test_focused_scenarios.py::test_rapthor_run_final_image_only_applies_dd_slow_gains_on_the_fly[generated_parset_path0]": 91.77752856799634,
