@@ -2,6 +2,7 @@
 
 import logging
 import os
+import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
@@ -10,7 +11,6 @@ from lsmtool.download_skymodel import download_skymodel
 from lsmtool.operations_lib import normalize_ra_dec
 
 from rapthor.execution.image.flux_normalization import SURVEY_METADATA, get_field_phase_center
-from rapthor.lib.records import partial_product_path
 
 log = logging.getLogger("rapthor:catalog_preparation")
 
@@ -92,22 +92,22 @@ def prepare_catalogs(
 
 def _download_catalog(cone_params: dict, survey: str, path: str) -> Optional[str]:
     """Download a sky model so that its final path only ever holds a complete file."""
-    partial_path = partial_product_path(path)
     log.info("Downloading the %s sky model to %s", survey, path)
-    try:
-        download_skymodel(
-            cone_params,
-            skymodel_path=partial_path,
-            overwrite=True,
-            survey=survey,
-        )
-    # What a failed download raises depends on the server of the survey
-    except Exception as error:
-        log.error("The %s sky model could not be downloaded: %s", survey, error)
-        if os.path.exists(partial_path):
-            os.remove(partial_path)
-        return str(error)
-    os.replace(partial_path, path)
+    # A directory of its own keeps this apart from any other run on the same output directory
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(path), prefix=".download_") as temp_dir:
+        partial_path = os.path.join(temp_dir, os.path.basename(path))
+        try:
+            download_skymodel(
+                cone_params,
+                skymodel_path=partial_path,
+                overwrite=True,
+                survey=survey,
+            )
+        # What a failed download raises depends on the server of the survey
+        except Exception as error:
+            log.error("The %s sky model could not be downloaded: %s", survey, error)
+            return str(error)
+        os.replace(partial_path, path)
     return None
 
 

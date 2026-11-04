@@ -21,7 +21,14 @@ class FakeDownload:
         self.failing = failing
 
     def __call__(self, cone_params, skymodel_path, overwrite, survey):
-        self.calls.append({"cone": cone_params, "survey": survey, "overwrite": overwrite})
+        self.calls.append(
+            {
+                "cone": cone_params,
+                "survey": survey,
+                "overwrite": overwrite,
+                "path": skymodel_path,
+            }
+        )
         Path(skymodel_path).write_text("partial" if survey in self.failing else survey)
         if survey in self.failing:
             raise OSError(f"{survey} server is down")
@@ -98,6 +105,22 @@ def test_prepare_catalogs_keeps_what_is_present_unless_told_to_overwrite(
     prepare_catalogs(measurement_set, str(output_dir), overwrite=True)
 
     assert tgss.read_text() == "TGSS"
+
+
+def test_each_download_writes_to_its_own_temporary_file(measurement_set, tmp_path, fake_download):
+    output_dir = tmp_path / "catalogs"
+
+    # Runs that overlap would otherwise write to, move or remove the same file
+    prepare_catalogs(measurement_set, str(output_dir))
+    prepare_catalogs(measurement_set, str(output_dir), overwrite=True)
+
+    tgss_paths = [Path(call["path"]) for call in fake_download.calls if call["survey"] == "TGSS"]
+    assert len(tgss_paths) == 2
+    assert tgss_paths[0] != tgss_paths[1]
+    final_path = output_dir / "TGSS_model.txt"
+    assert final_path not in tgss_paths
+    # On the same file system as the sky model, so that moving it into place is atomic
+    assert all(path.is_relative_to(output_dir) for path in tgss_paths)
 
 
 def test_a_failed_download_leaves_no_file_and_does_not_stop_the_others(
