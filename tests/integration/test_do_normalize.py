@@ -10,6 +10,15 @@ from losoto.h5parm import h5parm
 from .utils import get_working_dir_from_parset, update_parset_path
 
 
+class SkyModelServerUnavailable(Exception):
+    """A sky model could not be downloaded because the server is down."""
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=SkyModelServerUnavailable,
+    reason="vizier.u-strasbg.fr is not available to download sky models",
+)
 @pytest.mark.internet
 @pytest.mark.integration
 @pytest.mark.parametrize("normalization_skymodel_paths", [None], indirect=True)
@@ -44,6 +53,9 @@ def test_rapthor_run_single_loop_with_do_normalize(
         check=False,
     )
     output = f"{result.stdout}\n{result.stderr}"
+    # Rapthor runs in another process, so its exception does not reach this test
+    if result.returncode != 0 and "vizier.u-strasbg.fr" in output:
+        raise SkyModelServerUnavailable(output)
     assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
     assert "Operation calibrate_1 completed" in output
     assert "Operation predict_1 completed" in output
