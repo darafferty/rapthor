@@ -11,8 +11,13 @@ from astropy.io import fits
 
 from .utils import find_command_records, get_working_dir_from_parset, update_parset_path
 
+# Each run starts its own Prefect server and Dask cluster in a subprocess
+pytestmark = [pytest.mark.prefect, pytest.mark.serial]
+
 # Later epochs start well after the test MS has ended
 EPOCH_SHIFT_SECONDS = 86400.0
+# Well below the peak of about 3 Jy/beam in images of the test MS
+MIN_IMAGE_PEAK_JY = 0.1
 
 
 def _shift_ms_in_time(ms_path):
@@ -73,7 +78,7 @@ def _assert_image_has_data(working_dir):
     assert images
     with fits.open(images[0], memmap=False) as hdul:
         image = next(hdu.data for hdu in hdul if hdu.data is not None)
-    assert np.isfinite(image).any()
+    assert np.nanmax(np.abs(image)) > MIN_IMAGE_PEAK_JY
 
 
 def _wsclean_measurement_sets(working_dir):
