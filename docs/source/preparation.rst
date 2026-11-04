@@ -20,6 +20,12 @@ frequency bands output by LINC can be input directly to Rapthor (no
 concatenation is needed). Data from multiple epochs, such as interleaved 
 observations or observations from multiple nights, are supported.
 
+The input data need not all have the same stations. A station that is missing
+from an observation is ignored in the calibration of that observation. Such
+observations cannot be concatenated in time, so they are imaged together as
+separate Measurement Sets and residual visibilities are not saved (see
+:term:`save_residual_visibilities`).
+
 Sky model
 ---------
 

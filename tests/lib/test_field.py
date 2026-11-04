@@ -74,6 +74,61 @@ def test_scan_observations_uses_mean_station_diameter(
     assert mixed_field.fwhm_ra_deg == pytest.approx(expected_fwhm_ra)
 
 
+def _copy_ms_in_new_band(source_ms, target_ms):
+    """Copy an MS to frequencies that do not overlap the source, as another band of the epoch."""
+    shutil.copytree(source_ms, target_ms)
+    with pt.table(f"{target_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
+        channel_freq = table.getcol("CHAN_FREQ")
+        channel_width = table.getcol("CHAN_WIDTH")
+        frequency_offset = float(
+            channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max()
+        )
+        table.putcol("CHAN_FREQ", channel_freq + frequency_offset)
+        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + frequency_offset)
+    return str(target_ms)
+
+
+def test_scan_observations_with_the_same_stations(parset_for_field_test, test_ms, tmp_path):
+    parset = parset_for_field_test.copy()
+    parset["mss"] = [test_ms, _copy_ms_in_new_band(test_ms, tmp_path / "other.ms")]
+
+    same_stations_field = Field(parset, minimal=True)
+
+    assert same_stations_field.stations == same_stations_field.full_observations[0].stations
+    assert same_stations_field.observations_share_stations
+
+
+def test_scan_observations_with_different_stations(parset_for_field_test, test_ms, tmp_path):
+    # The second observation lacks the first station and has one the first observation lacks
+    second_ms = _copy_ms_in_new_band(test_ms, tmp_path / "other.ms")
+    with pt.table(f"{second_ms}::ANTENNA", readonly=False, ack=False) as table:
+        names = table.getcol("NAME")
+        table.putcol("NAME", [*names[1:], "NEW_STATION"])
+    parset = parset_for_field_test.copy()
+    parset["mss"] = [test_ms, second_ms]
+
+    mixed_field = Field(parset, minimal=True)
+
+    assert mixed_field.stations == [*names, "NEW_STATION"]
+    assert not mixed_field.observations_share_stations
+
+
+def test_scan_observations_treats_a_different_station_order_as_different(
+    parset_for_field_test, test_ms, tmp_path
+):
+    # Antenna indices differ between such observations, so they cannot be concatenated
+    second_ms = _copy_ms_in_new_band(test_ms, tmp_path / "other.ms")
+    with pt.table(f"{second_ms}::ANTENNA", readonly=False, ack=False) as table:
+        table.putcol("NAME", table.getcol("NAME")[::-1])
+    parset = parset_for_field_test.copy()
+    parset["mss"] = [test_ms, second_ms]
+
+    reordered_field = Field(parset, minimal=True)
+
+    assert reordered_field.stations == reordered_field.full_observations[0].stations
+    assert not reordered_field.observations_share_stations
+
+
 def test_regular_frequency_spacing(field):
     assert all(obs.channels_are_regular for obs in field.observations)
 

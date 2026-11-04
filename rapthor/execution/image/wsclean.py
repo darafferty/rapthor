@@ -186,7 +186,11 @@ def _select_wsclean_command_for_sector(
     temp_dir: str,
 ) -> list[str]:
     common_options = WscleanOptions(
-        msin=concat_record["path"],
+        msin=(
+            [concat_record["path"]]
+            if sector["concat_in_time"]
+            else [str(task["msout_path"]) for task in sector["prepare_tasks"]]
+        ),
         name=str(sector["image_name"]),
         mask=mask_record["path"],
         imsize=list(sector["wsclean_imsize"]),

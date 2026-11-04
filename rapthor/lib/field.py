@@ -299,13 +299,15 @@ class Field(object):
                     "separation_tolerance_arcsec option in the parset if necessary."
                 )
 
-        # Check that all observations have the same stations
-        self.stations = obs0.stations
-        for obs in self.full_observations:
-            if self.stations != obs.stations:
-                raise ValueError(
-                    f"Stations in MS {obs.ms_filename} differ from those in MS {obs0.ms_filename}"
-                )
+        # Get the stations across all observations, in the order they are first found. DP3
+        # ignores a station that an observation lacks. Observations can be concatenated in
+        # time only if their stations match in order, as their antenna indices then agree
+        self.stations = list(
+            dict.fromkeys(station for obs in self.full_observations for station in obs.stations)
+        )
+        self.observations_share_stations = all(
+            list(obs.stations) == list(obs0.stations) for obs in self.full_observations
+        )
 
         # Find mean elevation and FOV over all observations
         self.diam = np.mean([obs.diam for obs in self.full_observations])

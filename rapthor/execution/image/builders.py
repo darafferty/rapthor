@@ -50,6 +50,9 @@ def image_payload_from_inputs(
     make_residual_visibilities = bool(
         make_residual_visibilities or input_parms.get("make_residual_visibilities", False)
     )
+    concat_in_time = bool(input_parms.get("concat_in_time", True))
+    if make_residual_visibilities and not concat_in_time:
+        raise ValueError("Residual visibilities require data concatenated in time")
     per_sector_keys = [
         "obs_filename",
         "prepare_filename",
@@ -284,6 +287,7 @@ def image_payload_from_inputs(
                 "bright_skymodel_pb": bright_skymodel_pb,
                 "data_colname": str(input_parms["data_colname"]),
                 "prepare_tasks": prepare_tasks,
+                "concat_in_time": concat_in_time,
                 "concat_filename": concat_filename,
                 "concat_path": os.path.join(pipeline_dir, concat_filename),
                 "residual_filename": residual_filename,
