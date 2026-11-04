@@ -768,7 +768,10 @@ The available options are described below under their respective sections.
 
     normalization_reference_frequencies
         Reference frequencies, in Hz, corresponding to ``normalization_skymodels``
-        (default = ``None``).
+        (default = ``None``). A sky model at the frequency of a survey used in the
+        normalization (74 MHz for VLSSr and 327 MHz for WENSS) is treated as a copy
+        of that survey, so it gives the same result as the downloaded catalog. Any
+        other sky model is used without a flux correction and with no flux error.
 
 .. _parset_cluster_options:
 

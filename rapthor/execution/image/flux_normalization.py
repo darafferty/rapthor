@@ -765,16 +765,63 @@ def _get_survey_metadata(reference_skymodels=None, reference_frequencies=None):
         log.info(
             "Using reference sky models provided as input for normalization, instead of external survey catalogs."
         )
-        return {
-            survey: {"flux_correction": 1.0, "flux_err": 0.0, "frequency": freq}
-            for survey, freq in zip(reference_skymodels, reference_frequencies)
-        }
+        return _sort_metadata_by_frequency(
+            {
+                skymodel: _get_reference_skymodel_metadata(freq)
+                for skymodel, freq in zip(reference_skymodels, reference_frequencies)
+            }
+        )
     else:
         log.info(
             "Using external survey catalogs for normalization. The following surveys will be used: "
             + ", ".join(SURVEY_METADATA.keys())
         )
         return _sort_metadata_by_frequency(SURVEY_METADATA)
+
+
+def _get_reference_skymodel_metadata(frequency):
+    """Get the metadata for a reference sky model from its frequency.
+
+    A sky model at the frequency of a known survey is treated as a copy of that
+    survey, so that it gives the same normalization as the downloaded catalog.
+
+    Parameters
+    ----------
+    frequency : float
+        The reference frequency of the sky model in Hz
+
+    Returns
+    -------
+    metadata : dict
+        The flux correction factor, flux error and frequency of the sky model
+    """
+    survey = _identify_survey_from_frequency(frequency)
+    if survey is None:
+        return {"flux_correction": 1.0, "flux_err": 0.0, "frequency": frequency}
+    return {
+        "flux_correction": SURVEY_METADATA[survey]["flux_correction"],
+        "flux_err": SURVEY_METADATA[survey]["flux_err"],
+        "frequency": frequency,
+    }
+
+
+def _identify_survey_from_frequency(survey_frequency):
+    """Attempt to identify a survey from its frequency.
+
+    Parameters
+    ----------
+    survey_frequency : float
+        The survey reference frequency in Hz
+
+    Returns
+    -------
+    survey_name : str or None
+        Name of the survey if identified; None otherwise.
+    """
+    for survey_name, metadata in SURVEY_METADATA.items():
+        if np.isclose(survey_frequency, metadata["frequency"]):
+            return survey_name
+    return None
 
 
 def _sort_metadata_by_frequency(survey_metadata):
