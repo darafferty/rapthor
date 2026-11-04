@@ -2607,30 +2607,34 @@ def _input_parms_with_mixed_stations(input_parms):
     return {**input_parms, "concat_in_time": False}
 
 
-@pytest.mark.parametrize("use_mpi", [False, True])
-def test_wsclean_images_every_prepared_observation_with_different_stations(
-    tmp_path, fake_image_shell_operation_cls, use_mpi
-):
-    pipeline_dir = tmp_path / "work"
-    pipeline_dir.mkdir()
-    inputs = _mpi_image_input_parms() if use_mpi else _image_input_parms()
-    sector = image_payload_from_inputs(
-        _input_parms_with_mixed_stations(inputs), pipeline_dir, use_mpi=use_mpi
-    )["sectors"][0]
-
+def _wsclean_command_for_sector(sector, concat_path, pipeline_dir, shell_operation_cls):
     image_wsclean_module.run_or_reuse_wsclean_images(
         sector,
-        {"path": sector["prepare_tasks"][0]["msout_path"]},
+        {"path": concat_path},
         {"path": "mask.fits"},
         None,
         str(sector["image_name"]),
         str(pipeline_dir),
         ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
-        shell_operation_cls=fake_image_shell_operation_cls,
+        shell_operation_cls=shell_operation_cls,
+    )
+    return shlex.split(shell_operation_cls.instances[-1].kwargs["commands"][-1])
+
+
+@pytest.mark.parametrize("use_mpi", [False, True])
+def test_wsclean_images_every_prepared_observation_with_different_stations(
+    tmp_path, fake_image_shell_operation_cls, use_mpi
+):
+    inputs = _mpi_image_input_parms() if use_mpi else _image_input_parms()
+    sector = image_payload_from_inputs(
+        _input_parms_with_mixed_stations(inputs), tmp_path, use_mpi=use_mpi
+    )["sectors"][0]
+    prepared = [task["msout_path"] for task in sector["prepare_tasks"]]
+
+    command = _wsclean_command_for_sector(
+        sector, prepared[0], tmp_path, fake_image_shell_operation_cls
     )
 
-    command = shlex.split(fake_image_shell_operation_cls.instances[-1].kwargs["commands"][-1])
-    prepared = [task["msout_path"] for task in sector["prepare_tasks"]]
     assert len(prepared) == 2
     assert command[-2:] == prepared
 
@@ -2638,23 +2642,13 @@ def test_wsclean_images_every_prepared_observation_with_different_stations(
 def test_wsclean_images_the_concatenated_data_with_the_same_stations(
     tmp_path, fake_image_shell_operation_cls
 ):
-    pipeline_dir = tmp_path / "work"
-    pipeline_dir.mkdir()
-    sector = image_payload_from_inputs(_image_input_parms(), pipeline_dir)["sectors"][0]
+    sector = image_payload_from_inputs(_image_input_parms(), tmp_path)["sectors"][0]
     assert sector["concat_in_time"]
 
-    image_wsclean_module.run_or_reuse_wsclean_images(
-        sector,
-        {"path": sector["concat_path"]},
-        {"path": "mask.fits"},
-        None,
-        str(sector["image_name"]),
-        str(pipeline_dir),
-        ExecutionConfig(task_runner="sync"),
-        shell_operation_cls=fake_image_shell_operation_cls,
+    command = _wsclean_command_for_sector(
+        sector, sector["concat_path"], tmp_path, fake_image_shell_operation_cls
     )
 
-    command = shlex.split(fake_image_shell_operation_cls.instances[-1].kwargs["commands"][-1])
     assert command[-1] == sector["concat_path"]
     assert not any(path.endswith("_prep.ms") for path in command)
 
