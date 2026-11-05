@@ -44,7 +44,6 @@ log = logging.getLogger("rapthor:shell")
 STREAM_LOG_FLUSH_INTERVAL_SECONDS = 1.0
 STREAM_LOG_MAX_LINES_PER_RECORD = 40
 TIME_PROFILE_MODES = {"auto", "time"}
-_STREAM_DONE = object()
 
 _TIME_METRIC_FIELDS = {
     "User time (seconds)": ("user_seconds", float),
@@ -406,9 +405,7 @@ def _run_captured_shell_command(
     task_metadata: Mapping[str, object],
 ):
     command_logger = _get_command_logger() if execution_config.stream_output else None
-    buffered_log_lines = []
     process = None
-    reader_thread = None
     output_log_handle = None
     try:
         if output_log_path is not None:
@@ -446,38 +443,8 @@ def _run_captured_shell_command(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
-        if process.stdout is None:
-            raise RuntimeError("Command output pipe was not created")
 
-        output_queue = queue.Queue()
-        reader_thread = threading.Thread(
-            target=_queue_process_output,
-            args=(process.stdout, output_queue),
-            daemon=True,
-        )
-        reader_thread.start()
-
-        while True:
-            try:
-                raw_line = output_queue.get(timeout=STREAM_LOG_FLUSH_INTERVAL_SECONDS)
-            except queue.Empty:
-                if command_logger is not None:
-                    _flush_stream_log(command_logger, buffered_log_lines)
-                continue
-
-            if raw_line is _STREAM_DONE:
-                break
-
-            lines = _output_lines(raw_line)
-            if output_log_handle is not None:
-                output_log_handle.write(raw_line.decode(errors="replace"))
-            if command_logger is not None:
-                buffered_log_lines.extend(lines)
-                if len(buffered_log_lines) >= STREAM_LOG_MAX_LINES_PER_RECORD:
-                    _flush_stream_log(command_logger, buffered_log_lines)
-
-        if command_logger is not None:
-            _flush_stream_log(command_logger, buffered_log_lines)
+        _forward_output(process, output_log_handle, command_logger)
 
         process.wait()
 
@@ -497,12 +464,13 @@ def _run_captured_shell_command(
                 f"{process.returncode}: {shell_command.command_string}",
                 process.returncode,
             )
+
     finally:
         if process is not None and process.poll() is None:
+            # Kill any remaining process.
             process.kill()
             process.wait()
-        if reader_thread is not None:
-            reader_thread.join(timeout=1)
+
         if output_log_handle is not None:
             _write_command_output_footer(
                 output_log_handle,
@@ -573,17 +541,56 @@ def _resource_usage_metrics(before, after, elapsed_seconds: float) -> dict:
     return metrics
 
 
-def _queue_process_output(output, output_queue) -> None:
-    try:
-        for raw_line in iter(output.readline, b""):
-            output_queue.put(raw_line)
-    finally:
-        output_queue.put(_STREAM_DONE)
+def _forward_output(process, output_log_handle, command_logger):
+    """
+    Forward output from 'process' to the loggers.
 
+    If both loggers are None, the output is still read from the process. This way, the process
+    output pipe doesn't get full, which could block the process.
+    """
 
-def _output_lines(raw_line: bytes) -> list[str]:
-    text = raw_line.decode(errors="replace").rstrip("\r\n")
-    return text.splitlines() or [text]
+    # Read until either the buffer contains STREAM_LOG_MAX_LINES_PER_RECORD lines or
+    # STREAM_LOG_FLUSH_INTERVAL_SECONDS seconds have passed.
+    # Since process.stdout is blocking, read the output in a separate thread which
+    # stores it in a Queue. In the main thread, use Queue.get, which does support
+    # non-blocking reads with a timeout.
+    def read_output(process, output_queue):
+        try:
+            for line in iter(process.stdout.readline, b""):
+                output_queue.put(line)
+        finally:
+            # output_queue.shutdown() did not work: The queue still raised queue.Empty instead of
+            # queue.ShutDown. Instead, putting "None" into the queue signals the end.
+            output_queue.put(None)
+
+    output_queue = queue.Queue()
+    reader_thread = threading.Thread(target=read_output, args=(process, output_queue))
+    reader_thread.start()
+
+    buffer = []
+    while True:
+        try:
+            raw_line = output_queue.get(timeout=STREAM_LOG_FLUSH_INTERVAL_SECONDS)
+        except queue.Empty:  # Timeout reached, flush buffer.
+            if buffer:
+                _flush_stream_log(command_logger, buffer)
+            continue
+        if raw_line is None:  # End of output.
+            break
+
+        line = raw_line.decode(errors="replace")
+        if output_log_handle is not None:
+            output_log_handle.write(line)
+        if command_logger is not None:
+            text = line.rstrip("\r\n")
+            buffer.extend(text.splitlines() or [text])
+            if len(buffer) >= STREAM_LOG_MAX_LINES_PER_RECORD:
+                _flush_stream_log(command_logger, buffer)
+
+    if buffer:
+        _flush_stream_log(command_logger, buffer)
+
+    reader_thread.join(timeout=1)
 
 
 def _write_command_output_header(
@@ -615,8 +622,6 @@ def _write_command_output_footer(handle, *, returncode: Optional[int]) -> None:
 
 
 def _flush_stream_log(command_logger, buffered_lines: list[str]) -> None:
-    if not buffered_lines:
-        return
     message = "\n".join(buffered_lines).rstrip("\n")
     buffered_lines.clear()
     if message:

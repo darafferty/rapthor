@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pickle
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +12,7 @@ import pytest
 from rapthor.execution.commands import command_to_string
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.shell import (
+    STREAM_LOG_FLUSH_INTERVAL_SECONDS,
     MissingPrefectShellError,
     ShellCommand,
     ShellCommandError,
@@ -394,6 +396,34 @@ def test_run_shell_command_batches_nearby_output_lines(tmp_path, caplog):
     assert "first" not in messages
     assert "second" not in messages
     assert "third" not in messages
+
+
+def test_run_shell_command_flushes_output_regularly(tmp_path, caplog):
+    """
+    Command output should be flushed regularly to the logger, even if the output does
+    not yet contain STREAM_LOG_MAX_LINES_PER_RECORD lines.
+    """
+    caplog.set_level(logging.INFO, logger="rapthor:shell")
+
+    script = (
+        "import time\n"
+        "print('early line', flush=True)\n"
+        f"time.sleep({STREAM_LOG_FLUSH_INTERVAL_SECONDS + 0.1})\n"
+        "print('late line', flush=True)\n"
+    )
+
+    run_shell_command(
+        ShellCommand(
+            [sys.executable, "-c", script],
+            working_directory=str(tmp_path),
+        ),
+        ExecutionConfig(stream_output=True),
+    )
+
+    messages = [record.getMessage() for record in caplog.records if record.name == "rapthor:shell"]
+    assert len(messages) == 2
+    assert "early line" in messages[0]
+    assert "late line" in messages[1]
 
 
 def test_run_shell_command_writes_output_without_streaming(tmp_path, caplog, monkeypatch):
