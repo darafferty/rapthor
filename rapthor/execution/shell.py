@@ -542,9 +542,12 @@ def _resource_usage_metrics(before, after, elapsed_seconds: float) -> dict:
 
 
 def _forward_output(process, output_log_handle, command_logger):
-    """Forward output from 'process' to the loggers."""
-    if output_log_handle is None and command_logger is None:
-        return
+    """
+    Forward output from 'process' to the loggers.
+
+    If both loggers are None, the output is still read from the process. This way, the process
+    output pipe doesn't get full, which could block the process.
+    """
 
     # Read until either the buffer contains STREAM_LOG_MAX_LINES_PER_RECORD lines or
     # STREAM_LOG_FLUSH_INTERVAL_SECONDS seconds have passed.
@@ -556,8 +559,8 @@ def _forward_output(process, output_log_handle, command_logger):
             for line in iter(process.stdout.readline, b""):
                 output_queue.put(line)
         finally:
-            # shutdown() did not work: The queue still raised queue.Empty instead of
-            # queue.ShutDown. Instead, putting "None" signals the end.
+            # output_queue.shutdown() did not work: The queue still raised queue.Empty instead of
+            # queue.ShutDown. Instead, putting "None" into the queue signals the end.
             output_queue.put(None)
 
     output_queue = queue.Queue()
