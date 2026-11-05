@@ -442,8 +442,6 @@ def _run_captured_shell_command(
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            # start_new_session makes process.kill() kill both the process and its children.
-            start_new_session=True,
         )
 
         _forward_output(process, output_log_handle, command_logger)
