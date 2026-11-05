@@ -1,6 +1,6 @@
 # Post-Merge Development Plan
 
-Updated: 2026-11-03. Baseline: `origin/main` at `ef12dafe`. CWL reference:
+Updated: 2026-11-05. Baseline: `origin/main` at `26388b01`. CWL reference:
 `origin/releases/v2.2` at `b83cf9bc` and `origin/rapthor-cwl` at `24307de9`.
 
 This lists outstanding work only. All P0 release blockers are merged. P1 items
@@ -12,11 +12,42 @@ or upgrade documentation. Completed work and earlier evidence are in the plan at
 
 ## Next steps
 
-1. Finish P1-DEC-01, the one item needed before any release.
-2. Merge `fix-references-to-master-branch`: the remote `master` branch is gone,
-   so a link in `parset.rst` no longer resolves.
-3. Settle the two conflicting command-runner branches, then do P1-BUG-01.
-4. Decide which of the other P1 feature gates apply to the first release.
+1. Finish P1-DEC-01 (!552), the one item needed before any release.
+2. Merge !531: the remote `master` branch is gone, so a link in `parset.rst` no
+   longer resolves.
+3. Review and merge !551, then settle what remains of P1-BUG-01.
+4. Review and merge !553 and !554, which complete P2-PORT-02, P2-PORT-03 and
+   P2-PORT-04.
+5. Fix P2-BUG-09, which fails integration runs at random when memory is short.
+6. Decide which of the other P1 feature gates apply to the first release.
+7. Retarget or close the merge requests that still target `master`.
+
+## Open merge requests
+
+!551 to !554 have passing pipelines, no open threads and no conflicts with `main`
+or with one another, and each needs approval.
+
+| MR and tip | Tasks | Outstanding |
+| --- | --- | --- |
+| !552 `gec-697-apply-combined-dd-phases` — `eadf7529` | P1-DEC-01 | Compare imaging on a phase-only cycle and test the selected product on restart; neither is recorded yet. |
+| !551 `gec-673-popen-reading` — `976429e3` | Part of P1-BUG-01 | Review. It simplifies output forwarding and does not change how commands are stopped. |
+| !553 `gec-675-mixed-station-sets` — `1a4ca133` | P2-PORT-03 | Tests build the MPI commands but do not run `mpirun`, and no test restarts a mixed-station run. Check the result on real mixed-station data. |
+| !554 `gec-675-offline-sky-models` — `dc9a1ee0` | P2-PORT-02, P2-PORT-04 | Try real Pan-STARRS, VLSSr and WENSS downloads when VizieR is back; only TGSS has been downloaded for real. Once !553 is merged, use its `run_rapthor` test helper in the new offline test. |
+| !531 `fix-references-to-master-branch` — `1ff897db` | | Fixes the `master` references in the docs. It is 16 commits behind `main`; review and merge. |
+| !525 `use-local-git-mirror` — `3cd82217` | | Build and CI URL changes. `run_tests` failed in its last pipeline (2026-10-21). Rebase, then verify mirror refs and reproducibility. Does not fix the NumPy or APT gaps. |
+
+### Merge requests that target `master`
+
+These cannot merge as they are, because `master` is gone.
+
+| MR and tip | Next action |
+| --- | --- |
+| !485 `gec-558-antenna-constraints` — `ad0cd557` | User-specified antenna constraints, not on `main` or `rapthor-cwl`. If still wanted, port the focused changes to `main`. |
+| !502 `gec-613-add-avg-step` — `4ee3f798` | `avg_timestep` and `avg_freqstep` options with CWL inputs, not on `main` or `rapthor-cwl`. If still wanted, rebuild them in the Prefect payloads and commands. |
+| !496 `add-multi-sector-tests` — `b7537329` (CWL) | Source for P3-TEST-03 and B4. Adapt per-sector assertions to Prefect records and keep real-tool coverage, then close. |
+| !313 `add_ntimes_to_observation_init` — `e48168b7` | An `ntimes` argument for `Observation`, not on `main`, with two open threads. Port it or close it. |
+| !373 `rm-dup` — `7a4ca5c6`, !340 `update-streamflow` — `7369d992` | These change CWL files and the CWL runner, which `main` no longer has. Close, or retarget to `rapthor-cwl` if still needed there. |
+| !332 `gec-257-mpitest` — `b8ea88b3` (draft) | Adds a `bin/mpitest` helper. Close unless it is still wanted. |
 
 ## Differences from the CWL branch
 
@@ -26,7 +57,7 @@ These are not on `rapthor-cwl`.
 
 | Task | Outstanding |
 | --- | --- |
-| P1-BUG-01 | Cancellation, especially on clusters (`execution/shell.py`). Terminate command descendants with a process-group TERM/KILL sequence. Bound captured output: `_run_captured_shell_command()` keeps it all in memory. Test Prefect cancellation, worker shutdown and MPI wrappers. |
+| P1-BUG-01 | Cancellation, especially on clusters (`execution/shell.py`). Cleanup kills only the `bash` wrapper with `process.kill()`. The !551 discussion leaves it that way, expecting Dask to stop a worker's children and commands to stop their own subprocesses; an earlier probe found a child surviving an interrupted runner. Test Prefect cancellation, worker shutdown, the `sync` runner, the GNU `time` wrapper and MPI wrappers, then keep this or add process-group termination. |
 | P1-BUG-02 | Slurm guard. Add a test through the CLI; the code is merged, and precedence and the missing scheduler are covered below the CLI. |
 | P1-BUG-03 | Long runs with the dashboard. Deduplicate artifact publication, bound bytes, add a plot-publication switch and make monitoring errors warning-only. Test repeated operations and measure database growth. |
 | P1-BUG-04 | Multi-chunk prediction (`execution/predict/flow.py`). Return exact chunk-owned paths instead of broad globs. Test two chunks with DI addition, DD subtraction, peeling and restart. |
@@ -46,9 +77,9 @@ branches are porting sources, not Prefect implementations.
 | --- | --- |
 | P1-PORT-01 | Standalone container (`7eb0b03f`). `Docker/Dockerfile` still installs `numpy<2`. Align the NumPy build and runtime versions and verify NumPy, PyBDSF and casacore imports plus source finding in final images. |
 | P2-PORT-01 | Full beam in WSClean prediction (`23ed80e9`). Port image-based `applybeam.beammode=array_factor`, `wsclean_predict_beam_interval`, facet-beam flags and full-beam model images, with DP3 beam modes coordinated to prevent double application. Test both `use_array_beam` settings and compare DP3 and WSClean multi-facet fluxes. |
-| P2-PORT-02 | Supplied-survey metadata (`dfa7f11a`, `6d4df857`). Restore flux and error metadata and the missing JSON reference-frequency default. Supplied and downloaded versions of a survey must normalize consistently; cover unknown frequencies and offline inputs. |
-| P2-PORT-03 | Mixed station sets (`4c00305d`). Use a deterministic union and per-MS imaging inputs instead of unconditional time concatenation. Disable or validate residual-MS creation; cover serial and MPI runs, normalization and restart. |
-| P2-PORT-04 | Offline catalog preparation (`dfa7f11a`, `fetch_skymodel.py`). Provide a maintained survey-download command. Document pointing, radius, catalog paths and frequencies; test failures and a normalization and diagnostics run with internet disabled. |
+| P2-PORT-02 | Supplied-survey metadata (`dfa7f11a`, `6d4df857`). In review as !554. |
+| P2-PORT-03 | Mixed station sets (`4c00305d`). In review as !553; see above for the remaining checks. |
+| P2-PORT-04 | Offline catalog preparation (`dfa7f11a`, `fetch_skymodel.py`). In review as !554; see above for the remaining check. |
 | P2-PORT-05 | Logging (`fda65c8a`). Remove duplicate console messages, ANSI codes in files and the import-time logging configuration in `execution/image/restoration.py`. Preserve module loggers, Prefect handlers and worker diagnostics; test repeated setup and API shutdown. |
 | P2-PORT-06 | Failure causes (`aabe35f2`). Carry the exit code, log path and a bounded diagnostic tail through Prefect and Dask exceptions to the CLI. Coordinate with P1-BUG-01; test a failing external command. |
 | P2-PORT-07 | Ubuntu 24.04 APT sources (`a39e517b`, `d1fd7249`). Use `ubuntu.sources` in build and runtime stages and CI. This does not adopt Ubuntu 26.04. |
@@ -69,10 +100,11 @@ branches are porting sources, not Prefect implementations.
 
 | Task | Outstanding |
 | --- | --- |
-| P1-DEC-01 | Phase-only DD cycles apply only the fast phases and discard the medium solve. `gec-697-apply-combined-dd-phases` applies the combined phases on `main`. Compare imaging on a phase-only cycle to confirm this over omitting the medium solve, test the selected product on restart, then review and merge. |
+| P1-DEC-01 | Phase-only DD cycles apply only the fast phases and discard the medium solve. !552 applies the combined phases on `main`. Compare imaging on a phase-only cycle to confirm this over omitting the medium solve, test the selected product on restart, then review and merge. |
 | P1-PORT-01, `np.NaN` | Sector subtraction uses `np.NaN`, which NumPy 2 removed. Replace it with `np.nan`. |
 | P2-BUG-06 follow-ups | Calibration's WSClean model drawing can run with one thread, which WSClean 3.7's `-draw-model` cannot do reliably. Handle it as model mosaics now do, and report the WSClean bug upstream. |
 | P2-BUG-08 | The sector filtered-model image is written uncompressed under a `.fits.fz` name (`compress_image_if_needed()`). Compress it without loss or name it `.fits`; check downstream readers. |
+| P2-BUG-09 | `get_available_memory()` in `lib/cluster.py` reads whole gigabytes from `free -g`, so it returns 0 with under 1 GB available. `Sector.mem_limit_gb` then passes `-abs-mem 0` and WSClean stops with exit status 255. This fails integration tests at random under `-n auto` in a 15 GB container; they pass when rerun alone. Keep the limit positive or leave the option out, and test it. |
 | P3-BUG-01 | WSClean's shared-facet I/O fails, and the integration case is disabled on both branches. Reproduce it on the supported stack, fix or constrain support, then enable the test. |
 
 ## Other test work
@@ -81,25 +113,23 @@ branches are porting sources, not Prefect implementations.
 | --- | --- |
 | P2-TEST-01 | Mark real-WSClean restoration tests as integration and verify that non-integration selection excludes them. |
 | P3-TEST-01 | Decide whether `pytest-8-threads` is still needed. Record measured speed-ups and refresh `.test_durations` when integration tests change. |
+| P3-TEST-04 | `test_rapthor_run_single_loop_with_do_normalize` is a strict expected failure while `vizier.u-strasbg.fr` is down. It will fail CI once the server returns; remove the marker then. |
 
-## Open branches
+## Other branches
 
-Rebase older branches using focused changes; avoid replaying pre-squash migration
-history.
+These have no open merge request. Rebase older branches using focused changes;
+avoid replaying pre-squash migration history.
 
 | Branch and tip | Next action |
 | --- | --- |
-| `gec-697-apply-combined-dd-phases` — `968a9ce3` | P1-DEC-01: see above. |
-| `fix-references-to-master-branch` — `1ff897db` | Fixes the `master` references in the docs. Merge soon. |
-| `gec-673-do-not-return-output` — `9f5de785` | Part of P1-BUG-01: `run_external_command` returns nothing and the runner stops keeping output in memory. Conflicts with `get-673-subprocess-run` in `shell.py`. |
-| `get-673-subprocess-run` — `2dfe6011` | `subprocess.run` replaces `Popen`, so output is captured whole and logged at the end: `prefect_stream_output` no longer streams, memory grows with output and a stopped command leaves no output in its log. Reconcile with P1-BUG-01 and P2-PORT-06. |
 | `pytest-8-threads` — `22e0f88f` | P3-TEST-01: fixes the parallel lane at eight workers. `6e90be48` lets CI choose the count, so check whether it is still needed. |
 | `gec-664-integration-coverage` — `2400779c` | Combines unit and integration coverage into one report. Rebase its two coverage commits onto the CI split; it conflicts with `main` in CI, tox and test files. |
-| `use-local-git-mirror` — `3cd82217` | Build and CI URL changes. Verify mirror refs and reproducibility; does not fix the NumPy or APT gaps. |
 | `rapthor-cwl` — `c0509eae`, `24307de9` (CWL) | Source for P2-DEC-02 and P3-PORT-01. Adapt averaged-MS outputs, serializable records, scratch lifetime and calibration consumers. |
-| `add-multi-sector-tests` — `b7537329` (CWL) | Source for P3-TEST-03 and B4. Adapt per-sector assertions to Prefect records and keep real-tool coverage. |
-| `gec-673-one-worker-per-node` — `7aa11c34` | Superseded by `ef12dafe`; close it. |
+| `get-673-subprocess-run` — `2dfe6011` | Replaces `Popen` with `subprocess.run`, which stops output streaming, whereas !551 keeps `Popen`. Close it unless that approach is revived. |
+| `gec-673-one-worker-per-node` — `7aa11c34` | Superseded by `ef12dafe`; delete it. |
 | `gec-672-combined-test` — `0e4da8e9` | Out of date; delete it. |
+| `gec-673-do-not-return-output` — `780c793b`, `gec-698-xfail-download-skymodels` — `0dfe059d` | Merged as !550 and !555; delete them. |
+| `RAP-1492-accept-json-parsets` — `ef12dafe` | Has no commits beyond `main`; delete it. |
 
 ## Later improvements
 
@@ -124,13 +154,15 @@ history.
   large owners and shared fixtures when justified.
 - **B5: optional Hebog backend.** Choose one of `add-hebog-source-finder`
   (`5e5d9dcd`), `hebog-continuum-default` (`632f6211`) or `feat/hebog-native-task`
-  (`d830c1c8`). Keep PyBDSF as the default pending a scientific decision. Validate
-  masks, catalogs, apparent- and true-sky models, flux scale, convergence,
-  dependencies, resources and restart.
+  (`d830c1c8`). These commits are not on `origin`, whose `add-hebog-source-finder`
+  (`aff26023`) has no Hebog code, so push the one chosen. Keep PyBDSF as the default
+  pending a scientific decision. Validate masks, catalogs, apparent- and true-sky
+  models, flux scale, convergence, dependencies, resources and restart.
 
 ## Overlaps to coordinate
 
 Preserve the input protection on DD solve chains when changing beam or averaging
 builders. Strategy, image-only and repeated-final changes share `Field.update()`.
-Plot ownership feeds artifact publication, and process-output limits feed failure
-reporting. Any future task retries need restart-safe products first.
+Plot ownership feeds artifact publication, and output forwarding (!551) feeds
+failure reporting (P2-PORT-06). Any future task retries need restart-safe products
+first.
