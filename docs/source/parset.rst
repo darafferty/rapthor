@@ -539,7 +539,9 @@ The available options are described below under their respective sections.
         Save residual visibilities for the final image (default = ``False``).
         If ``True``, WSClean keeps the model data required for the final image, and Rapthor
         writes residual Measurement Sets as DATA minus MODEL_DATA in
-        ``visibilities/image_X/sector_Y``.
+        ``visibilities/image_X/sector_Y``. Residual visibilities are not saved if the
+        input observations have different stations, as they cannot then be concatenated
+        in time.
 
     average_visibilities
         Perform averaging of the input visibilities for imaging (default = ``True``),

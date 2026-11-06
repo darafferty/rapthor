@@ -43,6 +43,7 @@ class ImageSectorPayload(TypedDict):
     bright_skymodel_pb: Optional[str]
     data_colname: str
     prepare_tasks: list[ImagePrepareTaskPayload]
+    concat_in_time: bool
     concat_filename: str
     concat_path: str
     residual_filename: Optional[str]

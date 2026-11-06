@@ -171,6 +171,7 @@ def imaging_restart(tmp_path, monkeypatch):
         "phasecenter": "[0deg, 0deg]",
         "max_threads": 1,
         "prepare_data_steps": "[shift]",
+        "concat_in_time": True,
         "concat_path": str(workdir / "sector_1_concat.ms"),
     }
     tasks = [
@@ -210,6 +211,24 @@ def _expected_records(workdir):
         directory_record(workdir / "sector_1_obs_0_prep.ms"),
         directory_record(workdir / "sector_1_obs_1_prep.ms"),
     ], directory_record(workdir / "sector_1_concat.ms")
+
+
+def test_concatenation_is_skipped_for_observations_with_different_stations(tmp_path):
+    workdir = tmp_path / "image_1"
+    workdir.mkdir()
+    sector = {"concat_in_time": False, "concat_path": str(workdir / "sector_1_concat.ms")}
+    prepared = [
+        directory_record(workdir / "sector_1_obs_0_prep.ms"),
+        directory_record(workdir / "sector_1_obs_1_prep.ms"),
+    ]
+
+    # No shell operation is given, so running a command would fail. A restart does the same.
+    for _attempt in range(2):
+        record = concatenate_prepared_visibilities(
+            sector, prepared, str(workdir), ExecutionConfig(task_runner="sync")
+        )
+        assert record == prepared[0]
+    assert not (workdir / "sector_1_concat.ms").exists()
 
 
 def test_imaging_preparation_restarts_after_a_failure_during_creation(imaging_restart):
@@ -279,7 +298,11 @@ def test_concatenation_replaces_a_partial_ms_of_a_stopped_attempt(tmp_path):
     prepared = tmp_path / "sector_1_obs_0_prep.ms"
     prepared.mkdir()
     (tmp_path / ".sector_1_concat.ms.partial").mkdir()
-    sector = {"data_colname": "DATA", "concat_path": str(tmp_path / "sector_1_concat.ms")}
+    sector = {
+        "data_colname": "DATA",
+        "concat_in_time": True,
+        "concat_path": str(tmp_path / "sector_1_concat.ms"),
+    }
     commands = _MeasurementSetCommands()
 
     record = concatenate_prepared_visibilities(

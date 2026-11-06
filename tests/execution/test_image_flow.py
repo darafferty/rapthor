@@ -487,6 +487,7 @@ class FieldStub:
         self.save_supplementary_images = False
         self.save_visibilities = False
         self.save_residual_visibilities = False
+        self.observations_share_stations = True
         self.image_pol = "I"
         self.lofar_to_true_flux_ratio = None
         self.lofar_to_true_flux_std = None
@@ -1005,7 +1006,7 @@ def _materialize_image_operation_outputs(value):
 
 def _wsclean_options(**overrides) -> WscleanOptions:
     values = {
-        "msin": "sector_1_concat.ms",
+        "msin": ["sector_1_concat.ms"],
         "name": "sector_1",
         "mask": "sector_1_mask.fits",
         "imsize": [1024, 1024],
@@ -2600,6 +2601,120 @@ def test_run_image_flow_cleans_isolated_wsclean_temp_dirs(
     ]
     assert len(set(temp_dirs)) == 2
     assert all(not temp_dir.exists() for temp_dir in temp_dirs)
+
+
+def _input_parms_with_mixed_stations(input_parms):
+    return {**input_parms, "concat_in_time": False}
+
+
+def _wsclean_command_for_sector(sector, concat_path, pipeline_dir, shell_operation_cls):
+    image_wsclean_module.run_or_reuse_wsclean_images(
+        sector,
+        {"path": concat_path},
+        {"path": "mask.fits"},
+        None,
+        str(sector["image_name"]),
+        str(pipeline_dir),
+        ExecutionConfig(task_runner="sync", max_nodes=2, cpus_per_task=3),
+        shell_operation_cls=shell_operation_cls,
+    )
+    return shlex.split(shell_operation_cls.instances[-1].kwargs["commands"][-1])
+
+
+@pytest.mark.parametrize("use_mpi", [False, True])
+def test_wsclean_images_every_prepared_observation_with_different_stations(
+    tmp_path, fake_image_shell_operation_cls, use_mpi
+):
+    inputs = _mpi_image_input_parms() if use_mpi else _image_input_parms()
+    sector = image_payload_from_inputs(
+        _input_parms_with_mixed_stations(inputs), tmp_path, use_mpi=use_mpi
+    )["sectors"][0]
+    prepared = [task["msout_path"] for task in sector["prepare_tasks"]]
+
+    command = _wsclean_command_for_sector(
+        sector, prepared[0], tmp_path, fake_image_shell_operation_cls
+    )
+
+    assert len(prepared) == 2
+    assert command[-2:] == prepared
+
+
+def test_wsclean_images_the_concatenated_data_with_the_same_stations(
+    tmp_path, fake_image_shell_operation_cls
+):
+    sector = image_payload_from_inputs(_image_input_parms(), tmp_path)["sectors"][0]
+    assert sector["concat_in_time"]
+
+    command = _wsclean_command_for_sector(
+        sector, sector["concat_path"], tmp_path, fake_image_shell_operation_cls
+    )
+
+    assert command[-1] == sector["concat_path"]
+    assert not any(path.endswith("_prep.ms") for path in command)
+
+
+@pytest.mark.parametrize(
+    "concat_in_time, other_ms_files",
+    [(True, []), (False, ["sector_1_obs_1_prep.ms"])],
+)
+def test_normalization_covers_the_bands_of_every_imaged_measurement_set(
+    tmp_path, monkeypatch, concat_in_time, other_ms_files
+):
+    sector = image_payload_from_inputs(
+        {**_image_input_parms(), "concat_in_time": concat_in_time}, tmp_path
+    )["sectors"][0]
+    sector["normalization_skymodels"] = None
+    sector["normalization_reference_frequencies"] = None
+    sector["output_normalize_h5parm_path"] = str(tmp_path / "normalization.h5parm")
+    calls = []
+
+    def fake_normalize_flux_scale(source_catalog, ms_file, output_h5parm, **kwargs):
+        calls.append({"ms_file": ms_file, **kwargs})
+        Path(output_h5parm).write_text("h5parm")
+
+    monkeypatch.setattr(image_outputs_module, "normalize_flux_scale", fake_normalize_flux_scale)
+
+    image_outputs_module.make_normalization_record(
+        {"path": "catalog.fits"}, {"path": "imaged.ms"}, sector
+    )
+
+    assert calls[0]["ms_file"] == "imaged.ms"
+    assert [Path(path).name for path in calls[0]["other_ms_files"]] == other_ms_files
+
+
+def test_image_payload_rejects_residual_visibilities_with_different_stations(tmp_path):
+    with pytest.raises(ValueError, match="Residual visibilities require"):
+        image_payload_from_inputs(
+            _input_parms_with_mixed_stations(_image_input_parms()),
+            tmp_path,
+            make_residual_visibilities=True,
+        )
+
+
+def test_image_flow_runs_without_concatenating_different_stations(
+    prefect_server, tmp_path, fake_image_shell_operation_cls
+):
+    pipeline_dir = tmp_path / "work"
+    pipeline_dir.mkdir()
+    payload = image_payload_from_inputs(
+        _input_parms_with_mixed_stations(_image_input_parms()), pipeline_dir
+    )
+
+    run_flow_for_test(
+        image_flow,
+        payload,
+        execution_config=ExecutionConfig(task_runner="sync"),
+        shell_operation_cls=fake_image_shell_operation_cls,
+    )
+
+    commands = [
+        shlex.split(instance.kwargs["commands"][-1])
+        for instance in fake_image_shell_operation_cls.instances
+    ]
+    assert not any(command[0] == "taql" for command in commands)
+    wsclean_command = next(command for command in commands if command[0] == "wsclean")
+    sector = payload["sectors"][0]
+    assert wsclean_command[-2:] == [task["msout_path"] for task in sector["prepare_tasks"]]
 
 
 @pytest.mark.parametrize(

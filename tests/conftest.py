@@ -56,6 +56,30 @@ TEST_MS_DOWNLOAD_TIMEOUT = (30, 300)
 TEST_MS_DATA_SCALE = 1.5e4
 
 
+def copy_ms_to_next_band(source_ms, target_ms):
+    """Copy an MS to frequencies just above its own, as another band of the same epoch."""
+    shutil.copytree(source_ms, target_ms)
+    with pt.table(f"{target_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
+        channel_freq = table.getcol("CHAN_FREQ")
+        channel_width = table.getcol("CHAN_WIDTH")
+        offset_hz = float(channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max())
+        table.putcol("CHAN_FREQ", channel_freq + offset_hz)
+        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + offset_hz)
+    return target_ms
+
+
+def copy_ms_to_later_epoch(source_ms, target_ms):
+    """Copy an MS to a time a day after its own, as another epoch."""
+    shift_seconds = 86400.0
+    shutil.copytree(source_ms, target_ms)
+    with pt.table(str(target_ms), readonly=False, ack=False) as table:
+        for column in ("TIME", "TIME_CENTROID"):
+            table.putcol(column, table.getcol(column) + shift_seconds)
+    with pt.table(f"{target_ms}::OBSERVATION", readonly=False, ack=False) as table:
+        table.putcol("TIME_RANGE", table.getcol("TIME_RANGE") + shift_seconds)
+    return target_ms
+
+
 def file_tree_state(path):
     """Return the relative path, size and modification time of every file under ``path``."""
     path = Path(path)

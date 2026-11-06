@@ -69,7 +69,14 @@ def concatenate_prepared_visibilities(
     execution_config: ExecutionConfig,
     shell_operation_cls=None,
 ) -> dict:
-    """Concatenate prepared imaging Measurement Sets for one sector, or reuse a complete one."""
+    """
+    Concatenate prepared imaging Measurement Sets for one sector, or reuse a complete one.
+
+    Observations with different stations are not concatenated. WSClean then images them all,
+    and the first stands for the sector where a single Measurement Set is needed.
+    """
+    if not sector["concat_in_time"]:
+        return prepared_records[0]
     concat_path = str(sector["concat_path"])
     # A stopped attempt may have left a partial output, which is replaced
     command = select_concatenation_command(

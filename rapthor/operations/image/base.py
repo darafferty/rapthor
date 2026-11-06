@@ -64,6 +64,7 @@ class Image(FlowOperation):
         self.apply_none = False
         self.make_image_cube = self.field.make_image_cube  # make an image cube
         self.make_residual_visibilities = getattr(self.field, "make_residual_visibilities", False)
+        self.concat_in_time = True  # concatenate the prepared observations in time
         self.normalize_flux_scale = False  # derive flux scale normalizations (ImageNormalize only)
         self.compress_images = None
         self.image_cube_stokes_list = None
@@ -76,6 +77,13 @@ class Image(FlowOperation):
         Define parameters needed by the image flow.
         """
         # Set parameters as needed
+        self.concat_in_time = self.field.observations_share_stations
+        if self.make_residual_visibilities and not self.concat_in_time:
+            self.log.warning(
+                "The input observations have different stations, so they cannot be concatenated "
+                "in time and residual visibilities will not be saved."
+            )
+            self.make_residual_visibilities = False
         if self.apply_screens is None:
             self.apply_screens = self.field.apply_screens  # set by process-step orchestration
         if self.dde_method is None:
@@ -565,6 +573,7 @@ class Image(FlowOperation):
             "deconvolution_threads": self.field.parset["cluster_specific"]["deconvolution_threads"],
             "save_filtered_model_image": self.save_filtered_model_image,
             "make_residual_visibilities": self.make_residual_visibilities,
+            "concat_in_time": self.concat_in_time,
             "filtered_model_image_name": sector_inputs["filtered_model_image_name"],
             "allow_internet_access": self.allow_internet_access,
             "photometry_skymodel": (
