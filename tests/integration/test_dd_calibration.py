@@ -1,6 +1,9 @@
 import subprocess
+from pathlib import Path
 
+import numpy as np
 import pytest
+from losoto.h5parm import h5parm
 
 from .utils import (
     find_command_records,
@@ -8,6 +11,11 @@ from .utils import (
     get_working_dir_from_parset,
     update_parset_path,
 )
+
+
+def _phases(path):
+    with h5parm(str(path), readonly=True) as solutions:
+        return solutions.getSolset("sol000").getSoltab("phase000").val
 
 
 @pytest.mark.integration
@@ -67,6 +75,14 @@ def test_rapthor_run_dd_fast_phase_medium_phase(generated_parset_path, single_lo
     assert "scalarphase" == dp3_arguments["solve1.mode"]
     assert "scalarphase" == dp3_arguments["solve2.mode"]
     assert int(dp3_arguments["solve1.solint"]) < int(dp3_arguments["solve2.solint"])
+
+    # The medium phases must reach the active solutions, not only the fast phases
+    solutions = Path(working_dir) / "solutions" / "calibrate_1"
+    assert not np.array_equal(
+        _phases(solutions / "field-solutions.h5"),
+        _phases(solutions / "field-solutions-fast-phase.h5"),
+        equal_nan=True,
+    )
 
     restore_commands = find_command_records(
         working_dir,
