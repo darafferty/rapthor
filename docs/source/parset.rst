@@ -768,7 +768,10 @@ The available options are described below under their respective sections.
 
     normalization_reference_frequencies
         Reference frequencies, in Hz, corresponding to ``normalization_skymodels``
-        (default = ``None``).
+        (default = ``None``). A sky model at the frequency of a survey used in the
+        normalization (74 MHz for VLSSr and 327 MHz for WENSS) is treated as a copy
+        of that survey, so it gives the same result as the downloaded catalog. Any
+        other sky model is used without a flux correction and with no flux error.
 
 .. _parset_cluster_options:
 
@@ -1076,3 +1079,4 @@ for how these options are used.
         :term:`generate_initial_skymodel` = ``True``. If photometry and/or astrometry
         skymodels are not provided, then these will not be downloaded and the image
         diagnostics will not be generated.
+        See :ref:`offline_sky_models` for how to download them beforehand.
