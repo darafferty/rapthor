@@ -14,10 +14,10 @@ from .utils import (
     collect_command_records,
     find_command_records,
     first_command_arguments,
+    parse_cmd_args_from_logs,
     parse_command_arguments,
     update_parset_path,
 )
-from .utils import parse_cmd_args_from_logs
 
 
 def test_update_parset_path(tmp_path):
@@ -162,6 +162,8 @@ def test_assert_h5parm_has_solutions_rejects_flagged_solutions(tmp_path):
 
     with pytest.raises(AssertionError, match="100% of sol000/amplitude000"):
         assert_h5parm_has_solutions(path)
+
+
 @pytest.mark.parametrize(
     "filename, expected_parameters",
     [

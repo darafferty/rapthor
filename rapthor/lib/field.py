@@ -57,6 +57,7 @@ def _ensure_skymodel_write_units(skymodel):
         if column_name in skymodel.table.colnames and skymodel.table[column_name].unit is None:
             skymodel.table[column_name].unit = unit
 
+
 # ---------------------------------------------------------------------------- #
 # Module constants
 

@@ -1,6 +1,7 @@
 import subprocess
 
 import pytest
+
 from .utils import (
     find_command_records,
     first_command_arguments,
@@ -174,6 +175,8 @@ def test_rapthor_run_dd_slow_gains(
     assert "slow_gain_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert "diagonal" == dp3_arguments["solve1.mode"]
     assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize(
     "generated_parset_path",
@@ -242,12 +245,10 @@ def test_rapthor_run_dd_with_antenna_constraints(
     )
     dp3_arguments = _test_calibrate(updated_parset_path, caplog)
     assert (
-        dp3_arguments["solve1.antennaconstraint"]
-        == "[[CS001HBA0,CS002HBA0,CS002HBA1,CS004HBA1]]"
+        dp3_arguments["solve1.antennaconstraint"] == "[[CS001HBA0,CS002HBA0,CS002HBA1,CS004HBA1]]"
     )
     assert (
-        dp3_arguments["solve2.antennaconstraint"]
-        == "[[CS001HBA0,CS002HBA0,CS002HBA1,CS004HBA1]]"
+        dp3_arguments["solve2.antennaconstraint"] == "[[CS001HBA0,CS002HBA0,CS002HBA1,CS004HBA1]]"
     )
     assert dp3_arguments["solve3.antennaconstraint"] == "[]"
     assert dp3_arguments["solve4.antennaconstraint"] == "[]"

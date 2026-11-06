@@ -86,6 +86,7 @@ def assert_h5parm_has_solutions(h5parm_path, *, expected_soltabs=(), max_flagged
     missing_soltabs = sorted(set(expected_soltabs) - set(checked_soltabs))
     assert not missing_soltabs, f"{h5parm_path} lacks the solution tables {missing_soltabs}"
 
+
 REGEX_LOGGED_CLI_PARAMETER = re.compile(
     r"""
     \s*                     # leading whitespace
@@ -301,6 +302,8 @@ def parse_command_arguments(command):
     return {
         key: value for key, _, value in (token.partition("=") for token in tokens if "=" in token)
     }
+
+
 def parse_cmd_args_from_logs(log_path, cmd):
     """Parse the command arguments from a CWL job log file.
 
