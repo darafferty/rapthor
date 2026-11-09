@@ -97,6 +97,18 @@ def test_minimal_parset(parset_scenario):
     assert parset_dict["input_ms"] == str(parset_scenario.input_ms)
 
 
+def test_read_minimal_json_formatted_parset(parset_scenario):
+    parset_scenario.parset.write_text(
+        '{"global": {"input_ms": "/path/to/some.ms", "dir_working": "/some/path"}}',
+        encoding="utf-8",
+    )
+
+    parset_dict = prepare_run_from_parset(str(parset_scenario.parset), json_formatted=True)
+
+    assert parset_dict["dir_working"] == "/some/path"
+    assert parset_dict["input_ms"] == "/path/to/some.ms"
+
+
 def test_prepare_run_sets_up_the_working_directory(parset_scenario):
     parset_dict = Parset(str(parset_scenario.parset)).as_parset_dict()
     # Reading the settings leaves the working directory alone

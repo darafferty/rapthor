@@ -35,9 +35,9 @@ REPO_ROOT_DIR = TEST_ROOT_DIR.parent
 RESOURCE_DIR = TEST_ROOT_DIR / "resources"
 
 
-def prepare_run_from_parset(parset_file, use_log_file=True):
+def prepare_run_from_parset(parset_file, use_log_file=True, json_formatted=False):
     """Read a parset file and prepare its run (working directory, log, input MSs) as a run does."""
-    parset = Parset(str(parset_file)).as_parset_dict()
+    parset = Parset(str(parset_file), json_formatted=json_formatted).as_parset_dict()
     prepare_run(parset, use_log_file=use_log_file)
     return parset
 
