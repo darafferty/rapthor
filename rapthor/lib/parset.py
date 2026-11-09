@@ -5,6 +5,7 @@ Module that holds all parset-related functions
 import ast
 import configparser
 import glob
+import json
 import logging
 import math
 import os
@@ -67,7 +68,7 @@ class Parset:
 
     DEFAULT_PARSET = resources.files("rapthor") / "settings" / "defaults.parset"
 
-    def __init__(self, parset_file=None):
+    def __init__(self, parset_file=None, json_formatted=False):
         """
         Initializer.
         Read the default settings; define allowed and required sections and options
@@ -116,7 +117,7 @@ class Parset:
         self.settings = Parset.config_as_dict(self.__parser)
 
         if parset_file:
-            self.settings = self.read_file(parset_file)
+            self.settings = self.read_file(parset_file, json_formatted=json_formatted)
 
     @staticmethod
     def config_as_dict(parser):
@@ -445,17 +446,20 @@ class Parset:
         if not options["parallel_gridding_tasks"]:
             options["parallel_gridding_tasks"] = max(1, max_threads // 8)
 
-    def read_file(self, parset_file):
+    def read_file(self, parset_file, json_formatted=False):
         """
         Read the contents of `parset_file`. The format of this file is often referred to
         as parset format in the context of Rapthor, but is actually in the well-known
-        Windows INI-format. A check is made for missing required sections and options.
-        Given options values are checked against possible constraints.
+        Windows INI-format. It is also possible to supply a JSON file instead. A check
+        is made for missing required sections and options. Given options values are
+        checked against possible constraints.
 
         Parameters
         ----------
         parset_file: str
             Name of the parset file
+        json_formatted: bool
+            If True, read the file assuming it is in JSON format instead of INI format
 
         Returns
         -------
@@ -473,10 +477,16 @@ class Parset:
             sections or options are missing, or if it contains invalid option values.
         """
         log.info("Reading parset file: %s", parset_file)
+        if not os.path.exists(parset_file):
+            raise FileNotFoundError(f"Missing parset file ({parset_file}).")
         try:
-            if not self.__parser.read(parset_file):
-                raise FileNotFoundError(f"Missing parset file ({parset_file}).")
-        except configparser.ParsingError as err:
+            if json_formatted:
+                with open(parset_file) as handle:
+                    parset_dict = json.load(handle)
+                self.__parser.read_dict(parset_dict)
+            else:
+                self.__parser.read(parset_file)
+        except (json.decoder.JSONDecodeError, configparser.ParsingError) as err:
             raise ValueError(f"Parset file '{parset_file}' could not be parsed correctly.\n{err}")
 
         self.__sanitize()
