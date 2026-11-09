@@ -8,9 +8,11 @@ Version 3.0 (unreleased)
 
 This release changes the way in which Rapthor runs the processing. The CWL
 workflows and the Toil runner of earlier versions have been replaced by Python
-code that uses Prefect to keep track of the processing and Dask to run it. The
-processing itself is unchanged. See :ref:`upgrading` for what to check in
-existing parsets and strategy files.
+code that uses Prefect to keep track of the processing and Dask to run it.
+Apart from the changes and fixes listed below, the processing itself is
+unchanged. See :ref:`upgrading` for what to check in existing parsets and
+strategy files, and :ref:`migration_behavior_differences` for the differences
+in the results.
 
     - CWL, Toil, and cwltool are no longer used. Prefect and Dask are
       installed together with Rapthor, and nothing needs to be set up to use
@@ -37,15 +39,53 @@ existing parsets and strategy files.
     - The solves done during calibration, and their order, are set with
       :term:`calibration_strategy`. The ``do_slowgain_solve`` and
       ``do_fulljones_solve`` strategy parameters are deprecated.
-    - Frequency BDA during imaging is now enabled by default, with a baseline
-      limit of 20 km. EveryBeam 0.8.3 or later is required to make the
-      primary-beam images in this case.
-    - Rapthor now estimates the memory needed by DP3 for calibration before
-      the run starts and again before each calibration, and logs a warning if
-      it is more than the memory that is available. Setting
-      :term:`fail_on_calibration_oom_risk` stops the run instead.
-    - The calculation of the RMS noise of each facet no longer fails if a
-      facet lies outside of the image.
+    - The new :term:`use_array_beam` option sets the beam that DP3 applies
+      during prediction. By default, only the array factor is applied, as
+      before. Set it to ``False`` to apply the full beam, which is more
+      accurate but makes prediction about four times slower.
+    - The number of cores used to filter the sky model with PyBDSF can now be
+      set with :term:`filter_skymodel_ncores`. By default, :term:`max_threads`
+      cores are used, as before.
+    - An :term:`input_h5parm` with direction-independent solutions can now be
+      used in image-only cycles. Its solutions are applied before imaging, and
+      no input sky model is needed. When no calibration is done, the solution
+      intervals, which set the baseline-dependent averaging, are read from
+      this file.
+    - When several sectors are imaged, the model images
+      ``field-MFS-model-pb.fits`` and ``field-MFS-filtered-model.fits`` are now
+      drawn by WSClean from the sky models of the sectors. Earlier versions
+      regridded the model images of the sectors, which lost the flux of
+      isolated components. The old method can still be selected with
+      :term:`model_mosaic_method`.
+    - When images are compressed (see :term:`compress_selfcal_images`), the
+      model images are now compressed without loss.
+    - The JSON output records of the operations no longer contain the
+      checksums and file sizes that CWL added.
+    - In direction-dependent cycles with only the ``fast_phase`` and
+      ``medium_phase`` solves, the combined phases of both solves are now
+      applied. Earlier versions did both solves but applied only the fast
+      phases. This changes the results of these cycles, which include the
+      early cycles of the ``selfcal`` strategy when the initial sky model is
+      supplied or downloaded.
+    - ``field-solutions.h5`` now always holds the slow-gain amplitudes when
+      the ``slow_gains`` solve is done. In earlier versions, the combination of
+      the solutions could leave only the phases in this file.
+    - The flux-scale normalization is now applied to the model used in the
+      slow-gain solve. In earlier versions, it was not, so the slow-gain
+      amplitudes absorbed the normalization and imaging then corrected the
+      flux scale twice. With :term:`use_wsclean_predict`, DP3 cannot apply the
+      normalization to the model, so the amplitudes still absorb it; Rapthor
+      logs a warning in this case.
+    - The prediction before a direction-independent solve no longer fails when
+      a flux-scale normalization, but no other solutions, is to be applied.
+    - With :term:`dde_method` = ``single``, the direction-dependent phases are
+      no longer applied twice before imaging.
+    - With :term:`use_wsclean_predict`, the last channel of each group of
+      channels is now predicted. Earlier versions could leave it out.
+    - When the final cycle is repeated (see
+      :term:`ntimes_to_repeat_final_cycle`), the outlier sources are subtracted
+      only in the first final cycle. Earlier versions subtracted them again in
+      every repeat.
     - The calibration no longer writes the data back into its input MS when
       direction-independent solutions are applied before the solves. In
       earlier versions, this happened whenever baseline-dependent averaging was
