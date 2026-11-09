@@ -191,10 +191,12 @@ def test_filter_skymodel_ncores_must_be_positive(parset_scenario):
         prepare_run_from_parset(str(parset_scenario.parset))
 
 
-def test_filter_skymodel_ncores_default_is_proposed_production_value(parset_scenario):
+def test_filter_skymodel_ncores_default_uses_max_threads(parset_scenario):
+    _append_to_parset(parset_scenario.parset, "\n[cluster]\nmax_threads = 12\n")
+
     parset = prepare_run_from_parset(str(parset_scenario.parset))
 
-    assert parset["cluster_specific"]["filter_skymodel_ncores"] == 15
+    assert parset["cluster_specific"]["filter_skymodel_ncores"] == 12
 
 
 def test_calibration_oom_risk_policy_is_boolean(parset_scenario):
