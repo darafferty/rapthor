@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import configparser
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -78,7 +79,27 @@ def materialize_parset_paths(
     """Write a parset copy with known path-like options resolved to absolute paths."""
     parser = configparser.ConfigParser(interpolation=None)
     with parset_file.open() as handle:
-        parser.read_file(handle)
+        if parset_file.suffix == ".json":
+            try:
+                parset_dict = json.load(handle)
+            except json.decoder.JSONDecodeError as err:
+                raise ValueError(f"JSON parset could not be parsed correctly.\n{err}")
+            # Convert all entires to str
+            for section in parset_dict:
+                if not isinstance(parset_dict[section], dict):
+                    raise ValueError(
+                        "JSON parset could not be parsed correctly.\nAll top-level "
+                        "entries must be dictionaries, one per parset section."
+                    )
+                parset_dict[section] = {
+                    # Handle the lists separately to ensure the string version do not have
+                    # nested quotes (e.g. we want "[one, two]" instead of '["one", "two"]')
+                    k: str(v) if not isinstance(v, list) else "[" + ", ".join(map(str, v)) + "]"
+                    for k, v in parset_dict[section].items()
+                }
+            parser.read_dict(parset_dict)
+        else:
+            parser.read_file(handle)
 
     path_base = Path.cwd() if base_dir is None else base_dir
     for section, options in PARSET_PATH_OPTIONS.items():
