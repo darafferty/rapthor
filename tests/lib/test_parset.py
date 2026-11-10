@@ -24,22 +24,38 @@ class ParsetScenario:
 
 
 @pytest.fixture
-def parset_scenario(tmp_path):
+def parset_scenario(tmp_path, json_formatted=False):
     input_ms = tmp_path / "input.ms"
     input_ms.mkdir()
     working_dir = tmp_path / "work"
     working_dir.mkdir()
-    parset = working_dir / "test.parset"
-    parset.write_text(
-        textwrap.dedent(
-            f"""
-            [global]
-            input_ms = {input_ms}
-            dir_working = {working_dir}
-            """
-        ),
-        encoding="utf-8",
-    )
+    if json_formatted:
+        parset = working_dir / "test.json"
+        parset.write_text(
+            textwrap.dedent(
+                f"""
+                {{
+                    "global": {{
+                    "dir_working": "{input_ms}",
+                    "input_ms": "{working_dir}"
+                    }}
+                }}
+                """
+            ),
+            encoding="utf-8",
+        )
+    else:
+        parset = working_dir / "test.parset"
+        parset.write_text(
+            textwrap.dedent(
+                f"""
+                [global]
+                input_ms = {input_ms}
+                dir_working = {working_dir}
+                """
+            ),
+            encoding="utf-8",
+        )
     return ParsetScenario(parset=parset, input_ms=input_ms, working_dir=working_dir)
 
 
@@ -97,12 +113,7 @@ def test_minimal_parset(parset_scenario):
     assert parset_dict["input_ms"] == str(parset_scenario.input_ms)
 
 
-def test_read_minimal_json_formatted_parset(parset_scenario):
-    parset_scenario.parset.write_text(
-        f'{{"global": {{"input_ms": "{str(parset_scenario.input_ms)}", "dir_working": "{str(parset_scenario.working_dir)}"}}}}',
-        encoding="utf-8",
-    )
-
+def test_minimal_json_formatted_parset(parset_scenario):
     parset_dict = prepare_run_from_parset(str(parset_scenario.parset), json_formatted=True)
 
     assert parset_dict["dir_working"] == str(parset_scenario.working_dir)
