@@ -11,6 +11,7 @@ import math
 import os
 from collections.abc import Sequence
 from importlib import resources
+from pathlib import Path
 
 import astropy.coordinates
 
@@ -77,7 +78,7 @@ class Parset:
 
         Parameters
         ----------
-        parset_file: str, optional
+        parset_file: str or pathlib.Path, optional
             Name of the parset file to read. The file can be in the standard INI
             format or in JSON format (in which case the file must end in ".json").
         """
@@ -118,9 +119,8 @@ class Parset:
         self.settings = Parset.config_as_dict(self.__parser)
 
         if parset_file:
-            self.settings = self.read_file(
-                parset_file, json_formatted=parset_file.endswith(".json")
-            )
+            json_formatted = Path(parset_file).suffix == ".json"
+            self.settings = self.read_file(parset_file, json_formatted=json_formatted)
 
     @staticmethod
     def config_as_dict(parser):
