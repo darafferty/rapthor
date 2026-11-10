@@ -19,8 +19,14 @@ The available options are described below under their respective sections.
 
 .. note::
 
-    An example parset is available in the `settings directory
-    <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults.parset>`_.
+    An example parset with all values set to their defaults is available in the Rapthor
+    repository in the `settings directory
+    <https://git.astron.nl/RD/rapthor/-/blob/main/rapthor/settings/defaults.parset>`_.
+
+    JSON-formatted parsets are also supported. A JSON version of the above example parset is
+    available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/main/rapthor/settings/defaults.json>`_.
+
 
 .. _parset_global_options:
 
