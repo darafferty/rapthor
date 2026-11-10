@@ -25,7 +25,8 @@ The available options are described below under their respective sections.
 
     JSON-formatted parsets are also supported. A JSON version of the above example parset is
     available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/main/rapthor/settings/defaults.json>`_.
+    <https://git.astron.nl/RD/rapthor/-/blob/main/rapthor/settings/defaults.json>`_. Note
+    that the file extension must be ".json" to be properly recognized.
 
 
 .. _parset_global_options:
