@@ -8,6 +8,7 @@ import pytest
 
 from rapthor import cli
 from rapthor.execution.working_dir_lock import WorkingDirectoryInUse
+from rapthor.lib.parset_paths import materialize_parset_paths
 
 
 @dataclass
@@ -149,6 +150,75 @@ prefect_api_mode = ephemeral
     monkeypatch.setattr("rapthor.execution.pipeline.flow.pipeline_flow", fake_pipeline_flow)
 
     assert cli.main(["input.parset"]) == 0
+
+    bootstrap_config = calls[0][1]
+    assert bootstrap_config.task_runner == "sync"
+    assert bootstrap_config.prefect_api_mode == "ephemeral"
+    assert calls == [
+        ("bootstrap", bootstrap_config),
+        (
+            "pipeline",
+            "input.materialized.parset",
+            "info",
+            bootstrap_config,
+            str(tmp_path / "work"),
+            [str(input_ms)],
+        ),
+    ]
+
+
+def test_main_smoke_starts_from_user_json_parset(monkeypatch, tmp_path):
+    input_ms = tmp_path / "input.ms"
+    input_ms.mkdir()
+    parset_file = tmp_path / "input.json"
+    parset_file.write_text(
+        """
+{
+    "global": {
+        "dir_working": "work",
+        "input_ms": ["input.ms"],
+        "data_colname": "DATA"
+    },
+    "cluster": {
+        "prefect_task_runner": "sync",
+        "prefect_api_mode": "ephemeral"
+    }
+}
+"""
+    )
+    calls = []
+
+    @contextmanager
+    def fake_bootstrapped_runtime(execution_config):
+        calls.append(("bootstrap", execution_config))
+        yield FakeRuntimePlan(execution_config)
+
+    def fake_pipeline_flow(parset_file, *, logging_level, execution_config):
+        from rapthor.lib.parset import Parset
+
+        materialized_parset = materialize_parset_paths(
+            Path(parset_file), tmp_path / "input.materialized.parset"
+        )
+        parsed = Parset(materialized_parset).as_parset_dict()
+        calls.append(
+            (
+                "pipeline",
+                materialized_parset.name,
+                logging_level,
+                execution_config,
+                parsed["dir_working"],
+                parsed["input_ms"],
+            )
+        )
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "rapthor.execution.runtime_bootstrap.bootstrapped_runtime",
+        fake_bootstrapped_runtime,
+    )
+    monkeypatch.setattr("rapthor.execution.pipeline.flow.pipeline_flow", fake_pipeline_flow)
+
+    assert cli.main(["input.json"]) == 0
 
     bootstrap_config = calls[0][1]
     assert bootstrap_config.task_runner == "sync"

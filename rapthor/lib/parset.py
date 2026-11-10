@@ -5,13 +5,11 @@ Module that holds all parset-related functions
 import ast
 import configparser
 import glob
-import json
 import logging
 import math
 import os
 from collections.abc import Sequence
 from importlib import resources
-from pathlib import Path
 
 import astropy.coordinates
 
@@ -78,9 +76,8 @@ class Parset:
 
         Parameters
         ----------
-        parset_file: str or pathlib.Path, optional
-            Name of the parset file to read. The file can be in the standard INI
-            format or in JSON format (in which case the file must end in ".json").
+        parset_file: str, optional
+            Name of the parset-file to read
         """
         # Load default settings
         self.__parser = configparser.ConfigParser(interpolation=None)
@@ -119,8 +116,7 @@ class Parset:
         self.settings = Parset.config_as_dict(self.__parser)
 
         if parset_file:
-            json_formatted = Path(parset_file).suffix == ".json"
-            self.settings = self.read_file(parset_file, json_formatted=json_formatted)
+            self.settings = self.read_file(parset_file)
 
     @staticmethod
     def config_as_dict(parser):
@@ -449,20 +445,17 @@ class Parset:
         if not options["parallel_gridding_tasks"]:
             options["parallel_gridding_tasks"] = max(1, max_threads // 8)
 
-    def read_file(self, parset_file, json_formatted=False):
+    def read_file(self, parset_file):
         """
         Read the contents of `parset_file`. The format of this file is often referred to
         as parset format in the context of Rapthor, but is actually in the well-known
-        Windows INI-format. It is also possible to supply a JSON file instead. A check
-        is made for missing required sections and options. Given options values are
-        checked against possible constraints.
+        Windows INI-format. A check is made for missing required sections and options.
+        Given options values are checked against possible constraints.
 
         Parameters
         ----------
         parset_file: str
             Name of the parset file
-        json_formatted: bool, optional
-            If True, read the file as JSON-formatted instead of INI-formatted
 
         Returns
         -------
@@ -480,25 +473,10 @@ class Parset:
             sections or options are missing, or if it contains invalid option values.
         """
         log.info("Reading parset file: %s", parset_file)
-        if not os.path.exists(parset_file):
-            raise FileNotFoundError(f"Missing parset file ({parset_file}).")
         try:
-            if json_formatted:
-                with open(parset_file) as handle:
-                    parset_dict = json.load(handle)
-
-                # Convert all entires to str before reading
-                for section in parset_dict:
-                    if not isinstance(parset_dict[section], dict):
-                        raise ValueError(
-                            "All top-level entries must be dictionaries, one per parset section."
-                        )
-                    parset_dict[section] = {k: str(v) for k, v in parset_dict[section].items()}
-
-                self.__parser.read_dict(parset_dict)
-            else:
-                self.__parser.read(parset_file)
-        except (ValueError, json.decoder.JSONDecodeError, configparser.ParsingError) as err:
+            if not self.__parser.read(parset_file):
+                raise FileNotFoundError(f"Missing parset file ({parset_file}).")
+        except configparser.ParsingError as err:
             raise ValueError(f"Parset file '{parset_file}' could not be parsed correctly.\n{err}")
 
         self.__sanitize()
