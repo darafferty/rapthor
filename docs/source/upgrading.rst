@@ -149,6 +149,17 @@ Slow-gain amplitudes
     Related documentation: :ref:`calibrate` lists the individual and combined
     solution products.
 
+Phase-only direction-dependent cycles
+    When the ``fast_phase`` and ``medium_phase`` solves are done without
+    ``slow_gains``, ``field-solutions.h5`` holds their combined phases, so the
+    medium-fast corrections are applied. Version 2 did both solves but applied
+    only the fast phases. Results therefore differ in these cycles, which
+    include the early cycles of the ``selfcal`` strategy when the initial sky
+    model is supplied or downloaded.
+
+    Related documentation: :ref:`calibrate` lists the individual and combined
+    solution products.
+
 WSClean prediction channels
     With :term:`use_wsclean_predict`, prediction covers every requested channel,
     including the last channel of each frequency chunk. The ``-channel-range``

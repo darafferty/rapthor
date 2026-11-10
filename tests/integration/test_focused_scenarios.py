@@ -2,7 +2,6 @@
 
 import configparser
 import json
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -16,6 +15,7 @@ from rapthor.execution.image.commands import (
     build_prepare_imaging_data_command,
 )
 from rapthor.lib.miscellaneous import convert_mjd2mvt
+from tests.conftest import copy_ms_to_next_band
 
 from .utils import (
     assert_h5parm_has_solutions,
@@ -24,21 +24,9 @@ from .utils import (
     first_command_arguments,
     get_working_dir_from_parset,
     read_from_ms,
+    run_rapthor,
     update_parset_path,
 )
-
-
-def _run_rapthor(parset_path):
-    result = subprocess.run(
-        ["rapthor", str(parset_path)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    output = f"{result.stdout}\n{result.stderr}"
-    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
-    assert "Rapthor has finished :)" in output
-    return output
 
 
 def _read_parset(parset_path):
@@ -60,17 +48,6 @@ def _disable_calibration_bda(parset_path):
     parset["calibration"]["bda_frequencybase"] = "0.0"
     with Path(parset_path).open("w") as fp:
         parset.write(fp)
-
-
-def _copy_ms_with_shifted_frequency(source_ms, target_ms):
-    shutil.copytree(source_ms, target_ms)
-    with pt.table(f"{target_ms}::SPECTRAL_WINDOW", readonly=False, ack=False) as table:
-        channel_freq = table.getcol("CHAN_FREQ")
-        channel_width = table.getcol("CHAN_WIDTH")
-        offset_hz = float(channel_freq.max() - channel_freq.min() + 2 * abs(channel_width).max())
-        table.putcol("CHAN_FREQ", channel_freq + offset_hz)
-        table.putcol("REF_FREQUENCY", table.getcol("REF_FREQUENCY") + offset_hz)
-    return target_ms
 
 
 def _image_pipeline_inputs(working_dir, image_name):
@@ -125,7 +102,7 @@ def test_rapthor_run_wsclean_predicts_multiple_frequency_bands(
         },
     )
 
-    output = _run_rapthor(updated_parset_path)
+    output = run_rapthor(updated_parset_path)
 
     assert "Operation calibrate_1 completed" in output
     assert "Operation image_1 completed" in output
@@ -221,7 +198,7 @@ def test_rapthor_run_frequency_only_imaging_bda(
         },
     )
 
-    output = _run_rapthor(updated_parset_path)
+    output = run_rapthor(updated_parset_path)
 
     assert "Operation image_1 completed" in output
     working_dir = Path(get_working_dir_from_parset(updated_parset_path))
@@ -283,9 +260,7 @@ def test_rapthor_run_concatenates_multiple_measurement_sets(
     """Run a small reduction where an epoch contains multiple Measurement Sets."""
     generated_parset = _read_parset(generated_parset_path)
     input_ms = Path(generated_parset["global"]["input_ms"])
-    shifted_input_ms = _copy_ms_with_shifted_frequency(
-        input_ms, tmp_path / "test_shifted_frequency.ms"
-    )
+    shifted_input_ms = copy_ms_to_next_band(input_ms, tmp_path / "test_shifted_frequency.ms")
     updated_parset_path = update_parset_path(
         generated_parset_path,
         {
@@ -295,7 +270,7 @@ def test_rapthor_run_concatenates_multiple_measurement_sets(
         },
     )
 
-    output = _run_rapthor(updated_parset_path)
+    output = run_rapthor(updated_parset_path)
 
     assert "Operation concatenate_1 completed" in output
     assert "Operation image_1 completed" in output
@@ -334,7 +309,7 @@ def test_rapthor_run_image_only_with_supplied_h5parm_and_skymodel(
             "strategy": str(calibrate_only_strategy_path),
         },
     )
-    _run_rapthor(producer_parset_path)
+    run_rapthor(producer_parset_path)
 
     producer_working_dir = Path(get_working_dir_from_parset(producer_parset_path))
     h5parm = producer_working_dir / "solutions" / "calibrate_1" / "field-solutions.h5"
@@ -357,7 +332,7 @@ def test_rapthor_run_image_only_with_supplied_h5parm_and_skymodel(
         },
     )
 
-    output = _run_rapthor(image_only_parset_path)
+    output = run_rapthor(image_only_parset_path)
 
     assert "Operation calibrate_1 completed" not in output
     assert "Operation calibrate_di_1 completed" not in output
@@ -397,7 +372,7 @@ def test_rapthor_run_final_image_only_applies_previous_cycle_h5parm(
         },
     )
 
-    output = _run_rapthor(updated_parset_path)
+    output = run_rapthor(updated_parset_path)
 
     assert "Operation calibrate_di_1 completed" in output
     assert "Operation calibrate_1 completed" in output
@@ -457,7 +432,7 @@ def test_rapthor_run_final_image_only_applies_dd_slow_gains_on_the_fly(
         },
     )
 
-    output = _run_rapthor(updated_parset_path)
+    output = run_rapthor(updated_parset_path)
 
     assert "Operation calibrate_1 completed" in output
     assert "Operation image_2 completed" in output
@@ -504,7 +479,7 @@ def test_rapthor_run_final_image_only_preapplies_di_slow_and_images_with_dd(
     input_ms_before = read_from_ms(test_ms)
 
     try:
-        output = _run_rapthor(updated_parset_path)
+        output = run_rapthor(updated_parset_path)
     finally:
         # Check the input MS even when the run fails: a DD solve that writes the
         # pre-applied data back into it breaks the later operations as well.
@@ -583,7 +558,7 @@ def test_rapthor_run_quv_clean_disabled_image_cubes(
         },
     )
 
-    output = _run_rapthor(updated_parset_path)
+    output = run_rapthor(updated_parset_path)
 
     assert "Stokes I, Q, U, and V images will be made" in output
     assert "Operation image_1 completed" in output

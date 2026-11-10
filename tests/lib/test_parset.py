@@ -3,6 +3,7 @@ Tests for parset parsing and sky-model option adjustment.
 """
 
 import ast
+import json
 import string
 import textwrap
 from dataclasses import dataclass
@@ -233,6 +234,14 @@ def test_unequal_sector_list_lengths(parset_scenario):
         match="The options .* must all have the same number of entries",
     ):
         prepare_run_from_parset(str(parset_scenario.parset))
+
+
+def test_json_defaults_include_normalization_reference_frequencies():
+    defaults = json.loads(
+        (Path(__file__).parents[2] / "rapthor/settings/defaults.json").read_text(encoding="utf-8")
+    )
+
+    assert defaults["imaging"]["normalization_reference_frequencies"] is None
 
 
 def test_default_parset_contents(parset_scenario, monkeypatch):

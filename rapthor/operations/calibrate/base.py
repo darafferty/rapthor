@@ -92,6 +92,7 @@ class Calibrate(FlowOperation):
             self.medium1_h5parm = "medium1_phases.h5parm"
             self.medium2_h5parm = "medium2_phases.h5parm"
             self.slow_h5parm = "slow_gains.h5parm"
+            self.combined_phases_h5parm = "combined_fast_medium1_phases.h5parm"
             self.combined_h5parms = "combined_solutions.h5"
 
             # --- Sky model configuration ---
@@ -171,7 +172,7 @@ class Calibrate(FlowOperation):
                 ],
                 "collected_solve2_h5parm": self.medium1_h5parm,
                 "collected_solve4_h5parm": self.medium2_h5parm,
-                "combined_phase_1_2_h5parm": "combined_fast_medium1_phases.h5parm",
+                "combined_phase_1_2_h5parm": self.combined_phases_h5parm,
                 "combined_phase_1_2_3_h5parm": "combined_fast_medium1_medium2_phases.h5parm",
                 "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
                 "collected_solve3_h5parm": self.slow_h5parm,
@@ -1040,6 +1041,8 @@ class Calibrate(FlowOperation):
         has_slow_gain = any(solve.solve_type == "slow_gains" for solve in solve_plan)
         if has_phase and has_slow_gain:
             return self.combined_h5parms
+        if len(solve_plan) > 1:
+            return self.combined_phases_h5parm
         return self._dd_collected_h5parm(solve_plan[0])
 
     def _dd_collected_h5parm(self, solve):

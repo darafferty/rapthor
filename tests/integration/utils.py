@@ -2,6 +2,7 @@ import configparser
 import json
 import re
 import shlex
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -85,6 +86,20 @@ def assert_h5parm_has_solutions(h5parm_path, *, expected_soltabs=(), max_flagged
     assert checked_soltabs, f"{h5parm_path} contains no solution tables"
     missing_soltabs = sorted(set(expected_soltabs) - set(checked_soltabs))
     assert not missing_soltabs, f"{h5parm_path} lacks the solution tables {missing_soltabs}"
+
+
+def run_rapthor(parset_path):
+    """Run Rapthor on a parset, check that it finished and return its output."""
+    result = subprocess.run(
+        ["rapthor", str(parset_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    output = f"{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+    assert "Rapthor has finished :)" in output
+    return output
 
 
 def get_working_dir_from_parset(parset_path):

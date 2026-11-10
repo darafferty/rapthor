@@ -19,6 +19,7 @@ from rapthor.execution.image.flux_normalization import (
     _get_source_data,
     _get_survey_coords,
     _get_survey_metadata,
+    _identify_survey_from_frequency,
     _sort_metadata_by_frequency,
     _validate_source_catalog,
     create_normalization_h5parm,
@@ -30,6 +31,7 @@ from rapthor.execution.image.flux_normalization import (
     normalize_flux_scale,
     read_source_catalog,
 )
+from tests.conftest import copy_ms_to_next_band
 
 
 @pytest.fixture
@@ -284,6 +286,18 @@ def test_find_normalizations_single_flux_returns_nan():
         output_frequencies=np.array([100e6]),  # Frequencies in Hz
     )
     assert np.isnan(normalizations).all(), f"Expected [nan], got {normalizations}"
+
+
+def test_get_output_frequencies_covers_every_measurement_set(test_ms, tmp_path):
+    """Test that the frequencies of all the imaged MS files are included, once each."""
+    other_band = str(copy_ms_to_next_band(test_ms, tmp_path / "other_band.ms"))
+
+    frequencies = get_output_frequencies(test_ms, other_band, test_ms)
+
+    first_band = get_output_frequencies(test_ms)
+    second_band = get_output_frequencies(other_band)
+    assert second_band.min() > first_band.max()
+    np.testing.assert_array_equal(frequencies, np.concatenate([first_band, second_band]))
 
 
 def test_create_normalization_h5parm(test_ms, tmp_path):
@@ -999,6 +1013,82 @@ def test_get_survey_metadata_with_reference_skymodels(caplog):
         },
     }
     assert survey_metadata == expected_metadata
+
+
+def test_get_survey_metadata_uses_known_survey_details_for_reference_skymodels():
+    """
+    Test that a supplied catalog at a known survey frequency gets that survey's details,
+    that one at another frequency gets neutral values and that they are ordered by frequency.
+    """
+    survey_metadata = _get_survey_metadata(
+        reference_skymodels=["wenss.skymodel", "other.skymodel", "vlssr.skymodel"],
+        reference_frequencies=[327e6, 150e6, 74e6],
+    )
+
+    assert list(survey_metadata.items()) == [
+        ("vlssr.skymodel", {"flux_correction": 1, "flux_err": 0.1, "frequency": 74e6}),
+        ("other.skymodel", {"flux_correction": 1.0, "flux_err": 0.0, "frequency": 150e6}),
+        ("wenss.skymodel", {"flux_correction": 0.9, "flux_err": 3.6e-3, "frequency": 327e6}),
+    ]
+
+
+@pytest.mark.parametrize(
+    "frequency, survey",
+    [(74e6, "vlssr"), (327e6, "wenss"), (100.0, None)],
+)
+def test_identify_survey_from_frequency(frequency, survey):
+    """Test that a survey is identified by its frequency, or None if it is not known."""
+    assert _identify_survey_from_frequency(frequency) == survey
+
+
+@pytest.mark.disable_socket
+def test_supplied_and_downloaded_catalogs_give_the_same_normalization(
+    source_catalog, source_coords, tmp_path, mocker
+):
+    """Test that a survey gives the same inputs to the fit, whether downloaded or supplied."""
+    n_chan = len(
+        [colname for colname in source_catalog.columns.names if colname.startswith("Freq_ch")]
+    )
+    survey_data = {"vlssr": [2.0], "wenss": [1.0]}
+    module = "rapthor.execution.image.flux_normalization"
+    mocker.patch(f"{module}.read_source_catalog", return_value=(source_catalog, n_chan))
+    mocker.patch(f"{module}.get_field_phase_center", return_value=(0.4, 0.5))
+    mocker.patch(f"{module}.filter_sources", return_value=(source_coords, source_catalog))
+    mocker.patch(f"{module}.get_output_frequencies", return_value=np.array([100e6, 200e6]))
+    mocker.patch(f"{module}.create_normalization_h5parm")
+    mocker.patch(f"{module}._get_survey_coords")
+    mocker.patch(
+        f"{module}._download_survey_data", side_effect=lambda survey, _: survey_data[survey]
+    )
+    mocker.patch(f"{module}.lsmtool.load", side_effect=Path)
+    mocker.patch(
+        f"{module}._get_data_from_skymodel",
+        side_effect=lambda skymodel: survey_data[skymodel.stem],
+    )
+    mocker.patch(
+        f"{module}._cross_match_sources",
+        side_effect=lambda _coords, _survey_coords, data, _cut: data * len(source_catalog),
+    )
+    find_normalizations_mock = mocker.patch(
+        f"{module}.find_normalizations", return_value=np.ones(2)
+    )
+    output_h5parm = str(tmp_path / "normalization.h5parm")
+
+    normalize_flux_scale("catalog.fits", "input.ms", output_h5parm, min_sources=5)
+    downloaded_call = find_normalizations_mock.call_args
+    normalize_flux_scale(
+        "catalog.fits",
+        "input.ms",
+        output_h5parm,
+        min_sources=5,
+        reference_skymodels=["wenss.skymodel", "vlssr.skymodel"],
+        reference_skymodels_frequencies=[327e6, 74e6],
+    )
+    supplied_call = find_normalizations_mock.call_args
+
+    # The survey fluxes, errors and frequencies follow the Rapthor values and the fit frequencies
+    for downloaded, supplied in zip(downloaded_call.args[3:6], supplied_call.args[3:6]):
+        np.testing.assert_array_equal(supplied, downloaded)
 
 
 @pytest.mark.parametrize(

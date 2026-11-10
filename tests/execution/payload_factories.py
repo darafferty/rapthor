@@ -18,6 +18,7 @@ def representative_image_payload(work_dir: object = "/work/image_1") -> dict:
             {
                 "image_name": "sector_1",
                 "apply_screens": False,
+                "concat_in_time": True,
                 "concat_filename": "sector_1.concat.ms",
                 "concat_path": _work_path(work_dir, "sector_1.concat.ms"),
                 "mask_filename": "sector_1.mask.fits",

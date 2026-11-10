@@ -48,7 +48,7 @@ class PrepareImagingDataOptions:
 class WscleanOptions:
     """Common WSClean options shared by image modes."""
 
-    msin: str
+    msin: list[str]
     name: str
     mask: str
     imsize: list[int]
@@ -242,7 +242,7 @@ def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
     append_flag(command, "-skip-final-iteration", options.skip_final_iteration)
     append_flag(command, "-apply-time-frequency-smearing", options.apply_time_frequency_smearing)
     append_flag(command, "-reorder", options.reorder)
-    command.append(options.msin)
+    command.extend(options.msin)
     return command
 
 
@@ -293,7 +293,7 @@ def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
     append_flag(command, "-shared-facet-reads", options.shared_facet_reads)
     append_flag(command, "-shared-facet-writes", options.shared_facet_writes)
     append_flag(command, "-reorder", common.reorder)
-    command.append(common.msin)
+    command.extend(common.msin)
     return command
 
 
@@ -337,7 +337,7 @@ def build_wsclean_screens_command(options: WscleanScreenOptions) -> list[str]:
     append_flag(command, "-skip-final-iteration", common.skip_final_iteration)
     append_flag(command, "-apply-time-frequency-smearing", common.apply_time_frequency_smearing)
     append_flag(command, "-reorder", common.reorder)
-    command.append(common.msin)
+    command.extend(common.msin)
     return command
 
 

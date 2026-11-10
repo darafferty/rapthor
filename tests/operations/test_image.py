@@ -254,6 +254,30 @@ class TestImage:
             numsamples=first_observation.numsamples,
         )
 
+    def test_observations_with_the_same_stations_are_concatenated(self, field):
+        _prepare_field_for_image(field)
+        field.make_residual_visibilities = True
+        image = Image(field, index=1)
+        image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["concat_in_time"] is True
+        assert image.make_residual_visibilities is True
+
+    def test_observations_with_different_stations_are_not_concatenated(self, field, caplog):
+        _prepare_field_for_image(field)
+        field.make_residual_visibilities = True
+        field.observations_share_stations = False
+        image = Image(field, index=1)
+        with caplog.at_level("WARNING"):
+            image.set_parset_parameters()
+        image.set_input_parameters()
+
+        assert image.input_parms["concat_in_time"] is False
+        assert image.make_residual_visibilities is False
+        assert image.parset_parms["make_residual_visibilities"] is False
+        assert "residual visibilities" in caplog.text
+
     def test_set_input_parameters_keeps_original_observations_for_diagnostics(self, field):
         _prepare_field_for_image(field)
         field.do_predict = True

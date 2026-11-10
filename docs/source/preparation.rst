@@ -20,6 +20,15 @@ frequency bands output by LINC can be input directly to Rapthor (no
 concatenation is needed). Data from multiple epochs, such as interleaved 
 observations or observations from multiple nights, are supported.
 
+Different epochs need not have the same stations. A station that is missing
+from an observation is ignored in the calibration of that observation. Such
+observations cannot be concatenated in time, so they are imaged together as
+separate Measurement Sets and residual visibilities are not saved (see
+:term:`save_residual_visibilities`). The Measurement Sets of one epoch, such as
+its frequency bands, are concatenated in frequency, so they must have the same
+stations in the same order. Different stations are not supported with
+:term:`dde_mode` = ``hybrid``.
+
 Sky model
 ---------
 
@@ -38,6 +47,43 @@ The input sky model consists of a list of sources stored in a plain text file,
 their coordinates, flux density, and other relevant parameters. For the 
 curious reader, an overview of the data format is available in the 
 `WSClean manual <https://wsclean.readthedocs.io/en/latest/component_list.html>`_.
+
+.. _offline_sky_models:
+
+Sky models for a run without internet access
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The image diagnostics and the flux-scale normalization use sky models from
+external surveys. If the compute nodes have no internet access, download these
+sky models beforehand on a machine that does, using the ``fetch_skymodels``
+command:
+
+.. code-block:: console
+
+    $ fetch_skymodels input.ms /data/catalogs
+
+This reads the pointing from the given Measurement Set and downloads sky models
+from TGSS (for the photometry check), Pan-STARRS (for the astrometry check), and
+VLSSr and WENSS (for the normalization). The radius of the downloads is 5 degrees
+unless set with ``--radius``. A sky model that is already in the output directory
+is kept unless ``--overwrite`` is given, so if a download fails, running the
+command again only gets what is missing.
+
+When all the downloads have succeeded, the command prints the parset options that
+use them:
+
+.. code-block:: ini
+
+    [imaging]
+    photometry_skymodel = /data/catalogs/TGSS_model.txt
+    astrometry_skymodel = /data/catalogs/PANSTARRS_model.txt
+    normalization_skymodels = [/data/catalogs/VLSSR_model.txt, /data/catalogs/WENSS_model.txt]
+    normalization_reference_frequencies = [74000000.0, 327000000.0]
+
+    [cluster]
+    allow_internet_access = False
+
+These sky models do not include the initial sky model for calibration. Generate
+that as described below, or supply it with :term:`input_skymodel`.
 
 .. _auto_sky_generation:
 

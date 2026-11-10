@@ -284,6 +284,17 @@ class Field(object):
                             f"following input MS files: {ms1} and {ms2}"
                         )
 
+                # The MS files of an epoch are concatenated in frequency by DP3, which
+                # needs their antenna tables to match
+                for obs in epoch_observations[1:]:
+                    if list(obs.stations) != list(epoch_observations[0].stations):
+                        raise ValueError(
+                            f"Stations in MS {obs.ms_filename} differ from those in MS "
+                            f"{epoch_observations[0].ms_filename} of the same epoch. The MS "
+                            "files of an epoch are concatenated in frequency, which requires "
+                            "the same stations in the same order."
+                        )
+
         # Check that all observations have the same pointing up to some tolerance level
         self.ra = obs0.ra
         self.dec = obs0.dec
@@ -299,13 +310,21 @@ class Field(object):
                     "separation_tolerance_arcsec option in the parset if necessary."
                 )
 
-        # Check that all observations have the same stations
-        self.stations = obs0.stations
-        for obs in self.full_observations:
-            if self.stations != obs.stations:
-                raise ValueError(
-                    f"Stations in MS {obs.ms_filename} differ from those in MS {obs0.ms_filename}"
-                )
+        # Get the stations across all observations, in the order they are first found. DP3
+        # ignores a station that an observation lacks. Observations can be concatenated in
+        # time only if their stations match in order, as their antenna indices then agree
+        self.stations = list(
+            dict.fromkeys(station for obs in self.full_observations for station in obs.stations)
+        )
+        self.observations_share_stations = all(
+            list(obs.stations) == list(obs0.stations) for obs in self.full_observations
+        )
+        # Screen solutions are collected by position, which needs the same antenna list
+        if self.dde_mode == "hybrid" and not self.observations_share_stations:
+            raise ValueError(
+                "The input observations have different stations, which is not supported "
+                "with dde_mode = hybrid."
+            )
 
         # Find mean elevation and FOV over all observations
         self.diam = np.mean([obs.diam for obs in self.full_observations])

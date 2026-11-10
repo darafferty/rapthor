@@ -220,12 +220,19 @@ def make_normalization_record(
     sector: ImageSectorPayload,
 ) -> dict:
     """Build the flux-scale normalization h5parm from a source catalog."""
+    # Observations that were not concatenated may cover different frequencies
+    other_ms_files = (
+        []
+        if sector["concat_in_time"]
+        else [str(task["msout_path"]) for task in sector["prepare_tasks"][1:]]
+    )
     normalize_flux_scale(
         source_catalog["path"],
         concat_record["path"],
         str(sector["output_normalize_h5parm_path"]),
         reference_skymodels=sector["normalization_skymodels"],
         reference_skymodels_frequencies=sector["normalization_reference_frequencies"],
+        other_ms_files=other_ms_files,
     )
     return require_file(
         str(sector["output_normalize_h5parm_path"]), "Flux-scale normalization h5parm"
