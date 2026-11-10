@@ -79,6 +79,8 @@ class Parset:
         ----------
         parset_file: str, optional
             Name of the parset-file to read
+        json_formatted: bool, optional
+            If True, read the file as JSON-formatted instead of INI-formatted
         """
         # Load default settings
         self.__parser = configparser.ConfigParser(interpolation=None)
@@ -458,8 +460,8 @@ class Parset:
         ----------
         parset_file: str
             Name of the parset file
-        json_formatted: bool
-            If True, read the file assuming it is in JSON format instead of INI format
+        json_formatted: bool, optional
+            If True, read the file as JSON-formatted instead of INI-formatted
 
         Returns
         -------
