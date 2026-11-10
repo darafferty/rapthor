@@ -68,7 +68,7 @@ class Parset:
 
     DEFAULT_PARSET = resources.files("rapthor") / "settings" / "defaults.parset"
 
-    def __init__(self, parset_file=None, json_formatted=False):
+    def __init__(self, parset_file=None):
         """
         Initializer.
         Read the default settings; define allowed and required sections and options
@@ -78,9 +78,8 @@ class Parset:
         Parameters
         ----------
         parset_file: str, optional
-            Name of the parset-file to read
-        json_formatted: bool, optional
-            If True, read the file as JSON-formatted instead of INI-formatted
+            Name of the parset file to read. The file can be in the standard INI
+            format or in JSON format (in which case the file must end in ".json").
         """
         # Load default settings
         self.__parser = configparser.ConfigParser(interpolation=None)
@@ -119,7 +118,9 @@ class Parset:
         self.settings = Parset.config_as_dict(self.__parser)
 
         if parset_file:
-            self.settings = self.read_file(parset_file, json_formatted=json_formatted)
+            self.settings = self.read_file(
+                parset_file, json_formatted=parset_file.endswith(".json")
+            )
 
     @staticmethod
     def config_as_dict(parser):
