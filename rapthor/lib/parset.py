@@ -486,10 +486,19 @@ class Parset:
             if json_formatted:
                 with open(parset_file) as handle:
                     parset_dict = json.load(handle)
+
+                # Convert all entires to str before reading
+                for section in parset_dict:
+                    if not isinstance(parset_dict[section], dict):
+                        raise ValueError(
+                            "All top-level entries must be dictionaries, one per parset section."
+                        )
+                    parset_dict[section] = {k: str(v) for k, v in parset_dict[section].items()}
+
                 self.__parser.read_dict(parset_dict)
             else:
                 self.__parser.read(parset_file)
-        except (json.decoder.JSONDecodeError, configparser.ParsingError) as err:
+        except (ValueError, json.decoder.JSONDecodeError, configparser.ParsingError) as err:
             raise ValueError(f"Parset file '{parset_file}' could not be parsed correctly.\n{err}")
 
         self.__sanitize()
