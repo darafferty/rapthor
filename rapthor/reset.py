@@ -11,10 +11,12 @@ from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from rapthor.execution.working_dir_lock import WorkingDirectoryLockError, working_directory_lock
 from rapthor.execution.workspace import remove_operation_workspace
 from rapthor.lib.parset import Parset
+from rapthor.lib.parset_paths import materialize_parset_paths
 
 log = logging.getLogger("rapthor:state")
 
@@ -215,14 +217,19 @@ def reset(parset_file):
     # not the input data or the log file.
     log.info("Reading parset and checking state...")
     with _suppressed_loggers("rapthor:parset"):
-        parset = Parset(parset_file).as_parset_dict()
-        # Hold the working directory while operations are listed and removed
-        try:
-            with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
-                _reset(parset)
-        except WorkingDirectoryLockError as error:
-            print(f"{error}\nNo reset can be done.")
-            sys.exit(1)
+        with TemporaryDirectory(prefix="rapthor-parset-") as temp_dir:
+            runtime_parset = materialize_parset_paths(
+                Path(parset_file),
+                Path(temp_dir) / f"{Path(parset_file).stem}.materialized.parset",
+            )
+            parset = Parset(runtime_parset).as_parset_dict()
+            # Hold the working directory while operations are listed and removed
+            try:
+                with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
+                    _reset(parset)
+            except WorkingDirectoryLockError as error:
+                print(f"{error}\nNo reset can be done.")
+                sys.exit(1)
 
 
 def _reset(parset):
