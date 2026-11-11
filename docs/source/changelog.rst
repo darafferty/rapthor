@@ -6,30 +6,17 @@ Changelog
 Version 3.0 (unreleased)
 ------------------------
 
-This release changes the way in which Rapthor runs the processing. The CWL
-workflows and the Toil runner of earlier versions have been replaced by Python
-code that uses Prefect to keep track of the processing and Dask to run it.
-Apart from the changes and fixes listed below, the processing itself is
-unchanged. See :ref:`upgrading` for what to check in existing parsets and
-strategy files, and :ref:`migration_behavior_differences` for the differences
-in the results.
+This release includes the following changes:
 
-    - CWL, Toil, and cwltool are no longer used. Prefect and Dask are
-      installed together with Rapthor, and nothing needs to be set up to use
-      them on a single machine.
-    - A run can be followed in the Prefect and Dask dashboards, which show the
-      state, run time, and log of every step of every operation. Plots of the
-      calibration solutions and the image diagnostics are shown in the Prefect
-      dashboard as well, as are (optionally) previews of the images.
-    - The output of every DP3, WSClean, or other command is written to its own
-      log file in ``dir_working/logs``, and every command that was run is
-      listed, with its run time and resource use, in
+    - CWL, Toil, and cwltool are replaced with Python tasks that are
+      orchestrated by Prefect and Dask. Rapthor no longer submits its own Slurm
+      jobs.
+    - Runs can be tracked and logs and artifacts can be viewed via a dashboard
+      UI.
+    - Outputs of every DP3, WSClean, or other command are written to their
+      own log file in ``dir_working/logs``, and every command that was run
+      is listed, with its run time and resource use, in
       ``dir_working/logs/commands.jsonl``.
-    - Several steps of an operation can be run at the same time on a single
-      machine (see :term:`local_dask_workers`).
-    - For runs on multiple nodes of a cluster, Rapthor uses a Dask scheduler
-      and workers that are started by the user inside a Slurm job. Rapthor no
-      longer submits Slurm jobs itself.
     - The :term:`use_container` option is no longer supported. To use a
       container, run Rapthor itself inside it.
     - The ``cwl_runner`` and ``dir_local`` options have been removed. Use
@@ -53,61 +40,40 @@ in the results.
       this file.
     - When several sectors are imaged, the model images
       ``field-MFS-model-pb.fits`` and ``field-MFS-filtered-model.fits`` are now
-      drawn by WSClean from the sky models of the sectors. Earlier versions
-      regridded the model images of the sectors, which lost the flux of
-      isolated components. The old method can still be selected with
-      :term:`model_mosaic_method`.
+      drawn by WSClean from the sky models of the sectors. The old method can
+      still be selected with :term:`model_mosaic_method`.
     - When images are compressed (see :term:`compress_selfcal_images`), the
       model images are now compressed without loss.
-    - The JSON output records of the operations no longer contain the
-      checksums and file sizes that CWL added.
     - In direction-dependent cycles with only the ``fast_phase`` and
       ``medium_phase`` solves, the combined phases of both solves are now
-      applied. Earlier versions did both solves but applied only the fast
-      phases. This changes the results of these cycles, which include the
-      early cycles of the ``selfcal`` strategy when the initial sky model is
-      supplied or downloaded.
+      applied.
     - ``field-solutions.h5`` now always holds the slow-gain amplitudes when
-      the ``slow_gains`` solve is done. In earlier versions, the combination of
-      the solutions could leave only the phases in this file.
+      the ``slow_gains`` solve is done.
     - The flux-scale normalization is now applied to the model used in the
-      slow-gain solve. In earlier versions, it was not, so the slow-gain
-      amplitudes absorbed the normalization and imaging then corrected the
-      flux scale twice. With :term:`use_wsclean_predict`, DP3 cannot apply the
-      normalization to the model, so the amplitudes still absorb it; Rapthor
-      logs a warning in this case.
-    - The prediction before a direction-independent solve no longer fails when
-      a flux-scale normalization, but no other solutions, is to be applied.
-    - With :term:`dde_method` = ``single``, the direction-dependent phases are
-      no longer applied twice before imaging.
-    - With :term:`use_wsclean_predict`, the last channel of each group of
-      channels is now predicted. Earlier versions could leave it out.
+      slow-gain solve. With :term:`use_wsclean_predict`, DP3 cannot apply the
+      normalization to the model and Rapthor logs a warning.
+    - The prediction before a direction-independent solve can now apply
+      a flux-scale normalization when no other solutions are applied.
+    - Ensured that for :term:`dde_method` = ``single``, the direction-dependent
+      phases are applied only once before imaging.
+    - Ensured that for :term:`use_wsclean_predict`, the last channel of each
+      group of channels is always predicted.
     - When the final cycle is repeated (see
       :term:`ntimes_to_repeat_final_cycle`), the outlier sources are subtracted
-      only in the first final cycle. Earlier versions subtracted them again in
-      every repeat.
-    - The calibration no longer writes the data back into its input MS when
-      direction-independent solutions are applied before the solves. In
-      earlier versions, this happened whenever baseline-dependent averaging was
-      not used for the solves (for example, with
-      :term:`bda_timebase <bda_timebase (calibration)>` and
-      :term:`bda_frequencybase <bda_frequencybase (calibration)>` set to 0,
-      with irregular channels, or with WSClean or image-based prediction). The
-      corrected data and flags were then written to the input MS (which can be
-      an original input MS), so later operations applied the
-      direction-independent corrections a second time.
-    - In the ``selfcal`` strategy, the final cycle no longer shares its
-      parameters with the last cycle of selfcal. In earlier versions, setting
-      the output channel width of the final cycle to 4 MHz also changed the
-      last selfcal cycle from 8 MHz to 4 MHz, and the two cycles then compared
-      as identical, so the final cycle was skipped when the selfcal and final
-      data fractions were equal.
+      only in the first final cycle.
+    - Ensured that DP3 does not write data back into its input MS when
+      direction-independent solutions are applied before the solves.
+    - Ensured that for the ``selfcal`` strategy, the final cycle uses its own
+      parameters independently of the last cycle of selfcal.
     - A calibrating cycle with neither :term:`calibration_strategy` nor legacy
-      solve flags now uses the full default DD sequence independently of earlier
-      cycles. Legacy flags, including explicitly ``False`` values, are translated
-      before this default is considered. Image-only cycles preserve the previous
-      strategy unless explicitly overridden. Each calibrating cycle logs its
-      resolved sequence in order and identifies whether it was defaulted.
+      solve flags now uses the full default DD sequence independently of
+      earlier cycles.
+    - Image-only cycles preserve the previous strategy unless explicitly
+      overridden.
+    - Each calibrating cycle logs its resolved sequence in order and identifies
+      whether it was defaulted.
+
+See :ref:`upgrading` for notes on upgrading to this version.
 
 
 Version 2.2 (2026/10/19)
