@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 import rapthor.reset as reset_module
+import rapthor.lib.parset_paths as parset_paths_module
 from rapthor.execution import working_dir_lock
 from tests.execution.scratch_transitions import exit_at_scratch_transition
 
@@ -79,6 +80,11 @@ def working_dir(tmp_path, monkeypatch):
 
 def _reset(monkeypatch, *answers):
     """Run a reset with the given answers to its prompts and return its exit code."""
+    # Skip the materialization of parset, as it writes its output to a temp directory
+    monkeypatch.setattr(
+        reset_module, "materialize_parset_paths", lambda parset_file, output_file: "input.parset"
+    )
+
     remaining = iter(answers)
     monkeypatch.setattr("builtins.input", lambda prompt: next(remaining))
     with pytest.raises(SystemExit) as exc:
@@ -135,6 +141,11 @@ def test_reset_restores_logger_levels_after_exit(tmp_path, monkeypatch):
     logger = logging.getLogger("rapthor:parset")
     monkeypatch.setattr(logger, "level", logging.INFO)
 
+    # Skip the materialization of parset, as it writes its output to a temp directory
+    monkeypatch.setattr(
+        reset_module, "materialize_parset_paths", lambda parset_file, output_file: "input.parset"
+    )
+
     # Without any pipeline directory there is nothing to reset and reset() exits.
     with pytest.raises(SystemExit):
         reset_module.reset("input.parset")
@@ -160,6 +171,11 @@ def test_reset_ignores_missing_optional_output_directories(tmp_path, monkeypatch
 def test_reset_exits_without_reset_when_no_pipeline_state_exists(tmp_path, monkeypatch, capsys):
     working_dir = _prepare_working_dir(tmp_path)
     _patch_reset_lifecycle(monkeypatch, working_dir)
+
+    # Skip the materialization of parset, as it writes its output to a temp directory
+    monkeypatch.setattr(
+        reset_module, "materialize_parset_paths", lambda parset_file, output_file: "input.parset"
+    )
 
     with pytest.raises(SystemExit) as exc:
         reset_module.reset("input.parset")
