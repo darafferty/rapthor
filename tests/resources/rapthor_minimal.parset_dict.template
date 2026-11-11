@@ -39,23 +39,23 @@
                           'wsclean_predict_bw': 2000000.0},
  'cluster_specific': {'batch_system': 'single_machine',
                       'container_type': 'docker',
-                      'cpus_per_task': 8,
+                      'cpus_per_task': 8,  # default 0 = number of cores (8 in the test)
                       'dask_scheduler': None,
                       'dask_dashboard_address': None,
                       'debug_workflow': False,
-                      'deconvolution_threads': 3,
+                      'deconvolution_threads': 3,  # default 0 = 2/5 of max_threads
                       'local_scratch_dir': None,
                       'global_scratch_dir': None,
                       'keep_temporary_files': False,
                       'allow_internet_access': True,
                       'local_dask_workers': 1,
-                      'max_cores': 8,
-                      'max_nodes': 1,
-                      'max_threads': 8,
-                      'filter_skymodel_ncores': 8,
+                      'max_cores': 8,  # default 0 = number of cores (single_machine)
+                      'max_nodes': 1,  # default 0 = 1 for single_machine
+                      'max_threads': 8,  # default 0 = number of cores
+                      'filter_skymodel_ncores': 8,  # default 0 = max_threads
                       'fail_on_calibration_oom_risk': False,
                       'mem_per_node_gb': 0,
-                      'parallel_gridding_tasks': 1,
+                      'parallel_gridding_tasks': 1,  # default 0 = max_threads // 8
                       'prefect_api_mode': 'auto',
                       'prefect_api_url': None,
                       'prefect_command_profile': 'auto',
