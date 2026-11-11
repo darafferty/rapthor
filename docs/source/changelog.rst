@@ -67,11 +67,9 @@ This release includes the following changes:
       parameters independently of the last cycle of selfcal.
     - A calibrating cycle with neither :term:`calibration_strategy` nor legacy
       solve flags now uses the full default DD sequence independently of
-      earlier cycles.
-    - Image-only cycles preserve the previous strategy unless explicitly
-      overridden.
-    - Each calibrating cycle logs its resolved sequence in order and identifies
-      whether it was defaulted.
+      earlier cycles. Each calibrating cycle logs its resolved sequence in
+      order and identifies whether it was defaulted. Image-only cycles
+      preserve the previous strategy unless explicitly overridden.
 
 See :ref:`upgrading` for notes on upgrading to this version.
 
