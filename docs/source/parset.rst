@@ -656,10 +656,10 @@ The available options are described below under their respective sections.
         available if :term:`batch_system` = ``slurm`` or ``slurm_static``). WSClean is
         started with ``mpirun``, with one process on each node. WSClean
         distributes the output channels over the nodes, so a sector uses no
-        more nodes than it has output channels. With facets, all
-        facets of an output channel are imaged on the same node (WSClean's
+        more nodes than it has output channels. With facets, all facets of
+        an output channel are sent to its node together (WSClean's
         ``-compound-tasks``, or shared reads and writes if
-        :term:`shared_facet_rw` is used).
+        :term:`shared_facet_rw` is used), so that no node waits for work.
 
         .. note::
 
@@ -683,9 +683,9 @@ The available options are described below under their respective sections.
         it would more than halve the number of parallel gridding tasks:
 
         * One facet: sharing is disabled.
-        * Two or more facets: sharing is enabled when the number of facets is
-          at least half the number of parallel gridding tasks that would be
-          used without sharing. Otherwise sharing is disabled.
+        * Two or more facets: sharing is enabled when the number of parallel
+          gridding tasks with sharing is at least half the number without
+          sharing. Otherwise sharing is disabled.
 
         The number of parallel gridding tasks respects the requested
         :term:`parallel_gridding_tasks`, :term:`max_cores`, and WSClean's actual
@@ -700,7 +700,9 @@ The available options are described below under their respective sections.
         frequency with baseline-dependent averaging. Sharing is therefore not
         used, and a warning is logged, unless
         :term:`bda_frequencybase (imaging)` is set to 0. Averaging in time
-        (:term:`bda_timebase (imaging)`) can stay on.
+        (:term:`bda_timebase (imaging)`) can stay on. An image operation that
+        has already prepared its data keeps that data when a run is resumed:
+        reset it after changing this setting (see :ref:`resetting_rapthor`).
 
         This resource-based comparison is an experimental heuristic, not a
         measured performance crossover. See the
@@ -991,10 +993,10 @@ for how these options are used.
               - 12 (shared)
               - 24 (shared)
 
-        When :term:`shared_facet_rw` is disabled, sharing is never used and
-        the number of tasks is the limit of 24, capped by the output channels
-        per node times the number of facets. These examples describe the
-        policy, not measured optimal node counts or runtimes.
+        When :term:`shared_facet_rw` is disabled, sharing is never used. The
+        cells that are marked as shared then have the same number of tasks or
+        twice as many. These examples describe the policy, not measured
+        optimal node counts or runtimes.
         The facet count, sharing mode, channels, nodes, threads and
         gridding concurrency are recorded in the Rapthor log for each sector.
 
