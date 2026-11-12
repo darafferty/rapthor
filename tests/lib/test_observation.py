@@ -3,6 +3,7 @@ Test cases for the `rapthor.lib.observation` module.
 """
 
 import math
+import warnings
 from logging import Logger
 from unittest import mock
 
@@ -381,6 +382,184 @@ class TestObservation:
         params = observation.parameters
         assert params["fast_smoothnessreffrequency"] == [fast_reference_frequency]
         assert params["medium_smoothnessreffrequency"] == [medium_reference_frequency]
+
+    @staticmethod
+    def set_averaging_test_parameters(
+        observation,
+        calibration_parset,
+        *,
+        timesteps,
+        freqsteps,
+        calibrator_fluxes=(1.0,),
+        dd_interval_factor=1,
+    ):
+        """Set fast, medium and slow solution intervals in time slots and channels."""
+        settings = calibration_parset["calibration_specific"]
+        settings.update(
+            {
+                "average_visibilities": True,
+                "max_peak_smearing": 0.15,
+                "dd_interval_factor": dd_interval_factor,
+            }
+        )
+        for solve_type in ["fast", "medium", "slow"]:
+            settings[f"{solve_type}_freqstep_hz"] = freqsteps[solve_type] * observation.channelwidth
+        calibration_parset["imaging_specific"] = {"cellsize_arcsec": 1.5}
+        observation.set_calibration_parameters(
+            calibration_parset,
+            -1,  # not used, since chunk_by_time is False
+            list(calibrator_fluxes),
+            timesteps["fast"] * observation.timepersample,
+            timesteps["medium"] * observation.timepersample,
+            timesteps["slow"] * observation.timepersample,
+            observation.timepersample,
+            target_flux=min(calibrator_fluxes),
+        )
+
+    def test_set_calibration_averaging_parameters_disabled(self, observation, calibration_parset):
+        """Without average_visibilities, the data are not averaged before calibration."""
+        steps = {"fast": 6, "medium": 6, "slow": 6}
+        freqsteps = {"fast": 8, "medium": 8, "slow": 8}
+        self.set_averaging_test_parameters(
+            observation, calibration_parset, timesteps=steps, freqsteps=freqsteps
+        )
+        calibration_parset["calibration_specific"]["average_visibilities"] = False
+
+        observation.set_calibration_averaging_parameters(
+            calibration_parset, 0.3, ["fast", "medium", "slow"]
+        )
+
+        assert observation.parameters["calibration_timestep"] == [1]
+        assert observation.parameters["calibration_freqstep"] == [1]
+
+    @pytest.mark.parametrize(
+        "calibration_radius, expected_timestep, expected_freqstep",
+        [
+            # Smearing allows 3.3 time slots and 14 channels; the solution
+            # intervals allow at most 8 channels.
+            pytest.param(0.3, 3, 8, id="time-smearing-limited"),
+            # Smearing allows 1.4 time slots and 5.9 channels; 5 channels would
+            # not divide the 8 channels of the data and solution intervals.
+            pytest.param(0.7, 1, 4, id="frequency-smearing-limited"),
+            # A single calibrator at the phase center gives no smearing limit.
+            pytest.param(0.0, 6, 8, id="calibrator-at-phase-center"),
+        ],
+    )
+    def test_set_calibration_averaging_parameters_limits_smearing(
+        self,
+        observation,
+        calibration_parset,
+        calibration_radius,
+        expected_timestep,
+        expected_freqstep,
+    ):
+        """The averaging is as large as the smearing at the furthest calibrator allows."""
+        steps = {"fast": 6, "medium": 6, "slow": 6}
+        freqsteps = {"fast": 8, "medium": 8, "slow": 8}
+        self.set_averaging_test_parameters(
+            observation, calibration_parset, timesteps=steps, freqsteps=freqsteps
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # e.g. a division by zero at radius 0
+            observation.set_calibration_averaging_parameters(
+                calibration_parset, calibration_radius, ["fast", "medium", "slow"]
+            )
+
+        assert observation.parameters["calibration_timestep"] == [expected_timestep]
+        assert observation.parameters["calibration_freqstep"] == [expected_freqstep]
+
+    @pytest.mark.parametrize(
+        "solution_intervals, expected_timestep, expected_freqstep",
+        [
+            # Every averaged step must fit the 4 and 6 time slot and the 2 and 8
+            # channel solution intervals exactly.
+            pytest.param(["fast", "slow"], 2, 2, id="fast-and-slow"),
+            # Solves that are not done do not limit the averaging.
+            pytest.param(["slow"], 6, 8, id="slow-only"),
+            # Applied full-Jones solutions have 1 time slot and 1 channel intervals.
+            pytest.param(["slow", "fulljones"], 1, 1, id="fulljones"),
+        ],
+    )
+    def test_set_calibration_averaging_parameters_fits_solution_intervals(
+        self,
+        observation,
+        calibration_parset,
+        solution_intervals,
+        expected_timestep,
+        expected_freqstep,
+    ):
+        """The averaging divides the solution interval of every solve that is done."""
+        self.set_averaging_test_parameters(
+            observation,
+            calibration_parset,
+            timesteps={"fast": 4, "medium": 5, "slow": 6},
+            freqsteps={"fast": 2, "medium": 1, "slow": 8},
+        )
+
+        # A radius of 0.05 degrees allows 12 time slots and 82 channels.
+        observation.set_calibration_averaging_parameters(
+            calibration_parset, 0.05, solution_intervals
+        )
+
+        assert observation.parameters["calibration_timestep"] == [expected_timestep]
+        assert observation.parameters["calibration_freqstep"] == [expected_freqstep]
+
+    def test_set_calibration_averaging_parameters_fits_the_observation(
+        self, observation, calibration_parset
+    ):
+        """The averaging never exceeds the 6 time slots of the observation."""
+        self.set_averaging_test_parameters(
+            observation,
+            calibration_parset,
+            timesteps={"fast": 10, "medium": 10, "slow": 10},
+            freqsteps={"fast": 8, "medium": 8, "slow": 8},
+        )
+
+        # A radius of 0.05 degrees allows 12 time slots, so 10 would be chosen
+        observation.set_calibration_averaging_parameters(
+            calibration_parset, 0.05, ["fast", "medium", "slow"]
+        )
+
+        assert observation.parameters["calibration_timestep"] == [5]
+
+    def test_set_calibration_averaging_parameters_limits_bda_channels(
+        self, observation, calibration_parset
+    ):
+        """BDA cannot keep more channels than the averaged data have."""
+        self.set_averaging_test_parameters(
+            observation,
+            calibration_parset,
+            timesteps={"fast": 6, "medium": 6, "slow": 6},
+            freqsteps={"fast": 1, "medium": 8, "slow": 8},
+        )
+        # The 1-channel fast interval keeps all 8 channels in BDA
+        assert observation.parameters["bda_minchannels"] == [8]
+
+        observation.set_calibration_averaging_parameters(calibration_parset, 0.05, ["medium"])
+
+        assert observation.parameters["calibration_freqstep"] == [8]
+        assert observation.parameters["bda_minchannels"] == [1]
+
+    def test_set_calibration_averaging_parameters_fits_direction_dependent_intervals(
+        self, observation, calibration_parset
+    ):
+        """The averaging divides the shorter intervals of bright calibrators."""
+        self.set_averaging_test_parameters(
+            observation,
+            calibration_parset,
+            timesteps={"fast": 3, "medium": 3, "slow": 3},
+            freqsteps={"fast": 8, "medium": 8, "slow": 8},
+            calibrator_fluxes=(1.0, 2.0),
+            dd_interval_factor=2,
+        )
+        # The 6 time slot interval has 2 solutions for the bright calibrator.
+        assert observation.parameters["solint_fast_timestep"] == [6]
+        assert observation.parameters["fast_solutions_per_direction"] == [[1, 2]]
+
+        observation.set_calibration_averaging_parameters(calibration_parset, 0.05, ["fast"])
+
+        assert observation.parameters["calibration_timestep"] == [3]
 
     def test_set_prediction_parameters(self, observation, test_ms):
         observation.set_prediction_parameters("sector_1", ["patch_a", "patch_b"])
