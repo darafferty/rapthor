@@ -246,7 +246,9 @@ def build_wsclean_no_dde_command(options: WscleanOptions) -> list[str]:
     return command
 
 
-def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
+def build_wsclean_facets_command(
+    options: WscleanFacetOptions, *, compound_tasks: bool = False
+) -> list[str]:
     """Build the serial facet-corrected WSClean command for one imaging sector."""
     common = options.common
     command = _wsclean_command_base(common.update_model_required) + [
@@ -292,6 +294,7 @@ def build_wsclean_facets_command(options: WscleanFacetOptions) -> list[str]:
     append_flag(command, "-apply-time-frequency-smearing", common.apply_time_frequency_smearing)
     append_flag(command, "-shared-facet-reads", options.shared_facet_reads)
     append_flag(command, "-shared-facet-writes", options.shared_facet_writes)
+    append_flag(command, "-compound-tasks", compound_tasks)
     append_flag(command, "-reorder", common.reorder)
     command.extend(common.msin)
     return command
@@ -369,7 +372,13 @@ def build_wsclean_mpi_facets_command(
     options: WscleanFacetOptions,
 ) -> list[str]:
     """Build the MPI facet-corrected WSClean command for one imaging sector."""
-    return _mpi_wsclean_command(build_wsclean_facets_command(options), mpi_nnodes)
+    # WSClean sends tasks to the nodes one at a time. Compound tasks hold all
+    # facets of an output channel, so that no node waits for single facets.
+    # Shared facet reads and writes already imply compound tasks.
+    serial_command = build_wsclean_facets_command(
+        options, compound_tasks=not options.shared_facet_reads
+    )
+    return _mpi_wsclean_command(serial_command, mpi_nnodes)
 
 
 def build_wsclean_mpi_screens_command(

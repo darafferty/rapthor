@@ -654,7 +654,11 @@ The available options are described below under their respective sections.
         ``True`` and more than one node can be allocated to each WSClean job (i.e.,
         ``max_nodes`` / ``num_images`` >= 2), then distributed imaging will be used (only
         available if :term:`batch_system` = ``slurm`` or ``slurm_static``). WSClean is
-        started with ``mpirun``, with one process on each node.
+        started with ``mpirun``, with one process on each node. WSClean
+        distributes the output channels over the nodes. With facets, all
+        facets of an output channel are imaged on the same node (WSClean's
+        ``-compound-tasks``, or shared reads and writes if
+        :term:`shared_facet_rw` is used).
 
         .. note::
 
