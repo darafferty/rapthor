@@ -160,6 +160,19 @@ Phase-only direction-dependent cycles
     Related documentation: :ref:`calibrate` lists the individual and combined
     solution products.
 
+Chunking of the selfcal cycles
+    The data are chunked in time for each selfcal cycle, using the longest
+    solution interval of the solves done in that cycle. Version 2 chunked the
+    data once for all selfcal cycles, using the longest fast-phase, slow-gain
+    or full-Jones interval of any of them. With a :term:`selfcal_data_fraction`
+    below 1, cycles that solve only for phases therefore use more, shorter
+    chunks than before, so they use different time ranges of the data than
+    version 2 did, and than the cycles that also solve for slow gains. A cycle
+    whose chunks differ from those of the cycle before it starts again from the
+    input data, and peels the outliers again if an earlier cycle peeled them.
+
+    Related documentation: :term:`selfcal_data_fraction` and :term:`max_nodes`.
+
 WSClean prediction channels
     With :term:`use_wsclean_predict`, prediction covers every requested channel,
     including the last channel of each frequency chunk. The ``-channel-range``

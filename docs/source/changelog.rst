@@ -68,6 +68,15 @@ existing parsets and strategy files.
       before this default is considered. Image-only cycles preserve the previous
       strategy unless explicitly overridden. Each calibrating cycle logs its
       resolved sequence in order and identifies whether it was defaulted.
+    - The data are chunked in time for each selfcal cycle, using the longest
+      solution interval of the solves done in that cycle (now including the
+      medium-phase solve). Earlier versions used the longest fast-phase,
+      slow-gain or full-Jones interval of all selfcal cycles, whether or not
+      those solves were done. Cycles that solve only for phases can therefore
+      be split into more chunks and spread over more nodes. A cycle that does
+      not calibrate keeps the chunks of the cycle before it. When a cycle needs
+      different chunks from the cycle before it, it starts again from the input
+      data and peels the outliers again if an earlier cycle peeled them.
 
 
 Version 2.2 (2026/10/19)
