@@ -42,34 +42,51 @@ def do_final_pass(field, selfcal_steps, final_step):
     return True
 
 
-def chunk_observations(field, steps, data_fraction):
+def chunk_observations(field, steps, data_fraction, selection_steps=None):
     """
     Chunk observations in time for calibration, data-fraction, or multi-node runs.
 
     The resulting data fraction may differ from observation to observation
     depending on the length of each observation and the largest requested
     calibration solution interval.
-    """
-    field.update_observations(_planned_observations(field, steps, data_fraction))
-
-
-def rechunk_observations(field, steps, data_fraction):
-    """
-    Chunk observations again for a later selfcal cycle, if its solves need it.
-
-    Each cycle is chunked for its own calibration solution intervals. The current
-    observations are kept when the chunks do not change, as they may point to data
-    with the outliers peeled, and in a cycle without calibration, which applies the
-    solutions of the cycles before it (and so needs their chunks). New chunks start
-    again from the input data, so the outliers are peeled again if any cycle so far
-    peeled them.
 
     Parameters
     ----------
     field : Field object
         The Field object for this run
     steps : list of dict
-        The selfcal strategy steps up to and including that of the cycle to chunk
+        The strategy steps whose solution intervals set the chunks
+    data_fraction : float
+        The fraction of the data to use
+    selection_steps : list of dict, optional
+        The strategy steps whose solution intervals set the time ranges selected when
+        the data fraction is less than one, so that these steps all use the same data.
+        If None, the steps are used
+    """
+    field.update_observations(
+        _planned_observations(field, steps, data_fraction, selection_steps or steps)
+    )
+
+
+def rechunk_observations(field, steps, index, data_fraction):
+    """
+    Chunk observations again for a later selfcal cycle, if its solves need it.
+
+    Each cycle is chunked for its own calibration solution intervals, within the
+    time ranges selected for all selfcal cycles. The current observations are kept
+    when the chunks do not change, as they may point to data with the outliers
+    peeled, and in a cycle without calibration, which applies the solutions of the
+    cycles before it (and so needs their chunks). New chunks start again from the
+    input data, so the outliers are peeled again if any cycle so far peeled them.
+
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    steps : list of dict
+        The selfcal strategy steps
+    index : int
+        The index in steps of the step of the cycle to chunk
     data_fraction : float
         The selfcal data fraction
 
@@ -79,17 +96,19 @@ def rechunk_observations(field, steps, data_fraction):
         The strategy step to run the cycle with. When the observations are chunked
         again, this is a copy with the peeling flag set (the strategy is unchanged)
     """
-    step = steps[-1]
+    step = steps[index]
     if not step["do_calibrate"]:
         return step
 
-    observations = _planned_observations(field, [step], data_fraction)
+    observations = _planned_observations(field, [step], data_fraction, steps)
     if _chunk_layout(observations) == _chunk_layout(field.observations):
         return step
 
     field.update_observations(observations)
     # The peeling flag is only required in imaging cycles
-    peel_outliers = any(earlier_step.get("peel_outliers", False) for earlier_step in steps)
+    peel_outliers = any(
+        earlier_step.get("peel_outliers", False) for earlier_step in steps[: index + 1]
+    )
     if peel_outliers:
         # Restore the outliers to the calibration sky model, as in the final cycle
         field.imaged_sources_only = False
@@ -146,20 +165,24 @@ def _solution_interval(field, step, solve):
     return target_timestep, field.dd_interval_factor
 
 
-def _planned_observations(field, steps, data_fraction):
+def _planned_observations(field, steps, data_fraction, selection_steps):
     max_nodes = field.parset["cluster_specific"]["max_nodes"]
     if data_fraction >= 1.0 and max_nodes <= 1:
         return field.full_observations
 
-    intervals = _solution_intervals(field, steps)
-    solve_time = max((target * factor for target, factor in intervals), default=None)
+    selection_intervals = _solution_intervals(field, selection_steps)
+    # Without solves of their own, steps keep the selected ranges whole
+    intervals = _solution_intervals(field, steps) or selection_intervals
+    solve_time = max((target * factor for target, factor in selection_intervals), default=None)
     _set_observation_data_fractions(field, data_fraction, solve_time)
     max_chunks = None if data_fraction < 1.0 else max_nodes
     return [
         chunk
         for obs in field.full_observations
         for chunk in obs.chunk_observation(
-            _chunk_timesteps(obs, intervals, data_fraction), max_chunks=max_chunks
+            _chunk_timesteps(obs, intervals, data_fraction),
+            max_chunks=max_chunks,
+            selection_timesteps=_chunk_timesteps(obs, selection_intervals, data_fraction),
         )
     ]
 

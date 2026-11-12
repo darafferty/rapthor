@@ -481,7 +481,7 @@ def test_selfcal_cycle_peels_outliers_again_only_when_rechunked(
     assert len(peeled_ms) == 3
     assert all(Path(ms).parent == predict_dir for ms in peeled_ms)
 
-    step = rechunk_observations(field, steps, 1.0)
+    step = rechunk_observations(field, steps, 1, 1.0)
     field.update(dict(step), 2)
 
     assert [step["peel_outliers"] for step in steps] == [True, False]

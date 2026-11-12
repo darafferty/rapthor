@@ -4,6 +4,7 @@ Definition of the Observation class that holds parameters for each measurement s
 
 import copy
 import logging
+import math
 import os
 
 import casacore.tables as pt
@@ -706,35 +707,43 @@ class Observation(object):
 
         return delta_freq
 
-    def chunk_observation(self, chunk_timesteps, prefer_high_el_periods=True, max_chunks=None):
+    def chunk_observation(
+        self,
+        chunk_timesteps,
+        prefer_high_el_periods=True,
+        max_chunks=None,
+        selection_timesteps=None,
+    ):
         """
         Break existing observation into smaller observations (chunks).
+
+        When only a fraction of the data is used, time ranges are first selected,
+        and each is then split into chunks.
 
         Parameters
         ----------
         chunk_timesteps : int
-            Minimum number of time slots in a chunk. When all of the data are used, the
-            chunks hold whole multiples of it (normally the longest solution interval)
-            and only the last chunk may hold a partial one
+            Minimum number of time slots in a chunk (normally the longest solution
+            interval). Chunks hold whole multiples of it, and only the last chunk of
+            the observation, or of a selected time range, may hold a partial one
         prefer_high_el_periods : bool, optional
             Prefer periods for which the elevation is in the highest 80% of values for a
             given observation. This option is useful for removing periods of lower
             signal-to-noise (e.g., due to being at lower elevations where ionospheric
-            activity can increase and sensitivity decrease). If the requested chunk
+            activity can increase and sensitivity decrease). If the requested selection
             length is larger than the total time of the high-elevation period for a
             given observation, then the full observation is used instead
         max_chunks : int, optional
-            Maximum number of chunks. The minimum chunk duration may require fewer
-            chunks
+            Maximum number of chunks when all of the data are used, or of selected time
+            ranges otherwise. The minimum chunk duration may require fewer chunks
+        selection_timesteps : int, optional
+            Minimum number of time slots in a selected time range, when only a fraction
+            of the data is used. If None, chunk_timesteps is used, so that each range
+            is one chunk
         """
-
-        # The computations below first determine the number of samples, e.g., per chunk, and
-        # then derive the corresponding time intervals.
-        num_samples_in_chunk = chunk_timesteps
-
         # Due to a limitation in Dysco, we make sure to have at least two time slots
         # per observation, otherwise the output MS cannot be written with compression.
-        num_samples_in_chunk = max(num_samples_in_chunk, 2)
+        selection_timesteps = max(selection_timesteps or chunk_timesteps, 2)
 
         target_starttime = self.starttime
         target_endtime = self.endtime
@@ -753,94 +762,72 @@ class Observation(object):
             target_endtime = self.high_el_endtime
             num_samples = round(total_high_el_time / self.timepersample)
 
-        num_chunks = max(1, int(data_fraction * num_samples / num_samples_in_chunk))
-        if max_chunks is not None:
-            num_chunks = min(num_chunks, max_chunks)
-
-        if num_chunks == 1:
-            return list(
-                self._chunk_single(
-                    target_starttime,
-                    target_endtime,
-                    data_fraction,
-                    num_samples,
-                )
-            )
-        else:
-            return list(
-                self._chunk_multiple(
-                    target_starttime,
-                    target_endtime,
-                    data_fraction,
-                    num_samples,
-                    num_chunks,
-                    num_samples_in_chunk,
-                    chunk_timesteps,
-                )
-            )
-
-    def _chunk_single(self, target_starttime, target_endtime, data_fraction, num_samples):
         if data_fraction < 1.0:
-            # Center the chunk at the midpoint (which is generally the most
-            # sensitive, near transit)
-            # Keep enough samples for Dysco, without extending beyond the observation.
-            num_samples_in_chunk = min(num_samples, max(2, round(data_fraction * num_samples)))
-            num_samples_from_start = (num_samples - num_samples_in_chunk) // 2
-            num_samples_from_end = num_samples - num_samples_from_start - num_samples_in_chunk
-            yield Observation(
-                self.ms_filename,
-                starttime=target_starttime + num_samples_from_start * self.timepersample,
-                endtime=target_endtime - num_samples_from_end * self.timepersample,
-                name=f"{os.path.basename(self.ms_filename)}_chunk1",
-            )
+            # Split each selected range into chunks of whole solution intervals
+            sample_boundaries = [
+                chunk
+                for first, end in self._selected_ranges(
+                    data_fraction, num_samples, selection_timesteps, max_chunks
+                )
+                for chunk in _split_into_intervals(first, end, chunk_timesteps)
+            ]
         else:
-            yield self
+            sample_boundaries = _split_into_intervals(0, num_samples, chunk_timesteps, max_chunks)
+            if len(sample_boundaries) == 1:
+                return [self]
 
-    def _chunk_multiple(
-        self,
-        target_starttime,
-        target_endtime,
-        data_fraction,
-        num_samples,
-        num_chunks,
-        num_samples_in_chunk,
-        interval_timesteps,
-    ):
-        if data_fraction == 1.0:
-            # Divide the whole solution intervals between contiguous chunks, differing in
-            # number by at most one. Only the last chunk, at the end of the observation,
-            # may hold a partial interval (as when the observation is not chunked)
-            num_intervals = num_samples // interval_timesteps
-            sample_boundaries = (
-                np.arange(num_chunks + 1) * num_intervals // num_chunks * interval_timesteps
-            )
-            sample_boundaries[-1] = num_samples
-            chunk_start_times = target_starttime + sample_boundaries[:-1] * self.timepersample
-            chunk_end_times = (
-                target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample
-            )
-        else:
-            # Spread equal-sized chunks across the observation:
-            # |chunk1|---gap---|chunk2|---gap---|chunk3|
-            num_samples_selected = num_chunks * num_samples_in_chunk
-            num_samples_skipped = num_samples - num_samples_selected
-            num_gaps_between_chunks = num_chunks - 1
-            # Divide the skipped samples equally between the gaps; leave leftovers at the end.
-            num_samples_per_gap = int(num_samples_skipped / num_gaps_between_chunks)
-            num_samples_in_step = num_samples_per_gap + num_samples_in_chunk
-
-            # Count the samples before and after each chunk.
-            samples_before_chunk = np.arange(num_chunks) * num_samples_in_step
-            samples_after_chunk = num_samples - samples_before_chunk - num_samples_in_chunk
-
-            # Start and end times refer to the chunk's first and last samples.
-            chunk_start_times = target_starttime + samples_before_chunk * self.timepersample
-            chunk_end_times = target_endtime - samples_after_chunk * self.timepersample
-
-        for index, (starttime, endtime) in enumerate(zip(chunk_start_times, chunk_end_times)):
-            yield Observation(
+        # Start and end times refer to the chunk's first and last samples.
+        return [
+            Observation(
                 self.ms_filename,
-                starttime=starttime,
-                endtime=endtime,
+                starttime=target_starttime + first * self.timepersample,
+                endtime=target_endtime - (num_samples - end) * self.timepersample,
                 name=f"{os.path.basename(self.ms_filename)}_chunk{index + 1}",
             )
+            for index, (first, end) in enumerate(sample_boundaries)
+        ]
+
+    def _selected_ranges(self, data_fraction, num_samples, selection_timesteps, max_ranges):
+        """Return the first and end (exclusive) samples of the selected time ranges."""
+        num_ranges = max(1, int(data_fraction * num_samples / selection_timesteps))
+        if max_ranges is not None:
+            num_ranges = min(num_ranges, max_ranges)
+
+        if num_ranges == 1:
+            # Center the range at the midpoint (which is generally the most
+            # sensitive, near transit)
+            # Keep enough samples for Dysco, without extending beyond the observation.
+            num_samples_in_range = min(num_samples, max(2, round(data_fraction * num_samples)))
+            first = (num_samples - num_samples_in_range) // 2
+            return [(first, first + num_samples_in_range)]
+
+        # Spread equal-sized ranges across the observation:
+        # |range1|---gap---|range2|---gap---|range3|
+        num_samples_skipped = num_samples - num_ranges * selection_timesteps
+        # Divide the skipped samples equally between the gaps; leave leftovers at the end.
+        num_samples_per_gap = int(num_samples_skipped / (num_ranges - 1))
+        num_samples_in_step = num_samples_per_gap + selection_timesteps
+        return [
+            (first, first + selection_timesteps)
+            for first in range(0, num_ranges * num_samples_in_step, num_samples_in_step)
+        ]
+
+
+def _split_into_intervals(first, end, interval_timesteps, max_chunks=None):
+    """
+    Return the first and end (exclusive) samples of contiguous chunks of a time range
+
+    The whole solution intervals are divided between the chunks, differing in number
+    by at most one, and the last chunk also takes any partial interval at the end
+    (as when the range is not chunked). Each chunk holds at least two time slots,
+    for Dysco.
+    """
+    num_intervals = (end - first) // interval_timesteps
+    num_chunks = max(1, num_intervals // math.ceil(2 / interval_timesteps))
+    if max_chunks is not None:
+        num_chunks = min(num_chunks, max_chunks)
+    boundaries = (
+        first + np.arange(num_chunks + 1) * num_intervals // num_chunks * interval_timesteps
+    )
+    boundaries[-1] = end
+    return list(zip(boundaries[:-1].tolist(), boundaries[1:].tolist()))

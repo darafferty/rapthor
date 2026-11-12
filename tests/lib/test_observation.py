@@ -613,6 +613,43 @@ def _full_jones_step(fulljones_timestep_sec, **updates):
     }
 
 
+def test_selfcal_cycles_use_the_same_data_in_chunks_of_their_own_solves(
+    field, make_chunking_observation
+):
+    """With 40% of 60 samples, four 6-sample ranges are selected for the longest
+    (60-second) solve of any selfcal cycle. A phase-only cycle with 20-second solves
+    splits each range into three chunks; a slow-gain cycle keeps whole ranges."""
+    obs, sample_times = make_chunking_observation(60)
+    field.full_observations = [obs]
+    phase_only = {
+        "do_calibrate": True,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
+        "fast_timestep_sec": 10,
+        "medium_timestep_sec": 20,
+    }
+    slow_gains = {
+        **phase_only,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase", "slow_gains"]},
+        "slow_timestep_sec": 60,
+    }
+    steps = [phase_only, slow_gains]
+    selected = [time for start in (0, 180, 360, 540) for time in range(start, start + 60, 10)]
+
+    chunk_observations(field, steps[:1], data_fraction=0.4, selection_steps=steps)
+    phase_only_chunks = samples_in_chunks(sample_times, field.observations)
+    rechunk_observations(field, steps, 1, data_fraction=0.4)
+    slow_gain_chunks = samples_in_chunks(sample_times, field.observations)
+
+    assert [len(chunk) for chunk in phase_only_chunks] == [2] * 12
+    assert [len(chunk) for chunk in slow_gain_chunks] == [6] * 4
+    assert sum(phase_only_chunks, []) == sum(slow_gain_chunks, []) == selected
+
+    # A repeat of the cycle keeps its chunks
+    observations = field.observations
+    assert rechunk_observations(field, steps, 1, data_fraction=0.4) is steps[1]
+    assert field.observations is observations
+
+
 def test_rechunking_keeps_the_chunks_of_a_cycle_without_calibration(
     field, make_chunking_observation
 ):
@@ -628,7 +665,7 @@ def test_rechunking_keeps_the_chunks_of_a_cycle_without_calibration(
     chunk_observations(field, steps[:1], data_fraction=1.0)
     observations = field.observations
 
-    step = rechunk_observations(field, steps, data_fraction=1.0)
+    step = rechunk_observations(field, steps, 1, data_fraction=1.0)
 
     assert step is steps[-1]
     assert field.observations is observations
@@ -655,7 +692,7 @@ def test_rechunking_follows_the_chunks_of_the_cycle(
     chunk_observations(field, steps[:1], data_fraction=1.0)
     observations = field.observations
 
-    step = rechunk_observations(field, steps, data_fraction=1.0)
+    step = rechunk_observations(field, steps, 1, data_fraction=1.0)
 
     assert len(field.observations) == expected_chunk_count
     if expected_chunk_count == len(observations):
@@ -770,6 +807,22 @@ def test_chunking_partial_data_leaves_equal_gaps(make_chunking_observation, num_
     chunks = obs.chunk_observation(2)
 
     assert samples_in_chunks(sample_times, chunks) == [[0, 10], [40, 50], [80, 90]]
+
+
+def test_chunking_partial_data_splits_each_selected_range(make_chunking_observation):
+    """Two 7-sample ranges hold two 3-sample solution intervals each; the leftover
+    sample of each range joins its last chunk."""
+    obs, sample_times = make_chunking_observation(20)
+    obs.data_fraction = 0.7
+
+    chunks = obs.chunk_observation(3, selection_timesteps=7)
+
+    assert samples_in_chunks(sample_times, chunks) == [
+        [0, 10, 20],
+        [30, 40, 50, 60],
+        [130, 140, 150],
+        [160, 170, 180, 190],
+    ]
 
 
 def test_chunking_partial_data_does_not_create_an_extra_chunk(make_chunking_observation):

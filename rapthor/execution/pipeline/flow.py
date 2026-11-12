@@ -50,8 +50,8 @@ class PipelineLifecycleHooks:
     set_strategy: Callable[[object], list[dict]]
     validate_strategy: Callable[[list[dict], dict], None]
     preflight_execution: Callable[[object, list[dict], ExecutionConfig, set[str]], None]
-    chunk_observations: Callable[[object, list[dict], float], None]
-    rechunk_observations: Callable[[object, list[dict], float], dict]
+    chunk_observations: Callable[..., None]
+    rechunk_observations: Callable[[object, list[dict], int, float], dict]
     do_final_pass: Callable[[object, list[dict], dict], bool]
     make_report: Callable[[object], None]
 
@@ -182,10 +182,13 @@ def _run_locked_pipeline(
             parset["selfcal_data_fraction"],
         )
         # Chunk each cycle for its own solves, so that cycles with shorter solution
-        # intervals can be split into more chunks. The first cycle is always chunked,
-        # so that operations change copies of the input observations, not the originals
+        # intervals can be split into more chunks, within the same data selected for
+        # all cycles. The first cycle is always chunked, so that operations change
+        # copies of the input observations, not the originals
         data_fraction = parset["selfcal_data_fraction"]
-        hooks.chunk_observations(field, selfcal_steps[:1], data_fraction)
+        hooks.chunk_observations(
+            field, selfcal_steps[:1], data_fraction, selection_steps=selfcal_steps
+        )
         run_pipeline_steps(
             field,
             selfcal_steps,
@@ -265,15 +268,15 @@ def run_pipeline_steps(
     steps: list[dict],
     final_cycle_number: int = 0,
     operation_factories: Optional[PipelineOperationFactories] = None,
-    rechunk: Optional[Callable[[object, list[dict], float], dict]] = None,
+    rechunk: Optional[Callable[[object, list[dict], int, float], dict]] = None,
     data_fraction: Optional[float] = None,
 ) -> object:
     """Run one group of pipeline steps using injectable operation factories.
 
     This preserves pipeline-step operation ordering for pipeline-flow tests.
-    Before each step after the first, ``rechunk`` (if given) receives the steps
-    so far and ``data_fraction``, may chunk the observations again, and returns
-    the step to run.
+    Before each step after the first, ``rechunk`` (if given) receives the steps,
+    the index of the step and ``data_fraction``, may chunk the observations
+    again, and returns the step to run.
     """
     factories = operation_factories or default_pipeline_operation_factories()
     selfcal_state = None
@@ -283,7 +286,7 @@ def run_pipeline_steps(
     for index, step in enumerate(steps):
         cycle_number = index + field.cycle_number
         if rechunk is not None and index > 0:
-            step = rechunk(field, steps[: index + 1], data_fraction)
+            step = rechunk(field, steps, index, data_fraction)
         field.update(step, cycle_number, final_cycle_number=final_cycle_number)
 
         if field.do_calibrate:
