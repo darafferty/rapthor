@@ -5,6 +5,9 @@ import os
 
 import numpy as np
 
+from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
+from rapthor.lib.strategy import default_calibration_strategy
+
 log = logging.getLogger("rapthor")
 
 
@@ -84,15 +87,26 @@ def make_report(field, outfile=None):
 
 
 def _calibration_solve_time(field, steps):
-    if not steps or not any(step["do_calibrate"] for step in steps):
-        return None
+    """Return the longest solution interval in seconds of the solves the steps run."""
+    solve_times = []
+    for step in steps:
+        if step["do_calibrate"]:
+            strategy = step.get("calibration_strategy") or default_calibration_strategy()
+            solve_times.extend(
+                _solve_time(field, step, solve) for solves in strategy.values() for solve in solves
+            )
 
-    fast_solint = max(step.get("fast_timestep_sec", 0) for step in steps)
-    slow_solint = max(step.get("slow_timestep_sec", 0) for step in steps)
-    max_dd_timestep = max(fast_solint, slow_solint)
-    max_di_timestep = max(step.get("fulljones_timestep_sec", 0) for step in steps)
+    return max(solve_times, default=None)
 
-    return max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
+
+def _solve_time(field, step, solve):
+    key = CALIBRATION_SOLVE_METADATA[solve].target_timestep_key
+    solve_time = step.get(key, getattr(field, key))
+    # The DD interval factor lengthens all but the full-Jones solution intervals (see
+    # Observation.set_calibration_parameters)
+    if solve == "full_jones":
+        return solve_time
+    return solve_time * field.dd_interval_factor
 
 
 def _chunk_time_for_run(field, data_fraction, solve_time):
