@@ -1208,6 +1208,29 @@ def test_wsclean_command_keeps_model_data_when_residual_visibilities_are_request
     assert "-no-update-model-required" not in command
 
 
+@pytest.mark.parametrize("shared", [False, True])
+def test_wsclean_mpi_facets_command_keeps_the_facets_of_a_channel_together(shared):
+    options = WscleanFacetOptions(
+        common=_wsclean_options(),
+        scalar_visibilities=True,
+        diagonal_visibilities=False,
+        h5parm="facet-solutions.h5",
+        soltabs="phase000",
+        region_file="sector_1_facets_ds9.reg",
+        num_gridding_tasks=3,
+        shared_facet_reads=shared,
+        shared_facet_writes=shared,
+    )
+    serial_command = normalize_command(build_wsclean_facets_command(options))
+    mpi_command = normalize_command(build_wsclean_mpi_facets_command(mpi_nnodes=2, options=options))
+
+    # Without compound tasks WSClean sends single facets to the nodes, and
+    # nodes wait for work. Shared reads and writes already imply compound tasks.
+    assert ("-compound-tasks" in mpi_command) is not shared
+    assert "-compound-tasks" not in serial_command
+    assert mpi_command[-1] == serial_command[-1]
+
+
 def test_wsclean_mpi_command_builders_use_mpirun_launcher():
     common_options = _wsclean_options(num_threads=3)
 
