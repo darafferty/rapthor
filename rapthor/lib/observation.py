@@ -758,8 +758,12 @@ class Observation(object):
             # to account for the decreased total observation time so that the
             # amount of data used is kept the same
             data_fraction = min(1, data_fraction * total_time / total_high_el_time)
-            target_starttime = self.high_el_starttime
-            target_endtime = self.high_el_endtime
+            # The high-elevation times can be those of samples. Pad them like the
+            # observation's own times (see scan_ms), so that the chunk times derived
+            # from them select whole samples, but stay within the observation
+            margin = self.timepersample / 100
+            target_starttime = max(self.starttime, self.high_el_starttime - margin)
+            target_endtime = min(self.endtime, self.high_el_endtime + margin)
             num_samples = round(total_high_el_time / self.timepersample)
 
         if data_fraction < 1.0:

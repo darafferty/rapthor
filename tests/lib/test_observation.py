@@ -390,7 +390,7 @@ class TestObservation:
 
 @pytest.fixture
 def make_chunking_observation(field, monkeypatch):
-    """Create evenly spaced sample midpoints in seconds, starting at zero.
+    """Create evenly spaced sample midpoints in seconds, starting at zero by default.
 
     The field must initialize before MS reads are skipped.
     """
@@ -401,8 +401,8 @@ def make_chunking_observation(field, monkeypatch):
 
     monkeypatch.setattr(Observation, "scan_ms", skip_ms_scan)
 
-    def make(num_samples, timepersample=10, ms_filename="test.ms"):
-        sample_times = [index * timepersample for index in range(num_samples)]
+    def make(num_samples, timepersample=10, ms_filename="test.ms", starttime=0):
+        sample_times = [starttime + index * timepersample for index in range(num_samples)]
         obs = Observation(ms_filename, starttime=sample_times[0], endtime=sample_times[-1])
         obs.timepersample = timepersample
         obs.numsamples = num_samples
@@ -414,7 +414,8 @@ def make_chunking_observation(field, monkeypatch):
 
 
 def samples_in_chunks(sample_times, chunks):
-    """List the original sample timestamps selected by each chunk."""
+    """List the original sample timestamps selected by each chunk (as a scan of the
+    chunk selects them, with >= and <=)."""
     return [
         [time for time in sample_times if chunk.starttime <= time <= chunk.endtime]
         for chunk in chunks
@@ -823,6 +824,32 @@ def test_chunking_partial_data_splits_each_selected_range(make_chunking_observat
         [130, 140, 150],
         [160, 170, 180, 190],
     ]
+
+
+@pytest.mark.parametrize("chunk_timesteps", [2, 6])
+def test_chunking_high_elevation_ranges_keep_every_sample(
+    make_chunking_observation, chunk_timesteps
+):
+    """Four 6-sample ranges of the high-elevation samples 10 to 49 keep all of their
+    samples at the MJD times of the test MS, in chunks of two or six samples."""
+    timepersample = 10.0139008
+    obs, sample_times = make_chunking_observation(60, timepersample, starttime=4871282393.00695)
+    # As scanned: the observation extends a hundredth of a sample beyond its first and
+    # last samples, and the high-elevation period is given by the times of samples
+    obs.starttime -= timepersample / 100
+    obs.endtime += timepersample / 100
+    obs.high_el_starttime = sample_times[10]
+    obs.high_el_endtime = sample_times[49]
+    obs.data_fraction = 0.4
+
+    chunks = obs.chunk_observation(chunk_timesteps, selection_timesteps=6)
+
+    selected = [
+        sample_times[index] for first in (10, 21, 32, 43) for index in range(first, first + 6)
+    ]
+    kept = samples_in_chunks(sample_times, chunks)
+    assert [len(chunk) for chunk in kept] == [chunk_timesteps] * (24 // chunk_timesteps)
+    assert sum(kept, []) == selected
 
 
 def test_chunking_partial_data_does_not_create_an_extra_chunk(make_chunking_observation):
