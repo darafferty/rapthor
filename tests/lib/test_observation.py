@@ -684,6 +684,40 @@ def test_selfcal_cycles_keep_the_selection_when_a_step_omits_an_interval(
     assert sum(samples_in_chunks(sample_times, field.observations), []) == selected
 
 
+def test_selfcal_selection_inherits_the_intervals_of_earlier_steps(
+    field, make_chunking_observation
+):
+    """The second step solves slow gains at the 1200-second interval it inherits from
+    the first step, so 40% of 600 samples are selected as two 120-sample ranges, which
+    its cycle keeps whole, rather than as four 60-sample ranges for the default
+    600-second interval."""
+    obs, sample_times = make_chunking_observation(600)
+    field.full_observations = [obs]
+    field.dd_interval_factor = 1
+    steps = [
+        {
+            "do_calibrate": True,
+            "calibration_strategy": {"dd": ["fast_phase"]},
+            "fast_timestep_sec": 20,
+            "slow_timestep_sec": 1200,
+        },
+        {"do_calibrate": True, "calibration_strategy": {"dd": ["slow_gains"]}},
+    ]
+    selected = sample_times[:120] + sample_times[480:]
+
+    chunk_observations(field, steps[:1], data_fraction=0.4, selection_steps=steps)
+    assert sum(samples_in_chunks(sample_times, field.observations), []) == selected
+
+    # As field.update sets them from the first step
+    field.fast_timestep_sec = 20
+    field.slow_timestep_sec = 1200
+    rechunk_observations(field, steps, 1, data_fraction=0.4)
+
+    chunks = samples_in_chunks(sample_times, field.observations)
+    assert [len(chunk) for chunk in chunks] == [120, 120]
+    assert sum(chunks, []) == selected
+
+
 def test_rechunking_keeps_the_chunks_of_a_cycle_without_calibration(
     field, make_chunking_observation
 ):
