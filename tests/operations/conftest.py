@@ -7,6 +7,7 @@ def single_facet(monkeypatch):
     Find one facet inside the image of every sector by default: the sky model
     of the test field has no patches near the imaging sectors to make facets from.
     """
+    monkeypatch.setattr("rapthor.operations.image.base.read_facets", lambda *args: [])
     monkeypatch.setattr(
         "rapthor.operations.image.base.count_facets_in_image", lambda *args, **kwargs: 1
     )
