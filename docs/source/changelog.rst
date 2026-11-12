@@ -109,6 +109,12 @@ This minor release includes the following improvements:
       The cluster option ``parallel_gridding_threads`` has been replaced by
       ``parallel_gridding_tasks``; custom parsets should use the new name.
       Experimental shared facet reads and writes can also be enabled.
+    - The number of parallel gridding tasks of WSClean is now chosen for each
+      imaging sector from the number of facets, the output channels per node
+      and the number of threads that WSClean actually uses (see
+      :term:`parallel_gridding_tasks`). When :term:`shared_facet_rw` is
+      enabled, shared facet reads and writes are used only when they do not
+      reduce the number of parallel gridding tasks.
     - WSClean-based prediction can now be used to generate model data for
       calibration.
     - Image workflow input generation now correctly provides parallel-gridding
