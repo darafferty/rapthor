@@ -160,6 +160,18 @@ def test_fraction_out_of_range(parset_scenario):
         prepare_run_from_parset(str(parset_scenario.parset))
 
 
+@pytest.mark.parametrize("value", [-0.1, 1.0])
+def test_imaging_max_peak_smearing_out_of_range(parset_scenario, value):
+    _append_to_parset(parset_scenario.parset, f"\n[imaging]\nmax_peak_smearing = {value}\n")
+
+    with pytest.raises(
+        ValueError,
+        match=rf"The max_peak_smearing parameter in the \[imaging\] section is {value}; "
+        "it must be >= 0 and < 1",
+    ):
+        prepare_run_from_parset(str(parset_scenario.parset))
+
+
 def test_invalid_idg_mode(parset_scenario):
     option = "idg_mode"
     value = "invalid"
