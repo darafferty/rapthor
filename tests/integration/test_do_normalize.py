@@ -24,11 +24,11 @@ class SkyModelServerUnavailable(Exception):
     """A sky model could not be downloaded because the server is down."""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=SkyModelServerUnavailable,
-    reason="vizier.u-strasbg.fr is not available to download sky models",
-)
+#@pytest.mark.xfail(
+#    strict=True,
+#    raises=SkyModelServerUnavailable,
+#    reason="vizier.u-strasbg.fr is not available to download sky models",
+#)
 @pytest.mark.internet
 @pytest.mark.integration
 @pytest.mark.parametrize("normalization_skymodel_paths", [None], indirect=True)
