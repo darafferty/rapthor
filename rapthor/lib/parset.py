@@ -371,6 +371,13 @@ class Parset:
         if len(options["dd_psf_grid"]) != 2:
             raise ValueError("The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')")
 
+        max_peak_smearing = options["max_peak_smearing"]
+        if not 0.0 <= max_peak_smearing < 1.0:
+            raise ValueError(
+                f"The max_peak_smearing parameter in the [imaging] section is "
+                f"{max_peak_smearing}; it must be >= 0 and < 1"
+            )
+
         if (
             settings["imaging"]["correct_time_frequency_smearing"]
             != settings["calibration"]["correct_time_frequency_smearing"]
