@@ -431,14 +431,8 @@ class TestImage:
         assert image.input_parms["shared_facet_rw"] == [expected_shared]
         assert image.input_parms["parallel_gridding_tasks"] == [expected_gridding]
         if use_mpi:
-            expected_resources = build_image_mpi_resource_controls(
-                nsectors=len(field.imaging_sectors),
-                max_nodes=field.parset["cluster_specific"]["max_nodes"],
-                cpus_per_task=field.parset["cluster_specific"]["cpus_per_task"],
-                batch_system=image.batch_system,
-            )
-            assert image.input_parms["mpi_nnodes"] == expected_resources["mpi_nnodes"]
-            assert image.input_parms["mpi_cpus_per_task"] == expected_resources["mpi_cpus_per_task"]
+            assert image.input_parms["mpi_nnodes"] == [3]
+            assert image.input_parms["mpi_cpus_per_task"] == [12]
 
     @pytest.mark.parametrize(
         ("nodes", "expected"),
@@ -1217,24 +1211,26 @@ class TestImage:
         )
 
     @pytest.mark.parametrize(
-        "batch_system, max_nodes, nsectors, expected_nnodes",
+        "batch_system, max_nodes, channels_out, expected_nnodes",
         [
-            ("slurm_static", 8, 2, [4, 4]),
-            ("slurm", 8, 2, [3, 3]),
-            ("slurm", 2, 4, [1, 1, 1, 1]),
+            ("slurm_static", 8, [20, 20], [4, 4]),
+            ("slurm", 8, [20, 20], [3, 3]),
+            ("slurm", 2, [20, 20, 20, 20], [1, 1, 1, 1]),
+            # WSClean gives a node no work beyond one output channel per node
+            ("slurm_static", 12, [4, 20], [4, 6]),
         ],
     )
     def test_build_image_mpi_resource_controls(
-        self, batch_system, max_nodes, nsectors, expected_nnodes
+        self, batch_system, max_nodes, channels_out, expected_nnodes
     ):
         assert build_image_mpi_resource_controls(
-            nsectors=nsectors,
+            channels_out=channels_out,
             max_nodes=max_nodes,
             cpus_per_task=12,
             batch_system=batch_system,
         ) == {
             "mpi_nnodes": expected_nnodes,
-            "mpi_cpus_per_task": [12] * nsectors,
+            "mpi_cpus_per_task": [12] * len(channels_out),
         }
 
     def test_build_applycal_steps_uses_dd_h5parm_for_facets_without_preapply(

@@ -444,7 +444,6 @@ class Image(FlowOperation):
                 )  # set by ImageNormalize.finalize()
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
-        nsectors = len(self.imaging_sectors)
         sector_inputs = self._collect_sector_input_values()
 
         link_polarizations, join_polarizations, wsclean_niter = build_image_wsclean_control_inputs(
@@ -592,7 +591,7 @@ class Image(FlowOperation):
         if self.field.use_mpi:
             self.input_parms.update(
                 build_image_mpi_resource_controls(
-                    nsectors=nsectors,
+                    channels_out=self.input_parms["channels_out"],
                     max_nodes=self.parset["cluster_specific"]["max_nodes"],
                     cpus_per_task=self.parset["cluster_specific"]["cpus_per_task"],
                     batch_system=self.batch_system,
