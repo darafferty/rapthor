@@ -107,11 +107,9 @@ class TestObservation:
         Basic set_calibration_parameters() test.
         All solution intervals and all DD factors are 1.
         """
-        n_observations = -1  # Not used in this test, since chunk_by_time is False.
         calibrator_fluxes = [1.0]
         observation.set_calibration_parameters(
             calibration_parset,
-            n_observations,
             calibrator_fluxes,
             observation.timepersample,
             observation.timepersample,
@@ -179,11 +177,9 @@ class TestObservation:
             }
         }
 
-        n_observations = -1  # Not used in this test, since chunk_by_time is False.
         calibrator_fluxes = [1.0]
         observation.set_calibration_parameters(
             parset,
-            n_observations,
             calibrator_fluxes,
             time_factor["fast"] * observation.timepersample,
             time_factor["medium"] * observation.timepersample,
@@ -219,11 +215,9 @@ class TestObservation:
         parset["calibration_specific"]["dd_interval_factor"] = 4
         parset["calibration_specific"]["dd_smoothness_factor"] = 2
 
-        n_observations = -1  # Not used in this test, since chunk_by_time is False.
         calibrator_fluxes = [1.0, 1.5, 2.5, 5.0]
         observation.set_calibration_parameters(
             parset,
-            n_observations,
             calibrator_fluxes,
             observation.timepersample,
             observation.timepersample,
@@ -256,103 +250,6 @@ class TestObservation:
                 # The inner list is an np.array instead of a plain list now.
                 assert (smoothness_dd_factors[0] == [1.0, 1.0 / 1.5, 1.0 / 2.0, 1.0 / 2.0]).all()
 
-    @pytest.mark.parametrize("chunk_size, expected_n_chunks", [(1, 6), (2, 3), (4, 2), (42, 1)])
-    def test_set_calibration_parameters_time_chunking(
-        self, observation, test_ms, calibration_parset, chunk_size, expected_n_chunks
-    ):
-        """Test set_calibration_parameters() with time chunking enabled."""
-
-        # Set expected values for the get_chunk_size() call.
-        dd_interval_factor = 5
-        cluster_specific_parameters = "mock cluster specific parameters"
-        n_observations = 42
-
-        parset = calibration_parset
-        parset["calibration_specific"]["dd_interval_factor"] = dd_interval_factor
-        parset["cluster_specific"] = cluster_specific_parameters
-
-        calibrator_fluxes = [1.0]
-
-        with mock.patch("rapthor.lib.observation.get_chunk_size") as mock_get_chunk_size:
-            mock_get_chunk_size.return_value = chunk_size
-            observation.set_calibration_parameters(
-                parset,
-                n_observations,
-                calibrator_fluxes,
-                observation.timepersample,
-                observation.timepersample,
-                observation.timepersample,
-                observation.timepersample,
-                chunk_by_time=True,
-            )
-            mock_get_chunk_size.assert_called_once_with(
-                cluster_specific_parameters,
-                observation.numsamples,
-                n_observations,
-                dd_interval_factor,
-            )
-
-        assert observation.ntimechunks == expected_n_chunks
-
-        params = observation.parameters
-
-        assert len(params["timechunk_filename"]) == expected_n_chunks
-        assert len(params["predict_di_output_filename"]) == expected_n_chunks
-        assert len(params["starttime"]) == expected_n_chunks
-        assert len(params["ntimes"]) == expected_n_chunks
-
-        for i in range(expected_n_chunks):
-            assert params["timechunk_filename"][i] == test_ms
-            assert params["predict_di_output_filename"][i] is None
-
-        start_times = [
-            "29Mar2013/13:59:52.907",
-            "29Mar2013/14:00:02.921",
-            "29Mar2013/14:00:12.935",
-            "29Mar2013/14:00:22.949",
-            "29Mar2013/14:00:32.962",
-            "29Mar2013/14:00:42.976",
-        ]
-
-        if chunk_size == 1:  # Expecting 6 chunks of 1 time sample each.
-            assert params["starttime"] == start_times
-            assert params["ntimes"] == [1, 1, 1, 1, 1, 0]
-        elif chunk_size == 2:  # Expecting 3 chunks of 2 time samples each.
-            assert params["starttime"] == [
-                start_times[0],
-                start_times[chunk_size],
-                start_times[chunk_size * 2],
-            ]
-            assert params["ntimes"] == [chunk_size, chunk_size, 0]
-        elif chunk_size == 4:  # Expecting 2 chunks, with 4 and 2 time samples.
-            assert params["starttime"] == [start_times[0], start_times[chunk_size]]
-            assert params["ntimes"] == [chunk_size, 0]
-        elif chunk_size == 42:  # Expecting 1 chunk with all time samples.
-            assert params["starttime"] == [start_times[0]]
-            assert params["ntimes"] == [0]
-        else:
-            assert False, f"Error in test: invalid chunk_size value: {chunk_size}"
-
-        for solve_type in ["fast", "medium", "slow"]:
-            assert (
-                params[f"solint_{solve_type}_timestep"] == [dd_interval_factor] * expected_n_chunks
-            )
-            assert params[f"solint_{solve_type}_freqstep"] == [1] * expected_n_chunks
-            assert params[f"{solve_type}_smoothness_dd_factors"] == [[1]] * expected_n_chunks
-
-        # fulljones time steps are not multiplied by dd_interval_factor
-        assert params["solint_fulljones_timestep"] == [1] * expected_n_chunks
-        assert params["solint_fulljones_freqstep"] == [1] * expected_n_chunks
-
-        assert (
-            params["fast_smoothnessreffrequency"]
-            == [self.hba_reference_frequency] * expected_n_chunks
-        )
-        assert (
-            params["medium_smoothnessreffrequency"]
-            == [self.hba_reference_frequency] * expected_n_chunks
-        )
-
     def test_set_calibration_parameters_smoothness_ref_frequency(
         self, observation, test_ms, calibration_parset
     ):
@@ -364,11 +261,9 @@ class TestObservation:
         parset["calibration_specific"]["fast_smoothnessreffrequency"] = fast_reference_frequency
         parset["calibration_specific"]["medium_smoothnessreffrequency"] = medium_reference_frequency
 
-        n_observations = -1  # Not used in this test, since chunk_by_time is False.
         calibrator_fluxes = [1.0]
         observation.set_calibration_parameters(
             parset,
-            n_observations,
             calibrator_fluxes,
             observation.timepersample,
             observation.timepersample,
@@ -491,32 +386,6 @@ class TestObservation:
             observation.get_bandwidth_smearing_factor(freq, previous_step, delta_theta, resolution)
             > reduction_factor
         )
-
-    @pytest.mark.parametrize(
-        "solints_seconds, solve_max_factor, expected_max",
-        [
-            # timepersample in test MS is 10.0139008 seconds
-            ([20, 120, 600, 600], 1, 60),  # Default case
-            ([20, 120, 600, 600], 2, 120),  # Increased solve_max_factor
-            ([10, 10, 10, 10], 1, 1),  # All solints the same
-            ([0.5, 0.5, 0.5, 0.5], 1, 1),  # All solints < 1 should return 1
-            (
-                [10.0139008, 10.0139008, 10.0139008, 10.0139008],
-                1,
-                1,
-            ),  # Exact match to timepersample
-            ([10, 10.014, 10, 10], 1, 2),  # Max solint above timepersample
-        ],
-    )
-    def test_get_max_solint_timesteps(
-        self, observation, solints_seconds, solve_max_factor, expected_max
-    ):
-        """
-        Test the get_max_solint_timesteps method of the Observation class.
-        """
-        max_solint = observation.get_max_solint_timesteps(solints_seconds, solve_max_factor)
-        assert max_solint == expected_max
-        assert isinstance(max_solint, int)
 
 
 @pytest.fixture
