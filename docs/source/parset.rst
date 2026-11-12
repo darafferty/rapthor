@@ -917,8 +917,9 @@ for how these options are used.
 
     parallel_gridding_tasks
         Number of task groups WSClean can use for parallel gridding. If this is
-        set to 0 (default), Rapthor uses ``max_threads // 8`` with a minimum of
-        1. During imaging, Rapthor caps the value by :term:`max_cores` and by
+        set to 0 (default), Rapthor uses one task for every eight threads of
+        WSClean (:term:`max_threads` locally, or :term:`cpus_per_task` with
+        MPI), with a minimum of 1. Rapthor caps the value by :term:`max_cores` and by
         the gridding work that is available on a node. With shared facet I/O
         this is the number of facets. Without sharing, it is the number of
         output channels per node (rounded down, with a minimum of one) times
