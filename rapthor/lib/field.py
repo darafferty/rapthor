@@ -456,7 +456,6 @@ class Field(object):
         for obs in self.observations:
             obs.set_calibration_parameters(
                 self.parset,
-                len(self.observations),
                 self.calibrator_fluxes,
                 self.fast_timestep_sec,
                 self.medium_timestep_sec,
