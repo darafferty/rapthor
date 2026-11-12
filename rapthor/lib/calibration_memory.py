@@ -223,6 +223,7 @@ def _largest_calibration_memory_estimate(
                     observation,
                     directions,
                     solution_interval_seconds,
+                    _averaging_steps(field, observation, mode, strategy_step),
                 )
                 if largest is None or estimate.peak_memory_gb > largest.peak_memory_gb:
                     largest = estimate
@@ -245,21 +246,52 @@ def _solution_interval_seconds(
     return solution_interval_samples * observation.timepersample
 
 
+def _averaging_steps(
+    field: object,
+    observation: object,
+    mode: str,
+    strategy_step: Optional[Mapping[str, object]],
+) -> tuple[int, int]:
+    """Return the time and channel averaging steps of the data reaching the solves.
+
+    As in the Calibrate operation, only the DD solves average, and not with
+    WSClean prediction or screens. A preflight check runs before the steps are
+    known, so it assumes no averaging.
+    """
+    if (
+        strategy_step is not None
+        or mode != "dd"
+        or field.generate_screens
+        or field.use_wsclean_predict
+    ):
+        return 1, 1
+    # All time chunks of an observation share one value; the smallest step is
+    # the conservative choice
+    return (
+        min(observation.parameters["calibration_timestep"]),
+        min(observation.parameters["calibration_freqstep"]),
+    )
+
+
 def _estimate_calibration_task(
     mode: str,
     solve_type: str,
     observation: object,
     directions: int,
     solution_interval_seconds: float,
+    averaging_steps: tuple[int, int],
 ) -> CalibrationMemoryEstimate:
     """Estimate one observation/solve task using resolved scientific inputs."""
     station_count = len(observation.stations)
     baselines = station_count * (station_count + 1) // 2
+    timestep, freqstep = averaging_steps
+    channels = observation.numchannels // freqstep
+    sampling_interval_seconds = observation.timepersample * timestep
     memory = estimate_dp3_peak_memory(
         baselines=baselines,
-        channels=observation.numchannels,
+        channels=channels,
         solution_interval_seconds=solution_interval_seconds,
-        sampling_interval_seconds=observation.timepersample,
+        sampling_interval_seconds=sampling_interval_seconds,
         directions=directions,
     )
     return CalibrationMemoryEstimate(
@@ -268,8 +300,8 @@ def _estimate_calibration_task(
         observation_name=observation.name,
         directions=directions,
         baselines=baselines,
-        channels=observation.numchannels,
-        sampling_interval_seconds=observation.timepersample,
+        channels=channels,
+        sampling_interval_seconds=sampling_interval_seconds,
         solution_interval_seconds=solution_interval_seconds,
         memory=memory,
     )
