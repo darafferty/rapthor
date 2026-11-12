@@ -55,7 +55,7 @@
                       'filter_skymodel_ncores': 15,
                       'fail_on_calibration_oom_risk': False,
                       'mem_per_node_gb': 0,
-                      'parallel_gridding_tasks': 1,
+                      'parallel_gridding_tasks': 0,
                       'prefect_api_mode': 'auto',
                       'prefect_api_url': None,
                       'prefect_command_profile': 'auto',

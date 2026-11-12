@@ -550,6 +550,9 @@ class TestImage:
             (True, 192, 4, 192, 24, 4, (True, 4)),
             (False, 4, 192, 192, 24, 4, (True, 4)),
             (True, 192, 192, 2, 24, 2, (True, 2)),
+            # A request of 0 means one task per eight WSClean threads
+            (False, 16, 96, 96, 0, 12, (True, 2)),
+            (True, 16, 96, 96, 0, 12, (True, 12)),
         ],
     )
     def test_gridding_policy_uses_wsclean_threads_and_respects_limits(
