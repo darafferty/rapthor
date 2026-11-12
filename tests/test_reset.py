@@ -12,8 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import rapthor.reset as reset_module
 import rapthor.lib.parset_paths as parset_paths_module
+import rapthor.reset as reset_module
 from rapthor.execution import working_dir_lock
 from tests.execution.scratch_transitions import exit_at_scratch_transition
 
