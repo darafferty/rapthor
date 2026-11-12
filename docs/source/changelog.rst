@@ -8,9 +8,17 @@ Version 3.1 (unreleased)
 
 This minor release includes the following improvements:
 
-    - The frequency averaging for imaging (see :term:`average_visibilities`)
-      now keeps the bandwidth smearing within :term:`max_peak_smearing` for
-      wide sectors as well. Earlier versions
+    - The visibilities can now be averaged before the direction-dependent
+      calibration solves, to make them faster (see
+      :term:`average_visibilities <average_visibilities (calibration)>`). The
+      averaging is limited by the smearing at the calibrator furthest from the
+      phase center (see :term:`max_peak_smearing
+      <max_peak_smearing (calibration)>`) and by the solution intervals. It is
+      disabled by default.
+    - The frequency averaging for imaging (see
+      :term:`average_visibilities <average_visibilities (imaging)>`) now keeps
+      the bandwidth smearing within :term:`max_peak_smearing
+      <max_peak_smearing (imaging)>` for wide sectors as well. Earlier versions
       never averaged to less than 0.1% of the observing frequency (150 kHz at
       150 MHz), even when a narrower bandwidth was needed, so wide sectors
       could be smeared more than requested. Imaging of wide sectors therefore
