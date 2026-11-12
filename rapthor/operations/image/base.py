@@ -263,6 +263,9 @@ class Image(FlowOperation):
         return int(self.input_parms["max_threads"])
 
     def _gridding_controls_for_sector(self, sector_index, channels_out):
+        if self.apply_screens:
+            # Screens are applied with IDG, which WSClean cannot grid in parallel
+            return False, 1
         return build_image_gridding_controls(
             facet_count=self._facet_work_units() if self.use_facets else 0,
             shared_facet_rw=self.parset["imaging_specific"]["shared_facet_rw"],

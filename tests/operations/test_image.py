@@ -555,6 +555,15 @@ class TestImage:
 
         assert image._gridding_controls_for_sector(0, 20) == expected
 
+    def test_gridding_policy_uses_one_gridder_for_screens(self, field):
+        field.parset["cluster_specific"].update(max_cores=192, parallel_gridding_tasks=24)
+        image = Image(field, index=1)
+        image.apply_screens = True
+        image.use_facets = False
+        image.input_parms = {"max_threads": 192}
+
+        assert image._gridding_controls_for_sector(0, 20) == (False, 1)
+
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_facet_h5parm(
         self, field, h5parm_file, solution_attr
