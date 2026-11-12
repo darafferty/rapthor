@@ -144,11 +144,16 @@ def make_report(field, outfile=None):
 def _solution_intervals(field, steps):
     """Return the target interval in seconds and the DD factor of each solve run."""
     intervals = []
+    # A step inherits the settings it omits from the steps before it, as field.update
+    # carries them forward, and from the field's current settings before those
+    settings = {}
     for step in steps:
+        settings.update(step)
         if step["do_calibrate"]:
             strategy = step.get("calibration_strategy") or default_calibration_strategy()
             intervals.extend(
-                _solution_interval(field, step, solve) for solve in _timed_solves(field, strategy)
+                _solution_interval(field, settings, solve)
+                for solve in _timed_solves(field, strategy)
             )
     return intervals
 
