@@ -402,24 +402,27 @@ class RecordingPipelineLifecycle:
             supported_features=self.supported_features,
         )
 
-    def chunk_observations(self, field, steps, data_fraction):
+    def chunk_observations(self, field, steps, data_fraction, selection_steps=None):
         field.events.append(
             {
                 "operation": "chunk",
                 "step_count": len(steps),
+                "selection_step_count": len(selection_steps or steps),
                 "data_fraction": data_fraction,
             }
         )
 
-    def rechunk_observations(self, field, steps, data_fraction):
+    def rechunk_observations(self, field, steps, index, data_fraction):
         field.events.append(
             {
                 "operation": "rechunk",
-                "index": len(steps),
+                # The cycle number, as recorded by the operations
+                "index": index + 1,
+                "step_count": len(steps),
                 "data_fraction": data_fraction,
             }
         )
-        return steps[-1]
+        return steps[index]
 
     def do_final_pass(self, field, selfcal_steps, final_step):
         field.events.append(
@@ -898,8 +901,9 @@ def test_run_pipeline_repeats_final_cycle_on_the_data_of_the_cycle_before():
 
 
 def test_run_pipeline_chunks_each_selfcal_cycle_before_it_starts():
-    """Each later selfcal cycle is passed to the re-chunk hook before it starts, and
-    runs with the step that the hook returns. The flow leaves the strategy unchanged."""
+    """The first selfcal cycle is chunked within the data selected for all of selfcal.
+    Each later cycle is passed to the re-chunk hook before it starts, and runs with
+    the step that the hook returns. The flow leaves the strategy unchanged."""
     parset = _pipeline_parset()
     selfcal_steps = [
         _single_step({"dd": ["fast_phase"]}, peel_outliers=True),
@@ -912,10 +916,10 @@ def test_run_pipeline_chunks_each_selfcal_cycle_before_it_starts():
         parset=parset, strategy_steps=strategy_steps, final_pass=False
     )
 
-    def rechunk_and_peel_again(field, steps, data_fraction):
-        lifecycle.rechunk_observations(field, steps, data_fraction)
+    def rechunk_and_peel_again(field, steps, index, data_fraction):
+        lifecycle.rechunk_observations(field, steps, index, data_fraction)
         # Stand in for new chunks of the input data, which are peeled again
-        return {**steps[-1], "peel_outliers": True}
+        return {**steps[index], "peel_outliers": True}
 
     field = run_pipeline(
         "input.parset",
@@ -937,8 +941,13 @@ def test_run_pipeline_chunks_each_selfcal_cycle_before_it_starts():
         ("rechunk", 3, data_fraction),
         ("calibrate", 3, None),
     ]
-    # The first cycle is chunked for its own solves only
-    assert [event["step_count"] for event in field.events if event["operation"] == "chunk"] == [1]
+    # The first cycle is chunked for its own solves, within the selection for all
+    # selfcal steps, which the later cycles also receive
+    assert [
+        (event["step_count"], event.get("selection_step_count"))
+        for event in field.events
+        if event["operation"] in {"chunk", "rechunk"}
+    ] == [(1, 3), (3, None), (3, None)]
     assert field.updates == [(1, 0, True), (2, 0, True), (3, 0, True)]
     assert strategy_steps == original_strategy
 
