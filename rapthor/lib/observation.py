@@ -536,8 +536,6 @@ class Observation(object):
             If True, use setup appropriate for case in which all DD
             solutions are preapplied before imaging is done
         """
-        mean_freq_hz = self.referencefreq
-        peak_smearing_rapthor = np.sqrt(1.0 - max_peak_smearing)
         chan_width_hz = self.channelwidth
         nchan = self.numchannels
         timestep_sec = self.timepersample
@@ -552,10 +550,9 @@ class Observation(object):
 
         # Get target time and frequency averaging steps.
         #
-        # Note: We limit the averaging to be not more than 2 MHz and 120 s to avoid
-        # extreme values for very small images (when solutions are preapplied). Also, due
-        # to a limitation in Dysco, we make sure to have at least 2 time slots after
-        # averaging, otherwise the output MS cannot be written with compression
+        # Note: due to a limitation in Dysco, we make sure to have at least 2 time
+        # slots after averaging, otherwise the output MS cannot be written with
+        # compression
         if self.numsamples == 1:
             raise RuntimeError(
                 "Only one time slot is availble for imaging, but at least "
@@ -563,20 +560,11 @@ class Observation(object):
                 "processed with the selfcal_data_fraction parameter or supply a "
                 "measurement set with more time slots."
             )
-        max_timewidth_sec = min(120, int(self.numsamples / 2) * timestep_sec)
         delta_theta_deg = max(width_ra, width_dec) / 2.0
-        resolution_deg = 3.0 * cellsize_arcsec / 3600.0  # assume normal sampling of restoring beam
-        target_timewidth_sec = min(
-            max_timewidth_sec,
-            self.get_target_timewidth(delta_theta_deg, resolution_deg, peak_smearing_rapthor),
+        target_timewidth_sec, target_bandwidth_hz = self.get_target_averaging_widths(
+            delta_theta_deg, cellsize_arcsec, max_peak_smearing
         )
-
-        target_bandwidth_hz = min(
-            2e6,
-            self.get_target_bandwidth(
-                mean_freq_hz, delta_theta_deg, resolution_deg, peak_smearing_rapthor
-            ),
-        )
+        target_timewidth_sec = min(target_timewidth_sec, int(self.numsamples / 2) * timestep_sec)
 
         if not preapply_dd_solutions:
             # Preserve enough resolution to apply every relevant solution during
@@ -676,6 +664,42 @@ class Observation(object):
 
         self.parameters[f"solint_{solve_type}_timestep"] = [timestep] * self.ntimechunks
         self.parameters[f"solint_{solve_type}_freqstep"] = [freqstep] * self.ntimechunks
+
+    def get_target_averaging_widths(self, delta_theta, cellsize_arcsec, max_peak_smearing):
+        """
+        Returns the time and frequency widths to which the data can be averaged
+
+        The allowed reduction in peak flux density is split evenly between time
+        and bandwidth smearing. The widths are limited to 120 s and 2 MHz to avoid
+        extreme values for very small fields
+
+        Parameters
+        ----------
+        delta_theta : float
+            Distance from phase center in degrees at which the smearing is evaluated
+        cellsize_arcsec : float
+            Pixel size in arcsec for imaging
+        max_peak_smearing : float
+            Maximum allowed reduction in peak flux density due to smearing
+
+        Returns
+        -------
+        timewidth : float
+            Time width in seconds
+        bandwidth : float
+            Bandwidth in Hz
+        """
+        reduction_factor = np.sqrt(1.0 - max_peak_smearing)
+        resolution = 3.0 * cellsize_arcsec / 3600.0  # assume normal sampling of restoring beam
+        timewidth = min(120, self.get_target_timewidth(delta_theta, resolution, reduction_factor))
+        bandwidth = min(
+            2e6,
+            self.get_target_bandwidth(
+                self.referencefreq, delta_theta, resolution, reduction_factor
+            ),
+        )
+
+        return timewidth, bandwidth
 
     def get_target_timewidth(self, delta_theta, resolution, reduction_factor):
         """

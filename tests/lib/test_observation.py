@@ -432,6 +432,27 @@ class TestObservation:
         assert observation.parameters["image_bda_maxinterval"] == 6
         assert observation.parameters["image_bda_minchannels"] == 2
 
+    def test_get_target_averaging_widths_splits_smearing(self, observation):
+        """Time and bandwidth smearing each get half of the allowed peak reduction."""
+        delta_theta = 0.6
+        resolution = 3.0 * 3.0 / 3600.0  # three 3-arcsec pixels across the beam
+        reduction_factor = np.sqrt(1.0 - 0.1)
+
+        timewidth, bandwidth = observation.get_target_averaging_widths(delta_theta, 3.0, 0.1)
+
+        assert timewidth == pytest.approx(
+            observation.get_target_timewidth(delta_theta, resolution, reduction_factor)
+        )
+        assert bandwidth == pytest.approx(
+            observation.get_target_bandwidth(
+                observation.referencefreq, delta_theta, resolution, reduction_factor
+            )
+        )
+
+    def test_get_target_averaging_widths_caps_small_fields(self, observation):
+        """Very small fields are capped at 120 s and 2 MHz of averaging."""
+        assert observation.get_target_averaging_widths(1e-4, 3.0, 0.1) == (120, 2e6)
+
     @pytest.mark.parametrize(
         "freqstep, expected",
         [(1, 1), (2, 2), (3, 4), (5, 4), (6, 8), (7, 8), (8, 8), (9, 8)],
