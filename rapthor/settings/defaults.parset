@@ -303,8 +303,8 @@ use_clean_mask = False
 use_mpi = False
 
 # Permit shared reads and writes during facet imaging. Used only with at least
-# two facets and when sharing does not reduce the number of parallel gridding
-# tasks (see parallel_gridding_tasks). This policy is experimental.
+# two facets and unless sharing would more than halve the number of parallel
+# gridding tasks (see parallel_gridding_tasks). This policy is experimental.
 shared_facet_rw = False
 
 # Reweight the visibility data before imaging (default = False)

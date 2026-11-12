@@ -37,8 +37,8 @@ This release includes the following changes:
       imaging sector from the number of facets, the output channels per node
       and the number of threads that WSClean actually uses (see
       :term:`parallel_gridding_tasks`). When :term:`shared_facet_rw` is
-      enabled, shared facet reads and writes are used only when they do not
-      reduce the number of parallel gridding tasks.
+      enabled, shared facet reads and writes are used unless they would more
+      than halve the number of parallel gridding tasks.
     - An :term:`input_h5parm` with direction-independent solutions can now be
       used in image-only cycles. Its solutions are applied before imaging, and
       no input sky model is needed. When no calibration is done, the solution

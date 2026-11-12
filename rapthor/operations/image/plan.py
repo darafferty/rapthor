@@ -134,8 +134,8 @@ def build_image_gridding_controls(
 ) -> tuple[bool, int]:
     """Select shared facet I/O and local gridding concurrency for one sector.
 
-    Pass zero facets when facet imaging is disabled. Sharing is used only when
-    it does not reduce the gridding concurrency, at any facet count. Both
+    Pass zero facets when facet imaging is disabled. Sharing is used unless it
+    would more than halve the gridding concurrency, at any facet count. Both
     candidates respect the same CPU and requested-task limits. This is an
     experimental resource heuristic, not a prediction of the fastest runtime.
     """
@@ -153,7 +153,9 @@ def build_image_gridding_controls(
     facet_tasks = adjust_parallel_gridding_tasks(
         num_threads, parallel_gridding_tasks, min(facet_count, max_cores)
     )
-    use_shared_io = bool(shared_facet_rw and facet_count > 1 and facet_tasks >= unshared_tasks)
+    # Sharing reads the data of a channel once instead of once per facet. That
+    # is taken to be worth at most a factor of two in gridding concurrency.
+    use_shared_io = bool(shared_facet_rw and facet_count > 1 and 2 * facet_tasks >= unshared_tasks)
     return use_shared_io, facet_tasks if use_shared_io else unshared_tasks
 
 
