@@ -121,12 +121,12 @@ The available options are described below under their respective sections.
         Fraction of data to use (default = 0.2). If less than one, the input data are
         divided by time into chunks that sum to the requested fraction, spaced out evenly
         over the full time range. Using a low value (0.2 or so) is strongly recommended
-        for typical 8-hour, full-bandwidth observations. The data are chunked again for
-        each selfcal cycle, with chunks as long as the longest solution interval of the
-        solves done in that cycle (see :term:`calibration_strategy`). Cycles that solve
-        only for phases, such as the first cycles of the default strategy, therefore use
-        more, shorter chunks, which can be processed on more nodes at once. As a result,
-        the time ranges used can differ from one cycle to the next. A cycle that does not
+        for typical 8-hour, full-bandwidth observations. Every selfcal cycle uses the same
+        time ranges, each as long as the longest solution interval of any selfcal cycle
+        (see :term:`calibration_strategy`). Each cycle then splits the ranges into chunks
+        of whole solution intervals of its own solves, so cycles that solve only for
+        phases, such as the first cycles of the default strategy, use more, shorter
+        chunks, which can be processed on more nodes at once. A cycle that does not
         calibrate keeps the chunks of the cycle before it, whose solutions it applies.
 
     final_data_fraction
@@ -816,9 +816,11 @@ for how these options are used.
         Set this to the number of nodes in your Slurm job. When all of the data
         are used (a data fraction of 1), each observation is split in time
         into up to this many balanced chunks, so that the nodes can work on them
-        at the same time. Each chunk holds at least two samples and the longest
-        calibration solution interval of the cycle, so cycles that solve only for
-        phases can use more chunks than cycles that also solve for slow gains.
+        at the same time. Each chunk holds a whole number of the longest
+        calibration solution intervals of the cycle (only the chunk at the end of
+        the observation may also hold part of one) and at least two samples, so
+        cycles that solve only for phases can use more chunks than cycles that
+        also solve for slow gains.
 
     local_dask_workers
         Number of Dask workers to start when Rapthor uses the ``single_machine``

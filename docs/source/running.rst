@@ -311,9 +311,9 @@ data; it should be a disk local to the node.
 
 When Rapthor uses all of the data (a data fraction of 1), each observation is
 split in time into about one chunk per node, so that calibration and
-prediction can run on all the nodes at once. A chunk must be at least as long as
-the longest calibration solution interval of the cycle, so a short observation
-may be split into fewer chunks in cycles that solve for slow gains than in cycles
+prediction can run on all the nodes at once. A chunk holds a whole number of the
+longest calibration solution intervals of the cycle, so a short observation may
+be split into fewer chunks in cycles that solve for slow gains than in cycles
 that solve only for phases. WSClean can also spread the imaging of a sector
 over several nodes if :term:`use_mpi` is set.
 

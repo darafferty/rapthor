@@ -73,10 +73,17 @@ existing parsets and strategy files.
       medium-phase solve). Earlier versions used the longest fast-phase,
       slow-gain or full-Jones interval of all selfcal cycles, whether or not
       those solves were done. Cycles that solve only for phases can therefore
-      be split into more chunks and spread over more nodes. A cycle that does
-      not calibrate keeps the chunks of the cycle before it. When a cycle needs
+      be split into more chunks and spread over more nodes. With a data
+      fraction below 1, every selfcal cycle uses the same time ranges of the
+      data, and only the chunks within them change. A cycle that does not
+      calibrate keeps the chunks of the cycle before it. When a cycle needs
       different chunks from the cycle before it, it starts again from the input
       data and peels the outliers again if an earlier cycle peeled them.
+    - Chunks now hold whole solution intervals, counted in samples as DP3
+      counts them, so that only the end of an observation, or of a selected
+      time range, holds a partial solution interval with fewer samples. Earlier
+      versions split the data into chunks with equal numbers of samples, so the
+      last solution interval of most chunks was partial.
     - A cycle that starts again from the input data, such as the first final
       cycle, now reads the column of the input data set by
       :term:`data_colname`. Earlier versions read the ``DATA`` column in this
