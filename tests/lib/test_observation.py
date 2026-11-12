@@ -10,7 +10,7 @@ import casacore.tables as pt
 import numpy as np
 import pytest
 
-from rapthor.execution.pipeline.lifecycle import chunk_observations
+from rapthor.execution.pipeline.lifecycle import chunk_observations, rechunk_observations
 from rapthor.lib.observation import Observation
 
 
@@ -692,6 +692,68 @@ def test_chunking_uses_the_solves_of_the_strategy(
     chunk_observations(field, [{"do_calibrate": True, **step}], data_fraction=1.0)
 
     assert len(field.observations) == expected_chunk_count
+
+
+def _full_jones_step(fulljones_timestep_sec, **updates):
+    return {
+        "do_calibrate": True,
+        "calibration_strategy": {"di": ["full_jones"]},
+        "fulljones_timestep_sec": fulljones_timestep_sec,
+        **updates,
+    }
+
+
+def test_rechunking_keeps_the_chunks_of_a_cycle_without_calibration(
+    field, make_chunking_observation
+):
+    """An image-only cycle applies the solutions of the cycles before it, so it keeps
+    their chunks rather than splitting into the six 2-sample chunks of no solves."""
+    obs, _ = make_chunking_observation(12)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 19
+    steps = [
+        _full_jones_step(60, peel_outliers=True),
+        {"do_calibrate": False, "peel_outliers": False},
+    ]
+    chunk_observations(field, steps[:1], data_fraction=1.0)
+    observations = field.observations
+
+    step = rechunk_observations(field, steps, data_fraction=1.0)
+
+    assert step is steps[-1]
+    assert field.observations is observations
+    assert len(observations) == 2
+
+
+@pytest.mark.parametrize(
+    "fulljones_timestep_sec, max_nodes, expected_chunk_count",
+    [
+        pytest.param(30, 19, 4, id="shorter_solves_split_into_more_chunks"),
+        pytest.param(30, 2, 2, id="node_count_keeps_the_same_chunks"),
+    ],
+)
+def test_rechunking_follows_the_chunks_of_the_cycle(
+    field, make_chunking_observation, fulljones_timestep_sec, max_nodes, expected_chunk_count
+):
+    """A 60-second solve gives two 6-sample chunks; a 30-second solve gives four
+    3-sample chunks unless the node count limits them to two again. Calibrating steps
+    need not set the peeling flag."""
+    obs, _ = make_chunking_observation(12)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = max_nodes
+    steps = [_full_jones_step(60), _full_jones_step(fulljones_timestep_sec)]
+    chunk_observations(field, steps[:1], data_fraction=1.0)
+    observations = field.observations
+
+    step = rechunk_observations(field, steps, data_fraction=1.0)
+
+    assert len(field.observations) == expected_chunk_count
+    if expected_chunk_count == len(observations):
+        assert field.observations is observations
+        assert step is steps[-1]
+    else:
+        assert step == {**steps[-1], "peel_outliers": False}
+    assert "peel_outliers" not in steps[-1]
 
 
 def test_chunking_ignores_solve_duration_when_calibration_is_disabled(
