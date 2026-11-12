@@ -458,11 +458,27 @@ class TestImage:
             assert image.input_parms["mpi_cpus_per_task"] == [12]
 
     @pytest.mark.parametrize(
-        ("timebase", "frequencybase", "expected_shared"),
-        [(0.0, 0.0, True), (20000.0, 0.0, True), (20000.0, 5000.0, False)],
+        ("timebase", "frequencybase", "channels_are_regular", "expected_shared"),
+        [
+            (0.0, 0.0, True, True),
+            (20000.0, 0.0, True, True),
+            (0.0, 5000.0, True, False),
+            (20000.0, 5000.0, True, False),
+            # BDA is not applied to observations with irregular channels
+            (20000.0, 5000.0, False, True),
+        ],
     )
     def test_shared_facet_rw_is_not_used_with_bda_in_frequency(
-        self, field, monkeypatch, h5parm_file, caplog, timebase, frequencybase, expected_shared
+        self,
+        field,
+        monkeypatch,
+        expected_image_output,
+        h5parm_file,
+        caplog,
+        timebase,
+        frequencybase,
+        channels_are_regular,
+        expected_shared,
     ):
         # WSClean stops with "Can't use bulk inversion with BDA yet" when it
         # shares facet reads and writes for data that are averaged in frequency
@@ -473,12 +489,19 @@ class TestImage:
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.image_bda_timebase = timebase
         field.image_bda_frequencybase = frequencybase
+        field.observations[0].channels_are_regular = channels_are_regular
         _mock_facet_count(monkeypatch, 6)
+        _mock_image_flow(monkeypatch, expected_image_output)
         with caplog.at_level("WARNING"):
             image = _initialize_operation(Image(field, index=1), do_predict=False, use_facets=True)
 
-        assert ("bdaavg" in image.input_parms["prepare_data_steps"]) is (timebase > 0)
+        uses_bda = (timebase > 0 or frequencybase > 0) and channels_are_regular
+        assert ("bdaavg" in image.input_parms["prepare_data_steps"]) is uses_bda
         assert image.input_parms["shared_facet_rw"] == [expected_shared]
+        # The warning is given when imaging runs, not when it is set up
+        assert "bda_frequencybase" not in caplog.text
+        with caplog.at_level("WARNING"):
+            image.run()
         assert ("bda_frequencybase" in caplog.text) is not expected_shared
 
     @pytest.mark.parametrize(

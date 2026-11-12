@@ -288,22 +288,15 @@ class Image(FlowOperation):
             return int(self.input_parms["mpi_cpus_per_task"][sector_index])
         return int(self.input_parms["max_threads"])
 
-    def _can_share_facet_rw(self):
-        """Return whether shared facet reads and writes are requested and supported."""
-        if not self.parset["imaging_specific"]["shared_facet_rw"]:
-            return False
-        if (
+    def _shared_facet_rw_requested(self):
+        return bool(self.use_facets and self.parset["imaging_specific"]["shared_facet_rw"])
+
+    def _uses_frequency_bda(self):
+        """Return whether the imaging data are averaged in frequency with BDA."""
+        return (
             "bdaavg" in self.input_parms["prepare_data_steps"]
             and self.field.image_bda_frequencybase > 0
-        ):
-            # WSClean stops with "Can't use bulk inversion with BDA yet"
-            log.warning(
-                "Shared facet reads and writes are not used, because WSClean does not "
-                "support them for data with baseline-dependent averaging in frequency. "
-                "Set bda_frequencybase = 0 for imaging to use them."
-            )
-            return False
-        return True
+        )
 
     def _gridding_controls_for_sector(self, sector_index, shared_facet_rw):
         if self.apply_screens:
@@ -640,7 +633,9 @@ class Image(FlowOperation):
                     batch_system=self.batch_system,
                 )
             )
-        shared_facet_rw = self.use_facets and self._can_share_facet_rw()
+        # WSClean stops with "Can't use bulk inversion with BDA yet" when it
+        # shares facet reads and writes for data that are averaged in frequency
+        shared_facet_rw = self._shared_facet_rw_requested() and not self._uses_frequency_bda()
         self.facet_counts = [self._facet_work_units(sector) for sector in self.imaging_sectors]
         gridding_controls = [
             self._gridding_controls_for_sector(index, shared_facet_rw)
@@ -696,6 +691,13 @@ class Image(FlowOperation):
             normalize_flux_scale=self.normalize_flux_scale,
             use_mpi=self.field.use_mpi,
         )
+        if self._shared_facet_rw_requested() and self._uses_frequency_bda():
+            log.warning(
+                "Shared facet reads and writes are not used, because WSClean does not "
+                "support them for data with baseline-dependent averaging in frequency. "
+                "To use them, set bda_frequencybase = 0 for imaging, and reset this "
+                "operation if it has already prepared its data."
+            )
         for index, sector in enumerate(self.imaging_sectors):
             log.info(
                 "WSClean resources for %s: facets=%d, shared_facet_rw=%s, "
