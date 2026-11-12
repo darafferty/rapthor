@@ -655,7 +655,8 @@ The available options are described below under their respective sections.
         ``max_nodes`` / ``num_images`` >= 2), then distributed imaging will be used (only
         available if :term:`batch_system` = ``slurm`` or ``slurm_static``). WSClean is
         started with ``mpirun``, with one process on each node. WSClean
-        distributes the output channels over the nodes. With facets, all
+        distributes the output channels over the nodes, so a sector uses no
+        more nodes than it has output channels. With facets, all
         facets of an output channel are imaged on the same node (WSClean's
         ``-compound-tasks``, or shared reads and writes if
         :term:`shared_facet_rw` is used).
@@ -927,10 +928,13 @@ for how these options are used.
         ``max_threads``, but not more than 14).
 
     parallel_gridding_tasks
-        Number of task groups WSClean can use for parallel gridding. If this is
+        Number of task groups WSClean can use for parallel gridding. This
+        option is not used when screens are applied, because WSClean cannot
+        grid in parallel in that case. If this is
         set to 0 (default), Rapthor uses one task for every eight threads of
         WSClean (:term:`max_threads` locally, or :term:`cpus_per_task` with
-        MPI), with a minimum of 1. Rapthor caps the value by :term:`max_cores` and by
+        MPI), with a minimum of 1. Rapthor caps the value by
+        :term:`max_cores` and by
         the gridding work that is available on a node. With shared facet I/O
         this is the number of facets. Without sharing, it is the number of
         output channels per node (rounded down, with a minimum of one) times
