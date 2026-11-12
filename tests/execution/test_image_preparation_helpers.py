@@ -14,7 +14,11 @@ from rapthor.execution.image.preparation import (
     concatenate_prepared_visibilities,
     prepare_visibility_ms,
 )
-from rapthor.execution.regions import count_facets_in_image, make_ds9_region_from_skymodel
+from rapthor.execution.regions import (
+    count_facets_in_image,
+    make_ds9_region_from_skymodel,
+    read_facets,
+)
 from rapthor.lib.records import directory_record
 from tests.conftest import file_tree_state
 
@@ -117,28 +121,40 @@ def test_make_ds9_region_from_skymodel_writes_regions(tmp_path):
     assert "Patch_patch_1" in region_text
 
 
+INTEGRATION_FIELD = ("integration_true_sky.txt", (24.422079, 33.159759, 0.3, 0.3), 1.5 / 3600)
+WIDE_FIELD = ("wide_field_true_sky.txt", (24.42, 65.0, 7.2, 7.2), 20.0 / 3600)
+
+
 @pytest.mark.parametrize(
-    ("image_ra", "image_dec", "image_width", "expected"),
+    ("field", "image_ra", "image_dec", "image_width", "expected"),
     [
-        (24.422079, 33.159759, 0.25, 3),
-        (24.4375, 33.172222, 0.025, 2),
-        (24.466667, 33.208333, 0.016667, 1),
+        (INTEGRATION_FIELD, 24.422079, 33.159759, 0.25, 3),
+        (INTEGRATION_FIELD, 24.4375, 33.172222, 0.025, 2),
+        (INTEGRATION_FIELD, 24.466667, 33.208333, 0.016667, 1),
+        (WIDE_FIELD, 24.42, 65.0, 2.0, 11),
+        # Sectors away from the field centre: the image is a rectangle on the
+        # sky around its own centre, not in the pixel grid of the field
+        (WIDE_FIELD, 19.698314642673235, 64.92531528990567, 2.0, 6),
+        # One facet covers less than a pixel of this image, and WSClean drops it
+        (WIDE_FIELD, 29.52179660640811, 66.9172696508032, 2.0, 6),
     ],
 )
-def test_count_facets_in_image_counts_as_wsclean_does(image_ra, image_dec, image_width, expected):
+def test_count_facets_in_image_counts_as_wsclean_does(
+    field, image_ra, image_dec, image_width, expected
+):
     # WSClean 3.7 keeps these numbers of facets for images of these positions
     # and sizes, and reports the others as falling outside the image
+    skymodel, region_box, cellsize_deg = field
+    facets = read_facets(str(RESOURCE_DIR / skymodel), *region_box)
+
     assert (
         count_facets_in_image(
-            str(RESOURCE_DIR / "integration_true_sky.txt"),
-            24.422079,
-            33.159759,
-            0.3,
-            0.3,
+            facets,
             image_ra=image_ra,
             image_dec=image_dec,
             image_width_ra=image_width,
             image_width_dec=image_width,
+            cellsize_deg=cellsize_deg,
         )
         == expected
     )

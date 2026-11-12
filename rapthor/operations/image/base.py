@@ -9,7 +9,7 @@ from typing import List, Union
 
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.flow import image_flow
-from rapthor.execution.regions import count_facets_in_image
+from rapthor.execution.regions import count_facets_in_image, read_facets
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.records import DirectoryRecord, FileRecord, move_record_recursive
 from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
@@ -275,12 +275,12 @@ class Image(FlowOperation):
             return 0
         # WSClean skips the facets that do not overlap with the image
         return count_facets_in_image(
-            self._facet_skymodel_file(),
-            *self._facet_region_box(sector),
+            read_facets(self._facet_skymodel_file(), *self._facet_region_box(sector)),
             image_ra=sector.ra,
             image_dec=sector.dec,
             image_width_ra=sector.width_ra,
             image_width_dec=sector.width_dec,
+            cellsize_deg=sector.cellsize_deg,
         )
 
     def _wsclean_threads_for_sector(self, sector_index):

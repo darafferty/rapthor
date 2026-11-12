@@ -1495,12 +1495,18 @@ def test_image_payload_from_inputs_rejects_invalid_sector_sharing(tmp_path, shar
 
 def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
     facets_in_image = {123.0: 3, 124.0: 2}
+    read = []
     counted = []
 
-    def fake_count_facets_in_image(skymodel, ra_mid, dec_mid, width_ra, width_dec, **image):
-        counted.append((skymodel, ra_mid, dec_mid, width_ra, width_dec, image))
+    def fake_read_facets(*skymodel_and_box):
+        read.append(skymodel_and_box)
+        return "facets"
+
+    def fake_count_facets_in_image(facets, **image):
+        counted.append((facets, image))
         return facets_in_image[image["image_ra"]]
 
+    monkeypatch.setattr(image_operation_module, "read_facets", fake_read_facets)
     monkeypatch.setattr(image_operation_module, "count_facets_in_image", fake_count_facets_in_image)
     field = FieldStub(tmp_path)
     field.dde_method = "full"
@@ -1527,12 +1533,9 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
     operation.set_parset_parameters()
     operation.set_input_parameters()
 
-    # The facets are counted inside the image of each sector, for the sky
-    # model and the bounding box that the facet region file is made from
-    assert [
-        (skymodel, ra_mid, dec_mid, width_ra, width_dec)
-        for skymodel, ra_mid, dec_mid, width_ra, width_dec, _ in counted
-    ] == list(
+    # The facets are read for the sky model and the bounding box that the
+    # facet region file of each sector is made from
+    assert read == list(
         zip(
             ["/data/calibration.skymodel"] * 2,
             operation.input_parms["ra_mid"],
@@ -1541,12 +1544,17 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
             operation.input_parms["width_dec"],
         )
     )
-    assert counted[1][-1] == {
-        "image_ra": 124.0,
-        "image_dec": second_sector.dec,
-        "image_width_ra": second_sector.width_ra,
-        "image_width_dec": second_sector.width_dec,
-    }
+    # They are counted inside the image of each sector
+    assert counted[1] == (
+        "facets",
+        {
+            "image_ra": 124.0,
+            "image_dec": second_sector.dec,
+            "image_width_ra": second_sector.width_ra,
+            "image_width_dec": second_sector.width_dec,
+            "cellsize_deg": second_sector.cellsize_deg,
+        },
+    )
     assert operation.input_parms["mpi_nnodes"] == [3, 3]
     assert operation.input_parms["shared_facet_rw"] == [False, True]
     assert operation.input_parms["parallel_gridding_tasks"] == [16, 2]
@@ -3725,6 +3733,7 @@ def test_facet_image_operation_run_uses_prefect_flow(
     field.dd_h5parm_filename = "/data/facet-solutions.h5"
     field.calibration_strategy = {"dd": ["fast_phase"]}
     field.parset["imaging_specific"]["shared_facet_rw"] = True
+    monkeypatch.setattr(image_operation_module, "read_facets", lambda *args: [])
     monkeypatch.setattr(image_operation_module, "count_facets_in_image", lambda *args, **kw: 2)
     operation = Image(field, index=1)
 
