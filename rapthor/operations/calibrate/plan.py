@@ -201,7 +201,7 @@ def build_calibration_dp3_steps(
         and not use_image_based_predict
         and not use_wsclean_predict
     ):
-        common_steps = ["avg", *common_steps]
+        common_steps = ["bdaavg", *common_steps]
 
     # WSClean prediction writes the model columns outside DP3, so the data still
     # needs the stand-alone applycal; only DP3 image-based prediction moves it
@@ -216,7 +216,7 @@ def build_calibration_dp3_steps(
         common_steps = preprocessing_steps + common_steps
 
     # Adding a "null" step prevents updating the input MS, which would happen
-    # whenever a step provides data (avg, applycal, applybeam, predict).
+    # whenever a step provides data (bdaavg, applycal, applybeam, predict).
     return [*common_steps, "null"]
 
 

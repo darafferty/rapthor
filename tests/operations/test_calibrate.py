@@ -863,13 +863,13 @@ class TestCalibrate:
                 1,
                 1,
                 {"dd": ["fast_phase", "medium_phase"], "di": []},
-                ["avg", "solve1", "solve2", "null"],
+                ["bdaavg", "solve1", "solve2", "null"],
             ),
             (
                 1,
                 1,
                 {"dd": ["fast_phase", "medium_phase", "slow_gains", "medium_phase"], "di": []},
-                ["avg", "solve1", "solve2", "solve3", "solve4", "null"],
+                ["bdaavg", "solve1", "solve2", "solve3", "solve4", "null"],
             ),
         ],
     )
@@ -972,7 +972,7 @@ class TestCalibrate:
     def test_build_calibration_dp3_steps_ends_every_chain_with_null(self, chain_options):
         """
         DP3 rewrites msin in place when msout is empty and a step provides data
-        (avg, applycal, applybeam, predict). The trailing null step prevents
+        (bdaavg, applycal, applybeam, predict). The trailing null step prevents
         that, so every chain shape must end with it, not only the BDA chain.
         """
         options = {

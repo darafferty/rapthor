@@ -1374,14 +1374,14 @@ def test_calibrate_command_builders_match_reference_fixtures():
     bda_command = normalize_command(
         build_calibration_solve_command(
             _dd_calibration_solve_options(
-                steps="[avg,solve1,solve2,null]",
+                steps="[bdaavg,solve1,solve2,null]",
                 solve_slots=_dd_fast_medium_solve_slots(),
                 timebase=20000.0,
                 frequencybase=20000.0,
             )
         )
     )
-    assert "steps=[avg,solve1,solve2,null]" in bda_command
+    assert "steps=[bdaavg,solve1,solve2,null]" in bda_command
     assert "null.type=null" in bda_command
 
     assert (
@@ -2828,7 +2828,7 @@ def test_run_calibrate_flow_supports_dd_fast_phase(
     assert "solve1.sourcedb=/data/calibration.skymodel" in commands[0]
     assert "solve1.directions=[patch1,patch2]" in commands[0]
     assert "solve1.smoothness_dd_factors=[1.0,2.0]" in commands[0]
-    assert "avg.maxinterval=8.0" in commands[0]
+    assert "bdaavg.maxinterval=8.0" in commands[0]
     assert "--first-dir" not in commands[3]
     assert (
         commands[2][2] == f"{tmp_path / 'fast_phase_0.h5parm'},{tmp_path / 'fast_phase_1.h5parm'}"
