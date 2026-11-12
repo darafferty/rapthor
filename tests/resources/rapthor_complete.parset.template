@@ -62,6 +62,8 @@ solverlbfgs_dof = 100.0
 solverlbfgs_iter = 6
 solverlbfgs_minibatches = 3
 correct_time_frequency_smearing = True
+average_visibilities = True
+max_peak_smearing = 0.2
 
 [imaging]
 cellsize_arcsec = 2.25
