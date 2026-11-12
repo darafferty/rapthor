@@ -1,28 +1,18 @@
 """Integration tests for the shared_facet_rw feature."""
 
-import subprocess
-
 import pytest
 
-from .utils import update_parset_path
+from .utils import (
+    find_command_records,
+    get_working_dir_from_parset,
+    run_rapthor,
+    update_parset_path,
+)
 
 
 @pytest.mark.integration
 # The shared_facet_rw=False case is the default single-loop run, which
 # tests/integration/test_dd_calibration.py checks.
-@pytest.mark.parametrize(
-    "shared_facet_rw",
-    [
-        pytest.param(
-            True,
-            marks=pytest.mark.xfail(
-                run=False,
-                reason="Serial WSClean 3.7 aborts when shared-facet read/write flags are used.",
-            ),
-            id="shared_facet_rw_true",
-        ),
-    ],
-)
 @pytest.mark.parametrize(
     "generated_parset_path",
     [
@@ -34,28 +24,33 @@ from .utils import update_parset_path
     ],
     indirect=True,
 )
-def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_path, shared_facet_rw):
-    """Test a single self-calibration loop end to end."""
+def test_rapthor_run_single_loop(generated_parset_path, single_loop_strategy_path):
+    """Test a single self-calibration loop end to end with shared facet I/O."""
 
     updated_parset_path = update_parset_path(
         generated_parset_path,
         {
             "allow_internet_access": "False",
             "strategy": str(single_loop_strategy_path),
-            "shared_facet_rw": str(shared_facet_rw),
+            # Keep the three patches of the input sky model, so that there are
+            # as many facets as parallel gridding tasks and sharing is used
+            "regroup_input_skymodel": "False",
+            "shared_facet_rw": "True",
         },
     )
 
-    command = ["rapthor", str(updated_parset_path)]
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    output = f"{result.stdout}\n{result.stderr}"
-    assert result.returncode == 0, f"Rapthor failed with output:\n{output}"
+    output = run_rapthor(updated_parset_path)
+
     assert "Operation calibrate_1 completed" in output
     assert "Operation image_1 completed" in output
     assert "Operation mosaic_1 completed" in output
-    assert "Rapthor has finished :)" in output
+    wsclean_commands = find_command_records(
+        get_working_dir_from_parset(updated_parset_path),
+        operation="image_1",
+        executable="wsclean",
+        contains="-facet-regions",
+    )
+    assert wsclean_commands
+    for record in wsclean_commands:
+        assert "-shared-facet-reads" in record.command
+        assert "-shared-facet-writes" in record.command
