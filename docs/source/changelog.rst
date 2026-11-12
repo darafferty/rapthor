@@ -34,11 +34,16 @@ This release includes the following changes:
       set with :term:`filter_skymodel_ncores`. By default, :term:`max_threads`
       cores are used, as before.
     - The number of parallel gridding tasks of WSClean is now chosen for each
-      imaging sector from the number of facets, the output channels per node
-      and the number of threads that WSClean actually uses (see
-      :term:`parallel_gridding_tasks`). When :term:`shared_facet_rw` is
+      imaging sector from the number of facets inside its image, the output
+      channels per node and the number of threads that WSClean actually uses
+      (see :term:`parallel_gridding_tasks`). When :term:`shared_facet_rw` is
       enabled, shared facet reads and writes are used unless they would more
-      than halve the number of parallel gridding tasks.
+      than halve the number of parallel gridding tasks. They are not used
+      for data that are averaged in frequency with baseline-dependent
+      averaging, which WSClean does not support.
+    - Imaging with MPI (:term:`use_mpi`) makes better use of the nodes when
+      facets are used: all facets of an output channel are imaged on the same
+      node, and a sector uses no more nodes than it has output channels.
     - An :term:`input_h5parm` with direction-independent solutions can now be
       used in image-only cycles. Its solutions are applied before imaging, and
       no input sky model is needed. When no calibration is done, the solution
