@@ -9,6 +9,7 @@ from typing import List, Union
 
 from rapthor.execution.image.builders import image_payload_from_inputs
 from rapthor.execution.image.flow import image_flow
+from rapthor.execution.regions import count_facets_in_image
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.records import DirectoryRecord, FileRecord, move_record_recursive
 from rapthor.operations.flow_execution import FlowOperation, run_prefect_flow
@@ -254,8 +255,33 @@ class Image(FlowOperation):
         )
         return False
 
-    def _facet_work_units(self):
-        return max(0, int(getattr(self.field, "num_patches", 0) or 0))
+    def _facet_region_box(self, sector):
+        """Return the centre and widths in degrees of the facet regions of a sector."""
+        # Note: WSClean requires that all sources in the h5parm must have
+        # corresponding regions in the facets region file. We ensure this
+        # requirement is met by extending the regions to cover the larger of
+        # the calibration region and the sector region, plus a 20% padding
+        min_width = 2 * self.field.get_calibration_radius() * 1.2
+        return (
+            self.field.ra,
+            self.field.dec,
+            max(min_width, sector.width_ra * 1.2),
+            max(min_width, sector.width_dec * 1.2),
+        )
+
+    def _facet_work_units(self, sector):
+        """Return the number of facets that WSClean images for a sector."""
+        if self.apply_none or not self.use_facets:
+            return 0
+        # WSClean skips the facets that do not overlap with the image
+        return count_facets_in_image(
+            self._facet_skymodel_file(),
+            *self._facet_region_box(sector),
+            image_ra=sector.ra,
+            image_dec=sector.dec,
+            image_width_ra=sector.width_ra,
+            image_width_dec=sector.width_dec,
+        )
 
     def _wsclean_threads_for_sector(self, sector_index):
         if self.field.use_mpi:
@@ -279,14 +305,14 @@ class Image(FlowOperation):
             return False
         return True
 
-    def _gridding_controls_for_sector(self, sector_index, channels_out, shared_facet_rw):
+    def _gridding_controls_for_sector(self, sector_index, shared_facet_rw):
         if self.apply_screens:
             # Screens are applied with IDG, which WSClean cannot grid in parallel
             return False, 1
         return build_image_gridding_controls(
-            facet_count=self._facet_work_units() if self.use_facets else 0,
+            facet_count=self.facet_counts[sector_index],
             shared_facet_rw=shared_facet_rw,
-            channels_out=channels_out,
+            channels_out=self.input_parms["channels_out"][sector_index],
             nnodes=self.input_parms["mpi_nnodes"][sector_index] if self.field.use_mpi else 1,
             num_threads=self._wsclean_threads_for_sector(sector_index),
             max_cores=self.field.parset["cluster_specific"]["max_cores"],
@@ -615,9 +641,10 @@ class Image(FlowOperation):
                 )
             )
         shared_facet_rw = self.use_facets and self._can_share_facet_rw()
+        self.facet_counts = [self._facet_work_units(sector) for sector in self.imaging_sectors]
         gridding_controls = [
-            self._gridding_controls_for_sector(index, channels_out, shared_facet_rw)
-            for index, channels_out in enumerate(self.input_parms["channels_out"])
+            self._gridding_controls_for_sector(index, shared_facet_rw)
+            for index in range(len(self.imaging_sectors))
         ]
         self.input_parms["shared_facet_rw"] = [shared for shared, _ in gridding_controls]
         self.input_parms["parallel_gridding_tasks"] = [tasks for _, tasks in gridding_controls]
@@ -626,7 +653,7 @@ class Image(FlowOperation):
                 "WSClean resources for %s: facets=%d, shared_facet_rw=%s, "
                 "channels_out=%d, nodes=%d, threads_per_rank=%d, parallel_gridding=%d",
                 sector.name,
-                self._facet_work_units() if self.use_facets else 0,
+                self.facet_counts[index],
                 self.input_parms["shared_facet_rw"][index],
                 self.input_parms["channels_out"][index],
                 self.input_parms["mpi_nnodes"][index] if self.field.use_mpi else 1,
@@ -636,22 +663,9 @@ class Image(FlowOperation):
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({"skymodel": FileRecord(self._facet_skymodel_file()).to_json()})
-            ra_mid = []
-            dec_mid = []
-            width_ra = []
-            width_dec = []
-            facet_region_file = []
-            min_width = 2 * self.field.get_calibration_radius() * 1.2
-            for sector in self.imaging_sectors:
-                # Note: WSClean requires that all sources in the h5parm must have
-                # corresponding regions in the facets region file. We ensure this
-                # requirement is met by extending the regions to cover the larger of
-                # the calibration region and the sector region, plus a 20% padding
-                ra_mid.append(self.field.ra)
-                dec_mid.append(self.field.dec)
-                width_ra.append(max(min_width, sector.width_ra * 1.2))
-                width_dec.append(max(min_width, sector.width_dec * 1.2))
-                facet_region_file.append(f"{sector.name}_facets_ds9.reg")
+            boxes = [self._facet_region_box(sector) for sector in self.imaging_sectors]
+            ra_mid, dec_mid, width_ra, width_dec = (list(values) for values in zip(*boxes))
+            facet_region_file = [f"{sector.name}_facets_ds9.reg" for sector in self.imaging_sectors]
             self.input_parms.update({"ra_mid": ra_mid})
             self.input_parms.update({"dec_mid": dec_mid})
             self.input_parms.update({"width_ra": width_ra})

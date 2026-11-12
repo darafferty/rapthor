@@ -183,6 +183,16 @@ def _initialize_operation(
     return operation
 
 
+def _mock_facet_count(monkeypatch, facet_count):
+    """
+    Set the number of facets that are found inside the image of every sector.
+    """
+    monkeypatch.setattr(
+        "rapthor.operations.image.base.count_facets_in_image",
+        lambda *args, **kwargs: facet_count,
+    )
+
+
 @pytest.fixture
 def h5parm_file(tmp_path):
     """
@@ -383,7 +393,7 @@ class TestImage:
         assert image.is_done()
 
     @pytest.mark.parametrize(
-        ("shared_facet_rw", "use_facets", "num_patches", "expected_local", "expected_mpi"),
+        ("shared_facet_rw", "use_facets", "facet_count", "expected_local", "expected_mpi"),
         [
             (True, True, 6, (True, 6), (True, 6)),
             (True, True, 5, (True, 4), (True, 4)),
@@ -400,10 +410,11 @@ class TestImage:
     def test_setting_shared_facet_rw(
         self,
         field,
+        monkeypatch,
         h5parm_file,
         shared_facet_rw,
         use_facets,
-        num_patches,
+        facet_count,
         expected_local,
         expected_mpi,
         use_mpi,
@@ -421,7 +432,7 @@ class TestImage:
         field.parset["cluster_specific"]["max_nodes"] = 3 if use_mpi else 1
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.image_bda_frequencybase = 0.0
-        field.num_patches = num_patches
+        _mock_facet_count(monkeypatch, facet_count)
         image = _initialize_operation(
             Image(field, index=1),
             do_predict=False,
@@ -440,7 +451,7 @@ class TestImage:
         [(0.0, 0.0, True), (20000.0, 0.0, True), (20000.0, 5000.0, False)],
     )
     def test_shared_facet_rw_is_not_used_with_bda_in_frequency(
-        self, field, h5parm_file, caplog, timebase, frequencybase, expected_shared
+        self, field, monkeypatch, h5parm_file, caplog, timebase, frequencybase, expected_shared
     ):
         # WSClean stops with "Can't use bulk inversion with BDA yet" when it
         # shares facet reads and writes for data that are averaged in frequency
@@ -451,7 +462,7 @@ class TestImage:
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
         field.image_bda_timebase = timebase
         field.image_bda_frequencybase = frequencybase
-        field.num_patches = 6
+        _mock_facet_count(monkeypatch, 6)
         with caplog.at_level("WARNING"):
             image = _initialize_operation(Image(field, index=1), do_predict=False, use_facets=True)
 
@@ -595,25 +606,25 @@ class TestImage:
             cpus_per_task=cpus_per_task,
             parallel_gridding_tasks=requested,
         )
-        field.num_patches = facets
         image = Image(field, index=1)
-        image.use_facets = True
+        image.facet_counts = [facets]
         image.input_parms = {
+            "channels_out": [20],
             "max_threads": max_threads,
             "mpi_nnodes": [3],
             "mpi_cpus_per_task": [cpus_per_task],
         }
 
-        assert image._gridding_controls_for_sector(0, 20, True) == expected
+        assert image._gridding_controls_for_sector(0, True) == expected
 
     def test_gridding_policy_uses_one_gridder_for_screens(self, field):
         field.parset["cluster_specific"].update(max_cores=192, parallel_gridding_tasks=24)
         image = Image(field, index=1)
         image.apply_screens = True
-        image.use_facets = False
-        image.input_parms = {"max_threads": 192}
+        image.facet_counts = [0]
+        image.input_parms = {"channels_out": [20], "max_threads": 192}
 
-        assert image._gridding_controls_for_sector(0, 20, True) == (False, 1)
+        assert image._gridding_controls_for_sector(0, True) == (False, 1)
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_facet_h5parm(

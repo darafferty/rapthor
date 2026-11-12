@@ -11,6 +11,7 @@ import rapthor.execution.image.outputs as image_outputs_module
 import rapthor.execution.image.preparation as image_preparation_module
 import rapthor.execution.image.sector as image_sector_module
 import rapthor.execution.image.wsclean as image_wsclean_module
+import rapthor.operations.image.base as image_operation_module
 from rapthor.execution.commands import build_fpack_command, normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.execution.image.builders import image_payload_from_inputs
@@ -1492,7 +1493,15 @@ def test_image_payload_from_inputs_rejects_invalid_sector_sharing(tmp_path, shar
         image_payload_from_inputs(input_parms, tmp_path, use_facets=True)
 
 
-def test_facet_image_operation_plans_sharing_per_sector(tmp_path):
+def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
+    facets_in_image = {123.0: 3, 124.0: 2}
+    counted = []
+
+    def fake_count_facets_in_image(skymodel, ra_mid, dec_mid, width_ra, width_dec, **image):
+        counted.append((skymodel, ra_mid, dec_mid, width_ra, width_dec, image))
+        return facets_in_image[image["image_ra"]]
+
+    monkeypatch.setattr(image_operation_module, "count_facets_in_image", fake_count_facets_in_image)
     field = FieldStub(tmp_path)
     field.dde_method = "full"
     field.dd_h5parm_filename = "/data/facet-solutions.h5"
@@ -1507,9 +1516,9 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path):
         max_threads=192,
         parallel_gridding_tasks=24,
     )
-    field.num_patches = 3
     second_sector = deepcopy(field.imaging_sectors[0])
     second_sector.name = "sector_2"
+    second_sector.ra = 124.0
     field.imaging_sectors.append(second_sector)
     field.imaging_sectors[0].wsclean_nchannels = 20
     second_sector.wsclean_nchannels = 3
@@ -1517,14 +1526,34 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path):
     operation.set_parset_parameters()
     operation.set_input_parameters()
 
+    # The facets are counted inside the image of each sector, for the sky
+    # model and the bounding box that the facet region file is made from
+    assert [
+        (skymodel, ra_mid, dec_mid, width_ra, width_dec)
+        for skymodel, ra_mid, dec_mid, width_ra, width_dec, _ in counted
+    ] == list(
+        zip(
+            ["/data/calibration.skymodel"] * 2,
+            operation.input_parms["ra_mid"],
+            operation.input_parms["dec_mid"],
+            operation.input_parms["width_ra"],
+            operation.input_parms["width_dec"],
+        )
+    )
+    assert counted[1][-1] == {
+        "image_ra": 124.0,
+        "image_dec": second_sector.dec,
+        "image_width_ra": second_sector.width_ra,
+        "image_width_dec": second_sector.width_dec,
+    }
     assert operation.input_parms["mpi_nnodes"] == [3, 3]
     assert operation.input_parms["shared_facet_rw"] == [False, True]
-    assert operation.input_parms["parallel_gridding_tasks"] == [16, 3]
+    assert operation.input_parms["parallel_gridding_tasks"] == [16, 2]
     payload = image_payload_from_inputs(
         operation.input_parms, operation.pipeline_working_dir, use_facets=True, use_mpi=True
     )
     assert json.loads(json.dumps(payload)) == payload
-    for sector, expected_shared, expected_tasks in zip(payload["sectors"], [False, True], [16, 3]):
+    for sector, expected_shared, expected_tasks in zip(payload["sectors"], [False, True], [16, 2]):
         assert sector["shared_facet_reads"] is expected_shared
         assert sector["shared_facet_writes"] is expected_shared
         command = image_wsclean_module._select_wsclean_command_for_sector(
@@ -1536,6 +1565,7 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path):
         )
         assert ("-shared-facet-reads" in command) is expected_shared
         assert ("-shared-facet-writes" in command) is expected_shared
+        assert ("-compound-tasks" in command) is not expected_shared
         assert command[command.index("-parallel-gridding") + 1] == str(expected_tasks)
 
 
@@ -3689,7 +3719,7 @@ def test_facet_image_operation_run_uses_prefect_flow(
     field.dd_h5parm_filename = "/data/facet-solutions.h5"
     field.calibration_strategy = {"dd": ["fast_phase"]}
     field.parset["imaging_specific"]["shared_facet_rw"] = True
-    field.num_patches = 2
+    monkeypatch.setattr(image_operation_module, "count_facets_in_image", lambda *args, **kw: 2)
     operation = Image(field, index=1)
 
     operation.run()

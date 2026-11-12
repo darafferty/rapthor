@@ -689,8 +689,9 @@ The available options are described below under their respective sections.
         The number of parallel gridding tasks respects the requested
         :term:`parallel_gridding_tasks`, :term:`max_cores`, and WSClean's actual
         thread budget. The number of facets is the number of calibration
-        patches of the field; DD-PSF regions do not count. Sectors with
-        different numbers of output channels may use different sharing modes.
+        facets that overlap with the image of the sector, since WSClean skips
+        the other facets; DD-PSF regions do not count. Sectors with different
+        numbers of facets or output channels may use different sharing modes.
         Setting this option to ``False`` disables sharing at every facet count
         and node count.
 
