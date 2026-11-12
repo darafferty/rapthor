@@ -71,11 +71,13 @@ def calibrate(predicted_model_ms, test_ms_info, point_source_skymodel, tmp_path_
     The function takes a name and the normalization h5parm (or None) and returns
     the paths of the fast-phase and slow-gain h5parms written by DP3. With a
     ``di_h5parm`` its amplitudes are pre-applied to the data through the
-    stand-alone applycal step, as the pipeline does for DI solutions. The step
-    chain comes from the production plan builder.
+    stand-alone applycal step, as the pipeline does for DI solutions. With
+    ``averaging_steps`` (time slots, channels) the data are averaged before the
+    solves, which then solve every averaged sample. The step chain comes from
+    the production plan builder.
     """
 
-    def run(name, normalize_h5parm, *, msin=None, di_h5parm=None):
+    def run(name, normalize_h5parm, *, msin=None, di_h5parm=None, averaging_steps=None):
         workdir = tmp_path_factory.mktemp(name)
         fast = workdir / "fast_phase_0.h5parm"
         slow = workdir / "slow_gain_0.h5parm"
@@ -86,6 +88,7 @@ def calibrate(predicted_model_ms, test_ms_info, point_source_skymodel, tmp_path_
             use_image_based_predict=False,
             solve_steps=["solve1", "solve2"],
             preapply_solutions=di_h5parm is not None,
+            average_visibilities=averaging_steps is not None,
         )
         payload = {
             "mode": "dd",
@@ -130,6 +133,10 @@ def calibrate(predicted_model_ms, test_ms_info, point_source_skymodel, tmp_path_
                 _solve_slot(2, "slow_gains", "diagonal", slow, reusemodel="[solve1.*]"),
             ],
         }
+        if averaging_steps is not None:
+            chunk["average_timestep"], chunk["average_freqstep"] = averaging_steps
+            for slot in chunk["solve_slots"]:
+                slot["solint"] = slot["nchan"] = 1
         records = run_calibrate_chunk(payload, chunk)
         return records["solve1"]["path"], records["solve2"]["path"]
 
@@ -186,3 +193,15 @@ def test_preapply_chain_leaves_the_input_ms_unchanged(
     np.testing.assert_allclose(
         _solution_values(slow, "amplitude000"), EXPECTED_PREAPPLIED_AMPLITUDE, rtol=1e-4
     )
+
+
+def test_solves_on_averaged_data_give_one_solution_per_averaged_sample(calibrate, test_ms_info):
+    """DP3 counts the solution intervals after the averaging step in averaged samples."""
+    fast, slow = calibrate("averaged", None, averaging_steps=(2, 4))
+
+    with h5parm(fast) as solutions:
+        soltab = solutions.getSolset("sol000").getSoltab("phase000")
+        assert len(soltab.time) == len(test_ms_info["times"]) / 2
+        assert len(soltab.freq) == len(test_ms_info["frequencies"]) / 4
+    np.testing.assert_allclose(_solution_values(fast, "phase000"), 0.0, atol=0.02)
+    np.testing.assert_allclose(_solution_values(slow, "amplitude000"), 1.0, rtol=1e-4)
