@@ -20,6 +20,7 @@ class FieldStub:
         self.epoch_starttimes = [0, 1]
         self.epoch_observations = epoch_observations
         self.data_colname = "CORRECTED_DATA"
+        self.input_data_colname = "CORRECTED_DATA"
         self.ms_filenames = []
         self.scan_count = 0
 
@@ -98,7 +99,8 @@ def test_finalize_updates_field_state_and_marks_done(tmp_path):
         "epoch_1_single.ms",
     ]
     assert field.scan_count == 1
-    assert field.data_colname == "DATA"
+    # The concatenated data, which later chunks of the input data read, are in DATA
+    assert field.data_colname == field.input_data_colname == "DATA"
     assert Path(operation.done_file).is_file()
 
 
