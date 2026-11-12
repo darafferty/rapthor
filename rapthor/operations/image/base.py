@@ -262,13 +262,30 @@ class Image(FlowOperation):
             return int(self.input_parms["mpi_cpus_per_task"][sector_index])
         return int(self.input_parms["max_threads"])
 
-    def _gridding_controls_for_sector(self, sector_index, channels_out):
+    def _can_share_facet_rw(self):
+        """Return whether shared facet reads and writes are requested and supported."""
+        if not self.parset["imaging_specific"]["shared_facet_rw"]:
+            return False
+        if (
+            "bdaavg" in self.input_parms["prepare_data_steps"]
+            and self.field.image_bda_frequencybase > 0
+        ):
+            # WSClean stops with "Can't use bulk inversion with BDA yet"
+            log.warning(
+                "Shared facet reads and writes are not used, because WSClean does not "
+                "support them for data with baseline-dependent averaging in frequency. "
+                "Set bda_frequencybase = 0 for imaging to use them."
+            )
+            return False
+        return True
+
+    def _gridding_controls_for_sector(self, sector_index, channels_out, shared_facet_rw):
         if self.apply_screens:
             # Screens are applied with IDG, which WSClean cannot grid in parallel
             return False, 1
         return build_image_gridding_controls(
             facet_count=self._facet_work_units() if self.use_facets else 0,
-            shared_facet_rw=self.parset["imaging_specific"]["shared_facet_rw"],
+            shared_facet_rw=shared_facet_rw,
             channels_out=channels_out,
             nnodes=self.input_parms["mpi_nnodes"][sector_index] if self.field.use_mpi else 1,
             num_threads=self._wsclean_threads_for_sector(sector_index),
@@ -597,8 +614,9 @@ class Image(FlowOperation):
                     batch_system=self.batch_system,
                 )
             )
+        shared_facet_rw = self.use_facets and self._can_share_facet_rw()
         gridding_controls = [
-            self._gridding_controls_for_sector(index, channels_out)
+            self._gridding_controls_for_sector(index, channels_out, shared_facet_rw)
             for index, channels_out in enumerate(self.input_parms["channels_out"])
         ]
         self.input_parms["shared_facet_rw"] = [shared for shared, _ in gridding_controls]

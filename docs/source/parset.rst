@@ -690,6 +690,12 @@ The available options are described below under their respective sections.
         Setting this option to ``False`` disables sharing at every facet count
         and node count.
 
+        WSClean cannot share reads and writes for data that are averaged in
+        frequency with baseline-dependent averaging. Sharing is therefore not
+        used, and a warning is logged, unless
+        :term:`bda_frequencybase (imaging)` is set to 0. Averaging in time
+        (:term:`bda_timebase (imaging)`) can stay on.
+
         This resource-based comparison is an experimental heuristic, not a
         measured performance crossover. See the
         `WSClean facet documentation

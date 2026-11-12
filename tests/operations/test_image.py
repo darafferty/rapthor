@@ -420,6 +420,7 @@ class TestImage:
         )
         field.parset["cluster_specific"]["max_nodes"] = 3 if use_mpi else 1
         _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.image_bda_frequencybase = 0.0
         field.num_patches = num_patches
         image = _initialize_operation(
             Image(field, index=1),
@@ -433,6 +434,30 @@ class TestImage:
         if use_mpi:
             assert image.input_parms["mpi_nnodes"] == [3]
             assert image.input_parms["mpi_cpus_per_task"] == [12]
+
+    @pytest.mark.parametrize(
+        ("timebase", "frequencybase", "expected_shared"),
+        [(0.0, 0.0, True), (20000.0, 0.0, True), (20000.0, 5000.0, False)],
+    )
+    def test_shared_facet_rw_is_not_used_with_bda_in_frequency(
+        self, field, h5parm_file, caplog, timebase, frequencybase, expected_shared
+    ):
+        # WSClean stops with "Can't use bulk inversion with BDA yet" when it
+        # shares facet reads and writes for data that are averaged in frequency
+        field.parset["imaging_specific"]["shared_facet_rw"] = True
+        field.parset["cluster_specific"].update(
+            parallel_gridding_tasks=6, max_cores=12, max_threads=12
+        )
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.image_bda_timebase = timebase
+        field.image_bda_frequencybase = frequencybase
+        field.num_patches = 6
+        with caplog.at_level("WARNING"):
+            image = _initialize_operation(Image(field, index=1), do_predict=False, use_facets=True)
+
+        assert ("bdaavg" in image.input_parms["prepare_data_steps"]) is (timebase > 0)
+        assert image.input_parms["shared_facet_rw"] == [expected_shared]
+        assert ("bda_frequencybase" in caplog.text) is not expected_shared
 
     @pytest.mark.parametrize(
         ("nodes", "expected"),
@@ -579,7 +604,7 @@ class TestImage:
             "mpi_cpus_per_task": [cpus_per_task],
         }
 
-        assert image._gridding_controls_for_sector(0, 20) == expected
+        assert image._gridding_controls_for_sector(0, 20, True) == expected
 
     def test_gridding_policy_uses_one_gridder_for_screens(self, field):
         field.parset["cluster_specific"].update(max_cores=192, parallel_gridding_tasks=24)
@@ -588,7 +613,7 @@ class TestImage:
         image.use_facets = False
         image.input_parms = {"max_threads": 192}
 
-        assert image._gridding_controls_for_sector(0, 20) == (False, 1)
+        assert image._gridding_controls_for_sector(0, 20, True) == (False, 1)
 
     @pytest.mark.parametrize("solution_attr", ["di_h5parm_filename", "fulljones_h5parm_filename"])
     def test_set_parset_parameters_disables_facets_without_dd_facet_h5parm(
