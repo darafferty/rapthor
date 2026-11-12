@@ -162,8 +162,9 @@ def _timed_solves(field, strategy):
     """Yield the solves whose solution intervals the calibration uses."""
     for mode, solves in strategy.items():
         if mode == "dd" and field.generate_screens and solves:
-            # Screens are solved at the interval of the first DD solve, and of the slow
-            # gains for amplitudes (see execution.calibrate.solves)
+            # Screens are solved at the interval of the first DD solve (its slot sets
+            # solint_solve1_timestep, see Calibrate._apply_solve_plan_inputs), and of the
+            # slow gains for amplitudes (see execution.calibrate.solves)
             yield solves[0]
             if "slow_gains" in solves:
                 yield "slow_gains"

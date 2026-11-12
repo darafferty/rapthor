@@ -616,6 +616,26 @@ def test_chunking_follows_the_screen_solves(
     assert len(field.observations) == expected_chunk_count
 
 
+def test_chunking_screens_solve_phases_at_the_first_dd_interval(field, make_chunking_observation):
+    """When slow gains are the first DD solve, the screen phases are solved at the
+    20-second slow-gain interval (two samples), not the 30-second fast-phase one."""
+    obs, _ = make_chunking_observation(12)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 19
+    field.generate_screens = True
+    step = {
+        "do_calibrate": True,
+        "calibration_strategy": {"dd": ["slow_gains", "medium_phase"]},
+        "fast_timestep_sec": 30,
+        "medium_timestep_sec": 40,
+        "slow_timestep_sec": 20,
+    }
+
+    chunk_observations(field, [step], data_fraction=1.0)
+
+    assert len(field.observations) == 6
+
+
 def _full_jones_step(fulljones_timestep_sec, **updates):
     return {
         "do_calibrate": True,
