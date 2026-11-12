@@ -56,6 +56,7 @@ class Image(FlowOperation):
         self.image_pol: Union[List[str], str, None] = None
         self.peel_bright_sources = None
         self.imaging_sectors = None
+        self.facet_counts = None  # facets imaged for each sector, set with the input parameters
         self.imaging_parameters = None
         self.do_predict = None
         self.do_multiscale_clean = None
@@ -269,19 +270,29 @@ class Image(FlowOperation):
             max(min_width, sector.width_dec * 1.2),
         )
 
-    def _facet_work_units(self, sector):
-        """Return the number of facets that WSClean images for a sector."""
+    def _count_facets(self):
+        """Return the number of facets that WSClean images for each sector."""
         if self.apply_none or not self.use_facets:
-            return 0
-        # WSClean skips the facets that do not overlap with the image
-        return count_facets_in_image(
-            read_facets(self._facet_skymodel_file(), *self._facet_region_box(sector)),
-            image_ra=sector.ra,
-            image_dec=sector.dec,
-            image_width_ra=sector.width_ra,
-            image_width_dec=sector.width_dec,
-            cellsize_deg=sector.cellsize_deg,
-        )
+            return [0] * len(self.imaging_sectors)
+        # Reading a large sky model takes time, and most sectors share a box
+        facets_by_box = {}
+        facet_counts = []
+        for sector in self.imaging_sectors:
+            region_box = self._facet_region_box(sector)
+            if region_box not in facets_by_box:
+                facets_by_box[region_box] = read_facets(self._facet_skymodel_file(), *region_box)
+            # WSClean skips the facets that do not overlap with the image
+            facet_counts.append(
+                count_facets_in_image(
+                    facets_by_box[region_box],
+                    image_ra=sector.ra,
+                    image_dec=sector.dec,
+                    image_width_ra=sector.width_ra,
+                    image_width_dec=sector.width_dec,
+                    cellsize_deg=sector.cellsize_deg,
+                )
+            )
+        return facet_counts
 
     def _wsclean_threads_for_sector(self, sector_index):
         if self.field.use_mpi:
@@ -636,7 +647,7 @@ class Image(FlowOperation):
         # WSClean stops with "Can't use bulk inversion with BDA yet" when it
         # shares facet reads and writes for data that are averaged in frequency
         shared_facet_rw = self._shared_facet_rw_requested() and not self._uses_frequency_bda()
-        self.facet_counts = [self._facet_work_units(sector) for sector in self.imaging_sectors]
+        self.facet_counts = self._count_facets()
         gridding_controls = [
             self._gridding_controls_for_sector(index, shared_facet_rw)
             for index in range(len(self.imaging_sectors))

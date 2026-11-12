@@ -1533,17 +1533,17 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
     operation.set_parset_parameters()
     operation.set_input_parameters()
 
-    # The facets are read for the sky model and the bounding box that the
-    # facet region file of each sector is made from
-    assert read == list(
-        zip(
-            ["/data/calibration.skymodel"] * 2,
-            operation.input_parms["ra_mid"],
-            operation.input_parms["dec_mid"],
-            operation.input_parms["width_ra"],
-            operation.input_parms["width_dec"],
+    # The facets are read once, for the sky model and the bounding box that
+    # the facet region files of both sectors are made from
+    assert read == [
+        (
+            "/data/calibration.skymodel",
+            operation.input_parms["ra_mid"][0],
+            operation.input_parms["dec_mid"][0],
+            operation.input_parms["width_ra"][0],
+            operation.input_parms["width_dec"][0],
         )
-    )
+    ]
     # They are counted inside the image of each sector
     assert counted[1] == (
         "facets",
