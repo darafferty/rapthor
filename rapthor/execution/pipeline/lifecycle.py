@@ -49,15 +49,50 @@ def chunk_observations(field, steps, data_fraction):
     depending on the length of each observation and the largest requested
     calibration solution interval.
     """
-    solve_time = _calibration_solve_time(field, steps)
-    chunk_time = _chunk_time_for_run(field, data_fraction, solve_time)
-    if chunk_time is None:
-        field.update_observations(field.full_observations)
-        return
+    field.update_observations(_planned_observations(field, steps, data_fraction))
 
-    _set_observation_data_fractions(field, data_fraction, solve_time)
-    max_chunks = None if data_fraction < 1.0 else field.parset["cluster_specific"]["max_nodes"]
-    field.chunk_observations(chunk_time, max_chunks=max_chunks)
+
+def rechunk_observations(field, steps, data_fraction):
+    """
+    Chunk observations again for a later selfcal cycle, if its solves need it.
+
+    Each cycle is chunked for its own calibration solution intervals. The current
+    observations are kept when the chunks do not change, as they may point to data
+    with the outliers peeled, and in a cycle without calibration, which applies the
+    solutions of the cycles before it (and so needs their chunks). New chunks start
+    again from the input data, so the outliers are peeled again if any cycle so far
+    peeled them.
+
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    steps : list of dict
+        The selfcal strategy steps up to and including that of the cycle to chunk
+    data_fraction : float
+        The selfcal data fraction
+
+    Returns
+    -------
+    step : dict
+        The strategy step to run the cycle with. When the observations are chunked
+        again, this is a copy with the peeling flag set (the strategy is unchanged)
+    """
+    step = steps[-1]
+    if not step["do_calibrate"]:
+        return step
+
+    observations = _planned_observations(field, [step], data_fraction)
+    if _chunk_layout(observations) == _chunk_layout(field.observations):
+        return step
+
+    field.update_observations(observations)
+    # The peeling flag is only required in imaging cycles
+    peel_outliers = any(earlier_step.get("peel_outliers", False) for earlier_step in steps)
+    if peel_outliers:
+        # Restore the outliers to the calibration sky model, as in the final cycle
+        field.imaged_sources_only = False
+    return {**step, "peel_outliers": peel_outliers}
 
 
 def make_report(field, outfile=None):
@@ -107,6 +142,23 @@ def _solve_time(field, step, solve):
     if solve == "full_jones":
         return solve_time
     return solve_time * field.dd_interval_factor
+
+
+def _planned_observations(field, steps, data_fraction):
+    solve_time = _calibration_solve_time(field, steps)
+    chunk_time = _chunk_time_for_run(field, data_fraction, solve_time)
+    if chunk_time is None:
+        return field.full_observations
+
+    _set_observation_data_fractions(field, data_fraction, solve_time)
+    max_chunks = None if data_fraction < 1.0 else field.parset["cluster_specific"]["max_nodes"]
+    return field.chunked_observations(chunk_time, max_chunks=max_chunks)
+
+
+def _chunk_layout(observations):
+    # Different solution intervals can give the same chunks, for example when the
+    # number of nodes limits them, so compare the chunks themselves
+    return [(obs.name, obs.starttime, obs.endtime) for obs in observations]
 
 
 def _chunk_time_for_run(field, data_fraction, solve_time):

@@ -8,7 +8,7 @@ import pytest
 from losoto.h5parm import h5parm
 from matplotlib import pyplot as plt
 
-from rapthor.execution.pipeline.lifecycle import chunk_observations
+from rapthor.execution.pipeline.lifecycle import chunk_observations, rechunk_observations
 from rapthor.lib.field import Field, _ensure_skymodel_write_units
 from rapthor.lib.observation import Observation
 from rapthor.lib.strategy import check_and_adjust_parameters, set_user_strategy
@@ -432,6 +432,52 @@ def test_final_passes_peel_outliers_once_from_the_input_data(
     else:
         assert [entry["peels_outliers"] for entry in passes] == [False, False, False]
         assert repeat["calibrated_ms"] == input_ms
+
+
+@pytest.mark.parametrize(
+    "fast_timestep_sec, rechunked",
+    [
+        pytest.param(20.0, False, id="same_chunks_keep_the_peeled_data"),
+        pytest.param(60.0, True, id="new_chunks_peel_the_input_data_again"),
+    ],
+)
+def test_selfcal_cycle_peels_outliers_again_only_when_rechunked(
+    parset_for_field_test, tmp_path, fast_timestep_sec, rechunked
+):
+    """The first cycle peels three 2-sample chunks of the input data. A later cycle
+    with the same chunks keeps the peeled data; one with a single 6-sample chunk
+    starts again from the input data, so it peels again."""
+    parset = parset_for_field_test
+    parset["cluster_specific"]["max_nodes"] = 3
+    # A small imaging sector leaves sources of the input sky model outside it
+    parset["imaging_specific"]["grid_width_ra_deg"] = 1.5
+    parset["imaging_specific"]["grid_width_dec_deg"] = 1.5
+    field = Field(parset)
+    input_ms = [obs.ms_filename for obs in field.full_observations]
+    steps = [
+        {**_cycle_step(True), "fast_timestep_sec": 20.0},
+        {**_cycle_step(False), "fast_timestep_sec": fast_timestep_sec},
+    ]
+    chunk_observations(field, steps[:1], 1.0)
+    field.update(dict(steps[0]), 1)
+    _finish_cycle(field, 1, tmp_path)
+    peeled_ms = [obs.ms_filename for obs in field.observations]
+    predict_dir = Path(field.working_dir, "pipelines", "predict_1")
+    assert len(peeled_ms) == 3
+    assert all(Path(ms).parent == predict_dir for ms in peeled_ms)
+
+    step = rechunk_observations(field, steps, 1.0)
+    field.update(dict(step), 2)
+
+    assert [step["peel_outliers"] for step in steps] == [True, False]
+    calibrated_ms = [obs.ms_filename for obs in field.observations]
+    peels_outliers = bool(field.outlier_sectors and field.peel_outliers)
+    if rechunked:
+        assert calibrated_ms == input_ms
+        assert peels_outliers
+    else:
+        assert calibrated_ms == peeled_ms
+        assert not peels_outliers
 
 
 def test_update_skymodels_allows_target_number_without_target_flux(parset_for_field_test):

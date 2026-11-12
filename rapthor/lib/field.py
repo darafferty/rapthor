@@ -366,6 +366,17 @@ class Field(object):
         """
         Break existing observations into smaller observations
 
+        The parameters are those of chunked_observations()
+        """
+        # Update the observations in the field and imaging sectors with the new ones
+        self.update_observations(
+            self.chunked_observations(mintime, prefer_high_el_periods, max_chunks=max_chunks)
+        )
+
+    def chunked_observations(self, mintime, prefer_high_el_periods=True, max_chunks=None):
+        """
+        Returns the existing observations broken into smaller observations (chunks)
+
         Parameters
         ----------
         mintime : float
@@ -380,6 +391,11 @@ class Field(object):
         max_chunks : int, optional
             Maximum number of chunks per observation. The minimum chunk duration may
             require fewer chunks
+
+        Returns
+        -------
+        chunked_observations : list of Observation objects
+            The chunks of all observations
         """
         if mintime <= 0:
             raise ValueError("mintime must be greater than zero")
@@ -389,9 +405,7 @@ class Field(object):
             chunked_observations.extend(
                 obs.chunk_observation(mintime, prefer_high_el_periods, max_chunks=max_chunks)
             )
-
-        # Update the observations in the field and imaging sectors with the new ones
-        self.update_observations(chunked_observations)
+        return chunked_observations
 
     def update_observations(self, new_observations):
         """
