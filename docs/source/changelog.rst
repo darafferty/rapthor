@@ -79,11 +79,14 @@ existing parsets and strategy files.
       calibrate keeps the chunks of the cycle before it. When a cycle needs
       different chunks from the cycle before it, it starts again from the input
       data and peels the outliers again if an earlier cycle peeled them.
-    - Chunks now hold whole solution intervals, counted in samples as DP3
-      counts them, so that only the end of an observation, or of a selected
-      time range, holds a partial solution interval with fewer samples. Earlier
-      versions split the data into chunks with equal numbers of samples, so the
-      last solution interval of most chunks was partial.
+    - Chunks now hold whole numbers of the longest solution interval of the
+      cycle, counted in samples as DP3 counts them, so that only the end of an
+      observation, or of a selected time range, holds a partial longest
+      interval with fewer samples. Shorter solution intervals can still be cut
+      at the chunk edges: with 8-second samples, for example, a 15-sample
+      medium-phase interval is not a whole number of 4-sample fast-phase
+      intervals. Earlier versions split the data into chunks with equal numbers
+      of samples, so the last solution interval of most chunks was partial.
     - A cycle that starts again from the input data, such as the first final
       cycle, now reads the column of the input data set by
       :term:`data_colname`. Earlier versions read the ``DATA`` column in this

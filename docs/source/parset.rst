@@ -122,9 +122,11 @@ The available options are described below under their respective sections.
         divided by time into chunks that sum to the requested fraction, spaced out evenly
         over the full time range. Using a low value (0.2 or so) is strongly recommended
         for typical 8-hour, full-bandwidth observations. Every selfcal cycle uses the same
-        time ranges, each as long as the longest solution interval of any selfcal cycle
-        (see :term:`calibration_strategy`). Each cycle then splits the ranges into chunks
-        of whole solution intervals of its own solves, so cycles that solve only for
+        time ranges. Each is as long as the longest solution interval of any selfcal
+        cycle (see :term:`calibration_strategy`), unless the fraction is too small for two
+        of them, in which case a single range of the requested fraction is used, centred
+        on the observation. Each cycle then splits the ranges into chunks that hold whole
+        numbers of its own longest solution interval, so cycles that solve only for
         phases, such as the first cycles of the default strategy, use more, shorter
         chunks, which can be processed on more nodes at once. A cycle that does not
         calibrate keeps the chunks of the cycle before it, whose solutions it applies.
