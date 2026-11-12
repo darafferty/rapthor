@@ -365,51 +365,6 @@ class Field(object):
         mid_index = np.argmin(np.abs(np.array(times) - mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
-    def chunk_observations(self, mintime, prefer_high_el_periods=True, max_chunks=None):
-        """
-        Break existing observations into smaller observations
-
-        The parameters are those of chunked_observations()
-        """
-        # Update the observations in the field and imaging sectors with the new ones
-        self.update_observations(
-            self.chunked_observations(mintime, prefer_high_el_periods, max_chunks=max_chunks)
-        )
-
-    def chunked_observations(self, mintime, prefer_high_el_periods=True, max_chunks=None):
-        """
-        Returns the existing observations broken into smaller observations (chunks)
-
-        Parameters
-        ----------
-        mintime : float
-            Minimum duration in sec for a chunk
-        prefer_high_el_periods : bool, optional
-            Prefer periods for which the elevation is in the highest 80% of values for a
-            given observation. This option is useful for removing periods of lower
-            signal-to-noise (e.g., due to being at lower elevations where ionospheric
-            activity can increase and sensitivity decrease). If the requested mintime is
-            larger than the total time of the high-elevation period for a given
-            observation, then the full observation is used instead
-        max_chunks : int, optional
-            Maximum number of chunks per observation. The minimum chunk duration may
-            require fewer chunks
-
-        Returns
-        -------
-        chunked_observations : list of Observation objects
-            The chunks of all observations
-        """
-        if mintime <= 0:
-            raise ValueError("mintime must be greater than zero")
-
-        chunked_observations = []
-        for obs in self.full_observations:
-            chunked_observations.extend(
-                obs.chunk_observation(mintime, prefer_high_el_periods, max_chunks=max_chunks)
-            )
-        return chunked_observations
-
     def update_observations(self, new_observations):
         """
         Update the observations used for processing
