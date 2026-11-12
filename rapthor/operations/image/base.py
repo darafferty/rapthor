@@ -648,18 +648,6 @@ class Image(FlowOperation):
         ]
         self.input_parms["shared_facet_rw"] = [shared for shared, _ in gridding_controls]
         self.input_parms["parallel_gridding_tasks"] = [tasks for _, tasks in gridding_controls]
-        for index, sector in enumerate(self.imaging_sectors):
-            log.info(
-                "WSClean resources for %s: facets=%d, shared_facet_rw=%s, "
-                "channels_out=%d, nodes=%d, threads_per_rank=%d, parallel_gridding=%d",
-                sector.name,
-                self.facet_counts[index],
-                self.input_parms["shared_facet_rw"][index],
-                self.input_parms["channels_out"][index],
-                self.input_parms["mpi_nnodes"][index] if self.field.use_mpi else 1,
-                self._wsclean_threads_for_sector(index),
-                self.input_parms["parallel_gridding_tasks"][index],
-            )
         if not self.apply_none and self.use_facets:
             # For faceting, we need inputs for making the ds9 facet region files
             self.input_parms.update({"skymodel": FileRecord(self._facet_skymodel_file()).to_json()})
@@ -708,6 +696,18 @@ class Image(FlowOperation):
             normalize_flux_scale=self.normalize_flux_scale,
             use_mpi=self.field.use_mpi,
         )
+        for index, sector in enumerate(self.imaging_sectors):
+            log.info(
+                "WSClean resources for %s: facets=%d, shared_facet_rw=%s, "
+                "channels_out=%d, nodes=%d, threads_per_rank=%d, parallel_gridding=%d",
+                sector.name,
+                self.facet_counts[index],
+                self.input_parms["shared_facet_rw"][index],
+                self.input_parms["channels_out"][index],
+                self.input_parms["mpi_nnodes"][index] if self.field.use_mpi else 1,
+                self._wsclean_threads_for_sector(index),
+                self.input_parms["parallel_gridding_tasks"][index],
+            )
         outputs = run_prefect_flow(image_flow, payload, self.parset)
         return True, outputs
 

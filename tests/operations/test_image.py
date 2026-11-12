@@ -392,6 +392,17 @@ class TestImage:
         image.run()
         assert image.is_done()
 
+    def test_wsclean_resources_are_logged_when_imaging_runs(self, image, caplog):
+        with caplog.at_level("INFO"):
+            image.run()
+        assert caplog.text.count("WSClean resources for sector_1: facets=1,") == 1
+
+        # On a restart, a finished operation is set up again but does not run
+        caplog.clear()
+        with caplog.at_level("INFO"):
+            image.run()
+        assert "WSClean resources" not in caplog.text
+
     @pytest.mark.parametrize(
         ("shared_facet_rw", "use_facets", "facet_count", "expected_local", "expected_mpi"),
         [
