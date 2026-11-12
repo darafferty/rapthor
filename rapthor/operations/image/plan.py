@@ -107,12 +107,19 @@ def adjust_parallel_gridding_tasks(
     Match WSClean parallel-gridding tasks to available work units and threads.
 
     WSClean parallel gridding splits either facets or output channels into task
-    groups. The task count should not exceed the available work units, and it
-    should divide the actual WSClean ``-j`` value so threads are assigned evenly.
+    groups. The task count should not exceed the available work units or the
+    actual WSClean ``-j`` value, and it should preferably divide that value so
+    threads are assigned evenly.
     The caller also caps work units by the configured maximum core count.
     """
-    capped_tasks = min(max(1, int(parallel_gridding_tasks)), max(1, int(max_work_units)))
-    return get_max_divisor_less_than_or_equal(num_threads, capped_tasks)
+    capped_tasks = min(
+        max(1, int(parallel_gridding_tasks)), max(1, int(max_work_units)), max(1, int(num_threads))
+    )
+    even_tasks = get_max_divisor_less_than_or_equal(num_threads, capped_tasks)
+    # WSClean rounds the threads per task up, so an uneven split uses less than
+    # one extra thread per task. That costs less than giving up more than a
+    # quarter of the tasks, as happens when the thread count has few divisors.
+    return even_tasks if 4 * even_tasks >= 3 * capped_tasks else capped_tasks
 
 
 def build_image_gridding_controls(

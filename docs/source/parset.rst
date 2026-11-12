@@ -924,8 +924,11 @@ for how these options are used.
         output channels per node (rounded down, with a minimum of one) times
         the number of facets, or the output channels per node when facets are
         not used.
-        It chooses a divisor of WSClean's actual ``-j`` thread count:
-        :term:`max_threads` locally, or :term:`cpus_per_task` with MPI.
+        It then prefers a value that divides WSClean's actual ``-j`` thread
+        count (:term:`max_threads` locally, or :term:`cpus_per_task` with MPI),
+        so that every task gets the same number of threads. If that would give
+        up more than a quarter of the tasks, as with a prime number of threads,
+        the capped value is used and WSClean rounds the threads per task up.
 
         For example, with 20 output channels, 192 threads per rank,
         ``max_cores = 192`` and a requested limit of 24 tasks, the number of

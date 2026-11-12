@@ -1686,11 +1686,18 @@ def test_get_max_divisor_less_than_or_equal(number, limit, expected):
         (12, 8, 5, 4),
         (12, 6, 6, 6),
         (12, 99, 3, 3),
-        (11, 8, 4, 1),
+        (192, 24, 20, 16),
         (0, 0, 0, 1),
+        # No divisor of the thread count is close to the allowed task count
+        (11, 8, 4, 4),
+        (47, 8, 30, 8),
+        (94, 11, 30, 11),
+        (192, 24, 23, 23),
+        # Never more tasks than threads
+        (4, 24, 30, 4),
     ],
 )
-def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_thread_divisor(
+def test_adjust_parallel_gridding_tasks_caps_to_work_units_and_prefers_thread_divisor(
     num_threads, requested_tasks, max_work_units, expected
 ):
     assert adjust_parallel_gridding_tasks(num_threads, requested_tasks, max_work_units) == expected
