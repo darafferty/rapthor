@@ -4,7 +4,6 @@ Definition of the Observation class that holds parameters for each measurement s
 
 import copy
 import logging
-import math
 import os
 
 import casacore.tables as pt
@@ -13,7 +12,6 @@ from lsmtool.operations_lib import normalize_ra_dec
 from scipy.special import erf
 
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.cluster import get_chunk_size
 
 
 class Observation(object):
@@ -209,7 +207,6 @@ class Observation(object):
     def set_calibration_parameters(
         self,
         parset,
-        nobs,
         calibrator_fluxes,
         target_fast_timestep,
         target_medium_timestep,
@@ -217,7 +214,6 @@ class Observation(object):
         target_fulljones_timestep,
         target_flux=None,
         generate_screens=False,
-        chunk_by_time=False,
     ):
         """
         Sets the calibration parameters
@@ -226,8 +222,6 @@ class Observation(object):
         ----------
         parset : dict
             Parset with processing parameters
-        nobs : int
-            Number of observations in total
         calibrator_fluxes : list
             List of calibrator apparent flux densities in Jy
         target_fast_timestep : float
@@ -244,8 +238,6 @@ class Observation(object):
         generate_screens : bool, optional
             If True, adjust parameters to account for differences in the way
             solving is done for screens (IDGCal)
-        chunk_by_time : bool, optional
-            If True, chunking over time is done during calibration
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
@@ -263,41 +255,9 @@ class Observation(object):
             solve_max_factor = parset["calibration_specific"]["dd_interval_factor"]
             smoothness_max_factor = parset["calibration_specific"]["dd_smoothness_factor"]
 
-        if chunk_by_time:
-            # Find the maximum solution interval in time that can be used in any solve
-            solint_max_timestep = self.get_max_solint_timesteps(
-                [
-                    target_fast_timestep,
-                    target_medium_timestep,
-                    target_slow_timestep,
-                    target_fulljones_timestep,
-                ],
-                solve_max_factor,
-            )
-
-            # Determine how many calibration chunks to make (to allow parallel jobs)
-            samplesperchunk = get_chunk_size(
-                parset["cluster_specific"], self.numsamples, nobs, solint_max_timestep
-            )
-            nchunks = int(np.ceil(self.numsamples / samplesperchunk))
-
-            chunk_size = samplesperchunk * self.timepersample
-            starttimes = [self.starttime + (chunk_size * i) for i in range(nchunks)]
-            # Make sure the last start time does not equal or exceed the end time
-            if starttimes[-1] >= self.endtime:
-                starttimes.pop(-1)
-                nchunks -= 1
-        else:
-            samplesperchunk = self.numsamples
-            nchunks = 1
-            starttimes = [self.starttime]
-
-        self.ntimechunks = nchunks
-        self.log.debug(
-            "Using %s time chunk%s for calibration",
-            self.ntimechunks,
-            "s" if self.ntimechunks > 1 else "",
-        )
+        # Each observation is calibrated as one time chunk: observations are chunked
+        # beforehand for multi-node runs and data fractions
+        self.ntimechunks = 1
         if self.antenna == "LBA":
             # For LBA, use the MS files with non-calibrator sources subtracted
             self.parameters["timechunk_filename"] = [self.ms_predict_nc_filename] * self.ntimechunks
@@ -307,16 +267,9 @@ class Observation(object):
         self.parameters["predict_di_output_filename"] = [
             self.ms_predict_di_filename
         ] * self.ntimechunks
-        self.parameters["starttime"] = [misc.convert_mjd2mvt(t) for t in starttimes]
-        self.parameters["ntimes"] = [samplesperchunk] * self.ntimechunks
-
-        # Set last entry in ntimes list to extend to end of observation
-        if self.goesto_endofms:
-            self.parameters["ntimes"][-1] = 0
-        else:
-            self.parameters["ntimes"][-1] += int(
-                self.numsamples - (samplesperchunk * self.ntimechunks)
-            )
+        self.parameters["starttime"] = [misc.convert_mjd2mvt(self.starttime)]
+        # Extend to the end of the observation (0 means to the end of the MS)
+        self.parameters["ntimes"] = [0 if self.goesto_endofms else self.numsamples]
 
         # Find solution intervals for fast-phase and gain solves.
         # The solve is split into time chunks instead of frequency chunks, since
@@ -433,29 +386,6 @@ class Observation(object):
         self.parameters["medium_smoothnessreffrequency"] = [
             medium_smoothnessreffrequency
         ] * self.ntimechunks
-
-    def get_max_solint_timesteps(self, solints_seconds: list, solve_max_factor: int) -> int:
-        """
-        Get the maximum solution interval that can be used based on the provided
-        solution intervals.
-
-        Parameters
-        ----------
-        solints_seconds : list
-            List of solution intervals for different solution types in seconds.
-        solve_max_factor : int
-            Maximum factor by which the solution intervals can be increased.
-
-        Returns
-        -------
-        max_solint_timesteps: int
-            The maximum solution interval in number of timesteps.
-        """
-        max_solint_seconds = max(solints_seconds)
-        max_solint_timesteps = max(
-            1, math.ceil(max_solint_seconds / self.timepersample) * solve_max_factor
-        )
-        return max_solint_timesteps
 
     def set_prediction_parameters(self, sector_name, patch_names):
         """
