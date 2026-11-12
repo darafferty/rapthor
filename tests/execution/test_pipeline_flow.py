@@ -357,6 +357,7 @@ class RecordingPipelineLifecycle:
             validate_strategy=self.validate_strategy,
             preflight_execution=self.preflight_execution,
             chunk_observations=self.chunk_observations,
+            rechunk_observations=self.rechunk_observations,
             do_final_pass=self.do_final_pass,
             make_report=self.make_report,
         )
@@ -409,6 +410,16 @@ class RecordingPipelineLifecycle:
                 "data_fraction": data_fraction,
             }
         )
+
+    def rechunk_observations(self, field, steps, data_fraction):
+        field.events.append(
+            {
+                "operation": "rechunk",
+                "index": len(steps),
+                "data_fraction": data_fraction,
+            }
+        )
+        return steps[-1]
 
     def do_final_pass(self, field, selfcal_steps, final_step):
         field.events.append(
@@ -879,11 +890,57 @@ def test_run_pipeline_repeats_final_cycle_on_the_data_of_the_cycle_before():
     )
 
     assert field.updates == [(1, 0, True), (2, 1, True), (3, 2, True), (4, 3, True)]
-    # The data is chunked once for all selfcal cycles and once for the first final cycle
+    # The data is chunked for the only selfcal cycle run and for the first final cycle
     chunks = [event["data_fraction"] for event in field.events if event["operation"] == "chunk"]
     assert chunks == [parset["selfcal_data_fraction"], parset["final_data_fraction"]]
     calibrated = [event["index"] for event in field.events if event["operation"] == "calibrate"]
     assert calibrated == [1, 2, 3, 4]
+
+
+def test_run_pipeline_chunks_each_selfcal_cycle_before_it_starts():
+    """Each later selfcal cycle is passed to the re-chunk hook before it starts, and
+    runs with the step that the hook returns. The flow leaves the strategy unchanged."""
+    parset = _pipeline_parset()
+    selfcal_steps = [
+        _single_step({"dd": ["fast_phase"]}, peel_outliers=True),
+        _single_step({"dd": ["fast_phase", "medium_phase"]}, peel_outliers=False),
+        _single_step({"dd": ["fast_phase", "medium_phase", "slow_gains"]}, peel_outliers=False),
+    ]
+    strategy_steps = [*selfcal_steps, _image_step()]
+    original_strategy = copy.deepcopy(strategy_steps)
+    lifecycle = RecordingPipelineLifecycle(
+        parset=parset, strategy_steps=strategy_steps, final_pass=False
+    )
+
+    def rechunk_and_peel_again(field, steps, data_fraction):
+        lifecycle.rechunk_observations(field, steps, data_fraction)
+        # Stand in for new chunks of the input data, which are peeled again
+        return {**steps[-1], "peel_outliers": True}
+
+    field = run_pipeline(
+        "input.parset",
+        operation_factories=RECORDING_FACTORIES,
+        lifecycle_hooks=replace(lifecycle.hooks(), rechunk_observations=rechunk_and_peel_again),
+    )
+
+    events = [
+        (event["operation"], event.get("index"), event.get("data_fraction"))
+        for event in field.events
+        if event["operation"] in {"chunk", "rechunk", "calibrate"}
+    ]
+    data_fraction = parset["selfcal_data_fraction"]
+    assert events == [
+        ("chunk", None, data_fraction),
+        ("calibrate", 1, None),
+        ("rechunk", 2, data_fraction),
+        ("calibrate", 2, None),
+        ("rechunk", 3, data_fraction),
+        ("calibrate", 3, None),
+    ]
+    # The first cycle is chunked for its own solves only
+    assert [event["step_count"] for event in field.events if event["operation"] == "chunk"] == [1]
+    assert field.updates == [(1, 0, True), (2, 0, True), (3, 0, True)]
+    assert strategy_steps == original_strategy
 
 
 def test_run_pipeline_refuses_to_start_with_a_locked_working_directory():

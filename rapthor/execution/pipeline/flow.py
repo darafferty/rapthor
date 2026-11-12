@@ -51,6 +51,7 @@ class PipelineLifecycleHooks:
     validate_strategy: Callable[[list[dict], dict], None]
     preflight_execution: Callable[[object, list[dict], ExecutionConfig, set[str]], None]
     chunk_observations: Callable[[object, list[dict], float], None]
+    rechunk_observations: Callable[[object, list[dict], float], dict]
     do_final_pass: Callable[[object, list[dict], dict], bool]
     make_report: Callable[[object], None]
 
@@ -180,8 +181,18 @@ def _run_locked_pipeline(
             "Starting self calibration with a data fraction of %.2f",
             parset["selfcal_data_fraction"],
         )
-        hooks.chunk_observations(field, selfcal_steps, parset["selfcal_data_fraction"])
-        run_pipeline_steps(field, selfcal_steps, operation_factories=factories)
+        # Chunk each cycle for its own solves, so that cycles with shorter solution
+        # intervals can be split into more chunks. The first cycle is always chunked,
+        # so that operations change copies of the input observations, not the originals
+        data_fraction = parset["selfcal_data_fraction"]
+        hooks.chunk_observations(field, selfcal_steps[:1], data_fraction)
+        run_pipeline_steps(
+            field,
+            selfcal_steps,
+            operation_factories=factories,
+            rechunk=hooks.rechunk_observations,
+            data_fraction=data_fraction,
+        )
 
     field.do_final = hooks.do_final_pass(field, selfcal_steps, final_step)
     if field.do_final:
@@ -254,10 +265,15 @@ def run_pipeline_steps(
     steps: list[dict],
     final_cycle_number: int = 0,
     operation_factories: Optional[PipelineOperationFactories] = None,
+    rechunk: Optional[Callable[[object, list[dict], float], dict]] = None,
+    data_fraction: Optional[float] = None,
 ) -> object:
     """Run one group of pipeline steps using injectable operation factories.
 
     This preserves pipeline-step operation ordering for pipeline-flow tests.
+    Before each step after the first, ``rechunk`` (if given) receives the steps
+    so far and ``data_fraction``, may chunk the observations again, and returns
+    the step to run.
     """
     factories = operation_factories or default_pipeline_operation_factories()
     selfcal_state = None
@@ -266,6 +282,8 @@ def run_pipeline_steps(
 
     for index, step in enumerate(steps):
         cycle_number = index + field.cycle_number
+        if rechunk is not None and index > 0:
+            step = rechunk(field, steps[: index + 1], data_fraction)
         field.update(step, cycle_number, final_cycle_number=final_cycle_number)
 
         if field.do_calibrate:
@@ -365,7 +383,12 @@ def default_pipeline_operation_factories() -> PipelineOperationFactories:
 def default_pipeline_lifecycle_hooks() -> PipelineLifecycleHooks:
     """Return the production pipeline collaborators."""
     from rapthor import _logging
-    from rapthor.execution.pipeline.lifecycle import chunk_observations, do_final_pass, make_report
+    from rapthor.execution.pipeline.lifecycle import (
+        chunk_observations,
+        do_final_pass,
+        make_report,
+        rechunk_observations,
+    )
     from rapthor.lib.field import Field
     from rapthor.lib.parset import Parset, prepare_run
     from rapthor.lib.strategy import set_strategy, validate_strategy
@@ -379,6 +402,7 @@ def default_pipeline_lifecycle_hooks() -> PipelineLifecycleHooks:
         validate_strategy=validate_strategy,
         preflight_execution=run_pipeline_preflight,
         chunk_observations=chunk_observations,
+        rechunk_observations=rechunk_observations,
         do_final_pass=do_final_pass,
         make_report=make_report,
     )
