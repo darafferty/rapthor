@@ -8,7 +8,6 @@ import pytest
 
 from rapthor import cli
 from rapthor.execution.working_dir_lock import WorkingDirectoryInUse
-from rapthor.lib.parset_paths import materialize_parset_paths
 
 
 @dataclass
@@ -196,9 +195,7 @@ def test_main_smoke_starts_from_user_json_parset(monkeypatch, tmp_path):
     def fake_pipeline_flow(parset_file, *, logging_level, execution_config):
         from rapthor.lib.parset import Parset
 
-        materialized_parset = materialize_parset_paths(
-            Path(parset_file), tmp_path / "input.materialized.parset"
-        )
+        materialized_parset = Path(parset_file)
         parsed = Parset(materialized_parset).as_parset_dict()
         calls.append(
             (
