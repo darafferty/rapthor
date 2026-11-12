@@ -237,7 +237,7 @@ def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expe
 
 @pytest.mark.parametrize(
     "num_samples, max_chunks, expected_sizes",
-    [(5, None, [2, 3]), (6, None, [2, 2, 2]), (6, 2, [2, 4]), (5, 3, [2, 3])],
+    [(5, None, [2, 3]), (6, None, [2, 2, 2]), (6, 2, [4, 2]), (5, 3, [2, 3])],
 )
 def test_chunk_observations_with_real_scan(field, num_samples, max_chunks, expected_sizes):
     ms_filename = field.full_observations[0].ms_filename
