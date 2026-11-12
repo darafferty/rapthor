@@ -252,6 +252,58 @@ def test_get_obs_parameters(field):
     assert obsp == ["29Mar2013/13:59:52.907"]
 
 
+@pytest.mark.parametrize(
+    "calibration_strategy, fulljones_h5parm, expected_solution_intervals",
+    [
+        pytest.param(None, None, ["fast", "medium", "slow"], id="default-strategy"),
+        pytest.param({"dd": ["fast_phase"], "di": []}, None, ["fast"], id="fast-phase-only"),
+        pytest.param(
+            {"dd": ["slow_gains", "medium_phase"], "di": []},
+            None,
+            ["medium", "slow"],
+            id="slow-and-medium",
+        ),
+        # The DI solutions of the cycle are applied to the averaged data
+        pytest.param(
+            {"dd": ["slow_gains"], "di": ["fast_phase"]}, None, ["fast", "slow"], id="di-preapply"
+        ),
+        pytest.param(
+            {"di": ["fast_phase", "medium_phase"]}, None, ["fast", "medium"], id="di-only"
+        ),
+        pytest.param(
+            {"dd": ["fast_phase"], "di": []},
+            "fulljones.h5",
+            ["fast", "fulljones"],
+            id="fulljones-preapply",
+        ),
+    ],
+)
+def test_set_obs_parameters_averages_for_applied_solutions_and_furthest_calibrator(
+    field, monkeypatch, calibration_strategy, fulljones_h5parm, expected_solution_intervals
+):
+    """Calibration averaging fits the solutions of the cycle and the furthest calibrator."""
+    field.calibration_strategy = calibration_strategy
+    field.fulljones_h5parm_filename = fulljones_h5parm
+    calls = []
+    monkeypatch.setattr(
+        Observation,
+        "set_calibration_averaging_parameters",
+        lambda obs, *args: calls.append((obs, *args)),
+    )
+
+    field.set_obs_parameters()
+
+    assert calls == [
+        (obs, field.parset, field.get_calibration_radius(), expected_solution_intervals)
+        for obs in field.observations
+    ]
+
+
+def test_set_obs_parameters_does_not_average_by_default(field):
+    assert field.get_obs_parameters("calibration_timestep") == [1]
+    assert field.get_obs_parameters("calibration_freqstep") == [1]
+
+
 def test_define_imaging_sectors(field):
     field.define_imaging_sectors()
     assert field.sector_bounds_mid_deg == "[258.841667;57.410833]"

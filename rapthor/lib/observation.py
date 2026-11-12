@@ -16,6 +16,26 @@ from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cluster import get_chunk_size
 
 
+def get_largest_divisor(number, limit):
+    """
+    Returns the largest divisor of a number that does not exceed a limit
+
+    Parameters
+    ----------
+    number : int
+        Number to divide
+    limit : float
+        Maximum allowed divisor
+
+    Returns
+    -------
+    divisor : int
+        Largest divisor of number not exceeding limit, or 1 if there is none
+    """
+    divisors = [step for step in range(1, int(number) + 1) if number % step == 0]
+    return max([step for step in divisors if step <= limit], default=1)
+
+
 class Observation(object):
     """
     The Observation object contains various MS-related parameters
@@ -434,6 +454,83 @@ class Observation(object):
             medium_smoothnessreffrequency
         ] * self.ntimechunks
 
+    def set_calibration_averaging_parameters(self, parset, calibration_radius, solution_intervals):
+        """
+        Sets the time and frequency averaging steps used before the calibration solves
+
+        The steps are the largest ones for which the smearing at the calibrator
+        furthest from the phase center stays within the max_peak_smearing limit,
+        which do not exceed the observation and which divide every solution interval
+        exactly. DP3 counts the solution intervals of solves done on averaged data in
+        averaged time slots and channels, and solutions applied to averaged data must
+        still vary within their own intervals. Note: set_calibration_parameters()
+        must be called first
+
+        Parameters
+        ----------
+        parset : dict
+            Parset with processing parameters
+        calibration_radius : float
+            Distance in degrees of the furthest calibrator from the phase center
+        solution_intervals : list of str
+            Solution intervals ('fast', 'medium', 'slow', 'fulljones') of the
+            solutions that are solved for or applied on the averaged data
+        """
+        timestep = 1
+        freqstep = 1
+        if parset["calibration_specific"]["average_visibilities"]:
+            target_timewidth_sec, target_bandwidth_hz = self.get_target_averaging_widths(
+                calibration_radius,
+                parset["imaging_specific"]["cellsize_arcsec"],
+                parset["calibration_specific"]["max_peak_smearing"],
+            )
+
+            # Direction-dependent solution intervals split the solution interval of
+            # the brighter calibrators into several shorter ones, which the averaged
+            # time slots must also fit. The full-Jones solutions are direction
+            # independent
+            solint_timesteps = [
+                self.parameters[f"solint_{interval}_timestep"][0] // n_solutions
+                for interval in solution_intervals
+                for n_solutions in self.parameters.get(
+                    f"{interval}_solutions_per_direction", [[1]]
+                )[0]
+            ]
+            solint_freqsteps = [
+                self.parameters[f"solint_{interval}_freqstep"][0] for interval in solution_intervals
+            ]
+
+            # The frequency solution intervals divide the number of channels, so
+            # their divisors do too, as DP3 requires for averaging. The time step
+            # must not exceed the length of the (single) time chunk, i.e. the
+            # observation, as DP3 would average fewer time slots than Rapthor
+            # expects otherwise
+            timestep = get_largest_divisor(
+                math.gcd(*solint_timesteps),
+                min(target_timewidth_sec / self.timepersample, self.numsamples),
+            )
+            freqstep = get_largest_divisor(
+                math.gcd(*solint_freqsteps), target_bandwidth_hz / self.channelwidth
+            )
+
+            # DP3's BDA does not limit the minimum number of channels to the number
+            # of averaged channels, so it would add channels otherwise
+            averaged_numchannels = self.numchannels // freqstep
+            self.parameters["bda_minchannels"] = [
+                min(minchannels, averaged_numchannels)
+                for minchannels in self.parameters["bda_minchannels"]
+            ]
+            self.log.debug(
+                "Using averaging steps of %s channel%s and %s time slot%s for calibration",
+                freqstep,
+                "s" if freqstep > 1 else "",
+                timestep,
+                "s" if timestep > 1 else "",
+            )
+
+        self.parameters["calibration_timestep"] = [timestep] * self.ntimechunks
+        self.parameters["calibration_freqstep"] = [freqstep] * self.ntimechunks
+
     def get_max_solint_timesteps(self, solints_seconds: list, solve_max_factor: int) -> int:
         """
         Get the maximum solution interval that can be used based on the provided
@@ -689,6 +786,10 @@ class Observation(object):
         bandwidth : float
             Bandwidth in Hz
         """
+        if delta_theta == 0.0:
+            # There is no smearing at the phase center
+            return 120, 2e6
+
         reduction_factor = np.sqrt(1.0 - max_peak_smearing)
         resolution = 3.0 * cellsize_arcsec / 3600.0  # assume normal sampling of restoring beam
         timewidth = min(120, self.get_target_timewidth(delta_theta, resolution, reduction_factor))

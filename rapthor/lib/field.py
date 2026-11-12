@@ -23,6 +23,7 @@ from lsmtool.operations_lib import make_wcs
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
 from rapthor.lib.strategy import default_calibration_strategy
@@ -433,6 +434,21 @@ class Field(object):
         """
         Sets parameters for all observations from current parset and sky model
         """
+        # Only the DD solves can be done on averaged data: the DI solves use model
+        # data predicted beforehand, which DP3 cannot average together with the data.
+        # However, the DI solutions of the cycle and any full-Jones solutions are
+        # applied to the averaged data before the DD solves, so their solution
+        # intervals limit the averaging as well
+        strategy = self.calibration_strategy or default_calibration_strategy()
+        solves = [*strategy.get("dd", []), *strategy.get("di", [])]
+        solution_intervals = {
+            CALIBRATION_SOLVE_METADATA[solve].solution_interval_family for solve in solves
+        }
+        if self.fulljones_h5parm_filename is not None:
+            solution_intervals.add("fulljones")
+        solution_intervals = sorted(solution_intervals)
+        calibration_radius = self.get_calibration_radius()
+
         ntimechunks = 0
         for obs in self.observations:
             obs.set_calibration_parameters(
@@ -445,6 +461,9 @@ class Field(object):
                 self.fulljones_timestep_sec,
                 self.target_flux,
                 self.generate_screens,
+            )
+            obs.set_calibration_averaging_parameters(
+                self.parset, calibration_radius, solution_intervals
             )
             ntimechunks += obs.ntimechunks
         self.ntimechunks = ntimechunks
