@@ -465,6 +465,17 @@ class TestImage:
                 == controls
             )
 
+    def test_gridding_policy_accepts_numbers_as_strings(self):
+        assert build_image_gridding_controls(
+            facet_count="24",
+            shared_facet_rw=True,
+            channels_out="20",
+            nnodes="3",
+            num_threads="192",
+            max_cores="192",
+            parallel_gridding_tasks="24",
+        ) == (True, 24)
+
     @pytest.mark.parametrize("nodes", [1, 3, 5, 10, 20])
     @pytest.mark.parametrize("facets", [2, 4, 12, 16])
     def test_gridding_policy_honours_explicitly_disabled_sharing(self, nodes, facets):

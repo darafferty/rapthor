@@ -132,6 +132,8 @@ def build_image_gridding_controls(
     candidates respect the same CPU and requested-task limits. This is an
     experimental resource heuristic, not a prediction of the fastest runtime.
     """
+    facet_count = int(facet_count)
+    max_cores = int(max_cores)
     channels_per_node = max(1, int(channels_out) // max(1, int(nnodes)))
     # Without sharing, WSClean grids every facet of every output channel on a
     # node as a separate task. With sharing, it grids the facets of one channel
