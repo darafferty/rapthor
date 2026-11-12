@@ -1,6 +1,17 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def single_facet(monkeypatch):
+    """
+    Find one facet inside the image of every sector by default: the sky model
+    of the test field has no patches near the imaging sectors to make facets from.
+    """
+    monkeypatch.setattr(
+        "rapthor.operations.image.base.count_facets_in_image", lambda *args, **kwargs: 1
+    )
+
+
 @pytest.fixture
 def operation_parset(tmp_path):
     """Create a mock parset for creating an Operation or an object derived from it.

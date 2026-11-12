@@ -14,7 +14,7 @@ from rapthor.execution.image.preparation import (
     concatenate_prepared_visibilities,
     prepare_visibility_ms,
 )
-from rapthor.execution.regions import make_ds9_region_from_skymodel
+from rapthor.execution.regions import count_facets_in_image, make_ds9_region_from_skymodel
 from rapthor.lib.records import directory_record
 from tests.conftest import file_tree_state
 
@@ -115,6 +115,33 @@ def test_make_ds9_region_from_skymodel_writes_regions(tmp_path):
     assert "polygon(" in region_text
     assert "point(" in region_text
     assert "Patch_patch_1" in region_text
+
+
+@pytest.mark.parametrize(
+    ("image_ra", "image_dec", "image_width", "expected"),
+    [
+        (24.422079, 33.159759, 0.25, 3),
+        (24.4375, 33.172222, 0.025, 2),
+        (24.466667, 33.208333, 0.016667, 1),
+    ],
+)
+def test_count_facets_in_image_counts_as_wsclean_does(image_ra, image_dec, image_width, expected):
+    # WSClean 3.7 keeps these numbers of facets for images of these positions
+    # and sizes, and reports the others as falling outside the image
+    assert (
+        count_facets_in_image(
+            str(RESOURCE_DIR / "integration_true_sky.txt"),
+            24.422079,
+            33.159759,
+            0.3,
+            0.3,
+            image_ra=image_ra,
+            image_dec=image_dec,
+            image_width_ra=image_width,
+            image_width_dec=image_width,
+        )
+        == expected
+    )
 
 
 class _MeasurementSetCommands:
