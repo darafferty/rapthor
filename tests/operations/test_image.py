@@ -386,9 +386,9 @@ class TestImage:
         ("shared_facet_rw", "use_facets", "num_patches", "expected_local", "expected_mpi"),
         [
             (True, True, 6, (True, 6), (True, 6)),
-            (True, True, 5, (False, 6), (True, 4)),
-            (True, True, 4, (False, 6), (True, 4)),
-            (True, True, 3, (False, 6), (True, 3)),
+            (True, True, 5, (True, 4), (True, 4)),
+            (True, True, 4, (True, 4), (True, 4)),
+            (True, True, 3, (True, 3), (True, 3)),
             (True, True, 2, (False, 6), (True, 2)),
             (True, True, 1, (False, 4), (False, 1)),
             (True, True, 0, (False, 4), (False, 1)),
@@ -443,10 +443,10 @@ class TestImage:
     @pytest.mark.parametrize(
         ("nodes", "expected"),
         [
-            (1, [(False, 16), (False, 24), (False, 24), (False, 24), (True, 24)]),
-            (3, [(False, 6), (False, 12), (False, 24), (False, 24), (True, 24)]),
-            (5, [(False, 4), (False, 8), (False, 24), (False, 24), (True, 24)]),
-            (10, [(False, 2), (False, 4), (False, 12), (False, 24), (True, 24)]),
+            (1, [(False, 16), (False, 24), (False, 24), (True, 12), (True, 24)]),
+            (3, [(False, 6), (False, 12), (False, 24), (True, 12), (True, 24)]),
+            (5, [(False, 4), (False, 8), (False, 24), (True, 12), (True, 24)]),
+            (10, [(False, 2), (True, 2), (True, 6), (True, 12), (True, 24)]),
             (20, [(False, 1), (True, 2), (True, 6), (True, 12), (True, 24)]),
         ],
     )
@@ -464,6 +464,24 @@ class TestImage:
                 )
                 == controls
             )
+
+    @pytest.mark.parametrize(
+        ("facets", "expected"),
+        [(11, (False, 24)), (12, (True, 12)), (23, (True, 23)), (24, (True, 24))],
+    )
+    def test_gridding_policy_shares_unless_it_more_than_halves_the_gridders(self, facets, expected):
+        assert (
+            build_image_gridding_controls(
+                facet_count=facets,
+                shared_facet_rw=True,
+                channels_out=20,
+                nnodes=3,
+                num_threads=192,
+                max_cores=192,
+                parallel_gridding_tasks=24,
+            )
+            == expected
+        )
 
     def test_gridding_policy_accepts_numbers_as_strings(self):
         assert build_image_gridding_controls(
@@ -520,11 +538,11 @@ class TestImage:
         [
             (False, 8, 192, 192, 24, 2, (False, 8)),
             (False, 10, 192, 192, 6, 2, (False, 5)),
-            (False, 192, 192, 4, 24, 2, (False, 4)),
+            (False, 192, 192, 4, 24, 2, (True, 2)),
             (True, 192, 8, 192, 24, 2, (False, 8)),
             (True, 192, 10, 192, 24, 2, (False, 10)),
             (True, 8, 192, 192, 24, 2, (False, 12)),
-            (True, 192, 192, 4, 24, 2, (False, 4)),
+            (True, 192, 192, 4, 24, 2, (True, 2)),
             (True, 192, 192, 192, 2, 2, (True, 2)),
             (True, 192, 1, 192, 24, 2, (True, 1)),
             (False, 8, 192, 192, 24, 12, (True, 8)),

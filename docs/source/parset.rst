@@ -674,13 +674,13 @@ The available options are described below under their respective sections.
         the data of an output channel once for all facets and grids the facets
         of one channel at a time. Without sharing, it reads and grids every
         facet of every output channel separately. When requested, Rapthor
-        chooses both flags together for each sector, and uses sharing only
-        when it does not reduce the number of parallel gridding tasks:
+        chooses both flags together for each sector, and uses sharing unless
+        it would more than halve the number of parallel gridding tasks:
 
         * One facet: sharing is disabled.
-        * Two or more facets: sharing is enabled when there are at least as
-          many facets as parallel gridding tasks, or when there are fewer than
-          two output channels per node. Otherwise sharing is disabled.
+        * Two or more facets: sharing is enabled when the number of facets is
+          at least half the number of parallel gridding tasks that would be
+          used without sharing. Otherwise sharing is disabled.
 
         The number of parallel gridding tasks respects the requested
         :term:`parallel_gridding_tasks`, :term:`max_cores`, and WSClean's actual
@@ -948,25 +948,25 @@ for how these options are used.
               - 16
               - 24
               - 24
-              - 24
+              - 12 (shared)
               - 24 (shared)
             * - 3
               - 6
               - 12
               - 24
-              - 24
+              - 12 (shared)
               - 24 (shared)
             * - 5
               - 4
               - 8
               - 24
-              - 24
+              - 12 (shared)
               - 24 (shared)
             * - 10
               - 2
-              - 4
-              - 12
-              - 24
+              - 2 (shared)
+              - 6 (shared)
+              - 12 (shared)
               - 24 (shared)
             * - 20
               - 1
@@ -975,9 +975,10 @@ for how these options are used.
               - 12 (shared)
               - 24 (shared)
 
-        The numbers are the same when :term:`shared_facet_rw` is disabled, but
-        sharing is then never used. These examples describe the policy, not
-        measured optimal node counts or runtimes.
+        When :term:`shared_facet_rw` is disabled, sharing is never used and
+        the number of tasks is the limit of 24, capped by the output channels
+        per node times the number of facets. These examples describe the
+        policy, not measured optimal node counts or runtimes.
         The facet count, sharing mode, channels, nodes, threads and
         gridding concurrency are recorded in the Rapthor log for each sector.
 

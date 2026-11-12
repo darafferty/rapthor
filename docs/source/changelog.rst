@@ -113,8 +113,8 @@ This minor release includes the following improvements:
       imaging sector from the number of facets, the output channels per node
       and the number of threads that WSClean actually uses (see
       :term:`parallel_gridding_tasks`). When :term:`shared_facet_rw` is
-      enabled, shared facet reads and writes are used only when they do not
-      reduce the number of parallel gridding tasks.
+      enabled, shared facet reads and writes are used unless they would more
+      than halve the number of parallel gridding tasks.
     - WSClean-based prediction can now be used to generate model data for
       calibration.
     - Image workflow input generation now correctly provides parallel-gridding
