@@ -1,6 +1,7 @@
 """Scheduler-independent process lifecycle helpers."""
 
 import logging
+import math
 import os
 
 import numpy as np
@@ -121,56 +122,60 @@ def make_report(field, outfile=None):
         f.writelines(output_lines)
 
 
-def _calibration_solve_time(field, steps):
-    """Return the longest solution interval in seconds of the solves the steps run."""
-    solve_times = []
+def _solution_intervals(field, steps):
+    """Return the target interval in seconds and the DD factor of each solve run."""
+    intervals = []
     for step in steps:
         if step["do_calibrate"]:
             strategy = step.get("calibration_strategy") or default_calibration_strategy()
-            solve_times.extend(
-                _solve_time(field, step, solve) for solves in strategy.values() for solve in solves
+            intervals.extend(
+                _solution_interval(field, step, solve)
+                for solves in strategy.values()
+                for solve in solves
             )
+    return intervals
 
-    return max(solve_times, default=None)
 
-
-def _solve_time(field, step, solve):
+def _solution_interval(field, step, solve):
     key = CALIBRATION_SOLVE_METADATA[solve].target_timestep_key
-    solve_time = step.get(key, getattr(field, key))
-    # The DD interval factor lengthens all but the full-Jones solution intervals (see
-    # Observation.set_calibration_parameters)
-    if solve == "full_jones":
-        return solve_time
-    return solve_time * field.dd_interval_factor
+    target_timestep = step.get(key, getattr(field, key))
+    # The DD interval factor lengthens all but the full-Jones solution intervals,
+    # unless screens are generated (see Observation.set_calibration_parameters)
+    if solve == "full_jones" or field.generate_screens:
+        return target_timestep, 1
+    return target_timestep, field.dd_interval_factor
 
 
 def _planned_observations(field, steps, data_fraction):
-    solve_time = _calibration_solve_time(field, steps)
-    chunk_time = _chunk_time_for_run(field, data_fraction, solve_time)
-    if chunk_time is None:
+    max_nodes = field.parset["cluster_specific"]["max_nodes"]
+    if data_fraction >= 1.0 and max_nodes <= 1:
         return field.full_observations
 
+    intervals = _solution_intervals(field, steps)
+    solve_time = max((target * factor for target, factor in intervals), default=None)
     _set_observation_data_fractions(field, data_fraction, solve_time)
-    max_chunks = None if data_fraction < 1.0 else field.parset["cluster_specific"]["max_nodes"]
-    return field.chunked_observations(chunk_time, max_chunks=max_chunks)
+    max_chunks = None if data_fraction < 1.0 else max_nodes
+    return [
+        chunk
+        for obs in field.full_observations
+        for chunk in obs.chunk_observation(
+            _chunk_timesteps(obs, intervals, data_fraction), max_chunks=max_chunks
+        )
+    ]
+
+
+def _chunk_timesteps(obs, intervals, data_fraction):
+    """Return the longest solution interval in time slots, as DP3 uses it."""
+    if intervals:
+        return max(obs.solution_interval_timesteps(*interval) for interval in intervals)
+    # Without calibration, select 600 s of data at a time, or allow any chunk length
+    return math.ceil(600.0 / obs.timepersample) if data_fraction < 1.0 else 1
 
 
 def _chunk_layout(observations):
     # Different solution intervals can give the same chunks, for example when the
     # number of nodes limits them, so compare the chunks themselves
     return [(obs.name, obs.starttime, obs.endtime) for obs in observations]
-
-
-def _chunk_time_for_run(field, data_fraction, solve_time):
-    max_nodes = field.parset["cluster_specific"]["max_nodes"]
-    if data_fraction < 1.0:
-        return solve_time or 600.0  # Use a default chunk time of 600 seconds
-
-    if max_nodes <= 1:
-        return None
-
-    # Keep the calibration minimum independent of the requested node count.
-    return solve_time or min(obs.timepersample for obs in field.full_observations)
 
 
 def _set_observation_data_fractions(field, data_fraction, solve_time):

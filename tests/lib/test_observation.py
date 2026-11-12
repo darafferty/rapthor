@@ -473,21 +473,32 @@ def test_chunking_full_data_limits_each_observation_to_node_count(field, make_ch
         pytest.param(5, 30, [[0, 10, 20, 30, 40]], id="too_short_for_two_solves"),
         pytest.param(6, 30, [[0, 10, 20], [30, 40, 50]], id="exactly_two_solves"),
         pytest.param(7, 30, [[0, 10, 20], [30, 40, 50, 60]], id="extra_sample_is_kept"),
-        pytest.param(6, 31, [[0, 10, 20, 30, 40, 50]], id="solve_rounds_up_to_four_samples"),
-        pytest.param(7, 31, [[0, 10, 20, 30, 40, 50, 60]], id="still_too_short_for_two_solves"),
-        pytest.param(8, 31, [[0, 10, 20, 30], [40, 50, 60, 70]], id="two_rounded_up_solves"),
+        pytest.param(6, 31, [[0, 10, 20], [30, 40, 50]], id="solve_rounds_to_three_samples"),
+        pytest.param(8, 31, [[0, 10, 20], [30, 40, 50, 60, 70]], id="partial_solve_at_the_end"),
         pytest.param(
             12,
             30,
-            [[0, 10, 20, 30], [40, 50, 60, 70], [80, 90, 100, 110]],
-            id="node_count_limits_calibration_chunks",
+            [[0, 10, 20], [30, 40, 50], [60, 70, 80, 90, 100, 110]],
+            id="node_count_spreads_whole_solves",
+        ),
+        pytest.param(
+            23,
+            30,
+            [
+                [0, 10, 20, 30, 40, 50],
+                [60, 70, 80, 90, 100, 110],
+                [120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220],
+            ],
+            id="chunks_differ_by_at_most_one_solve",
         ),
     ],
 )
 def test_chunking_respects_calibration_duration(
     field, make_chunking_observation, num_samples, solve_time, expected_chunks
 ):
-    """A 30-second solve needs three 10-second samples; a 31-second solve needs four."""
+    """Chunks hold whole solution intervals, as DP3 counts them: a 30-second or a
+    31-second solve spans three 10-second samples. Only the end of the observation
+    holds a partial interval."""
     obs, sample_times = make_chunking_observation(num_samples)
     field.full_observations = [obs]
     field.parset["cluster_specific"]["max_nodes"] = 3
@@ -528,6 +539,16 @@ def test_chunking_respects_calibration_duration(
         ),
         pytest.param(
             {
+                # DP3 rounds 25 s to two samples before multiplying by the factor
+                "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
+                "fast_timestep_sec": 10,
+                "medium_timestep_sec": 25,
+            },
+            3,
+            id="factor_multiplies_the_interval_in_samples",
+        ),
+        pytest.param(
+            {
                 "calibration_strategy": {"di": ["full_jones"]},
                 "slow_timestep_sec": 30,
                 "fulljones_timestep_sec": 30,
@@ -561,6 +582,26 @@ def test_chunking_uses_the_solves_of_the_strategy(
     chunk_observations(field, [{"do_calibrate": True, **step}], data_fraction=1.0)
 
     assert len(field.observations) == expected_chunk_count
+
+
+def test_chunking_ignores_the_interval_factor_for_screens(field, make_chunking_observation):
+    """Screens are solved without DD solution intervals, so a 20-second medium-phase
+    solve spans two samples rather than four."""
+    obs, _ = make_chunking_observation(12)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 19
+    field.dd_interval_factor = 2
+    field.generate_screens = True
+    step = {
+        "do_calibrate": True,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
+        "fast_timestep_sec": 10,
+        "medium_timestep_sec": 20,
+    }
+
+    chunk_observations(field, [step], data_fraction=1.0)
+
+    assert len(field.observations) == 6
 
 
 def _full_jones_step(fulljones_timestep_sec, **updates):
@@ -642,7 +683,8 @@ def test_chunking_ignores_solve_duration_when_calibration_is_disabled(
 def test_chunking_calibration_duration_applies_to_each_observation(
     field, make_chunking_observation
 ):
-    """A 60-second solve needs six samples at 10 s/sample, but only three at 20 s/sample."""
+    """A 60-second solve spans six samples at 10 s/sample, but only three at 20 s/sample,
+    where the two leftover samples join the last chunk."""
     short_interval_obs, short_interval_times = make_chunking_observation(8, 10, "short_interval.ms")
     long_interval_obs, long_interval_times = make_chunking_observation(8, 20, "long_interval.ms")
     field.full_observations = [short_interval_obs, long_interval_obs]
@@ -668,8 +710,8 @@ def test_chunking_calibration_duration_applies_to_each_observation(
         [0, 10, 20, 30, 40, 50, 60, 70]
     ]
     assert samples_in_chunks(long_interval_times, long_interval_chunks) == [
-        [0, 20, 40, 60],
-        [80, 100, 120, 140],
+        [0, 20, 40],
+        [60, 80, 100, 120, 140],
     ]
 
 
@@ -725,7 +767,7 @@ def test_chunking_partial_data_leaves_equal_gaps(make_chunking_observation, num_
     obs, sample_times = make_chunking_observation(num_samples)
     obs.data_fraction = 0.6
 
-    chunks = obs.chunk_observation(mintime=20)
+    chunks = obs.chunk_observation(2)
 
     assert samples_in_chunks(sample_times, chunks) == [[0, 10], [40, 50], [80, 90]]
 
@@ -739,7 +781,7 @@ def test_chunking_partial_data_does_not_create_an_extra_chunk(make_chunking_obse
     obs.high_el_endtime = obs.endtime
     obs.data_fraction = 0.9
 
-    chunks = obs.chunk_observation(mintime=20)
+    chunks = obs.chunk_observation(2)
 
     assert samples_in_chunks(sample_times, chunks) == [[0, 10], [20, 30], [40, 50]]
 
@@ -760,7 +802,7 @@ def test_chunking_partial_data_can_prefer_high_elevation(
     obs.high_el_endtime = 70
     obs.data_fraction = 0.4
 
-    chunks = obs.chunk_observation(mintime=20, prefer_high_el_periods=prefer_high_el_periods)
+    chunks = obs.chunk_observation(2, prefer_high_el_periods=prefer_high_el_periods)
 
     assert samples_in_chunks(sample_times, chunks) == expected_chunks
 
@@ -768,7 +810,7 @@ def test_chunking_partial_data_can_prefer_high_elevation(
 @pytest.mark.parametrize(
     "data_fraction, expected_chunks, expected_starts, expected_ends",
     [
-        pytest.param(1.0, [[0, 10, 20], [30, 40, 50]], [-0.1, 29.9], [20.1, 50.1], id="full_data"),
+        pytest.param(1.0, [[0, 10], [20, 30, 40, 50]], [-0.1, 19.9], [10.1, 50.1], id="full_data"),
         pytest.param(0.8, [[0, 10], [40, 50]], [-0.1, 39.9], [10.1, 50.1], id="partial_data"),
     ],
 )
@@ -783,7 +825,7 @@ def test_chunking_preserves_timestamp_margin(
     obs.high_el_endtime = obs.endtime
     obs.data_fraction = data_fraction
 
-    chunks = obs.chunk_observation(mintime=20, max_chunks=2)
+    chunks = obs.chunk_observation(2, max_chunks=2)
 
     assert samples_in_chunks(sample_times, chunks) == expected_chunks
     assert [chunk.starttime for chunk in chunks] == pytest.approx(expected_starts)

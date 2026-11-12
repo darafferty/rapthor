@@ -599,13 +599,30 @@ class Observation(object):
             Maximum factor by which the solution interval can be increased when using
             direction-dependent solution intervals
         """
-        timestep = max(
-            1, int(round(target_timestep / round(self.timepersample)) * solve_max_factor)
-        )
+        timestep = self.solution_interval_timesteps(target_timestep, solve_max_factor)
         freqstep = max(1, self.get_nearest_freqstep(target_freqstep / self.channelwidth))
 
         self.parameters[f"solint_{solve_type}_timestep"] = [timestep] * self.ntimechunks
         self.parameters[f"solint_{solve_type}_freqstep"] = [freqstep] * self.ntimechunks
+
+    def solution_interval_timesteps(self, target_timestep, solve_max_factor):
+        """
+        Returns the solution interval in time slots that DP3 uses for a target interval
+
+        Parameters
+        ----------
+        target_timestep : float
+            Target solution interval in seconds
+        solve_max_factor : int
+            Maximum factor by which the solution interval can be increased when using
+            direction-dependent solution intervals
+
+        Returns
+        -------
+        timestep : int
+            Solution interval in time slots
+        """
+        return max(1, int(round(target_timestep / round(self.timepersample)) * solve_max_factor))
 
     def get_target_timewidth(self, delta_theta, resolution, reduction_factor):
         """
@@ -689,21 +706,23 @@ class Observation(object):
 
         return delta_freq
 
-    def chunk_observation(self, mintime, prefer_high_el_periods=True, max_chunks=None):
+    def chunk_observation(self, chunk_timesteps, prefer_high_el_periods=True, max_chunks=None):
         """
         Break existing observation into smaller observations (chunks).
 
         Parameters
         ----------
-        mintime : float
-            Minimum duration in sec for a chunk
+        chunk_timesteps : int
+            Minimum number of time slots in a chunk. When all of the data are used, the
+            chunks hold whole multiples of it (normally the longest solution interval)
+            and only the last chunk may hold a partial one
         prefer_high_el_periods : bool, optional
             Prefer periods for which the elevation is in the highest 80% of values for a
             given observation. This option is useful for removing periods of lower
             signal-to-noise (e.g., due to being at lower elevations where ionospheric
-            activity can increase and sensitivity decrease). If the requested mintime is
-            larger than the total time of the high-elevation period for a given
-            observation, then the full observation is used instead
+            activity can increase and sensitivity decrease). If the requested chunk
+            length is larger than the total time of the high-elevation period for a
+            given observation, then the full observation is used instead
         max_chunks : int, optional
             Maximum number of chunks. The minimum chunk duration may require fewer
             chunks
@@ -711,7 +730,7 @@ class Observation(object):
 
         # The computations below first determine the number of samples, e.g., per chunk, and
         # then derive the corresponding time intervals.
-        num_samples_in_chunk = int(np.ceil(mintime / self.timepersample))
+        num_samples_in_chunk = chunk_timesteps
 
         # Due to a limitation in Dysco, we make sure to have at least two time slots
         # per observation, otherwise the output MS cannot be written with compression.
@@ -756,6 +775,7 @@ class Observation(object):
                     num_samples,
                     num_chunks,
                     num_samples_in_chunk,
+                    chunk_timesteps,
                 )
             )
 
@@ -784,10 +804,17 @@ class Observation(object):
         num_samples,
         num_chunks,
         num_samples_in_chunk,
+        interval_timesteps,
     ):
         if data_fraction == 1.0:
-            # Divide all samples into contiguous chunks differing in size by at most one.
-            sample_boundaries = np.arange(num_chunks + 1) * num_samples // num_chunks
+            # Divide the whole solution intervals between contiguous chunks, differing in
+            # number by at most one. Only the last chunk, at the end of the observation,
+            # may hold a partial interval (as when the observation is not chunked)
+            num_intervals = num_samples // interval_timesteps
+            sample_boundaries = (
+                np.arange(num_chunks + 1) * num_intervals // num_chunks * interval_timesteps
+            )
+            sample_boundaries[-1] = num_samples
             chunk_start_times = target_starttime + sample_boundaries[:-1] * self.timepersample
             chunk_end_times = (
                 target_endtime - (num_samples - sample_boundaries[1:]) * self.timepersample

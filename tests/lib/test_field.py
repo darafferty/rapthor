@@ -170,10 +170,20 @@ def test_outlier_sectors(field):
     assert field.outlier_sectors == []
 
 
+def _chunk_observations(field, chunk_timesteps, **kwargs):
+    field.update_observations(
+        [
+            chunk
+            for obs in field.full_observations
+            for chunk in obs.chunk_observation(chunk_timesteps, **kwargs)
+        ]
+    )
+
+
 def test_chunk_observations(field):
     for obs in field.full_observations:
         obs.data_fraction = 0.8
-    field.chunk_observations(600.0, prefer_high_el_periods=False)
+    _chunk_observations(field, 60, prefer_high_el_periods=False)
     full_obs = field.full_observations[0]
     obs = field.imaging_sectors[0].observations[0]
     chunked_starttime = full_obs.starttime
@@ -185,7 +195,7 @@ def test_chunk_observations(field):
 def test_chunk_observations_high_el(field):
     for obs in field.full_observations:
         obs.data_fraction = 0.2
-    field.chunk_observations(600.0, prefer_high_el_periods=True)
+    _chunk_observations(field, 60, prefer_high_el_periods=True)
     full_obs = field.full_observations[0]
     obs = field.imaging_sectors[0].observations[0]
     chunked_starttime = full_obs.starttime + 2 * full_obs.timepersample
@@ -200,8 +210,9 @@ def test_chunk_observations_high_el(field):
     [
         (3594, [1198, 1198, 1198]),
         (3595, [1198, 1198, 1199]),
-        (3596, [1198, 1199, 1199]),
-        (4791, [1597, 1597, 1597]),
+        (3596, [1198, 1198, 1200]),
+        # The partial interval at the end joins the last chunk
+        (4791, [1198, 1198, 2395]),
     ],
 )
 def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expected_sizes):
@@ -211,7 +222,7 @@ def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expe
     obs.data_fraction = 1.0
     create_observation = mocker.patch("rapthor.lib.observation.Observation")
 
-    field.chunk_observations(1198 * obs.timepersample, prefer_high_el_periods=False)
+    _chunk_observations(field, 1198, prefer_high_el_periods=False)
 
     boundaries = np.cumsum([0, *expected_sizes])
     starts = [call.kwargs["starttime"] for call in create_observation.call_args_list]
@@ -226,7 +237,7 @@ def test_chunk_observations_full_data_remainder(field, mocker, num_samples, expe
 
 @pytest.mark.parametrize(
     "num_samples, max_chunks, expected_sizes",
-    [(5, None, [2, 3]), (6, None, [2, 2, 2]), (6, 2, [3, 3]), (5, 3, [2, 3])],
+    [(5, None, [2, 3]), (6, None, [2, 2, 2]), (6, 2, [2, 4]), (5, 3, [2, 3])],
 )
 def test_chunk_observations_with_real_scan(field, num_samples, max_chunks, expected_sizes):
     ms_filename = field.full_observations[0].ms_filename
@@ -235,9 +246,7 @@ def test_chunk_observations_with_real_scan(field, num_samples, max_chunks, expec
     obs = Observation(ms_filename, starttime=times[0], endtime=times[num_samples - 1])
     field.full_observations = [obs]
 
-    field.chunk_observations(
-        2 * obs.timepersample, prefer_high_el_periods=False, max_chunks=max_chunks
-    )
+    _chunk_observations(field, 2, prefer_high_el_periods=False, max_chunks=max_chunks)
 
     assert [chunk.numsamples for chunk in field.observations] == expected_sizes
     selected_times = [
