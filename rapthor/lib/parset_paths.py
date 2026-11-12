@@ -84,11 +84,16 @@ def materialize_parset_paths(
                 parset_dict = json.load(handle)
             except json.decoder.JSONDecodeError as err:
                 raise ValueError(f"JSON parset could not be parsed correctly.\n{err}")
+            if not isinstance(parset_dict, dict):
+                raise ValueError(
+                    "JSON parset could not be parsed correctly.\nThe top-level entry must "
+                    "be a dictionary."
+                )
             # Convert all entires to str
             for section in parset_dict:
                 if not isinstance(parset_dict[section], dict):
                     raise ValueError(
-                        "JSON parset could not be parsed correctly.\nAll top-level "
+                        "JSON parset could not be parsed correctly.\nAll secondary-level "
                         "entries must be dictionaries, one per parset section."
                     )
                 parset_dict[section] = {
