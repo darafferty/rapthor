@@ -179,6 +179,15 @@ bda_frequencybase = 5000.0
 # identical parameter in the [imaging] section should also be enabled
 correct_time_frequency_smearing = False
 
+# Average the visibilities in time and frequency before the calibration solves
+# (default = False). The averaging is chosen so that the peak flux density
+# reduction due to bandwidth and time smearing is at most max_peak_smearing
+# (default = 0.15 = 15% reduction in peak flux) at the calibrator that is
+# furthest from the phase center, and so that the averaged data still fit every
+# solution interval exactly
+average_visibilities = False
+max_peak_smearing = 0.15
+
 
 [imaging]
 # Imaging parameters: pixel size in arcsec (default = 1.5, suitable for HBA
