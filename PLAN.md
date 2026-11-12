@@ -624,12 +624,12 @@ fragment alone does not establish a regression in these cases.
   prediction. Establish the supported DP3/model-column combination before
   removing the guard, or document the limitation and resource consequences.
   Test explicit BDA requests in each prediction mode. Coordinate with P02/P06.
-- [ ] **L01 — Shared-facet I/O tool failure (existing limitation).**
-  `tests/integration/test_shared_facet_rw.py` marks the enabled case
-  `xfail(run=False)` because serial WSClean 3.7 aborts; the disabled control runs.
-  Reproduce with the supported tool stack, resolve the failure or explicitly
-  constrain support, and execute the enabled test. This is an unresolved
-  functionality issue already in the plan, not a newly identified master port.
+- [ ] **L01 — Shared-facet I/O limits (existing limitation).**
+  `tests/integration/test_shared_facet_rw.py` now runs the enabled case with
+  three facets and passes with serial WSClean 3.7; the earlier abort did not
+  reproduce. WSClean stops with "Can't use bulk inversion with BDA yet" for
+  data with frequency BDA, so Rapthor leaves sharing off for such data and
+  logs a warning. Still to do: run the enabled case with `wsclean-mp`.
 
 ### Changes Already Covered or Superseded
 
@@ -681,8 +681,10 @@ from the master ports in Part A. Review and integrate the existing implementatio
   (`61157274`) and CPU/memory allocation, command-thread validation and Dask
   worker-layout checks (`7d575dac`).
 - `gec-618-improve-multinode-wsclean-configuration-logic`: per-sector
-  gridding/shared-facet selection based on channels, facets, node count and
-  WSClean's actual thread count (`1cc7f4d5`).
+  gridding/shared-facet selection based on output channels per node, the
+  facets inside each sector image, node count and WSClean's actual thread
+  count, and `-compound-tasks` for MPI facet imaging without sharing. The
+  branch is rebased onto main and reviewed.
 
 Reconcile the overlapping imaging changes when combining these branches. Use
 the following as an acceptance checklist and implement remaining gaps in
@@ -704,6 +706,10 @@ dependency order:
    without allowing several heavy commands to claim the same resources.
 4. **Revisit parallel gridding and shared-facet selection.** Base decisions on
    actual resources and external-tool capabilities, including MPI layouts.
+   The multinode branch above does this from WSClean's task model, but its
+   thresholds are not measured: benchmark shared against unshared facet I/O
+   (sharing is used unless it more than halves the parallel gridders) and
+   `-compound-tasks` with `wsclean-mp` on several nodes.
 5. **Evaluate NUMA-aware execution with two Dask workers per node.** Review and
    link the existing work on improved WSClean resource usage, and assess DP3
    separately. On suitable hardware, bind each worker and its subprocesses to
