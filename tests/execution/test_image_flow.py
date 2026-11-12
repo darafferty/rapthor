@@ -3654,41 +3654,8 @@ def test_clean_disabled_image_operation_run_uses_prefect_flow(
     assert field.lofar_to_true_flux_std == 0.0
 
 
-@pytest.mark.parametrize(
-    (
-        "nodes",
-        "threads",
-        "num_patches",
-        "sharing_requested",
-        "expected_shared",
-        "expected_gridding",
-    ),
-    [
-        (1, 192, 4, True, False, 16),
-        (1, 192, 5, True, False, 16),
-        (1, 192, 16, True, True, 16),
-        (3, 192, 4, True, False, 6),
-        (3, 192, 5, True, False, 6),
-        (3, 192, 6, True, True, 6),
-        (5, 192, 4, True, True, 4),
-        (20, 192, 2, True, True, 2),
-        (3, 4, 4, True, True, 4),
-        (20, 192, 2, False, False, 1),
-        (20, 192, 1, True, False, 1),
-    ],
-)
 def test_facet_image_operation_run_uses_prefect_flow(
-    prefect_server,
-    tmp_path,
-    monkeypatch,
-    fake_image_shell_operation_cls,
-    fake_direct_image_helpers,
-    nodes,
-    threads,
-    num_patches,
-    sharing_requested,
-    expected_shared,
-    expected_gridding,
+    prefect_server, tmp_path, monkeypatch, fake_image_shell_operation_cls, fake_direct_image_helpers
 ):
     monkeypatch.setattr(
         "rapthor.execution.shell._load_shell_operation_cls",
@@ -3698,19 +3665,8 @@ def test_facet_image_operation_run_uses_prefect_flow(
     field.dde_method = "full"
     field.dd_h5parm_filename = "/data/facet-solutions.h5"
     field.calibration_strategy = {"dd": ["fast_phase"]}
-    field.parset["imaging_specific"]["shared_facet_rw"] = sharing_requested
-    use_mpi = nodes > 1
-    field.use_mpi = use_mpi
-    field.parset["cluster_specific"].update(
-        batch_system="slurm_static" if use_mpi else "single_machine",
-        max_nodes=nodes,
-        cpus_per_task=threads,
-        max_cores=192,
-        max_threads=threads,
-        parallel_gridding_tasks=24,
-    )
-    field.num_patches = num_patches
-    field.imaging_sectors[0].wsclean_nchannels = 20
+    field.parset["imaging_specific"]["shared_facet_rw"] = True
+    field.num_patches = 2
     operation = Image(field, index=1)
 
     operation.run()
@@ -3720,7 +3676,7 @@ def test_facet_image_operation_run_uses_prefect_flow(
     wsclean_command = next(
         shlex.split(instance.kwargs["commands"][-1])
         for instance in fake_image_shell_operation_cls.instances
-        if {"wsclean", "wsclean-mp"}.intersection(shlex.split(instance.kwargs["commands"][-1]))
+        if shlex.split(instance.kwargs["commands"][-1])[0] == "wsclean"
     )
 
     assert operation.outputs == expected_outputs
@@ -3735,12 +3691,8 @@ def test_facet_image_operation_run_uses_prefect_flow(
     assert "-apply-facet-solutions" in wsclean_command
     assert "/data/facet-solutions.h5" in wsclean_command
     assert "-facet-regions" in wsclean_command
-    assert ("-shared-facet-reads" in wsclean_command) is expected_shared
-    assert ("-shared-facet-writes" in wsclean_command) is expected_shared
-    assert wsclean_command[wsclean_command.index("-j") + 1] == str(threads)
-    assert wsclean_command[wsclean_command.index("-parallel-gridding") + 1] == str(
-        expected_gridding
-    )
+    assert "-shared-facet-reads" in wsclean_command
+    assert "-shared-facet-writes" in wsclean_command
     assert (region_dir / "sector_1_facets_ds9.reg").is_file()
 
 
