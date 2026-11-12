@@ -386,14 +386,14 @@ class TestImage:
         ("shared_facet_rw", "use_facets", "num_patches", "expected_local", "expected_mpi"),
         [
             (True, True, 6, (True, 6), (True, 6)),
-            (True, True, 5, (True, 4), (True, 4)),
-            (True, True, 4, (True, 4), (True, 4)),
-            (True, True, 3, (False, 4), (True, 3)),
-            (True, True, 2, (False, 4), (True, 2)),
+            (True, True, 5, (False, 6), (True, 4)),
+            (True, True, 4, (False, 6), (True, 4)),
+            (True, True, 3, (False, 6), (True, 3)),
+            (True, True, 2, (False, 6), (True, 2)),
             (True, True, 1, (False, 4), (False, 1)),
             (True, True, 0, (False, 4), (False, 1)),
             (True, False, 6, (False, 4), (False, 1)),
-            (False, True, 6, (False, 4), (False, 1)),
+            (False, True, 6, (False, 6), (False, 6)),
         ],
     )
     @pytest.mark.parametrize("use_mpi", [True, False])
@@ -443,80 +443,15 @@ class TestImage:
     @pytest.mark.parametrize(
         ("nodes", "expected"),
         [
-            (
-                1,
-                [
-                    (False, 16),
-                    (False, 16),
-                    (False, 16),
-                    (False, 16),
-                    (False, 16),
-                    (False, 16),
-                    (False, 16),
-                    (False, 16),
-                    (True, 16),
-                ],
-            ),
-            (
-                3,
-                [
-                    (False, 6),
-                    (False, 6),
-                    (False, 6),
-                    (False, 6),
-                    (False, 6),
-                    (True, 6),
-                    (True, 12),
-                    (True, 12),
-                    (True, 16),
-                ],
-            ),
-            (
-                5,
-                [
-                    (False, 4),
-                    (False, 4),
-                    (False, 4),
-                    (True, 4),
-                    (True, 4),
-                    (True, 6),
-                    (True, 12),
-                    (True, 12),
-                    (True, 16),
-                ],
-            ),
-            (
-                10,
-                [
-                    (False, 2),
-                    (True, 2),
-                    (True, 3),
-                    (True, 4),
-                    (True, 4),
-                    (True, 6),
-                    (True, 12),
-                    (True, 12),
-                    (True, 16),
-                ],
-            ),
-            (
-                20,
-                [
-                    (False, 1),
-                    (True, 2),
-                    (True, 3),
-                    (True, 4),
-                    (True, 4),
-                    (True, 6),
-                    (True, 12),
-                    (True, 12),
-                    (True, 16),
-                ],
-            ),
+            (1, [(False, 16), (False, 24), (False, 24), (False, 24), (True, 24)]),
+            (3, [(False, 6), (False, 12), (False, 24), (False, 24), (True, 24)]),
+            (5, [(False, 4), (False, 8), (False, 24), (False, 24), (True, 24)]),
+            (10, [(False, 2), (False, 4), (False, 12), (False, 24), (True, 24)]),
+            (20, [(False, 1), (True, 2), (True, 6), (True, 12), (True, 24)]),
         ],
     )
     def test_benchmark_gridding_policy(self, nodes, expected):
-        for facets, controls in zip([1, 2, 3, 4, 5, 6, 12, 15, 16], expected):
+        for facets, controls in zip([1, 2, 6, 12, 24], expected):
             assert (
                 build_image_gridding_controls(
                     facet_count=facets,
@@ -545,14 +480,39 @@ class TestImage:
         assert shared is False
 
     @pytest.mark.parametrize(
+        ("nodes", "threads", "channels_out", "facets", "requested", "expected"),
+        [
+            (1, 64, 4, 30, 8, 8),
+            (4, 64, 4, 30, 8, 8),
+            (6, 48, 6, 40, 6, 6),
+            (3, 192, 20, 30, 24, 24),
+            (20, 192, 20, 12, 24, 12),
+        ],
+    )
+    def test_gridding_policy_grids_facets_in_parallel_without_sharing(
+        self, nodes, threads, channels_out, facets, requested, expected
+    ):
+        # Without shared I/O, WSClean grids every facet of every output channel
+        # as a separate task, so adding nodes must not serialise the facets
+        assert build_image_gridding_controls(
+            facet_count=facets,
+            shared_facet_rw=False,
+            channels_out=channels_out,
+            nnodes=nodes,
+            num_threads=threads,
+            max_cores=threads,
+            parallel_gridding_tasks=requested,
+        ) == (False, expected)
+
+    @pytest.mark.parametrize(
         ("use_mpi", "max_threads", "cpus_per_task", "max_cores", "requested", "facets", "expected"),
         [
             (False, 8, 192, 192, 24, 2, (False, 8)),
             (False, 10, 192, 192, 6, 2, (False, 5)),
             (False, 192, 192, 4, 24, 2, (False, 4)),
-            (True, 192, 8, 192, 24, 2, (False, 4)),
-            (True, 192, 10, 192, 24, 2, (False, 5)),
-            (True, 8, 192, 192, 24, 2, (False, 6)),
+            (True, 192, 8, 192, 24, 2, (False, 8)),
+            (True, 192, 10, 192, 24, 2, (False, 10)),
+            (True, 8, 192, 192, 24, 2, (False, 12)),
             (True, 192, 192, 4, 24, 2, (False, 4)),
             (True, 192, 192, 192, 2, 2, (True, 2)),
             (True, 192, 1, 192, 24, 2, (True, 1)),
