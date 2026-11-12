@@ -3,6 +3,20 @@
 Changelog
 =========
 
+Version 3.1 (unreleased)
+------------------------
+
+This minor release includes the following improvements:
+
+    - The frequency averaging for imaging (see :term:`average_visibilities`)
+      now keeps the bandwidth smearing within :term:`max_peak_smearing` for
+      wide sectors as well. Earlier versions
+      never averaged to less than 0.1% of the observing frequency (150 kHz at
+      150 MHz), even when a narrower bandwidth was needed, so wide sectors
+      could be smeared more than requested. Imaging of wide sectors therefore
+      now averages less in frequency.
+
+
 Version 3.0 (unreleased)
 ------------------------
 

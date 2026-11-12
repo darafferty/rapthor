@@ -490,28 +490,36 @@ class TestObservation:
             expected_reduction_factor,
         )
 
-    def test_get_target_bandwidth(self, observation):
-        """The target bandwidth is the first 10% step below the requested reduction."""
-        freq = 150.0
-        delta_theta = 1.0
-        resolution = 0.01
-        reduction_factor = 0.9
-
+    @pytest.mark.parametrize(
+        "freq, delta_theta, resolution, reduction_factor",
+        [
+            pytest.param(150.0, 1.0, 0.01, 0.9, id="generic"),
+            # HBA at 1, 1.5 and 2.5 degrees with 1.5-arcsec pixels: the widths
+            # (about 114, 76 and 45 kHz) are below 0.1% of the frequency
+            pytest.param(150e6, 1.0, 4.5 / 3600, np.sqrt(0.85), id="hba-1deg"),
+            pytest.param(150e6, 1.5, 4.5 / 3600, np.sqrt(0.85), id="hba-1.5deg"),
+            pytest.param(150e6, 2.5, 4.5 / 3600, np.sqrt(0.85), id="hba-2.5deg"),
+        ],
+    )
+    def test_get_target_bandwidth(
+        self, observation, freq, delta_theta, resolution, reduction_factor
+    ):
+        """The target bandwidth is the widest that gives the requested reduction."""
         target_bandwidth = observation.get_target_bandwidth(
             freq, delta_theta, resolution, reduction_factor
         )
-        previous_step = target_bandwidth / 1.1
 
-        assert (
-            observation.get_bandwidth_smearing_factor(
-                freq, target_bandwidth, delta_theta, resolution
-            )
-            <= reduction_factor
+        reduction = observation.get_bandwidth_smearing_factor(
+            freq, target_bandwidth, delta_theta, resolution
         )
-        assert (
-            observation.get_bandwidth_smearing_factor(freq, previous_step, delta_theta, resolution)
-            > reduction_factor
-        )
+        assert reduction >= reduction_factor
+        assert reduction == pytest.approx(reduction_factor, rel=1e-6)
+
+    def test_get_target_bandwidth_at_one_degree_for_hba(self, observation):
+        """The smearing limit at 1 degree is about 114 kHz at 150 MHz."""
+        target_bandwidth = observation.get_target_bandwidth(150e6, 1.0, 4.5 / 3600, np.sqrt(0.85))
+
+        assert target_bandwidth == pytest.approx(114e3, rel=0.01)
 
     @pytest.mark.parametrize(
         "solints_seconds, solve_max_factor, expected_max",

@@ -773,15 +773,28 @@ class Observation(object):
         delta_freq : float
             Bandwidth over which averaging will be done
         """
-        # Increase delta_freq until we drop below target reduction_factor
-        delta_freq = 1e-3 * freq
-        while (
-            self.get_bandwidth_smearing_factor(freq, delta_freq, delta_theta, resolution)
-            > reduction_factor
-        ):
-            delta_freq *= 1.1
 
-        return delta_freq
+        # The reduction factor decreases as the bandwidth increases. Double the
+        # bandwidth until it is too wide, then bisect, keeping the widest bandwidth
+        # that still meets the target reduction_factor (zero always meets it)
+        def meets_target(delta_freq):
+            return (
+                self.get_bandwidth_smearing_factor(freq, delta_freq, delta_theta, resolution)
+                >= reduction_factor
+            )
+
+        low = 0.0
+        high = 1e-3 * freq
+        while meets_target(high):
+            low, high = high, 2.0 * high
+        for _ in range(50):
+            middle = (low + high) / 2.0
+            if meets_target(middle):
+                low = middle
+            else:
+                high = middle
+
+        return low
 
     def chunk_observation(self, mintime, prefer_high_el_periods=True, max_chunks=None):
         """
