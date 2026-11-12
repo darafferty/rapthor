@@ -1513,7 +1513,8 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
         max_nodes=6,
         cpus_per_task=192,
         max_cores=192,
-        max_threads=64,
+        # Planning for max_threads instead of cpus_per_task would give 18 tasks
+        max_threads=40,
         parallel_gridding_tasks=24,
     )
     second_sector = deepcopy(field.imaging_sectors[0])
