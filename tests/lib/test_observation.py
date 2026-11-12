@@ -622,11 +622,76 @@ def test_chunking_respects_calibration_duration(
     obs, sample_times = make_chunking_observation(num_samples)
     field.full_observations = [obs]
     field.parset["cluster_specific"]["max_nodes"] = 3
-    steps = [{"do_calibrate": True, "fulljones_timestep_sec": solve_time}]
+    steps = [
+        {
+            "do_calibrate": True,
+            "calibration_strategy": {"di": ["full_jones"]},
+            "fulljones_timestep_sec": solve_time,
+        }
+    ]
 
     chunk_observations(field, steps, data_fraction=1.0)
 
     assert samples_in_chunks(sample_times, field.observations) == expected_chunks
+
+
+@pytest.mark.parametrize(
+    "step, expected_chunk_count",
+    [
+        pytest.param(
+            {
+                "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
+                "fast_timestep_sec": 10,
+                "medium_timestep_sec": 20,
+                "slow_timestep_sec": 30,
+                "fulljones_timestep_sec": 90,
+            },
+            3,
+            id="phase_only_uses_the_medium_interval",
+        ),
+        pytest.param(
+            {
+                "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
+                "fast_timestep_sec": 10,
+            },
+            3,
+            id="missing_interval_uses_the_field_setting",
+        ),
+        pytest.param(
+            {
+                "calibration_strategy": {"di": ["full_jones"]},
+                "slow_timestep_sec": 30,
+                "fulljones_timestep_sec": 30,
+            },
+            4,
+            id="full_jones_interval_is_not_multiplied",
+        ),
+        pytest.param(
+            {
+                "fast_timestep_sec": 10,
+                "medium_timestep_sec": 20,
+                "slow_timestep_sec": 30,
+                "fulljones_timestep_sec": 90,
+            },
+            2,
+            id="missing_strategy_uses_the_default_solves",
+        ),
+    ],
+)
+def test_chunking_uses_the_solves_of_the_strategy(
+    field, make_chunking_observation, step, expected_chunk_count
+):
+    """Chunk by the longest interval solved: 40 s (four samples) for a medium-phase
+    solve with a DD interval factor of two, 30 s for full-Jones, 60 s for slow gains."""
+    obs, _ = make_chunking_observation(12)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 19
+    field.dd_interval_factor = 2
+    field.medium_timestep_sec = 20
+
+    chunk_observations(field, [{"do_calibrate": True, **step}], data_fraction=1.0)
+
+    assert len(field.observations) == expected_chunk_count
 
 
 def test_chunking_ignores_solve_duration_when_calibration_is_disabled(
@@ -651,7 +716,13 @@ def test_chunking_calibration_duration_applies_to_each_observation(
     long_interval_obs, long_interval_times = make_chunking_observation(8, 20, "long_interval.ms")
     field.full_observations = [short_interval_obs, long_interval_obs]
     field.parset["cluster_specific"]["max_nodes"] = 3
-    steps = [{"do_calibrate": True, "fulljones_timestep_sec": 60}]
+    steps = [
+        {
+            "do_calibrate": True,
+            "calibration_strategy": {"di": ["full_jones"]},
+            "fulljones_timestep_sec": 60,
+        }
+    ]
 
     chunk_observations(field, steps, data_fraction=1.0)
 
@@ -700,7 +771,13 @@ def test_chunking_partial_data_is_independent_of_node_count(
     obs, sample_times = make_chunking_observation(10, timepersample=300)
     field.full_observations = [obs]
     field.parset["cluster_specific"]["max_nodes"] = max_nodes
-    steps = [{"do_calibrate": do_calibrate, "fulljones_timestep_sec": 600}]
+    steps = [
+        {
+            "do_calibrate": do_calibrate,
+            "calibration_strategy": {"di": ["full_jones"]},
+            "fulljones_timestep_sec": 600,
+        }
+    ]
 
     chunk_observations(field, steps, data_fraction=0.6)
 
@@ -789,7 +866,13 @@ def test_chunking_increases_data_fraction_to_fit_a_calibration_solve(
     obs, sample_times = make_chunking_observation(10)
     field.full_observations = [obs]
     field.parset["cluster_specific"]["max_nodes"] = 3
-    steps = [{"do_calibrate": True, "fulljones_timestep_sec": 40}]
+    steps = [
+        {
+            "do_calibrate": True,
+            "calibration_strategy": {"di": ["full_jones"]},
+            "fulljones_timestep_sec": 40,
+        }
+    ]
 
     chunk_observations(field, steps, data_fraction=0.01)
 
