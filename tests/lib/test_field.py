@@ -393,10 +393,13 @@ def test_final_passes_peel_outliers_once_from_the_input_data(
 ):
     """The final pass peels the input data again; its repeat reuses the peeled data.
 
-    The full data of a single node are used, so observations are not chunked.
+    The full data of a single node are used, so observations are not chunked. The
+    input data are read from the column set in the parset, and the peeled data from
+    DATA.
     """
     parset = parset_for_field_test
     parset["cluster_specific"]["max_nodes"] = 1
+    parset["data_colname"] = "CORRECTED_DATA"
     # A small imaging sector leaves sources of the input sky model outside it
     parset["imaging_specific"]["grid_width_ra_deg"] = 1.5
     parset["imaging_specific"]["grid_width_dec_deg"] = 1.5
@@ -413,6 +416,7 @@ def test_final_passes_peel_outliers_once_from_the_input_data(
         passes.append(
             {
                 "calibrated_ms": [obs.ms_filename for obs in field.observations],
+                "data_colname": field.data_colname,
                 "peels_outliers": bool(field.outlier_sectors and field.peel_outliers),
                 "calibration_sources": len(calibration_skymodel),
             }
@@ -423,7 +427,9 @@ def test_final_passes_peel_outliers_once_from_the_input_data(
     selfcal, final_pass, repeat = passes
     assert selfcal["calibrated_ms"] == input_ms
     assert final_pass["calibrated_ms"] == input_ms
+    assert selfcal["data_colname"] == final_pass["data_colname"] == "CORRECTED_DATA"
     if peel_outliers:
+        assert repeat["data_colname"] == "DATA"
         assert [entry["peels_outliers"] for entry in passes] == [True, True, False]
         predict_dir = Path(field.working_dir, "pipelines", "predict_2")
         assert all(Path(ms).parent == predict_dir for ms in repeat["calibrated_ms"])
