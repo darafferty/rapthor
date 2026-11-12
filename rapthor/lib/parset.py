@@ -289,6 +289,13 @@ class Parset:
                     f"The option {opt!r} must be one of {', '.join(map(repr, valid_values))}"
                 )
 
+        max_peak_smearing = options["max_peak_smearing"]
+        if not 0.0 <= max_peak_smearing < 1.0:
+            raise ValueError(
+                f"The max_peak_smearing parameter in the [calibration] section is "
+                f"{max_peak_smearing}; it must be >= 0 and < 1"
+            )
+
         dd_smoothness_factor = options["dd_smoothness_factor"]
         if dd_smoothness_factor < 1:
             raise ValueError(

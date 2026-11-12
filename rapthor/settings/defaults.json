@@ -62,7 +62,9 @@
         "solverlbfgs_minibatches": 1,
         "bda_timebase": 20000.0,
         "bda_frequencybase": 5000.0,
-        "correct_time_frequency_smearing": false
+        "correct_time_frequency_smearing": false,
+        "average_visibilities": false,
+        "max_peak_smearing": 0.15
     },
     "imaging": {
         "cellsize_arcsec": 1.5,

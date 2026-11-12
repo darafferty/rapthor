@@ -160,13 +160,14 @@ def test_fraction_out_of_range(parset_scenario):
         prepare_run_from_parset(str(parset_scenario.parset))
 
 
+@pytest.mark.parametrize("section", ["calibration", "imaging"])
 @pytest.mark.parametrize("value", [-0.1, 1.0])
-def test_imaging_max_peak_smearing_out_of_range(parset_scenario, value):
-    _append_to_parset(parset_scenario.parset, f"\n[imaging]\nmax_peak_smearing = {value}\n")
+def test_max_peak_smearing_out_of_range(parset_scenario, section, value):
+    _append_to_parset(parset_scenario.parset, f"\n[{section}]\nmax_peak_smearing = {value}\n")
 
     with pytest.raises(
         ValueError,
-        match=rf"The max_peak_smearing parameter in the \[imaging\] section is {value}; "
+        match=rf"The max_peak_smearing parameter in the \[{section}\] section is {value}; "
         "it must be >= 0 and < 1",
     ):
         prepare_run_from_parset(str(parset_scenario.parset))
@@ -254,6 +255,15 @@ def test_json_defaults_include_normalization_reference_frequencies():
     )
 
     assert defaults["imaging"]["normalization_reference_frequencies"] is None
+
+
+def test_json_defaults_disable_calibration_averaging():
+    defaults = json.loads(
+        (Path(__file__).parents[2] / "rapthor/settings/defaults.json").read_text(encoding="utf-8")
+    )
+
+    assert defaults["calibration"]["average_visibilities"] is False
+    assert defaults["calibration"]["max_peak_smearing"] == 0.15
 
 
 def test_default_parset_contents(parset_scenario, monkeypatch):
