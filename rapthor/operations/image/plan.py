@@ -1,6 +1,6 @@
 """Pure planning helpers for the Image operation."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from math import ceil
 from typing import Optional, Union
 
@@ -163,7 +163,7 @@ def build_image_gridding_controls(
 
 def build_image_mpi_resource_controls(
     *,
-    nsectors: int,
+    channels_out: Sequence[int],
     max_nodes: int,
     cpus_per_task: int,
     batch_system: str,
@@ -173,15 +173,17 @@ def build_image_mpi_resource_controls(
 
     Static Slurm launches can assign all selected nodes to imaging. Other batch
     modes reserve one node for the outer launcher before assigning nodes to each
-    MPI WSClean job.
+    MPI WSClean job. WSClean distributes the output channels over the nodes, so
+    a sector does not use more nodes than it has output channels.
     """
+    nsectors = len(channels_out)
     nsubpipes = min(nsectors, max_nodes)
     if batch_system == "slurm_static":
         nnodes_per_subpipeline = max(1, int(max_nodes / nsubpipes))
     else:
         nnodes_per_subpipeline = max(1, int(max_nodes / nsubpipes) - 1)
     return {
-        "mpi_nnodes": [nnodes_per_subpipeline] * nsectors,
+        "mpi_nnodes": [min(nnodes_per_subpipeline, max(1, int(n))) for n in channels_out],
         "mpi_cpus_per_task": [cpus_per_task] * nsectors,
     }
 

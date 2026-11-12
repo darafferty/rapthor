@@ -452,7 +452,6 @@ class Image(FlowOperation):
             self.skip_final_major_iteration = self.field.skip_final_major_iteration
         if self.correct_smearing_in_imaging is None:
             self.correct_smearing_in_imaging = self.field.correct_smearing_in_imaging
-        nsectors = len(self.imaging_sectors)
         sector_inputs = self._collect_sector_input_values()
 
         link_polarizations, join_polarizations, wsclean_niter = build_image_wsclean_control_inputs(
@@ -600,7 +599,7 @@ class Image(FlowOperation):
         if self.field.use_mpi:
             self.input_parms.update(
                 build_image_mpi_resource_controls(
-                    nsectors=nsectors,
+                    channels_out=self.input_parms["channels_out"],
                     max_nodes=self.parset["cluster_specific"]["max_nodes"],
                     cpus_per_task=self.parset["cluster_specific"]["cpus_per_task"],
                     batch_system=self.batch_system,
