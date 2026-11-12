@@ -185,6 +185,7 @@ def build_calibration_dp3_steps(
     has_slow_gain_solve: bool = False,
     solve_steps: Optional[list[str]] = None,
     preapply_solutions: bool = False,
+    average_visibilities: bool = False,
 ) -> list[str]:
     """Build the DP3 step chain for calibration solves."""
     if solve_steps is None:
@@ -215,8 +216,13 @@ def build_calibration_dp3_steps(
         )
         common_steps = preprocessing_steps + common_steps
 
+    # The averager does not average the model data that the predict steps add,
+    # so it must come first. The later steps then also work on less data
+    if average_visibilities:
+        common_steps = ["avg", *common_steps]
+
     # Adding a "null" step prevents updating the input MS, which would happen
-    # whenever a step provides data (bdaavg, applycal, applybeam, predict).
+    # whenever a step provides data (avg, bdaavg, applycal, applybeam, predict).
     return [*common_steps, "null"]
 
 

@@ -132,6 +132,7 @@ class Calibrate(FlowOperation):
                 has_slow_gain_solve=has_slow_gain_solve,
                 solve_steps=[solve.step for solve in solve_plan],
                 preapply_solutions=applycal_inputs["applycal_steps"] is not None,
+                average_visibilities=self._average_visibilities(),
             )
             # --- Build final flow input dict ---
             self.input_parms = {
@@ -208,6 +209,9 @@ class Calibrate(FlowOperation):
                 # the case in which it is a separate step that precedes the calibration step.
                 # The latter is used when image-based predict is done
                 **applycal_inputs,
+                # Get the averaging steps, used if the DP3 steps include averaging
+                "average_timestep": field.get_obs_parameters("calibration_timestep"),
+                "average_freqstep": field.get_obs_parameters("calibration_freqstep"),
                 # Get the BDA (baseline-dependent averaging) parameters
                 "bda_maxinterval": field.get_obs_parameters("bda_maxinterval"),
                 "bda_minchannels": field.get_obs_parameters("bda_minchannels"),
@@ -636,12 +640,13 @@ class Calibrate(FlowOperation):
         has_slow_gain_solve=False,
         solve_steps=None,
         preapply_solutions=False,
+        average_visibilities=False,
     ):
         """
-        Set the calibration steps depending on whether baseline-dependent averaging is
-        activated (and supported) or not and whether solutions are pre-applied. Every
-        chain ends with a "null" step so that DP3 never writes the averaged or
-        corrected data back into the input MS.
+        Set the calibration steps depending on whether averaging and
+        baseline-dependent averaging are activated (and supported) or not and
+        whether solutions are pre-applied. Every chain ends with a "null" step so
+        that DP3 never writes the averaged or corrected data back into the input MS.
 
         TODO: image-based predict doesn't yet work with BDA; once it does,
         the restriction on this mode should be removed
@@ -657,7 +662,31 @@ class Calibrate(FlowOperation):
             has_slow_gain_solve=has_slow_gain_solve,
             solve_steps=solve_steps,
             preapply_solutions=preapply_solutions,
+            average_visibilities=average_visibilities,
         )
+
+    def _average_visibilities(self):
+        """
+        Return whether the visibilities are averaged before the DD solves.
+
+        The field sets averaging steps of one when averaging is not activated.
+        IDGCal screen solves do not use the DP3 steps, and DP3 cannot average the
+        model data columns that WSClean predicts, so neither averages.
+        """
+        field = self.field
+        averaging_steps = [
+            *field.get_obs_parameters("calibration_timestep"),
+            *field.get_obs_parameters("calibration_freqstep"),
+        ]
+        if field.generate_screens or all(step == 1 for step in averaging_steps):
+            return False
+        if self.use_wsclean_predict:
+            self.log.warning(
+                "Visibilities are not averaged before calibration, because DP3 "
+                "cannot average the model data predicted by WSClean"
+            )
+            return False
+        return True
 
     @staticmethod
     def _solve_plan_has_slow_gain(solve_plan):

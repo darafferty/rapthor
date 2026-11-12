@@ -179,7 +179,13 @@ def calibrate_payload_from_inputs(
     uses_modeldatacolumn = (
         modeldatacolumn is not None and not image_based_predict and not wsclean_predict
     )
+    uses_averaging = "avg" in dp3_steps
     for index in range(chunk_count):
+        averaging_steps = {"average_timestep": 1, "average_freqstep": 1}
+        if uses_averaging:
+            averaging_steps = {
+                key: int(_scatter_value(input_parms[key], index, key)) for key in averaging_steps
+            }
         chunk_solve_slots: list[CalibrateSolveSlotPayload] = []
         for slot in solve_slots:
             solve_type = solve_types[slot]
@@ -214,6 +220,7 @@ def calibrate_payload_from_inputs(
                     keepmodel=keepmodel,
                     reusemodel=reusemodel,
                     modeldatacolumns=slot_modeldatacolumns,
+                    **averaging_steps,
                 )
             )
         chunk = {
@@ -226,6 +233,8 @@ def calibrate_payload_from_inputs(
             "solve1_nchan": chunk_solve_slots[0]["nchan"],
             "solve_slots": chunk_solve_slots,
         }
+        if uses_averaging:
+            chunk.update(averaging_steps)
         if "bda_maxinterval" in input_parms:
             chunk["bda_maxinterval"] = _scatter_value(
                 input_parms["bda_maxinterval"], index, "bda_maxinterval"
@@ -645,6 +654,8 @@ def _solve_slot_from_inputs(
     keepmodel: Optional[str] = None,
     reusemodel: Optional[str] = None,
     modeldatacolumns: Optional[str] = None,
+    average_timestep: int = 1,
+    average_freqstep: int = 1,
 ) -> CalibrateSolveSlotPayload:
     h5parm = validate_basename(
         _scatter_value(
@@ -658,16 +669,12 @@ def _solve_slot_from_inputs(
         "solution_label": _solve_label_from_slot(input_parms, slot),
         "h5parm": h5parm,
         "h5parm_path": os.path.join(pipeline_dir, h5parm),
-        "solint": int(
-            _scatter_value(
-                input_parms[f"solint_solve{slot}_timestep"], index, f"solint_solve{slot}_timestep"
-            )
+        "solint": _averaged_solution_interval(
+            input_parms, f"solint_solve{slot}_timestep", index, average_timestep
         ),
         "mode": str(input_parms[f"solve{slot}_mode"]),
-        "nchan": int(
-            _scatter_value(
-                input_parms[f"solint_solve{slot}_freqstep"], index, f"solint_solve{slot}_freqstep"
-            )
+        "nchan": _averaged_solution_interval(
+            input_parms, f"solint_solve{slot}_freqstep", index, average_freqstep
         ),
         "solutions_per_direction": _optional_scatter_value(
             input_parms, f"solve{slot}_solutions_per_direction", index
@@ -698,6 +705,28 @@ def _solve_slot_from_inputs(
             input_parms.get(initial_h5parm_key), initial_h5parm_key
         )
     return slot_record
+
+
+def _averaged_solution_interval(
+    input_parms: Mapping[str, object],
+    name: str,
+    index: int,
+    average_step: int,
+) -> int:
+    """
+    Return a solution interval in averaged time slots or channels.
+
+    The operation inputs count solution intervals in samples of the input data,
+    but DP3 counts them in samples of the data that reach the solve, so after an
+    averaging step they are smaller by the averaging step.
+    """
+    solution_interval = int(_scatter_value(input_parms[name], index, name))
+    if solution_interval % average_step:
+        raise ValueError(
+            f"{name}[{index}] = {solution_interval} is not a multiple of the "
+            f"averaging step {average_step}"
+        )
+    return solution_interval // average_step
 
 
 def _image_predict_payload_from_inputs(

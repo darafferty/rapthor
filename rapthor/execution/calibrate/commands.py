@@ -33,6 +33,7 @@ CALIBRATION_SOLVE_ARGUMENTS = [
     "applycal.normalization.solset=sol000",
     "applycal.normalization.usemodeldata=True",
     "applycal.normalization.invert=False",
+    "avg.type=averager",
     "bdaavg.type=bdaaverager",
     "predict.type=wgridderpredict",
     "solve1.type=ddecal",
@@ -136,6 +137,8 @@ class CalibrationSolveOptions:
     applycal_h5parm: Optional[str] = None
     fulljones_h5parm: Optional[str] = None
     normalize_h5parm: Optional[str] = None
+    average_timestep: Optional[int] = None
+    average_freqstep: Optional[int] = None
     timebase: Optional[object] = None
     maxinterval: Optional[object] = None
     frequencybase: Optional[object] = None
@@ -213,6 +216,8 @@ def build_calibration_solve_command(options: CalibrationSolveOptions) -> list[st
         ("applycal.parmdb", options.applycal_h5parm),
         ("applycal.fulljones.parmdb", options.fulljones_h5parm),
         ("applycal.normalization.parmdb", options.normalize_h5parm),
+        ("avg.timestep", options.average_timestep),
+        ("avg.freqstep", options.average_freqstep),
         ("bdaavg.timebase", options.timebase),
         ("bdaavg.maxinterval", options.maxinterval),
         ("bdaavg.frequencybase", options.frequencybase),

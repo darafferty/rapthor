@@ -85,6 +85,8 @@ CALIBRATE_COMMON_INPUT_KEYS = {
 
 CALIBRATE_DD_INPUT_KEYS = {
     "generate_screens",
+    "average_timestep",
+    "average_freqstep",
     "use_wsclean_predict",
     "solint_fast_timestep",
     "solint_medium_timestep",
@@ -990,6 +992,106 @@ class TestCalibrate:
         assert steps.count("null") == 1
 
     @pytest.mark.parametrize(
+        "chain_options, expected_steps",
+        [
+            pytest.param({}, ["avg", "solve1", "solve2", "null"], id="sky_model_predict"),
+            pytest.param(
+                {"bda_timebase": 10, "bda_frequencybase": 10},
+                ["avg", "bdaavg", "solve1", "solve2", "null"],
+                id="bda",
+            ),
+            pytest.param(
+                {"preapply_solutions": True},
+                ["avg", "applycal", "solve1", "solve2", "null"],
+                id="preapply",
+            ),
+            pytest.param(
+                {"use_image_based_predict": True, "preapply_solutions": True},
+                ["avg", "predict", "applybeam", "applycal", "solve1", "solve2", "null"],
+                id="image_based_preapply",
+            ),
+        ],
+    )
+    def test_build_calibration_dp3_steps_averages_first(self, chain_options, expected_steps):
+        """
+        DP3's averager does not average the model data of the predict steps, so
+        it must come before them and before every other step.
+        """
+        options = {
+            "all_channels_regular": True,
+            "use_image_based_predict": False,
+            "solve_steps": ["solve1", "solve2"],
+        }
+        options.update(chain_options)
+        bda_timebase = options.pop("bda_timebase", 0)
+        bda_frequencybase = options.pop("bda_frequencybase", 0)
+
+        steps = build_calibration_dp3_steps(
+            bda_timebase, bda_frequencybase, average_visibilities=True, **options
+        )
+
+        assert steps == expected_steps
+
+    @staticmethod
+    def set_averaging_steps(field, timesteps, freqsteps):
+        averaging_steps = {"calibration_timestep": timesteps, "calibration_freqstep": freqsteps}
+        field.get_obs_parameters.side_effect = lambda name: averaging_steps.get(name, [1])
+
+    def test_set_input_parameters_dd_averages_visibilities(self, calibrate_field):
+        self.set_averaging_steps(calibrate_field, [2, 3], [4, 1])
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["avg", "solve1", "solve2", "null"]
+        assert calibrate.input_parms["average_timestep"] == [2, 3]
+        assert calibrate.input_parms["average_freqstep"] == [4, 1]
+
+    def test_set_input_parameters_dd_does_not_average_without_averaging_steps(
+        self, calibrate_field
+    ):
+        self.set_averaging_steps(calibrate_field, [1, 1], [1, 1])
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1", "solve2", "null"]
+
+    def test_set_input_parameters_dd_does_not_average_wsclean_model_columns(
+        self, calibrate_field, caplog
+    ):
+        """DP3 cannot average the model data columns that WSClean predicts."""
+        self.set_averaging_steps(calibrate_field, [2, 2], [1, 1])
+        calibrate_field.use_wsclean_predict = True
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        with caplog.at_level("WARNING"):
+            calibrate.set_input_parameters()
+
+        assert "avg" not in parse_dp3(calibrate.input_parms["dp3_steps"])
+        assert "Visibilities are not averaged before calibration" in caplog.text
+
+    def test_set_input_parameters_dd_screens_do_not_average(self, calibrate_field):
+        """IDGCal screen solves do not run the DP3 step chain."""
+        self.set_averaging_steps(calibrate_field, [2, 2], [1, 1])
+        calibrate_field.generate_screens = True
+
+        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert "avg" not in parse_dp3(calibrate.input_parms["dp3_steps"])
+
+    def test_set_input_parameters_di_does_not_average(self, calibrate_field):
+        """DI solves use predicted model data, which DP3 cannot average."""
+        self.set_averaging_steps(calibrate_field, [2, 2], [1, 1])
+        calibrate_field.calibration_strategy = {"dd": [], "di": ["full_jones"]}
+
+        calibrate = Calibrate("di", field=calibrate_field, index=1)
+        calibrate.set_input_parameters()
+
+        assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["solve1"]
+
+    @pytest.mark.parametrize(
         "preapply_steps, expected_steps",
         [
             ([], []),
@@ -1699,6 +1801,8 @@ class TestCalibrate:
                 "medium_smoothnessreffrequency": [152000000.0, 153000000.0],
                 "bda_maxinterval": [8.0, 9.0],
                 "bda_minchannels": [1, 1],
+                "calibration_timestep": [1, 1],
+                "calibration_freqstep": [1, 1],
             }
             return values[name]
 

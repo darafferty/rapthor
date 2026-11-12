@@ -97,6 +97,10 @@ def _validate_calibrate_chunk(
             _ = int(chunk["solint_slow"])
         return chunk
 
+    for key in ("average_timestep", "average_freqstep"):
+        if key in chunk and int(chunk[key]) < 1:
+            raise ValueError(f"chunks[{index}].{key} must be at least 1")
+
     raw_solve_slots = chunk.get("solve_slots", [])
     if not isinstance(raw_solve_slots, list) or not raw_solve_slots:
         raise ValueError(f"chunks[{index}].solve_slots must be a non-empty list")

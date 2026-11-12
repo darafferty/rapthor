@@ -46,6 +46,9 @@ class CalibrateChunkPayload(TypedDict, total=False):
     solve1_solint: int
     solve1_nchan: int
     solve_slots: list[CalibrateSolveSlotPayload]
+    # Averaging steps of the plain DP3 averager that runs before all other steps.
+    average_timestep: int
+    average_freqstep: int
     bda_maxinterval: object
     bda_minchannels: object
     solint_fast: int

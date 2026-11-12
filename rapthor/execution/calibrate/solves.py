@@ -110,6 +110,8 @@ def _calibration_options_for_chunk(
         applycal_h5parm=payload.get("applycal_h5parm"),
         fulljones_h5parm=payload.get("fulljones_h5parm"),
         normalize_h5parm=payload.get("normalize_h5parm"),
+        average_timestep=chunk.get("average_timestep"),
+        average_freqstep=chunk.get("average_freqstep"),
         timebase=payload.get("bda_timebase"),
         maxinterval=chunk.get("bda_maxinterval"),
         frequencybase=payload.get("bda_frequencybase"),
