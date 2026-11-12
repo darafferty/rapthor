@@ -78,7 +78,10 @@ class Field(object):
         self.working_dir = self.parset["dir_working"]
         self.ms_filenames = self.parset["mss"]
         self.numMS = len(self.ms_filenames)
-        self.data_colname = self.parset["data_colname"]
+        # The column of the input data, and that of the data currently processed
+        # (the DD predict writes the data it subtracts or peels to DATA)
+        self.input_data_colname = self.parset["data_colname"]
+        self.data_colname = self.input_data_colname
         self.use_image_based_predict = self.parset["calibration_specific"][
             "use_image_based_predict"
         ]
@@ -427,6 +430,8 @@ class Field(object):
         # Predict points them at the peeled data) and unchunked observations
         # would otherwise be the original objects
         self.observations = [obs.copy() for obs in new_observations]
+        # The new observations read the input data, not data written by earlier operations
+        self.data_colname = self.input_data_colname
 
         # Update the copies stored in the imaging sectors (including the full-field
         # sector, used to make the initial sky model). The copies in other (non-

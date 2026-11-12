@@ -68,6 +68,7 @@ class Concatenate(FlowOperation):
         # Update the field object to use the new, concatenated MS file(s)
         self.field.ms_filenames = self.final_filenames
         self.field.scan_observations()
+        self.field.input_data_colname = "DATA"
         self.field.data_colname = "DATA"
 
         # Finally call finalize() in the parent class

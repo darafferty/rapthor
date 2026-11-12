@@ -91,6 +91,10 @@ This release includes the following changes:
       not calibrate keeps the chunks of the cycle before it. When a cycle needs
       different chunks from the cycle before it, it starts again from the input
       data and peels the outliers again if an earlier cycle peeled them.
+    - A cycle that starts again from the input data, such as the first final
+      cycle, now reads the column of the input data set by
+      :term:`data_colname`. Earlier versions read the ``DATA`` column in this
+      case once a prediction had been done in an earlier cycle.
 
 See :ref:`upgrading` for notes on upgrading to this version.
 
