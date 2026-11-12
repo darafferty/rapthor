@@ -826,15 +826,17 @@ def _split_into_intervals(first, end, interval_timesteps, max_chunks=None):
 
     The whole solution intervals are divided between the chunks, differing in number
     by at most one, and the last chunk also takes any partial interval at the end
-    (as when the range is not chunked). Any extra whole intervals go to the earlier
-    chunks, so that the last chunk is not also the largest. Each chunk holds at least
-    two time slots, for Dysco.
+    (as when the range is not chunked). The first chunk always holds the most whole
+    intervals and the last the fewest, with any others in between (for example 3, 2,
+    3, 2 and 2 for twelve intervals in five chunks), so that the last chunk is not
+    also the largest. Each chunk holds at least two time slots, for Dysco.
     """
     num_intervals = (end - first) // interval_timesteps
     num_chunks = max(1, num_intervals // math.ceil(2 / interval_timesteps))
     if max_chunks is not None:
         num_chunks = min(num_chunks, max_chunks)
-    # Round the interval boundaries up (ceiling division) to put the extras first
+    # Round the interval boundaries up (ceiling division), so that the first chunk is
+    # one of the largest and the last one of the smallest
     boundaries = (
         first - (-np.arange(num_chunks + 1) * num_intervals // num_chunks) * interval_timesteps
     )
