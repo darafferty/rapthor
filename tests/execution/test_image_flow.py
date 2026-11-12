@@ -1496,12 +1496,12 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path):
 
     assert operation.input_parms["mpi_nnodes"] == [3, 3]
     assert operation.input_parms["shared_facet_rw"] == [False, True]
-    assert operation.input_parms["parallel_gridding_tasks"] == [6, 3]
+    assert operation.input_parms["parallel_gridding_tasks"] == [16, 3]
     payload = image_payload_from_inputs(
         operation.input_parms, operation.pipeline_working_dir, use_facets=True, use_mpi=True
     )
     assert json.loads(json.dumps(payload)) == payload
-    for sector, expected_shared, expected_tasks in zip(payload["sectors"], [False, True], [6, 3]):
+    for sector, expected_shared, expected_tasks in zip(payload["sectors"], [False, True], [16, 3]):
         assert sector["shared_facet_reads"] is expected_shared
         assert sector["shared_facet_writes"] is expected_shared
         command = image_wsclean_module._select_wsclean_command_for_sector(
