@@ -173,12 +173,14 @@ Chunking of the data
     from the input data, and peels the outliers again if an earlier cycle
     peeled them.
 
-    The chunks also hold whole solution intervals, counted in samples as DP3
-    counts them, so that only the end of an observation or of a selected time
-    range holds a partial interval. Version 2 split the data into chunks with
-    equal numbers of samples, so the last solution interval of most chunks was
-    partial, with fewer samples. Solutions near the chunk boundaries therefore
-    differ from version 2 in runs on several nodes.
+    The chunks also hold whole numbers of the longest solution interval of the
+    cycle, counted in samples as DP3 counts them, so that only the end of an
+    observation or of a selected time range holds a partial longest interval.
+    Shorter solution intervals can still be cut at the chunk edges. Version 2
+    split the data into chunks with equal numbers of samples, so the last
+    solution interval of most chunks was partial, with fewer samples. Solutions
+    near the chunk boundaries therefore differ from version 2 in runs on several
+    nodes.
 
     Related documentation: :term:`selfcal_data_fraction` and :term:`max_nodes`.
 
