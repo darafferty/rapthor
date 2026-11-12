@@ -901,13 +901,22 @@ for how these options are used.
 
         The estimate uses decimal GB and a conservative current DP3 peak-memory model
         of 80 bytes per visibility sample. It includes the original data buffer,
-        visibility copies, weights, and weighted data, and uses the unaveraged channel
-        count because calibration BDA is baseline-dependent. By default, Rapthor logs
-        likely out-of-memory configurations but continues processing.
+        visibility copies, weights, and weighted data. When the visibilities are
+        averaged before the direction-dependent solves (see
+        :term:`average_visibilities <average_visibilities (calibration)>`), the
+        check before each calibration cycle uses the averaged number of channels
+        and time slots. The preflight check runs before the averaging is known, so
+        it uses the unaveraged data. Baseline-dependent averaging is not taken into
+        account. By default, Rapthor logs likely out-of-memory configurations but
+        continues processing.
 
-        The estimated peak memory is calculated as follows::
+        The estimated peak memory is calculated as follows, where ``timestep``
+        and ``freqstep`` are the averaging steps in time slots and channels (1
+        when the data are not averaged)::
 
             baselines = nstations * (nstations + 1) // 2
+            channels = nchannels // freqstep
+            sampling_interval_seconds = time_per_sample_seconds * timestep
             time_steps = ceil(solution_interval_seconds / sampling_interval_seconds)
             samples = baselines * channels * time_steps * (directions + 1)
 

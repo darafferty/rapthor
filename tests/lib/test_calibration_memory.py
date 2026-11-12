@@ -39,6 +39,8 @@ def _field(
         observations=observations if observations is not None else [_observation()],
         calibration_strategy=calibration_strategy,
         do_calibrate=True,
+        generate_screens=False,
+        use_wsclean_predict=False,
         fast_timestep_sec=8,
         medium_timestep_sec=12,
         slow_timestep_sec=16,
@@ -83,13 +85,19 @@ def test_preflight_uses_max_directions_and_largest_solve():
     assert estimate.memory.time_steps == 5
 
 
+def _resolved_parameters(solint_fast_timestep, timestep=1, freqstep=1):
+    """Return resolved observation parameters for one fast-phase solve."""
+    chunks = len(solint_fast_timestep)
+    return {
+        "solint_fast_timestep": solint_fast_timestep,
+        "calibration_timestep": [timestep] * chunks,
+        "calibration_freqstep": [freqstep] * chunks,
+    }
+
+
 def test_resolved_check_uses_actual_intervals_and_largest_task():
-    first = _observation("first.ms", parameters={"solint_fast_timestep": [2]})
-    second = _observation(
-        "second.ms",
-        channels=8,
-        parameters={"solint_fast_timestep": [3, 3]},
-    )
+    first = _observation("first.ms", parameters=_resolved_parameters([2]))
+    second = _observation("second.ms", channels=8, parameters=_resolved_parameters([3, 3]))
     field = _field(
         observations=[first, second],
         calibration_strategy={"dd": ["fast_phase"]},
@@ -172,7 +180,7 @@ def test_over_limit_warns_and_continues_by_default(caplog):
     "step, parameters, expected_stage",
     [
         (_step(), {}, "pre-flight max_directions upper bound"),
-        (None, {"solint_fast_timestep": [2]}, "resolved facet count"),
+        (None, _resolved_parameters([2]), "resolved facet count"),
     ],
     ids=["preflight", "resolved"],
 )
@@ -241,3 +249,40 @@ def test_estimation_failure_remains_advisory(monkeypatch, caplog):
     assert estimate is None
     assert "Could not complete the advisory DP3 calibration memory pre-flight" in caplog.text
     assert "Processing will continue" in caplog.text
+
+
+def test_resolved_dd_check_uses_averaged_data():
+    """DD solves work on data averaged to 2 time slots of 4 s and 4 channels."""
+    observation = _observation(channels=8, parameters=_resolved_parameters([6], 2, 4))
+    field = _field(observations=[observation], calibration_strategy={"dd": ["fast_phase"]})
+
+    estimate = check_calibration_memory(field, 2, 4)
+
+    assert estimate.channels == 2
+    assert estimate.sampling_interval_seconds == 8
+    assert estimate.solution_interval_seconds == 24
+    assert estimate.peak_memory_gb == pytest.approx(3 * 2 * 3 * (4 + 1) * 80 / 1e9)
+
+
+@pytest.mark.parametrize(
+    "calibration_strategy, field_settings, strategy_step",
+    [
+        pytest.param({"di": ["fast_phase"]}, {}, None, id="di"),
+        pytest.param({"dd": ["fast_phase"]}, {"use_wsclean_predict": True}, None, id="wsclean"),
+        pytest.param({"dd": ["fast_phase"]}, {"generate_screens": True}, None, id="screens"),
+        # The averaging steps are not known yet, so preflight assumes none
+        pytest.param({"dd": ["fast_phase"]}, {}, _step(), id="preflight"),
+    ],
+)
+def test_check_uses_unaveraged_data_when_calibration_does(
+    calibration_strategy, field_settings, strategy_step
+):
+    observation = _observation(channels=8, parameters=_resolved_parameters([6], 2, 4))
+    field = _field(observations=[observation], calibration_strategy=calibration_strategy)
+    for name, value in field_settings.items():
+        setattr(field, name, value)
+
+    estimate = check_calibration_memory(field, 2, 4, strategy_step)
+
+    assert estimate.channels == 8
+    assert estimate.sampling_interval_seconds == 4

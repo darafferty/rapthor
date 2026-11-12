@@ -14,7 +14,8 @@ This minor release includes the following improvements:
       averaging is limited by the smearing at the calibrator furthest from the
       phase center (see :term:`max_peak_smearing
       <max_peak_smearing (calibration)>`) and by the solution intervals. It is
-      disabled by default.
+      disabled by default. The DP3 memory check before each calibration cycle
+      takes the averaging into account.
     - The frequency averaging for imaging (see
       :term:`average_visibilities <average_visibilities (imaging)>`) now keeps
       the bandwidth smearing within :term:`max_peak_smearing
