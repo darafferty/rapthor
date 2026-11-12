@@ -585,9 +585,19 @@ def test_chunking_uses_the_solves_of_the_strategy(
     assert len(field.observations) == expected_chunk_count
 
 
-def test_chunking_ignores_the_interval_factor_for_screens(field, make_chunking_observation):
-    """Screens are solved without DD solution intervals, so a 20-second medium-phase
-    solve spans two samples rather than four."""
+@pytest.mark.parametrize(
+    "dd_solves, expected_chunk_count",
+    [
+        pytest.param(["fast_phase", "medium_phase"], 6, id="phases"),
+        pytest.param(["fast_phase", "medium_phase", "slow_gains"], 4, id="phases_and_gains"),
+    ],
+)
+def test_chunking_follows_the_screen_solves(
+    field, make_chunking_observation, dd_solves, expected_chunk_count
+):
+    """Screens are solved at the 20-second fast-phase interval (two samples), and the
+    30-second slow-gain one (three samples) if slow gains are solved, but never at the
+    40-second medium-phase one, and without DD solution intervals."""
     obs, _ = make_chunking_observation(12)
     field.full_observations = [obs]
     field.parset["cluster_specific"]["max_nodes"] = 19
@@ -595,14 +605,15 @@ def test_chunking_ignores_the_interval_factor_for_screens(field, make_chunking_o
     field.generate_screens = True
     step = {
         "do_calibrate": True,
-        "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
-        "fast_timestep_sec": 10,
-        "medium_timestep_sec": 20,
+        "calibration_strategy": {"dd": dd_solves},
+        "fast_timestep_sec": 20,
+        "medium_timestep_sec": 40,
+        "slow_timestep_sec": 30,
     }
 
     chunk_observations(field, [step], data_fraction=1.0)
 
-    assert len(field.observations) == 6
+    assert len(field.observations) == expected_chunk_count
 
 
 def _full_jones_step(fulljones_timestep_sec, **updates):

@@ -148,11 +148,22 @@ def _solution_intervals(field, steps):
         if step["do_calibrate"]:
             strategy = step.get("calibration_strategy") or default_calibration_strategy()
             intervals.extend(
-                _solution_interval(field, step, solve)
-                for solves in strategy.values()
-                for solve in solves
+                _solution_interval(field, step, solve) for solve in _timed_solves(field, strategy)
             )
     return intervals
+
+
+def _timed_solves(field, strategy):
+    """Yield the solves whose solution intervals the calibration uses."""
+    for mode, solves in strategy.items():
+        if mode == "dd" and field.generate_screens and solves:
+            # Screens are solved at the interval of the first DD solve, and of the slow
+            # gains for amplitudes (see execution.calibrate.solves)
+            yield solves[0]
+            if "slow_gains" in solves:
+                yield "slow_gains"
+        else:
+            yield from solves
 
 
 def _solution_interval(field, step, solve):
