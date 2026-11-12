@@ -651,6 +651,28 @@ def test_selfcal_cycles_use_the_same_data_in_chunks_of_their_own_solves(
     assert field.observations is observations
 
 
+def test_selfcal_cycles_keep_the_selection_when_a_step_omits_an_interval(
+    field, make_chunking_observation
+):
+    """The selection of the first cycle, two 60-sample ranges for the default 600-second
+    full-Jones interval of the second step, stays when the first step's 20-second
+    interval becomes the field's setting."""
+    obs, sample_times = make_chunking_observation(600)
+    field.full_observations = [obs]
+    field.fulljones_timestep_sec = 600
+    steps = [_full_jones_step(20), _full_jones_step(20)]
+    del steps[1]["fulljones_timestep_sec"]
+    chunk_observations(field, steps[:1], data_fraction=0.2, selection_steps=steps)
+    selected = sum(samples_in_chunks(sample_times, field.observations), [])
+
+    # As field.update sets it from the first step
+    field.fulljones_timestep_sec = 20
+    rechunk_observations(field, steps, 1, data_fraction=0.2)
+
+    assert len(selected) == 120
+    assert sum(samples_in_chunks(sample_times, field.observations), []) == selected
+
+
 def test_rechunking_keeps_the_chunks_of_a_cycle_without_calibration(
     field, make_chunking_observation
 ):

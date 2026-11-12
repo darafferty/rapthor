@@ -42,6 +42,9 @@ class Observation(object):
         self.starttime = starttime
         self.endtime = endtime
         self.data_fraction = 1.0
+        # The number of time slots in each selected time range (set with the data
+        # fraction when the observation is chunked)
+        self.selection_timesteps = None
         self.parameters = {}
         self.scan_ms()
 

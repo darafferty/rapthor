@@ -61,11 +61,10 @@ def chunk_observations(field, steps, data_fraction, selection_steps=None):
     selection_steps : list of dict, optional
         The strategy steps whose solution intervals set the time ranges selected when
         the data fraction is less than one, so that these steps all use the same data.
-        If None, the steps are used
+        The selection is kept by rechunk_observations. If None, the steps are used
     """
-    field.update_observations(
-        _planned_observations(field, steps, data_fraction, selection_steps or steps)
-    )
+    _select_data(field, selection_steps or steps, data_fraction)
+    field.update_observations(_planned_observations(field, steps, data_fraction))
 
 
 def rechunk_observations(field, steps, index, data_fraction):
@@ -73,7 +72,8 @@ def rechunk_observations(field, steps, index, data_fraction):
     Chunk observations again for a later selfcal cycle, if its solves need it.
 
     Each cycle is chunked for its own calibration solution intervals, within the
-    time ranges selected for all selfcal cycles. The current observations are kept
+    time ranges selected for all selfcal cycles when the first cycle was chunked
+    (see chunk_observations). The current observations are kept
     when the chunks do not change, as they may point to data with the outliers
     peeled, and in a cycle without calibration, which applies the solutions of the
     cycles before it (and so needs their chunks). New chunks start again from the
@@ -100,7 +100,7 @@ def rechunk_observations(field, steps, index, data_fraction):
     if not step["do_calibrate"]:
         return step
 
-    observations = _planned_observations(field, [step], data_fraction, steps)
+    observations = _planned_observations(field, [step], data_fraction)
     if _chunk_layout(observations) == _chunk_layout(field.observations):
         return step
 
@@ -165,24 +165,34 @@ def _solution_interval(field, step, solve):
     return target_timestep, field.dd_interval_factor
 
 
-def _planned_observations(field, steps, data_fraction, selection_steps):
+def _select_data(field, steps, data_fraction):
+    """Set the data fraction and the length of the selected ranges of each observation."""
+    # The selection is made once, as the steps' intervals can fall back to field
+    # settings that later cycles change
+    intervals = _solution_intervals(field, steps)
+    solve_time = max((target * factor for target, factor in intervals), default=None)
+    _set_observation_data_fractions(field, data_fraction, solve_time)
+    for obs in field.full_observations:
+        obs.selection_timesteps = _chunk_timesteps(obs, intervals, data_fraction)
+
+
+def _planned_observations(field, steps, data_fraction):
     max_nodes = field.parset["cluster_specific"]["max_nodes"]
     if data_fraction >= 1.0 and max_nodes <= 1:
         return field.full_observations
 
-    selection_intervals = _solution_intervals(field, selection_steps)
-    # Without solves of their own, steps keep the selected ranges whole
-    intervals = _solution_intervals(field, steps) or selection_intervals
-    solve_time = max((target * factor for target, factor in selection_intervals), default=None)
-    _set_observation_data_fractions(field, data_fraction, solve_time)
+    intervals = _solution_intervals(field, steps)
     max_chunks = None if data_fraction < 1.0 else max_nodes
     return [
         chunk
         for obs in field.full_observations
         for chunk in obs.chunk_observation(
-            _chunk_timesteps(obs, intervals, data_fraction),
+            # Without solves of their own, steps keep the selected ranges whole
+            _chunk_timesteps(obs, intervals, data_fraction)
+            if intervals
+            else obs.selection_timesteps,
             max_chunks=max_chunks,
-            selection_timesteps=_chunk_timesteps(obs, selection_intervals, data_fraction),
+            selection_timesteps=obs.selection_timesteps,
         )
     ]
 
