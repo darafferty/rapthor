@@ -942,12 +942,11 @@ def test_run_pipeline_chunks_each_selfcal_cycle_before_it_starts():
         ("calibrate", 3, None),
     ]
     # The first cycle is chunked for its own solves, within the selection for all
-    # selfcal steps, which the later cycles also receive
-    assert [
-        (event["step_count"], event.get("selection_step_count"))
-        for event in field.events
-        if event["operation"] in {"chunk", "rechunk"}
-    ] == [(1, 3), (3, None), (3, None)]
+    # selfcal steps; the later cycles receive all of the steps with their index
+    chunks = [event for event in field.events if event["operation"] == "chunk"]
+    assert [(event["step_count"], event["selection_step_count"]) for event in chunks] == [(1, 3)]
+    rechunks = [event for event in field.events if event["operation"] == "rechunk"]
+    assert [event["step_count"] for event in rechunks] == [3, 3]
     assert field.updates == [(1, 0, True), (2, 0, True), (3, 0, True)]
     assert strategy_steps == original_strategy
 
