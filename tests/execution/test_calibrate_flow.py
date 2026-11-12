@@ -40,6 +40,7 @@ from rapthor.execution.calibrate.solves import (
     build_calibrate_chunk_command,
     initialsolutions_soltab,
 )
+from rapthor.execution.calibrate.validation import validate_calibrate_payload
 from rapthor.execution.commands import normalize_command
 from rapthor.execution.config import ExecutionConfig
 from rapthor.lib.field import Field as RapthorField
@@ -441,6 +442,8 @@ class CalibrateFieldStub:
             "ntimes": [10, 12],
             "bda_maxinterval": [8.0, 9.0],
             "bda_minchannels": [1, 1],
+            "calibration_timestep": [1, 1],
+            "calibration_freqstep": [1, 1],
             "solint_fulljones_timestep": [5, 6],
             "solint_fulljones_freqstep": [2, 3],
             "solint_fast_timestep": [5, 6],
@@ -1928,6 +1931,81 @@ def test_calibrate_payload_from_inputs_converts_array_like_scatter_values(tmp_pa
     payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
 
     assert payload["chunks"][0]["solve_slots"][0]["smoothness_dd_factors"] == [1.0]
+
+
+def _dd_averaged_input_parms():
+    input_parms = _dd_fast_medium_input_parms()
+    input_parms.update(
+        {
+            "dp3_steps": "[avg,solve1,solve2,null]",
+            "solint_solve1_timestep": [4, 6],
+            "solint_solve1_freqstep": [2, 4],
+            "solint_solve2_timestep": [8, 12],
+            "solint_solve2_freqstep": [4, 8],
+            "average_timestep": [2, 3],
+            "average_freqstep": [2, 4],
+        }
+    )
+    return input_parms
+
+
+def test_calibrate_payload_from_inputs_counts_solution_intervals_in_averaged_samples(tmp_path):
+    """After an averaging step, DP3 counts solution intervals in averaged samples."""
+    payload = calibrate_payload_from_inputs("dd", _dd_averaged_input_parms(), tmp_path)
+
+    assert [
+        (chunk["average_timestep"], chunk["average_freqstep"]) for chunk in payload["chunks"]
+    ] == [
+        (2, 2),
+        (3, 4),
+    ]
+    assert [
+        [(slot["solint"], slot["nchan"]) for slot in chunk["solve_slots"]]
+        for chunk in payload["chunks"]
+    ] == [[(2, 1), (4, 2)], [(2, 1), (4, 2)]]
+    validate_calibrate_payload(payload)
+
+    command = build_calibrate_chunk_command(payload, payload["chunks"][1])
+
+    assert "steps=[avg,solve1,solve2,null]" in command
+    assert "avg.type=averager" in command
+    assert "avg.timestep=3" in command
+    assert "avg.freqstep=4" in command
+    assert "solve1.solint=2" in command
+    assert "solve1.nchan=1" in command
+    assert "solve2.solint=4" in command
+    assert "solve2.nchan=2" in command
+
+
+def test_calibrate_payload_from_inputs_keeps_raw_solution_intervals_without_averaging(tmp_path):
+    input_parms = _dd_averaged_input_parms()
+    input_parms["dp3_steps"] = "[solve1,solve2]"
+
+    payload = calibrate_payload_from_inputs("dd", input_parms, tmp_path)
+
+    assert "average_timestep" not in payload["chunks"][0]
+    assert "average_freqstep" not in payload["chunks"][0]
+    assert [(slot["solint"], slot["nchan"]) for slot in payload["chunks"][0]["solve_slots"]] == [
+        (4, 2),
+        (8, 4),
+    ]
+    assert not any(
+        token.startswith("avg.timestep")
+        for token in build_calibrate_chunk_command(payload, payload["chunks"][0])
+    )
+
+
+def test_calibrate_payload_from_inputs_rejects_averaging_that_splits_a_solution_interval(
+    tmp_path,
+):
+    input_parms = _dd_averaged_input_parms()
+    input_parms["average_timestep"] = [3, 3]
+
+    with pytest.raises(
+        ValueError,
+        match=r"solint_solve1_timestep\[0\] = 4 is not a multiple of the averaging step 3",
+    ):
+        calibrate_payload_from_inputs("dd", input_parms, tmp_path)
 
 
 def test_calibrate_payload_from_inputs_builds_dd_fast_medium_payload(tmp_path):
@@ -3767,6 +3845,39 @@ def test_calibrate_dd_operation_run_passes_only_current_cycle_initial_solutions_
     assert "solve3.initialsolutions.h5parm" not in dp3_arguments
     assert all(str(future_medium) not in token for token in dp3_command)
     assert all(str(future_slow) not in token for token in dp3_command)
+
+
+def test_calibrate_dd_operation_run_averages_before_the_solves(
+    prefect_server, tmp_path, monkeypatch, fake_calibrate_shell_operation_cls
+):
+    monkeypatch.setattr(
+        "rapthor.execution.shell._load_shell_operation_cls",
+        lambda: fake_calibrate_shell_operation_cls,
+    )
+    monkeypatch.setattr(
+        "rapthor.lib.miscellaneous.get_flagged_solution_fraction",
+        lambda *args, **kwargs: 0.0,
+    )
+    _patch_dd_model_metadata(monkeypatch)
+
+    field = CalibrateFieldStub(tmp_path)
+    # The second chunk has 6 and 10 time slot and 3 and 6 channel solution intervals
+    field._obs_parameters["calibration_timestep"] = [1, 2]
+    field._obs_parameters["calibration_freqstep"] = [1, 3]
+    operation = Calibrate("dd", field, index=1)
+
+    operation.run()
+
+    dp3_arguments = next(
+        _command_arguments(command)
+        for command in _command_tokens(fake_calibrate_shell_operation_cls)
+        if command[0] == "DP3" and "msin=dd_obs_1.ms" in command
+    )
+    assert dp3_arguments["steps"].startswith("[avg,")
+    assert dp3_arguments["avg.timestep"] == "2"
+    assert dp3_arguments["avg.freqstep"] == "3"
+    assert (dp3_arguments["solve1.solint"], dp3_arguments["solve1.nchan"]) == ("3", "1")
+    assert (dp3_arguments["solve2.solint"], dp3_arguments["solve2.nchan"]) == ("5", "2")
 
 
 def test_calibrate_dd_fast_medium_operation_run_reuses_prefect_outputs_when_done(

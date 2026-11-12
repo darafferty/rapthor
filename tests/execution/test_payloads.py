@@ -166,6 +166,14 @@ def test_validate_calibrate_payload_rejects_non_list_solve_slot_values():
         validate_calibrate_payload(payload)
 
 
+def test_validate_calibrate_payload_rejects_averaging_step_below_one():
+    payload = representative_calibrate_payload()
+    payload["chunks"][0]["average_timestep"] = 0
+
+    with pytest.raises(ValueError, match=r"chunks\[0\].average_timestep must be at least 1"):
+        validate_calibrate_payload(payload)
+
+
 def test_validate_calibrate_payload_validates_image_predict_contract():
     payload = representative_calibrate_payload()
     payload["image_based_predict"] = True
