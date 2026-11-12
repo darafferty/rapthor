@@ -451,6 +451,61 @@ The available options are described below under their respective sections.
         to be done, the identical parameter in the ``[imaging]`` section should
         also be enabled.
 
+    average_visibilities (calibration)
+        Average the input visibilities in time and frequency before the
+        direction-dependent calibration solves (default = ``False``). Averaging
+        makes the solves faster and lowers their memory use. Rapthor chooses the
+        largest averaging for which:
+
+        - the reduction in peak flux density due to time and bandwidth smearing
+          at the calibrator furthest from the phase center is no more than
+          :term:`max_peak_smearing <max_peak_smearing (calibration)>`. As for
+          imaging, the resolution is taken to be three times
+          :term:`cellsize_arcsec`, and the averaging is never more than 120 s or
+          2 MHz. If the only calibrator lies at the phase center, these limits
+          are the only ones that apply. The distance is measured to the center
+          of each calibrator patch, so sources in the outermost patch can lie
+          slightly further out;
+        - every solution interval is a whole number of averaged time slots and
+          averaged channels, so the averaging never exceeds the shortest
+          solution interval. This applies to the solves done in the cycle
+          (including the shorter intervals of brighter calibrators when
+          direction-dependent solution intervals are used) and to the
+          direction-independent and full-Jones solutions that are applied to the
+          data before the direction-dependent solves;
+        - the number of channels in the input data is a whole number of averaged
+          channels, and the averaging is no longer than the observation.
+
+        Solution intervals that share no common factor can therefore prevent
+        averaging altogether. The averaging is done before any other step of the
+        calibration, so image-based prediction (see :term:`use_image_based_predict`)
+        and baseline-dependent averaging (see
+        :term:`bda_timebase <bda_timebase (calibration)>`) work on the averaged
+        data. If :term:`correct_time_frequency_smearing
+        <correct_time_frequency_smearing (calibration)>` is enabled, the
+        prediction of the model from the sky model includes the smearing caused
+        by the averaging. Image-based prediction does not correct for smearing.
+
+        .. note::
+
+            The visibilities are not averaged:
+
+            - when :term:`use_wsclean_predict` is enabled, since DP3 cannot
+              average the model data predicted by WSClean (a warning is logged);
+            - for direction-independent calibration, which solves against model
+              data predicted beforehand;
+            - for the generation of screens (see :term:`dde_mode`), which does
+              not use the DP3 calibration steps.
+
+    max_peak_smearing (calibration)
+        Maximum desired reduction in the peak flux density of the calibrator furthest
+        from the phase center due to bandwidth smearing (at the mean frequency) and
+        time smearing (default = 0.15 = 15% reduction in peak flux), when
+        :term:`average_visibilities <average_visibilities (calibration)>` is
+        enabled. Higher values result in shorter run times but more smearing of
+        the calibrators away from the phase center. The value must be at least 0
+        and less than 1.
+
 .. _parset_imaging_options:
 
 ``[imaging]``
@@ -543,10 +598,10 @@ The available options are described below under their respective sections.
         input observations have different stations, as they cannot then be concatenated
         in time.
 
-    average_visibilities
+    average_visibilities (imaging)
         Perform averaging of the input visibilities for imaging (default = ``True``),
         determined by the maximum allowed before smearing effects become important (see
-        :term:`max_peak_smearing`).
+        :term:`max_peak_smearing <max_peak_smearing (imaging)>`).
 
         .. note::
 
@@ -716,12 +771,13 @@ The available options are described below under their respective sections.
     sector_width_dec_deg_list
         List of image  widths, in degrees (default = ``[]``).
 
-    max_peak_smearing
+    max_peak_smearing (imaging)
         Max desired peak flux density reduction at center of the image edges due to
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
-        smearing away from the image centers. Note this option is not considered if
-        :term:`average_visibilities` = ``False``.
+        smearing away from the image centers. The value must be at least 0 and less
+        than 1. Note this option is not considered if
+        :term:`average_visibilities <average_visibilities (imaging)>` = ``False``.
 
     correct_time_frequency_smearing (imaging)
         Correct for time and frequency smearing during imaging (default =
