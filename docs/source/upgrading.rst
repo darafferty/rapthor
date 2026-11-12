@@ -160,16 +160,25 @@ Phase-only direction-dependent cycles
     Related documentation: :ref:`calibrate` lists the individual and combined
     solution products.
 
-Chunking of the selfcal cycles
+Chunking of the data
     The data are chunked in time for each selfcal cycle, using the longest
     solution interval of the solves done in that cycle. Version 2 chunked the
     data once for all selfcal cycles, using the longest fast-phase, slow-gain
-    or full-Jones interval of any of them. With a :term:`selfcal_data_fraction`
-    below 1, cycles that solve only for phases therefore use more, shorter
-    chunks than before, so they use different time ranges of the data than
-    version 2 did, and than the cycles that also solve for slow gains. A cycle
-    whose chunks differ from those of the cycle before it starts again from the
-    input data, and peels the outliers again if an earlier cycle peeled them.
+    or full-Jones interval of any of them. Cycles that solve only for phases
+    can therefore be split into more chunks. With a
+    :term:`selfcal_data_fraction` below 1, every selfcal cycle uses the same
+    time ranges, chosen from the longest solution interval of any selfcal
+    cycle, and only the chunks within these ranges change between cycles. A
+    cycle whose chunks differ from those of the cycle before it starts again
+    from the input data, and peels the outliers again if an earlier cycle
+    peeled them.
+
+    The chunks also hold whole solution intervals, counted in samples as DP3
+    counts them, so that only the end of an observation or of a selected time
+    range holds a partial interval. Version 2 split the data into chunks with
+    equal numbers of samples, so the last solution interval of most chunks was
+    partial, with fewer samples. Solutions near the chunk boundaries therefore
+    differ from version 2 in runs on several nodes.
 
     Related documentation: :term:`selfcal_data_fraction` and :term:`max_nodes`.
 
