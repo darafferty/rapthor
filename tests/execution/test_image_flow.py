@@ -1513,7 +1513,7 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
         max_nodes=6,
         cpus_per_task=192,
         max_cores=192,
-        max_threads=192,
+        max_threads=64,
         parallel_gridding_tasks=24,
     )
     second_sector = deepcopy(field.imaging_sectors[0])
@@ -1553,7 +1553,9 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
         operation.input_parms, operation.pipeline_working_dir, use_facets=True, use_mpi=True
     )
     assert json.loads(json.dumps(payload)) == payload
-    for sector, expected_shared, expected_tasks in zip(payload["sectors"], [False, True], [16, 2]):
+    for index, (sector, expected_shared, expected_tasks) in enumerate(
+        zip(payload["sectors"], [False, True], [16, 2])
+    ):
         assert sector["shared_facet_reads"] is expected_shared
         assert sector["shared_facet_writes"] is expected_shared
         command = image_wsclean_module._select_wsclean_command_for_sector(
@@ -1567,6 +1569,9 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
         assert ("-shared-facet-writes" in command) is expected_shared
         assert ("-compound-tasks" in command) is not expected_shared
         assert command[command.index("-parallel-gridding") + 1] == str(expected_tasks)
+        # The tasks are planned for the number of threads that WSClean gets
+        assert command[command.index("-j") + 1] == "192"
+        assert operation._wsclean_threads_for_sector(index) == 192
 
 
 def test_image_payload_from_inputs_builds_serializable_screen_payload(tmp_path):
@@ -3746,6 +3751,9 @@ def test_facet_image_operation_run_uses_prefect_flow(
     assert "-facet-regions" in wsclean_command
     assert "-shared-facet-reads" in wsclean_command
     assert "-shared-facet-writes" in wsclean_command
+    # The tasks are planned for the number of threads that WSClean gets
+    assert wsclean_command[wsclean_command.index("-j") + 1] == "4"
+    assert operation._wsclean_threads_for_sector(0) == 4
     assert (region_dir / "sector_1_facets_ds9.reg").is_file()
 
 
