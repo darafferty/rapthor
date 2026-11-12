@@ -426,9 +426,9 @@ def samples_in_chunks(sample_times, chunks):
     [
         pytest.param(6, 1, [[0, 10, 20, 30, 40, 50]], id="one_node_keeps_all_samples"),
         pytest.param(6, 2, [[0, 10, 20], [30, 40, 50]], id="two_equal_chunks"),
-        pytest.param(7, 3, [[0, 10], [20, 30], [40, 50, 60]], id="uneven_split_keeps_every_sample"),
+        pytest.param(7, 3, [[0, 10, 20], [30, 40], [50, 60]], id="uneven_split_keeps_every_sample"),
         pytest.param(
-            8, 3, [[0, 10], [20, 30, 40], [50, 60, 70]], id="uneven_split_with_eight_samples"
+            8, 3, [[0, 10, 20], [30, 40, 50], [60, 70]], id="uneven_split_with_eight_samples"
         ),
         pytest.param(2, 19, [[0, 10]], id="two_samples_stay_together"),
         pytest.param(3, 19, [[0, 10, 20]], id="avoid_a_one_sample_chunk"),
@@ -478,16 +478,16 @@ def test_chunking_full_data_limits_each_observation_to_node_count(field, make_ch
         pytest.param(
             12,
             30,
-            [[0, 10, 20], [30, 40, 50], [60, 70, 80, 90, 100, 110]],
+            [[0, 10, 20, 30, 40, 50], [60, 70, 80], [90, 100, 110]],
             id="node_count_spreads_whole_solves",
         ),
         pytest.param(
             23,
             30,
             [
-                [0, 10, 20, 30, 40, 50],
-                [60, 70, 80, 90, 100, 110],
-                [120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220],
+                [0, 10, 20, 30, 40, 50, 60, 70, 80],
+                [90, 100, 110, 120, 130, 140],
+                [150, 160, 170, 180, 190, 200, 210, 220],
             ],
             id="chunks_differ_by_at_most_one_solve",
         ),
@@ -769,7 +769,7 @@ def test_chunking_different_sample_intervals_without_calibration(field, make_chu
         chunk for chunk in field.observations if chunk.ms_filename == "long_interval.ms"
     ]
     assert samples_in_chunks(short_interval_times, short_interval_chunks) == [[0, 10], [20, 30]]
-    assert samples_in_chunks(long_interval_times, long_interval_chunks) == [[0, 40], [80, 120, 160]]
+    assert samples_in_chunks(long_interval_times, long_interval_chunks) == [[0, 40, 80], [120, 160]]
 
 
 @pytest.mark.parametrize("max_nodes", [1, 2])
@@ -863,7 +863,7 @@ def test_chunking_partial_data_can_prefer_high_elevation(
 @pytest.mark.parametrize(
     "data_fraction, expected_chunks, expected_starts, expected_ends",
     [
-        pytest.param(1.0, [[0, 10], [20, 30, 40, 50]], [-0.1, 19.9], [10.1, 50.1], id="full_data"),
+        pytest.param(1.0, [[0, 10, 20, 30], [40, 50]], [-0.1, 39.9], [30.1, 50.1], id="full_data"),
         pytest.param(0.8, [[0, 10], [40, 50]], [-0.1, 39.9], [10.1, 50.1], id="partial_data"),
     ],
 )
