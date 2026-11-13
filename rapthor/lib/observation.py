@@ -103,6 +103,18 @@ class Observation(object):
             self.goesto_endofms = self.endtime >= np.max(tab.getcol("TIME"))
             self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
 
+            # Get the baselines, as pairs of ANTENNA table indices, from the rows
+            # of the first time slot, as DP3 does. They can differ from all pairs
+            # of the ANTENNA table entries: the autocorrelations are usually
+            # absent (LINC removes them) and the table can list stations that
+            # have no rows
+            times = tab.getcol("TIME")
+            is_later = times != times[0]
+            nbaselines = int(np.argmax(is_later)) if is_later.any() else len(times)
+            self.baselines = np.column_stack(
+                (tab.getcol("ANTENNA1", 0, nbaselines), tab.getcol("ANTENNA2", 0, nbaselines))
+            )
+
         # Get frequency info
         with pt.table(f"{self.ms_filename}::SPECTRAL_WINDOW", ack=False) as sw:
             self.referencefreq = sw.col("REF_FREQUENCY")[0]
@@ -142,9 +154,10 @@ class Observation(object):
                 np.degrees(float(obs.col("REFERENCE_DIR")[0][0][1])),
             )
 
-        # Get station names and diameter
+        # Get station names, positions (ITRF, in m) and diameter
         with pt.table(f"{self.ms_filename}::ANTENNA", ack=False) as ant:
             self.stations = ant.col("NAME")[:]
+            self.antenna_positions = ant.getcol("POSITION")
             self.diam = float(ant.col("DISH_DIAMETER")[0])
             if "HBA" in self.stations[0]:
                 self.antenna = "HBA"

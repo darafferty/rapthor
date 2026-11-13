@@ -89,6 +89,20 @@ class TestObservation:
             "RS307HBA",
         ]
         assert np.isclose(observation.diam, 31.262533139844095)
+        assert observation.antenna_positions.shape == (8, 3)
+        # CS002HBA0 and CS002HBA1 are the two fields of one core station
+        assert (
+            0
+            < np.linalg.norm(observation.antenna_positions[2] - observation.antenna_positions[1])
+            < 200
+        )
+        # The MS has the 28 cross-correlations of its 8 stations and no
+        # autocorrelations
+        assert observation.baselines.shape == (28, 2)
+        assert np.issubdtype(observation.baselines.dtype, np.integer)
+        assert set(map(tuple, observation.baselines)) == {
+            (first, second) for first in range(8) for second in range(first + 1, 8)
+        }
         assert np.isclose(observation.mean_el_rad, 1.1529779067059374)
         assert np.isclose(observation.high_el_starttime, observation.starttime)
         assert np.isclose(observation.high_el_endtime, observation.endtime)

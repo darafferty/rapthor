@@ -5,6 +5,8 @@ import math
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
+import numpy as np
+
 from rapthor.lib.calibration import CALIBRATION_SOLVE_METADATA
 from rapthor.lib.cluster import DP3MemoryEstimate, estimate_dp3_peak_memory, get_available_memory
 from rapthor.lib.strategy import default_calibration_strategy
@@ -38,6 +40,16 @@ class CalibrationMemoryEstimate:
     def peak_memory_gb(self) -> float:
         """Estimated peak memory in decimal gigabytes."""
         return self.memory.peak_memory_gb
+
+
+@dataclass(frozen=True)
+class BdaSettings:
+    """Baseline-dependent averaging settings of the DP3 calibration steps."""
+
+    timebase: float
+    frequencybase: float
+    maxinterval: float
+    minchannels: int
 
 
 @dataclass(frozen=True)
@@ -226,6 +238,7 @@ def _largest_calibration_memory_estimate(
                     observation,
                     directions,
                     solution_interval_seconds,
+                    _bda_settings(field, observation, mode, strategy_step),
                 )
                 if largest is None or estimate.peak_memory_gb > largest.peak_memory_gb:
                     largest = estimate
@@ -248,12 +261,88 @@ def _solution_interval_seconds(
     return solution_interval_samples * observation.timepersample
 
 
+def _bda_settings(
+    field: object,
+    observation: object,
+    mode: str,
+    strategy_step: Optional[Mapping[str, object]],
+) -> Optional[BdaSettings]:
+    """Return the BDA settings of the solves, or None when they do not use BDA.
+
+    As in the Calibrate operation, only the DD solves use BDA, and only with
+    regular channels and without image-based or WSClean prediction (screens use
+    image-based prediction). A preflight check runs before the BDA limits are
+    known, so it assumes no BDA.
+    """
+    timebase = field.calibrate_bda_timebase
+    frequencybase = field.calibrate_bda_frequencybase
+    if (
+        strategy_step is not None
+        or mode != "dd"
+        or (timebase <= 0 and frequencybase <= 0)
+        or field.generate_screens
+        or field.use_image_based_predict
+        or field.use_wsclean_predict
+        or not all(obs.channels_are_regular for obs in field.observations)
+    ):
+        return None
+    # All time chunks of an observation share one value; the shortest interval
+    # and the most channels are the conservative choice
+    return BdaSettings(
+        timebase=timebase,
+        frequencybase=frequencybase,
+        maxinterval=min(observation.parameters["bda_maxinterval"]),
+        minchannels=max(observation.parameters["bda_minchannels"]),
+    )
+
+
+def _bda_time_factor(length: float, sampling_interval_seconds: float, bda: BdaSettings) -> int:
+    """Return the BDA time factor of a baseline, as DP3's BDAAverager.cc sets it."""
+    time_factor = math.floor(bda.timebase / max(length, 0.1))
+    # Rapthor always sets maxinterval to at least 1 s, but DP3 ignores a value of 0
+    if bda.maxinterval > 0 and time_factor * sampling_interval_seconds > bda.maxinterval:
+        time_factor = math.floor(bda.maxinterval / sampling_interval_seconds)
+    return max(time_factor, 1)
+
+
+def _bda_channels(length: float, channels: int, bda: BdaSettings) -> int:
+    """Return the BDA channel count of a baseline, as DP3's BDAAverager.cc sets it."""
+    if bda.frequencybase <= 0:
+        return channels
+    baseline_channels = math.ceil(length / bda.frequencybase * channels)
+    if baseline_channels > channels:
+        return channels
+    return max(baseline_channels, bda.minchannels)
+
+
+def _bda_visibility_samples(
+    lengths: list[float],
+    channels: int,
+    time_steps: int,
+    sampling_interval_seconds: float,
+    bda: BdaSettings,
+) -> int:
+    """Return the samples DP3 holds for one solution interval after BDA."""
+    time_factors = [_bda_time_factor(length, sampling_interval_seconds, bda) for length in lengths]
+    # DP3 solves an interval once every baseline has a complete row that starts
+    # after it (BdaSolverBuffer.h:80-86, BDAAverager.cc:298-299), so up to
+    # 2 * max_factor - 1 time steps of the next interval are held as well. Rows
+    # of the previous interval that share an output buffer with rows of this one
+    # (BdaSolverBuffer.cc:179-204) are not included
+    held_time_steps = time_steps + 2 * max(time_factors) - 1
+    return sum(
+        _bda_channels(length, channels, bda) * math.ceil(held_time_steps / time_factor)
+        for length, time_factor in zip(lengths, time_factors)
+    )
+
+
 def _estimate_calibration_task(
     mode: str,
     solve_type: str,
     observation: object,
     directions: int,
     solution_interval_seconds: float,
+    bda: Optional[BdaSettings],
 ) -> CalibrationMemoryEstimate:
     """Estimate one observation/solve task using resolved scientific inputs."""
     station_count = len(observation.stations)
@@ -262,6 +351,17 @@ def _estimate_calibration_task(
     sampling_interval_seconds = observation.timepersample
     time_steps = math.ceil(solution_interval_seconds / sampling_interval_seconds)
     visibility_samples = baselines * channels * time_steps
+    if bda is not None:
+        # The baselines in the MS, as DP3 averages them. The autocorrelations
+        # only count when the MS has them
+        positions = np.asarray(observation.antenna_positions, dtype=float)
+        first, second = np.asarray(observation.baselines, dtype=int).T
+        lengths = np.linalg.norm(positions[second] - positions[first], axis=1)
+        # With BDA, DP3 also holds rows of the next interval, so this can exceed
+        # the estimate without BDA
+        visibility_samples = _bda_visibility_samples(
+            list(lengths), channels, time_steps, sampling_interval_seconds, bda
+        )
     memory = estimate_dp3_peak_memory(visibility_samples=visibility_samples, directions=directions)
     return CalibrationMemoryEstimate(
         mode=mode,

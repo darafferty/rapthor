@@ -3,10 +3,15 @@
 import logging
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from rapthor.lib.calibration_memory import (
+    BdaSettings,
     CalibrationMemoryRiskError,
+    _bda_channels,
+    _bda_time_factor,
+    _bda_visibility_samples,
     check_calibration_memory,
 )
 
@@ -18,11 +23,19 @@ def _observation(
     stations=2,
     sampling_interval=4,
     parameters=None,
+    positions=None,
+    baselines=None,
 ):
+    # By default, the MS has every baseline, including the autocorrelations
+    if baselines is None:
+        baselines = np.column_stack(np.triu_indices(stations))
     return SimpleNamespace(
         name=name,
         numchannels=channels,
+        channels_are_regular=True,
         stations=[f"station-{index}" for index in range(stations)],
+        antenna_positions=positions if positions is not None else [[0.0, 0.0, 0.0]] * stations,
+        baselines=np.asarray(baselines),
         timepersample=sampling_interval,
         parameters=parameters if parameters is not None else {},
     )
@@ -39,6 +52,11 @@ def _field(
         observations=observations if observations is not None else [_observation()],
         calibration_strategy=calibration_strategy,
         do_calibrate=True,
+        generate_screens=False,
+        use_image_based_predict=False,
+        use_wsclean_predict=False,
+        calibrate_bda_timebase=0.0,
+        calibrate_bda_frequencybase=0.0,
         fast_timestep_sec=8,
         medium_timestep_sec=12,
         slow_timestep_sec=16,
@@ -241,3 +259,174 @@ def test_estimation_failure_remains_advisory(monkeypatch, caplog):
     assert estimate is None
     assert "Could not complete the advisory DP3 calibration memory pre-flight" in caplog.text
     assert "Processing will continue" in caplog.text
+
+
+# Three stations on a line give baselines of 0 m (three autocorrelations), 100 m,
+# 900 m and 1000 m
+LINE_POSITIONS = [[0.0, 0.0, 0.0], [100.0, 0.0, 0.0], [1000.0, 0.0, 0.0]]
+
+
+def _bda_field(**settings):
+    parameters = {"solint_fast_timestep": [6], "bda_maxinterval": [16.0], "bda_minchannels": [2]}
+    observation = _observation(
+        channels=8, stations=3, parameters=parameters, positions=LINE_POSITIONS
+    )
+    field = _field(observations=[observation], calibration_strategy={"dd": ["fast_phase"]})
+    field.calibrate_bda_timebase = 2000.0
+    field.calibrate_bda_frequencybase = 1000.0
+    for name, value in settings.items():
+        setattr(field, name, value)
+    return field
+
+
+@pytest.mark.parametrize(
+    "settings, expected_samples",
+    [
+        # 6 time slots of 4 s and 8 channels. Time factors, limited to 16 s:
+        # 4, 4 (0 m, 100 m) and 2 (900 m, 1000 m), so 6 + 2 * 4 - 1 = 13 slots
+        # are held. Channels, at least 2: 2, 2, 8 and 8.
+        # Samples: 3 * 2 * 4 + 2 * 4 + 8 * 7 + 8 * 7
+        pytest.param({}, 144, id="bda"),
+        # Time factors as above, all 8 channels: 3 * 8 * 4 + 8 * 4 + 8 * 7 + 8 * 7
+        pytest.param({"calibrate_bda_frequencybase": 0.0}, 240, id="timebase-only"),
+        # Time factors of 1, so 6 + 1 = 7 slots are held. Channels as in "bda":
+        # 3 * 2 * 7 + 2 * 7 + 8 * 7 + 8 * 7
+        pytest.param({"calibrate_bda_timebase": 0.0}, 168, id="frequencybase-only"),
+    ],
+)
+def test_resolved_dd_check_uses_baseline_dependent_averaging(settings, expected_samples):
+    """The samples per baseline follow DP3's BDAAverager and BdaSolverBuffer."""
+    estimate = check_calibration_memory(_bda_field(**settings), 2, 4)
+
+    assert estimate.visibility_samples == expected_samples
+    assert estimate.peak_memory_gb == pytest.approx(expected_samples * (4 + 1) * 80 / 1e9)
+
+
+@pytest.mark.parametrize(
+    "settings, strategy_step, calibration_strategy",
+    [
+        pytest.param({}, None, {"di": ["fast_phase"]}, id="di"),
+        pytest.param({"use_image_based_predict": True}, None, None, id="image-based-predict"),
+        pytest.param({"use_wsclean_predict": True}, None, None, id="wsclean"),
+        pytest.param({"generate_screens": True}, None, None, id="screens"),
+        pytest.param(
+            {"calibrate_bda_timebase": 0.0, "calibrate_bda_frequencybase": 0.0},
+            None,
+            None,
+            id="disabled",
+        ),
+        # The BDA limits are not known yet, so preflight assumes no BDA
+        pytest.param({}, _step(fast_timestep_sec=24), None, id="preflight"),
+    ],
+)
+def test_check_uses_all_samples_when_calibration_does_not_use_bda(
+    settings, strategy_step, calibration_strategy
+):
+    field = _bda_field(**settings)
+    if calibration_strategy is not None:
+        field.calibration_strategy = calibration_strategy
+
+    estimate = check_calibration_memory(field, 2, 4, strategy_step)
+
+    assert estimate.visibility_samples == 6 * 8 * 6
+
+
+def test_check_uses_all_samples_with_irregular_channels():
+    field = _bda_field()
+    field.observations[0].channels_are_regular = False
+
+    estimate = check_calibration_memory(field, 2, 4)
+
+    assert estimate.visibility_samples == 6 * 8 * 6
+
+
+BDA = BdaSettings(timebase=2000.0, frequencybase=1000.0, maxinterval=16.0, minchannels=2)
+
+
+@pytest.mark.parametrize(
+    "length, settings, expected_factor",
+    [
+        pytest.param(900.0, {}, 2, id="baseline-limit"),
+        # 4 time slots of 4 s are exactly the 16 s maximum interval
+        pytest.param(500.0, {}, 4, id="exactly-maxinterval"),
+        pytest.param(100.0, {}, 4, id="maxinterval-limit"),
+        pytest.param(0.0, {}, 4, id="autocorrelation"),
+        pytest.param(100.0, {"timebase": 0.0}, 1, id="timebase-off"),
+    ],
+)
+def test_bda_time_factor_follows_dp3(length, settings, expected_factor):
+    bda = BdaSettings(**{**BDA.__dict__, **settings})
+
+    assert _bda_time_factor(length, 4.0, bda) == expected_factor
+
+
+@pytest.mark.parametrize(
+    "length, settings, expected_channels",
+    [
+        pytest.param(450.0, {}, 4, id="baseline-limit"),
+        pytest.param(100.0, {}, 2, id="minchannels"),
+        # 900 m with a 500 m base would keep 15 of the 8 channels
+        pytest.param(900.0, {"frequencybase": 500.0}, 8, id="longer-than-frequencybase"),
+        pytest.param(100.0, {"frequencybase": 0.0}, 8, id="frequencybase-off"),
+    ],
+)
+def test_bda_channels_follow_dp3(length, settings, expected_channels):
+    bda = BdaSettings(**{**BDA.__dict__, **settings})
+
+    assert _bda_channels(length, 8, bda) == expected_channels
+
+
+def test_bda_samples_include_the_next_interval_held_by_dp3():
+    """
+    DP3 solves an interval only once every baseline has a row that starts after
+    it. With time factors of 7 (autocorrelation) and 1, an 8-slot interval ends
+    after the 7-slot row starting at slot 14, so 8 + 2 * 7 - 1 = 21 slots are held.
+    """
+    bda = BdaSettings(timebase=2000.0, frequencybase=0.0, maxinterval=28.0, minchannels=1)
+
+    samples = _bda_visibility_samples([0.0, 1500.0], 8, 8, 4.0, bda)
+
+    assert samples == 8 * 3 + 8 * 21
+
+
+def test_bda_estimate_can_exceed_the_unaveraged_one():
+    """BDA that barely averages still holds the next interval's rows in DP3."""
+    parameters = {"solint_fast_timestep": [8], "bda_maxinterval": [28.0], "bda_minchannels": [1]}
+    observation = _observation(
+        channels=8, stations=2, parameters=parameters, positions=[[0.0] * 3, [1500.0, 0.0, 0.0]]
+    )
+    field = _field(observations=[observation], calibration_strategy={"dd": ["fast_phase"]})
+    field.calibrate_bda_timebase = 2000.0
+
+    estimate = check_calibration_memory(field, 2, 4)
+
+    # Two autocorrelations with 3 rows and one baseline with 21 rows of 8
+    # channels, more than 3 baselines * 8 channels * 8 time slots without BDA
+    assert estimate.visibility_samples == 2 * 8 * 3 + 8 * 21
+    assert estimate.visibility_samples > 3 * 8 * 8
+
+
+def test_bda_estimate_uses_only_the_baselines_in_the_ms():
+    """
+    DP3 averages the baselines present in the MS. An MS without autocorrelations
+    (as LINC produces) must not hold the next interval's rows for the time factor
+    that the 0 m autocorrelations would get.
+    """
+    # Stations 3 km apart: every cross baseline gets a time factor of 1
+    positions = [[0.0] * 3, [3000.0, 0.0, 0.0], [6000.0, 0.0, 0.0]]
+    parameters = {"solint_fast_timestep": [6], "bda_maxinterval": [16.0], "bda_minchannels": [1]}
+    observation = _observation(
+        channels=8,
+        stations=3,
+        parameters=parameters,
+        positions=positions,
+        baselines=[[0, 1], [0, 2], [1, 2]],
+    )
+    field = _field(observations=[observation], calibration_strategy={"dd": ["fast_phase"]})
+    field.calibrate_bda_timebase = 2000.0
+
+    estimate = check_calibration_memory(field, 2, 4)
+
+    # 6 + 2 * 1 - 1 = 7 time slots of 8 channels on 3 baselines. With the
+    # autocorrelations, the time factor of 4 (16 s) would have held 13 slots
+    assert estimate.visibility_samples == 3 * 8 * 7

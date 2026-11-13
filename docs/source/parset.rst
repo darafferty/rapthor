@@ -845,9 +845,14 @@ for how these options are used.
 
         The estimate uses decimal GB and a conservative current DP3 peak-memory model
         of 80 bytes per visibility sample. It includes the original data buffer,
-        visibility copies, weights, and weighted data, and uses the unaveraged channel
-        count because calibration BDA is baseline-dependent. By default, Rapthor logs
-        likely out-of-memory configurations but continues processing.
+        visibility copies, weights, and weighted data. When the direction-dependent
+        solves use baseline-dependent averaging (see :term:`bda_timebase <bda_timebase
+        (calibration)>` and :term:`bda_frequencybase <bda_frequencybase
+        (calibration)>`), the check before each calibration cycle uses the number of
+        time slots and channels that DP3 keeps for each baseline. The preflight check
+        runs before the averaging is known, so it uses the unaveraged data. By
+        default, Rapthor logs likely out-of-memory configurations but continues
+        processing.
 
         The estimated peak memory is calculated as follows::
 
@@ -859,6 +864,35 @@ for how these options are used.
             weights_gb = samples * 4 * 4 / 1e9
             weighted_data_gb = samples * 4 * 8 / 1e9
             peak_memory_gb = visibility_copies_gb + weights_gb + weighted_data_gb
+
+        With baseline-dependent averaging, ``baselines * channels * time_steps``
+        is replaced by a sum of ``baseline_samples`` over the baselines in the MS
+        (including any autocorrelations), with baseline length ``length`` in m,
+        as DP3 averages them. DP3 only solves a solution interval once every baseline
+        has a complete averaged time slot that starts after the interval, so it
+        also holds up to ``2 * max_time_factor - 1`` time slots of the next
+        interval, where ``max_time_factor`` is the largest ``time_factor`` of all
+        baselines. With little averaging, the sum can therefore be more than
+        ``baselines * channels * time_steps``. DP3 also keeps some rows of the
+        previous interval until the averaged data they were sent with are no
+        longer needed; the estimate does not include these::
+
+            time_factor = floor(bda_timebase / max(length, 0.1))
+            if time_factor * sampling_interval_seconds > bda_maxinterval:
+                time_factor = floor(bda_maxinterval / sampling_interval_seconds)
+            time_factor = max(time_factor, 1)
+            baseline_channels = channels
+            if bda_frequencybase > 0:
+                baseline_channels = ceil(length / bda_frequencybase * channels)
+                baseline_channels = channels if baseline_channels > channels
+                                    else max(baseline_channels, bda_minchannels)
+            held_time_steps = time_steps + 2 * max_time_factor - 1
+            baseline_samples = baseline_channels * ceil(held_time_steps / time_factor)
+
+        Here ``bda_maxinterval`` is the shorter of the fast and slow solves'
+        solution intervals in seconds. ``bda_minchannels`` is ``channels`` divided
+        by the shorter of the fast and slow solves' frequency solution intervals
+        (in channels), and at least 1.
 
         A DI solve always uses one direction. A DD preflight estimate uses the
         strategy step's ``max_directions`` value, while the resolved estimate uses the

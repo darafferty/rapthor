@@ -3,6 +3,15 @@
 Changelog
 =========
 
+Version 3.1 (unreleased)
+------------------------
+
+This minor release includes the following improvements:
+
+    - The DP3 memory check before each calibration cycle now takes the
+      baseline-dependent averaging of the calibration into account.
+
+
 Version 3.0 (unreleased)
 ------------------------
 
