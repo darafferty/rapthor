@@ -90,10 +90,6 @@ class Field(object):
         self.dd_interval_factor = self.parset["calibration_specific"]["dd_interval_factor"]
         self.h5parm_filename = self.parset["input_h5parm"]
         self.fulljones_h5parm_filename = self.parset["input_fulljones_h5parm"]
-        # The frequency step of the full-Jones solve, which scan_h5parms() replaces
-        # by the frequency spacing of a supplied full-Jones file (the time step is
-        # set by the strategy and is replaced in the same way)
-        self.fulljones_freqstep_hz = self.parset["calibration_specific"]["fulljones_freqstep_hz"]
         self.normalize_h5parm = self.parset["input_normalization_h5parm"]
         self.dde_mode = self.parset["dde_mode"]
         self.fast_smoothnessconstraint = self.parset["calibration_specific"][
@@ -181,6 +177,9 @@ class Field(object):
         self.apply_screens = False
         self.generate_screens = False
         self.apply_fulljones = False
+        # The (time in s, frequency in Hz) spacing of the solutions in the
+        # full-Jones file, set by scan_h5parms()
+        self.fulljones_solution_spacing = None
         self.apply_normalizations = self.normalize_h5parm is not None
         self.fast_phases_h5parm_filename = None
         self.medium1_phases_h5parm_filename = None
@@ -448,8 +447,19 @@ class Field(object):
         solution_intervals = {
             CALIBRATION_SOLVE_METADATA[solve].solution_interval_family for solve in solves
         }
+        applied_solution_spacings = []
         if self.fulljones_h5parm_filename is not None:
             solution_intervals.add("fulljones")
+            # A supplied full-Jones file (one without a cycle number) was not
+            # solved with the planned full-Jones intervals, so the averaging must
+            # fit the actual grid of its solutions as well
+            supplied_cycle_number = self.solution_cycle_number(
+                self.fulljones_h5parm_filename,
+                "fulljones_h5parm_cycle_number",
+                include_di_calibration=True,
+            )
+            if supplied_cycle_number is None and self.fulljones_solution_spacing is not None:
+                applied_solution_spacings.append(self.fulljones_solution_spacing)
         solution_intervals = sorted(solution_intervals)
         calibration_radius = self.get_calibration_radius()
 
@@ -465,10 +475,12 @@ class Field(object):
                 self.fulljones_timestep_sec,
                 self.target_flux,
                 self.generate_screens,
-                target_fulljones_freqstep=self.fulljones_freqstep_hz,
             )
             obs.set_calibration_averaging_parameters(
-                self.parset, calibration_radius, solution_intervals
+                self.parset,
+                calibration_radius,
+                solution_intervals,
+                applied_solution_spacings=applied_solution_spacings,
             )
             ntimechunks += obs.ntimechunks
         self.ntimechunks = ntimechunks
@@ -1783,12 +1795,15 @@ class Field(object):
         derive_solution_timesteps : bool
             If True, attempt to derive the solution time steps from the
             solutions. These time steps are stored in the same attributes set
-            by the calibration strategy. For full-Jones solutions, the solution
-            frequency step is derived as well, since the solutions are applied
-            before the direction-dependent solves and the calibration averaging
-            must fit their frequency grid. If this parameter is False or the
+            by the calibration strategy. If this parameter is False or the
             steps cannot be derived, the existing values of these attributes are
             not altered.
+
+        For full-Jones solutions, the actual (time in s, frequency in Hz)
+        spacing of the phase solutions is always recorded in
+        ``fulljones_solution_spacing``, with None for a missing axis or a
+        single solution, since the calibration averaging must fit the grid of
+        supplied solutions.
         """
         filename = str(filename)
 
@@ -1834,13 +1849,15 @@ class Field(object):
                     )
                 phase_soltab = solset.getSoltab("phase000")
                 is_fulljones = "pol" in phase_soltab.axesNames and phase_soltab.pol.size == 4
+                if is_fulljones:
+                    self.fulljones_solution_spacing = (
+                        get_timestep(phase_soltab),
+                        get_freqstep(phase_soltab),
+                    )
                 if derive_solution_timesteps:
                     if is_fulljones:
                         self.fulljones_timestep_sec = (
                             get_timestep(phase_soltab) or self.fulljones_timestep_sec
-                        )
-                        self.fulljones_freqstep_hz = (
-                            get_freqstep(phase_soltab) or self.fulljones_freqstep_hz
                         )
                     else:
                         self.fast_timestep_sec = (
@@ -1880,9 +1897,9 @@ class Field(object):
         ----------
         derive_solution_timesteps : bool
             If True, attempt to derive the solution time steps from the
-            solutions in ``h5parm_filename`` and ``fulljones_h5parm_filename``,
-            and the solution frequency step from those in
-            ``fulljones_h5parm_filename``.
+            solutions in ``h5parm_filename`` and ``fulljones_h5parm_filename``.
+            The solution spacing of ``fulljones_h5parm_filename`` is recorded
+            in ``fulljones_solution_spacing`` either way.
         """
         self.dd_apply_amplitudes = False
         self.di_apply_amplitudes = False
@@ -1916,6 +1933,7 @@ class Field(object):
             )
         else:
             self.apply_fulljones = False
+            self.fulljones_solution_spacing = None
 
     def check_selfcal_progress(self):
         """

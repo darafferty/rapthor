@@ -14,6 +14,10 @@ import pytest
 from rapthor.execution.pipeline.lifecycle import chunk_observations
 from rapthor.lib.observation import Observation
 
+# Time and channel widths of the test MS, for parametrizations that need them
+TIMEPERSAMPLE = 10.0139008
+CHANNELWIDTH = 24414.0625
+
 
 @pytest.fixture
 def calibration_parset(observation):
@@ -393,7 +397,10 @@ class TestObservation:
         calibrator_fluxes=(1.0,),
         dd_interval_factor=1,
     ):
-        """Set fast, medium and slow solution intervals in time slots and channels."""
+        """Set the solution intervals in time slots and channels.
+
+        The full-Jones intervals default to 1 time slot and 1 channel.
+        """
         settings = calibration_parset["calibration_specific"]
         settings.update(
             {
@@ -402,8 +409,10 @@ class TestObservation:
                 "dd_interval_factor": dd_interval_factor,
             }
         )
-        for solve_type in ["fast", "medium", "slow"]:
-            settings[f"{solve_type}_freqstep_hz"] = freqsteps[solve_type] * observation.channelwidth
+        for solve_type in ["fast", "medium", "slow", "fulljones"]:
+            settings[f"{solve_type}_freqstep_hz"] = (
+                freqsteps.get(solve_type, 1) * observation.channelwidth
+            )
         calibration_parset["imaging_specific"] = {"cellsize_arcsec": 1.5}
         observation.set_calibration_parameters(
             calibration_parset,
@@ -412,7 +421,7 @@ class TestObservation:
             timesteps["fast"] * observation.timepersample,
             timesteps["medium"] * observation.timepersample,
             timesteps["slow"] * observation.timepersample,
-            observation.timepersample,
+            timesteps.get("fulljones", 1) * observation.timepersample,
             target_flux=min(calibrator_fluxes),
         )
 
@@ -562,43 +571,60 @@ class TestObservation:
         assert observation.parameters["calibration_timestep"] == [3]
 
     @pytest.mark.parametrize(
-        "target_fulljones_freqstep, expected_freqstep",
+        "applied_solution_spacings, expected_timestep, expected_freqstep",
         [
-            pytest.param(None, 8, id="parset-value"),
-            pytest.param(2, 2, id="supplied-solutions"),
+            # The planned intervals alone allow 6 time slots (the observation) and
+            # 8 channels.
+            pytest.param([], 6, 8, id="no-supplied-solutions"),
+            # The averaged time slots must divide the 4 time slots of the supplied
+            # solutions, even though the planned full-Jones interval is 60.
+            pytest.param([(4 * TIMEPERSAMPLE, None)], 4, 8, id="whole-time-slots"),
+            pytest.param(
+                [(4 * TIMEPERSAMPLE * (1 + 1e-4), None)], 4, 8, id="nearly-whole-time-slots"
+            ),
+            # A spacing that is not a whole number of time slots or channels
+            # disables the averaging in that dimension.
+            pytest.param([(2.5 * TIMEPERSAMPLE, None)], 1, 8, id="fraction-of-a-time-slot"),
+            pytest.param([(None, 2 * CHANNELWIDTH)], 6, 2, id="whole-channels"),
+            # No averaged channel fits both the 3-channel grid and the 8 channels
+            # of the data.
+            pytest.param([(None, 3 * CHANNELWIDTH)], 6, 1, id="three-channel-grid"),
+            pytest.param([(None, 2.5 * CHANNELWIDTH)], 6, 1, id="fraction-of-a-channel"),
+            pytest.param(
+                [(2 * TIMEPERSAMPLE, 4 * CHANNELWIDTH), (3 * TIMEPERSAMPLE, 2 * CHANNELWIDTH)],
+                1,
+                2,
+                id="two-files",
+            ),
         ],
     )
-    def test_set_calibration_averaging_parameters_fits_supplied_fulljones_solutions(
-        self, observation, calibration_parset, target_fulljones_freqstep, expected_freqstep
+    def test_set_calibration_averaging_parameters_fits_supplied_solutions(
+        self,
+        observation,
+        calibration_parset,
+        applied_solution_spacings,
+        expected_timestep,
+        expected_freqstep,
     ):
-        """The frequency grid of supplied full-Jones solutions limits the averaging."""
-        settings = calibration_parset["calibration_specific"]
-        settings.update(
-            {
-                "average_visibilities": True,
-                "max_peak_smearing": 0.15,
-                "fulljones_freqstep_hz": 8 * observation.channelwidth,
-            }
-        )
-        calibration_parset["imaging_specific"] = {"cellsize_arcsec": 1.5}
-        if target_fulljones_freqstep is not None:
-            target_fulljones_freqstep *= observation.channelwidth
-        observation.set_calibration_parameters(
+        """The averaging divides the actual grid of supplied (pre-applied) solutions."""
+        self.set_averaging_test_parameters(
+            observation,
             calibration_parset,
-            -1,  # not used, since chunk_by_time is False
-            [1.0],
-            observation.timepersample,
-            observation.timepersample,
-            observation.timepersample,
-            observation.timepersample,
-            target_fulljones_freqstep=target_fulljones_freqstep,
+            timesteps={"fast": 12, "medium": 12, "slow": 12, "fulljones": 60},
+            freqsteps={"fast": 8, "medium": 8, "slow": 8, "fulljones": 8},
+        )
+        assert np.isclose(observation.timepersample, TIMEPERSAMPLE)
+        assert np.isclose(observation.channelwidth, CHANNELWIDTH)
+
+        # A radius of 0.05 degrees allows 12 time slots and 82 channels.
+        observation.set_calibration_averaging_parameters(
+            calibration_parset,
+            0.05,
+            ["fast", "fulljones"],
+            applied_solution_spacings=applied_solution_spacings,
         )
 
-        # A radius of 0.05 degrees allows 82 channels, so the 8 channels of the
-        # parset value would be chosen without the supplied solutions
-        observation.set_calibration_averaging_parameters(calibration_parset, 0.05, ["fulljones"])
-
-        assert observation.parameters["solint_fulljones_freqstep"] == [expected_freqstep]
+        assert observation.parameters["calibration_timestep"] == [expected_timestep]
         assert observation.parameters["calibration_freqstep"] == [expected_freqstep]
 
     def test_set_prediction_parameters(self, observation, test_ms):

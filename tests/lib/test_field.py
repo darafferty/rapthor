@@ -288,33 +288,48 @@ def test_set_obs_parameters_averages_for_applied_solutions_and_furthest_calibrat
     monkeypatch.setattr(
         Observation,
         "set_calibration_averaging_parameters",
-        lambda obs, *args: calls.append((obs, *args)),
+        lambda obs, *args, **kwargs: calls.append((obs, *args, kwargs)),
     )
 
     field.set_obs_parameters()
 
     assert calls == [
-        (obs, field.parset, field.get_calibration_radius(), expected_solution_intervals)
+        (
+            obs,
+            field.parset,
+            field.get_calibration_radius(),
+            expected_solution_intervals,
+            {"applied_solution_spacings": []},
+        )
         for obs in field.observations
     ]
 
 
-def test_set_obs_parameters_uses_the_fulljones_frequency_step_of_the_field(field, monkeypatch):
-    """The full-Jones frequency step derived from a supplied file limits the solves."""
-    field.fulljones_freqstep_hz = 2 * field.observations[0].channelwidth
+@pytest.mark.parametrize(
+    "cycle_number, expected_spacings",
+    [
+        # A supplied file has no cycle number, so its own grid limits the averaging
+        pytest.param(None, [(600.0, 48828.125)], id="supplied-file"),
+        # A product of the cycle was solved with the planned intervals
+        pytest.param(1, [], id="current-cycle-product"),
+    ],
+)
+def test_set_obs_parameters_passes_the_spacing_of_supplied_fulljones_solutions(
+    field, monkeypatch, cycle_number, expected_spacings
+):
+    field.fulljones_h5parm_filename = "fulljones.h5"
+    field.fulljones_h5parm_cycle_number = cycle_number
+    field.fulljones_solution_spacing = (600.0, 48828.125)
     calls = []
     monkeypatch.setattr(
         Observation,
-        "set_calibration_parameters",
-        lambda obs, *args, **kwargs: calls.append((obs, kwargs)),
+        "set_calibration_averaging_parameters",
+        lambda obs, *args, **kwargs: calls.append(kwargs["applied_solution_spacings"]),
     )
-    monkeypatch.setattr(Observation, "set_calibration_averaging_parameters", lambda *args: None)
 
     field.set_obs_parameters()
 
-    assert [kwargs["target_fulljones_freqstep"] for _, kwargs in calls] == [
-        field.fulljones_freqstep_hz
-    ] * len(field.observations)
+    assert calls == [expected_spacings] * len(field.observations)
 
 
 def test_set_obs_parameters_does_not_average_by_default(field):
@@ -1002,7 +1017,6 @@ def test_scan_h5parms_derives_timesteps(solution_state_field, tmp_path):
     field.fast_timestep_sec = 0
     field.slow_timestep_sec = 0
     field.fulljones_timestep_sec = 0
-    field.fulljones_freqstep_hz = 1e6
 
     path = tmp_path / "field_solutions.h5"
     pols = np.array(["XX", "YY"])  # diagonal solve
@@ -1056,38 +1070,57 @@ def test_scan_h5parms_derives_timesteps(solution_state_field, tmp_path):
     assert field.fast_timestep_sec == 30
     assert field.slow_timestep_sec == 600
     assert field.fulljones_timestep_sec == 600
-    # The full-Jones file has no frequency axis, so the parset value is kept
-    assert field.fulljones_freqstep_hz == 1e6
+    # The full-Jones file has no frequency axis
+    assert field.fulljones_solution_spacing == (600.0, None)
 
 
-def test_scan_h5parms_derives_fulljones_freqstep(solution_state_field, tmp_path):
-    """A supplied full-Jones file with a finer frequency grid lowers the frequency step."""
-    field = solution_state_field
-    field.fulljones_timestep_sec = 600
-    field.fulljones_freqstep_hz = 1e6
-
-    path = tmp_path / "fulljones_solutions.h5"
-    pols = np.array(["XX", "XY", "YX", "YY"])  # full-Jones solve
-    times = np.arange(0, 3600, 600)  # 600 s solution interval
-    frequencies = np.arange(120e6, 121e6, 48828.125)  # 2 channels of 24414.0625 Hz
-    shape = (len(ANTENNAS), len(times), len(frequencies), len(pols))
+def _write_fulljones_h5parm(path, times, frequencies=None):
+    """Write a full-Jones h5parm with the given time axis and optional frequency axis."""
+    axes = {"ant": ANTENNAS, "time": np.asarray(times, dtype=float)}
+    if frequencies is not None:
+        axes["freq"] = np.asarray(frequencies, dtype=float)
+    axes["pol"] = np.array(["XX", "XY", "YX", "YY"])
+    shape = tuple(len(values) for values in axes.values())
     with h5parm(str(path), readonly=False) as solutions:
         solset = solutions.makeSolset("sol000")
         for soltype, name in [("amplitude", "amplitude000"), ("phase", "phase000")]:
             solset.makeSoltab(
                 soltype,
                 name,
-                axesNames=["ant", "time", "freq", "pol"],
-                axesVals=[ANTENNAS, times, frequencies, pols],
+                axesNames=list(axes),
+                axesVals=list(axes.values()),
                 vals=np.ones(shape),
                 weights=np.ones(shape),
             )
-    field.fulljones_h5parm_filename = str(path)
+    return str(path)
 
-    field.scan_h5parms(derive_solution_timesteps=True)
 
-    assert field.fulljones_timestep_sec == 600
-    assert field.fulljones_freqstep_hz == 48828.125
+@pytest.mark.parametrize("derive_solution_timesteps", [True, False])
+def test_scan_h5parms_records_the_spacing_of_fulljones_solutions(
+    solution_state_field, tmp_path, derive_solution_timesteps
+):
+    """The time and frequency spacing of the full-Jones solutions is always recorded."""
+    field = solution_state_field
+    field.fulljones_timestep_sec = 32
+    field.fulljones_h5parm_filename = _write_fulljones_h5parm(
+        tmp_path / "fulljones_solutions.h5",
+        times=np.arange(0, 3600, 600),  # 600 s solution interval
+        frequencies=np.arange(120e6, 121e6, 48828.125),  # 2 channels of 24414.0625 Hz
+    )
+
+    field.scan_h5parms(derive_solution_timesteps=derive_solution_timesteps)
+
+    assert field.fulljones_solution_spacing == (600.0, 48828.125)
+    assert field.fulljones_timestep_sec == (600 if derive_solution_timesteps else 32)
+
+
+def test_scan_h5parms_clears_the_spacing_without_fulljones_solutions(solution_state_field):
+    field = solution_state_field
+    field.fulljones_solution_spacing = (600.0, 48828.125)
+
+    field.scan_h5parms()
+
+    assert field.fulljones_solution_spacing is None
 
 
 def test_scan_h5parms_with_single_solution_in_time(solution_state_field, tmp_path):
@@ -1095,7 +1128,6 @@ def test_scan_h5parms_with_single_solution_in_time(solution_state_field, tmp_pat
     field.fast_timestep_sec = 8
     field.slow_timestep_sec = 32
     field.fulljones_timestep_sec = 32
-    field.fulljones_freqstep_hz = 1e6
 
     path = tmp_path / "field_solutions.h5"
     times = np.array([0])  # single solution
@@ -1148,7 +1180,8 @@ def test_scan_h5parms_with_single_solution_in_time(solution_state_field, tmp_pat
     assert field.fast_timestep_sec == 8
     assert field.slow_timestep_sec == 32
     assert field.fulljones_timestep_sec == 32
-    assert field.fulljones_freqstep_hz == 1e6
+    # A single solution has no spacing
+    assert field.fulljones_solution_spacing == (None, None)
 
 
 def test_scan_h5parms_with_screen_solutions(solution_state_field, tmp_path):

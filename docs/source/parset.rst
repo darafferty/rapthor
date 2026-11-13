@@ -160,9 +160,10 @@ The available options are described below under their respective sections.
         None). This file is used if no calibration is to be done. Rapthor
         pre-applies full-Jones solutions during imaging preparation, separately
         from the scalar phase or diagonal slow-gain products supplied through
-        :term:`input_h5parm`. The time and frequency spacing of the solutions
-        in this file are used as the full-Jones solution intervals, in place of
-        :term:`fulljones_timestep_sec` and :term:`fulljones_freqstep_hz`.
+        :term:`input_h5parm`. If the visibilities are averaged before
+        calibration (see :term:`average_visibilities <average_visibilities
+        (calibration)>`), the averaging fits the time and frequency spacing of
+        the solutions in this file.
 
     input_normalization_h5parm
         Full path to an H5parm file with flux-scale normalization solutions (default =
@@ -475,8 +476,11 @@ The available options are described below under their respective sections.
           direction-dependent solution intervals are used) and to the
           direction-independent and full-Jones solutions that are applied to the
           data before the direction-dependent solves. For full-Jones solutions
-          supplied through :term:`input_fulljones_h5parm`, the time and
-          frequency spacing of the solutions in the file are used;
+          supplied through :term:`input_fulljones_h5parm`, the averaged time
+          slots and channels must also divide the time and frequency spacing of
+          the solutions in the file. If that spacing is not a whole number of
+          time slots or channels of the input data, the data are not averaged
+          in that dimension;
         - the number of channels in the input data is a whole number of averaged
           channels, and the averaging is no longer than the observation.
 

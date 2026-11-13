@@ -238,7 +238,6 @@ class Observation(object):
         target_flux=None,
         generate_screens=False,
         chunk_by_time=False,
-        target_fulljones_freqstep=None,
     ):
         """
         Sets the calibration parameters
@@ -267,17 +266,13 @@ class Observation(object):
             solving is done for screens (IDGCal)
         chunk_by_time : bool, optional
             If True, chunking over time is done during calibration
-        target_fulljones_freqstep : float, optional
-            Target solution interval for full-Jones solves in Hz. If None, the
-            fulljones_freqstep_hz value of the parset is used
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
         target_fast_freqstep = parset["calibration_specific"]["fast_freqstep_hz"]
         target_medium_freqstep = parset["calibration_specific"]["medium_freqstep_hz"]
         target_slow_freqstep = parset["calibration_specific"]["slow_freqstep_hz"]
-        if target_fulljones_freqstep is None:
-            target_fulljones_freqstep = parset["calibration_specific"]["fulljones_freqstep_hz"]
+        target_fulljones_freqstep = parset["calibration_specific"]["fulljones_freqstep_hz"]
 
         if generate_screens:
             # Screens do not support the direction-dependent smoothness contraint or
@@ -459,7 +454,9 @@ class Observation(object):
             medium_smoothnessreffrequency
         ] * self.ntimechunks
 
-    def set_calibration_averaging_parameters(self, parset, calibration_radius, solution_intervals):
+    def set_calibration_averaging_parameters(
+        self, parset, calibration_radius, solution_intervals, applied_solution_spacings=None
+    ):
         """
         Sets the time and frequency averaging steps used before the calibration solves
 
@@ -480,6 +477,12 @@ class Observation(object):
         solution_intervals : list of str
             Solution intervals ('fast', 'medium', 'slow', 'fulljones') of the
             solutions that are solved for or applied on the averaged data
+        applied_solution_spacings : list of tuple, optional
+            Actual (time spacing in s, frequency spacing in Hz) of the solutions
+            in supplied files that are applied on the averaged data, for solutions
+            that were not solved with the planned solution intervals. A spacing
+            of None in either dimension (a missing axis or a single solution)
+            does not limit the averaging
         """
         timestep = 1
         freqstep = 1
@@ -504,6 +507,26 @@ class Observation(object):
             solint_freqsteps = [
                 self.parameters[f"solint_{interval}_freqstep"][0] for interval in solution_intervals
             ]
+
+            # The solutions of supplied files have their own grid, which the
+            # planned solution intervals need not match. A spacing of a whole
+            # number of time slots or channels is one more interval that the
+            # averaging must divide; any other spacing disables the averaging in
+            # that dimension, since no averaged step fits it (a step of 1). The
+            # planned interval of the same solutions is in the lists as well, so
+            # the common divisor below still divides the number of channels
+            def get_spacing_samples(spacing, sample_width):
+                samples = spacing / sample_width
+                rounded = round(samples)
+                if rounded >= 1 and math.isclose(samples, rounded, rel_tol=1e-3):
+                    return rounded
+                return 1
+
+            for time_spacing, freq_spacing in applied_solution_spacings or []:
+                if time_spacing is not None:
+                    solint_timesteps.append(get_spacing_samples(time_spacing, self.timepersample))
+                if freq_spacing is not None:
+                    solint_freqsteps.append(get_spacing_samples(freq_spacing, self.channelwidth))
 
             # The frequency solution intervals divide the number of channels, so
             # their divisors do too, as DP3 requires for averaging. The time step
