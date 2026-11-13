@@ -225,7 +225,9 @@ def reset(parset_file):
             parset = Parset(runtime_parset).as_parset_dict()
             # Hold the working directory while operations are listed and removed
             try:
-                with working_directory_lock(parset["dir_working"], "a Rapthor reset", required=True):
+                with working_directory_lock(
+                    parset["dir_working"], "a Rapthor reset", required=True
+                ):
                     _reset(parset)
             except WorkingDirectoryLockError as error:
                 print(f"{error}\nNo reset can be done.")
