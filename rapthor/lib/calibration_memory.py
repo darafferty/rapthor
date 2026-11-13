@@ -1,6 +1,7 @@
 """DP3 calibration memory checks and optional high-risk enforcement."""
 
 import logging
+import math
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
@@ -29,6 +30,8 @@ class CalibrationMemoryEstimate:
     channels: int
     sampling_interval_seconds: float
     solution_interval_seconds: float
+    time_steps: int
+    visibility_samples: int
     memory: DP3MemoryEstimate
 
     @property
@@ -255,22 +258,22 @@ def _estimate_calibration_task(
     """Estimate one observation/solve task using resolved scientific inputs."""
     station_count = len(observation.stations)
     baselines = station_count * (station_count + 1) // 2
-    memory = estimate_dp3_peak_memory(
-        baselines=baselines,
-        channels=observation.numchannels,
-        solution_interval_seconds=solution_interval_seconds,
-        sampling_interval_seconds=observation.timepersample,
-        directions=directions,
-    )
+    channels = observation.numchannels
+    sampling_interval_seconds = observation.timepersample
+    time_steps = math.ceil(solution_interval_seconds / sampling_interval_seconds)
+    visibility_samples = baselines * channels * time_steps
+    memory = estimate_dp3_peak_memory(visibility_samples=visibility_samples, directions=directions)
     return CalibrationMemoryEstimate(
         mode=mode,
         solve_type=solve_type,
         observation_name=observation.name,
         directions=directions,
         baselines=baselines,
-        channels=observation.numchannels,
-        sampling_interval_seconds=observation.timepersample,
+        channels=channels,
+        sampling_interval_seconds=sampling_interval_seconds,
         solution_interval_seconds=solution_interval_seconds,
+        time_steps=time_steps,
+        visibility_samples=visibility_samples,
         memory=memory,
     )
 
@@ -297,14 +300,15 @@ def _log_calibration_memory(assessment):
 
     log.debug(
         "DP3 memory terms for cycle %s: baselines=%s, channels=%s, sampling_interval=%.3f "
-        "s, solution_interval=%.3f s, time_steps=%s, visibility_copies=%.3f GB, "
-        "weights=%.3f GB, weighted_data=%.3f GB",
+        "s, solution_interval=%.3f s, time_steps=%s, visibility_samples=%s, "
+        "visibility_copies=%.3f GB, weights=%.3f GB, weighted_data=%.3f GB",
         assessment.cycle_number,
         estimate.baselines,
         estimate.channels,
         estimate.sampling_interval_seconds,
         estimate.solution_interval_seconds,
-        estimate.memory.time_steps,
+        estimate.time_steps,
+        estimate.visibility_samples,
         estimate.memory.visibility_copies_gb,
         estimate.memory.weights_gb,
         estimate.memory.weighted_data_gb,

@@ -9,16 +9,9 @@ from rapthor.lib.cluster import estimate_dp3_peak_memory, get_available_memory, 
 
 
 def test_estimate_dp3_peak_memory_accounts_for_all_current_buffers():
-    estimate = estimate_dp3_peak_memory(
-        baselines=3,
-        channels=8,
-        solution_interval_seconds=12,
-        sampling_interval_seconds=4,
-        directions=4,
-    )
+    estimate = estimate_dp3_peak_memory(visibility_samples=3 * 8 * 3, directions=4)
 
     samples = 3 * 8 * 3 * (4 + 1)
-    assert estimate.time_steps == 3
     assert estimate.visibility_copies_gb == pytest.approx(samples * 4 * 8 / 1e9)
     assert estimate.weights_gb == pytest.approx(samples * 4 * 4 / 1e9)
     assert estimate.weighted_data_gb == pytest.approx(samples * 4 * 8 / 1e9)
@@ -28,21 +21,12 @@ def test_estimate_dp3_peak_memory_accounts_for_all_current_buffers():
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"baselines": 0},
-        {"channels": 0},
-        {"solution_interval_seconds": 0},
-        {"sampling_interval_seconds": 0},
+        {"visibility_samples": 0},
         {"directions": 0},
     ],
 )
 def test_estimate_dp3_peak_memory_requires_positive_inputs(overrides):
-    inputs = {
-        "baselines": 3,
-        "channels": 8,
-        "solution_interval_seconds": 12,
-        "sampling_interval_seconds": 4,
-        "directions": 4,
-    }
+    inputs = {"visibility_samples": 72, "directions": 4}
     inputs.update(overrides)
 
     with pytest.raises(ValueError, match="must be positive"):

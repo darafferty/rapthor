@@ -80,7 +80,7 @@ def test_preflight_uses_max_directions_and_largest_solve():
     assert estimate.directions == 7
     assert estimate.baselines == 3
     assert estimate.solution_interval_seconds == 20
-    assert estimate.memory.time_steps == 5
+    assert estimate.time_steps == 5
 
 
 def test_resolved_check_uses_actual_intervals_and_largest_task():
