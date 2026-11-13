@@ -299,6 +299,24 @@ def test_set_obs_parameters_averages_for_applied_solutions_and_furthest_calibrat
     ]
 
 
+def test_set_obs_parameters_uses_the_fulljones_frequency_step_of_the_field(field, monkeypatch):
+    """The full-Jones frequency step derived from a supplied file limits the solves."""
+    field.fulljones_freqstep_hz = 2 * field.observations[0].channelwidth
+    calls = []
+    monkeypatch.setattr(
+        Observation,
+        "set_calibration_parameters",
+        lambda obs, *args, **kwargs: calls.append((obs, kwargs)),
+    )
+    monkeypatch.setattr(Observation, "set_calibration_averaging_parameters", lambda *args: None)
+
+    field.set_obs_parameters()
+
+    assert [kwargs["target_fulljones_freqstep"] for _, kwargs in calls] == [
+        field.fulljones_freqstep_hz
+    ] * len(field.observations)
+
+
 def test_set_obs_parameters_does_not_average_by_default(field):
     assert field.get_obs_parameters("calibration_timestep") == [1]
     assert field.get_obs_parameters("calibration_freqstep") == [1]
@@ -984,6 +1002,7 @@ def test_scan_h5parms_derives_timesteps(solution_state_field, tmp_path):
     field.fast_timestep_sec = 0
     field.slow_timestep_sec = 0
     field.fulljones_timestep_sec = 0
+    field.fulljones_freqstep_hz = 1e6
 
     path = tmp_path / "field_solutions.h5"
     pols = np.array(["XX", "YY"])  # diagonal solve
@@ -1037,6 +1056,38 @@ def test_scan_h5parms_derives_timesteps(solution_state_field, tmp_path):
     assert field.fast_timestep_sec == 30
     assert field.slow_timestep_sec == 600
     assert field.fulljones_timestep_sec == 600
+    # The full-Jones file has no frequency axis, so the parset value is kept
+    assert field.fulljones_freqstep_hz == 1e6
+
+
+def test_scan_h5parms_derives_fulljones_freqstep(solution_state_field, tmp_path):
+    """A supplied full-Jones file with a finer frequency grid lowers the frequency step."""
+    field = solution_state_field
+    field.fulljones_timestep_sec = 600
+    field.fulljones_freqstep_hz = 1e6
+
+    path = tmp_path / "fulljones_solutions.h5"
+    pols = np.array(["XX", "XY", "YX", "YY"])  # full-Jones solve
+    times = np.arange(0, 3600, 600)  # 600 s solution interval
+    frequencies = np.arange(120e6, 121e6, 48828.125)  # 2 channels of 24414.0625 Hz
+    shape = (len(ANTENNAS), len(times), len(frequencies), len(pols))
+    with h5parm(str(path), readonly=False) as solutions:
+        solset = solutions.makeSolset("sol000")
+        for soltype, name in [("amplitude", "amplitude000"), ("phase", "phase000")]:
+            solset.makeSoltab(
+                soltype,
+                name,
+                axesNames=["ant", "time", "freq", "pol"],
+                axesVals=[ANTENNAS, times, frequencies, pols],
+                vals=np.ones(shape),
+                weights=np.ones(shape),
+            )
+    field.fulljones_h5parm_filename = str(path)
+
+    field.scan_h5parms(derive_solution_timesteps=True)
+
+    assert field.fulljones_timestep_sec == 600
+    assert field.fulljones_freqstep_hz == 48828.125
 
 
 def test_scan_h5parms_with_single_solution_in_time(solution_state_field, tmp_path):
@@ -1044,6 +1095,7 @@ def test_scan_h5parms_with_single_solution_in_time(solution_state_field, tmp_pat
     field.fast_timestep_sec = 8
     field.slow_timestep_sec = 32
     field.fulljones_timestep_sec = 32
+    field.fulljones_freqstep_hz = 1e6
 
     path = tmp_path / "field_solutions.h5"
     times = np.array([0])  # single solution
@@ -1096,6 +1148,7 @@ def test_scan_h5parms_with_single_solution_in_time(solution_state_field, tmp_pat
     assert field.fast_timestep_sec == 8
     assert field.slow_timestep_sec == 32
     assert field.fulljones_timestep_sec == 32
+    assert field.fulljones_freqstep_hz == 1e6
 
 
 def test_scan_h5parms_with_screen_solutions(solution_state_field, tmp_path):
