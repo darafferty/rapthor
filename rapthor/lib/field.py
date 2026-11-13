@@ -90,6 +90,10 @@ class Field(object):
         self.dd_interval_factor = self.parset["calibration_specific"]["dd_interval_factor"]
         self.h5parm_filename = self.parset["input_h5parm"]
         self.fulljones_h5parm_filename = self.parset["input_fulljones_h5parm"]
+        # The frequency step of the full-Jones solve, which scan_h5parms() replaces
+        # by the frequency spacing of a supplied full-Jones file (the time step is
+        # set by the strategy and is replaced in the same way)
+        self.fulljones_freqstep_hz = self.parset["calibration_specific"]["fulljones_freqstep_hz"]
         self.normalize_h5parm = self.parset["input_normalization_h5parm"]
         self.dde_mode = self.parset["dde_mode"]
         self.fast_smoothnessconstraint = self.parset["calibration_specific"][
@@ -461,6 +465,7 @@ class Field(object):
                 self.fulljones_timestep_sec,
                 self.target_flux,
                 self.generate_screens,
+                target_fulljones_freqstep=self.fulljones_freqstep_hz,
             )
             obs.set_calibration_averaging_parameters(
                 self.parset, calibration_radius, solution_intervals
@@ -1778,7 +1783,10 @@ class Field(object):
         derive_solution_timesteps : bool
             If True, attempt to derive the solution time steps from the
             solutions. These time steps are stored in the same attributes set
-            by the calibration strategy. If this parameter is False or the
+            by the calibration strategy. For full-Jones solutions, the solution
+            frequency step is derived as well, since the solutions are applied
+            before the direction-dependent solves and the calibration averaging
+            must fit their frequency grid. If this parameter is False or the
             steps cannot be derived, the existing values of these attributes are
             not altered.
         """
@@ -1787,6 +1795,12 @@ class Field(object):
         def get_timestep(soltab):
             if soltab.time.size > 1:
                 return np.min(soltab.time[1:] - soltab.time[:-1])
+            else:
+                return None
+
+        def get_freqstep(soltab):
+            if "freq" in soltab.getAxesNames() and soltab.freq.size > 1:
+                return np.min(soltab.freq[1:] - soltab.freq[:-1])
             else:
                 return None
 
@@ -1824,6 +1838,9 @@ class Field(object):
                     if is_fulljones:
                         self.fulljones_timestep_sec = (
                             get_timestep(phase_soltab) or self.fulljones_timestep_sec
+                        )
+                        self.fulljones_freqstep_hz = (
+                            get_freqstep(phase_soltab) or self.fulljones_freqstep_hz
                         )
                     else:
                         self.fast_timestep_sec = (
@@ -1863,7 +1880,9 @@ class Field(object):
         ----------
         derive_solution_timesteps : bool
             If True, attempt to derive the solution time steps from the
-            solutions in ``h5parm_filename`` and ``fulljones_h5parm_filename``.
+            solutions in ``h5parm_filename`` and ``fulljones_h5parm_filename``,
+            and the solution frequency step from those in
+            ``fulljones_h5parm_filename``.
         """
         self.dd_apply_amplitudes = False
         self.di_apply_amplitudes = False

@@ -238,6 +238,7 @@ class Observation(object):
         target_flux=None,
         generate_screens=False,
         chunk_by_time=False,
+        target_fulljones_freqstep=None,
     ):
         """
         Sets the calibration parameters
@@ -266,13 +267,17 @@ class Observation(object):
             solving is done for screens (IDGCal)
         chunk_by_time : bool, optional
             If True, chunking over time is done during calibration
+        target_fulljones_freqstep : float, optional
+            Target solution interval for full-Jones solves in Hz. If None, the
+            fulljones_freqstep_hz value of the parset is used
         """
         # Get the target solution intervals and maximum factor by which they can
         # be increased when using direction-dependent solution intervals
         target_fast_freqstep = parset["calibration_specific"]["fast_freqstep_hz"]
         target_medium_freqstep = parset["calibration_specific"]["medium_freqstep_hz"]
         target_slow_freqstep = parset["calibration_specific"]["slow_freqstep_hz"]
-        target_fulljones_freqstep = parset["calibration_specific"]["fulljones_freqstep_hz"]
+        if target_fulljones_freqstep is None:
+            target_fulljones_freqstep = parset["calibration_specific"]["fulljones_freqstep_hz"]
 
         if generate_screens:
             # Screens do not support the direction-dependent smoothness contraint or

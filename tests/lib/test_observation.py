@@ -561,6 +561,46 @@ class TestObservation:
 
         assert observation.parameters["calibration_timestep"] == [3]
 
+    @pytest.mark.parametrize(
+        "target_fulljones_freqstep, expected_freqstep",
+        [
+            pytest.param(None, 8, id="parset-value"),
+            pytest.param(2, 2, id="supplied-solutions"),
+        ],
+    )
+    def test_set_calibration_averaging_parameters_fits_supplied_fulljones_solutions(
+        self, observation, calibration_parset, target_fulljones_freqstep, expected_freqstep
+    ):
+        """The frequency grid of supplied full-Jones solutions limits the averaging."""
+        settings = calibration_parset["calibration_specific"]
+        settings.update(
+            {
+                "average_visibilities": True,
+                "max_peak_smearing": 0.15,
+                "fulljones_freqstep_hz": 8 * observation.channelwidth,
+            }
+        )
+        calibration_parset["imaging_specific"] = {"cellsize_arcsec": 1.5}
+        if target_fulljones_freqstep is not None:
+            target_fulljones_freqstep *= observation.channelwidth
+        observation.set_calibration_parameters(
+            calibration_parset,
+            -1,  # not used, since chunk_by_time is False
+            [1.0],
+            observation.timepersample,
+            observation.timepersample,
+            observation.timepersample,
+            observation.timepersample,
+            target_fulljones_freqstep=target_fulljones_freqstep,
+        )
+
+        # A radius of 0.05 degrees allows 82 channels, so the 8 channels of the
+        # parset value would be chosen without the supplied solutions
+        observation.set_calibration_averaging_parameters(calibration_parset, 0.05, ["fulljones"])
+
+        assert observation.parameters["solint_fulljones_freqstep"] == [expected_freqstep]
+        assert observation.parameters["calibration_freqstep"] == [expected_freqstep]
+
     def test_set_prediction_parameters(self, observation, test_ms):
         observation.set_prediction_parameters("sector_1", ["patch_a", "patch_b"])
 
