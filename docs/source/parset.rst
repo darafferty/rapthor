@@ -605,7 +605,10 @@ The available options are described below under their respective sections.
     average_visibilities (imaging)
         Perform averaging of the input visibilities for imaging (default = ``True``),
         determined by the maximum allowed before smearing effects become important (see
-        :term:`max_peak_smearing <max_peak_smearing (imaging)>`).
+        :term:`max_peak_smearing <max_peak_smearing (imaging)>`). The averaging
+        steps are the largest whole numbers of time slots and channels for which
+        the smearing stays within the limit, where the number of channels must
+        divide the number of channels in the input data.
 
         .. note::
 
@@ -779,8 +782,9 @@ The available options are described below under their respective sections.
         Max desired peak flux density reduction at center of the image edges due to
         bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
         reduction in peak flux). Higher values result in shorter run times but more
-        smearing away from the image centers. The value must be at least 0 and less
-        than 1. Note this option is not considered if
+        smearing away from the image centers. The averaging steps are rounded
+        down, so the reduction does not exceed this value. The value must be at
+        least 0 and less than 1. Note this option is not considered if
         :term:`average_visibilities <average_visibilities (imaging)>` = ``False``.
 
     correct_time_frequency_smearing (imaging)

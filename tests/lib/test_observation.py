@@ -616,7 +616,7 @@ class TestObservation:
 
     @pytest.mark.parametrize(
         "preapply_dd_solutions, expected_image_timestep, expected_image_freqstep",
-        [(False, 2, 1), (True, 3, 8)],
+        [(False, 2, 1), (True, 2, 8)],
     )
     def test_set_imaging_parameters(
         self,
@@ -635,8 +635,10 @@ class TestObservation:
             width_dec=0.8,
             # Without preapplied DD solutions, imaging must preserve the fast-solve
             # cadence so solutions can still be applied accurately. That caps the
-            # image timestep at 20 s / 10.0139008 s ~= 2 slots. With preapplied DD
-            # solutions, the smearing limit is the active constraint, giving 3 slots.
+            # image timestep at the solution interval of 20 s / 10.0139008 s =
+            # 1.997, which the solves round to 2 slots. With preapplied DD
+            # solutions, the smearing limit of 27.0 s is the active constraint,
+            # which is rounded down to 2 slots.
             min_solve_timestep=20.0,
             min_solve_timestep_short_baselines=60.0,
             min_solve_freqstep=observation.channelwidth,
@@ -650,6 +652,52 @@ class TestObservation:
         assert observation.parameters["image_timestep"] == expected_image_timestep
         assert observation.parameters["image_bda_maxinterval"] == 6
         assert observation.parameters["image_bda_minchannels"] == 2
+
+    def test_set_imaging_parameters_rounds_the_averaging_steps_down(self, observation):
+        """The averaging steps never exceed the widths allowed by the smearing limit."""
+        # At 150 MHz, 1.5 degrees from the center, with 1.5 arcsec pixels and 15%
+        # smearing, the targets are 75.4 kHz and 6.7 s. The nearest steps of 2
+        # channels (97.7 kHz) and 3 time slots (6 s) would smear the peak by 18%
+        observation.referencefreq = 150e6
+        observation.channelwidth = 48828.125
+        observation.numchannels = 40
+        observation.timepersample = 2.0
+        observation.numsamples = 1800
+        max_peak_smearing = 0.15
+        cellsize_arcsec = 1.5
+        radius_deg = 1.5
+
+        observation.set_imaging_parameters(
+            sector_name="sector_1",
+            cellsize_arcsec=cellsize_arcsec,
+            max_peak_smearing=max_peak_smearing,
+            width_ra=2 * radius_deg,
+            width_dec=2 * radius_deg,
+            min_solve_timestep=1e9,
+            min_solve_timestep_short_baselines=1e9,
+            min_solve_freqstep=1e9,
+            min_solve_freqstep_short_baselines=1e9,
+            preapply_dd_solutions=True,
+        )
+
+        freqstep = observation.parameters["image_freqstep"]
+        timestep = observation.parameters["image_timestep"]
+        assert (freqstep, timestep) == (1, 3)
+        # Each of time and bandwidth smearing gets half of the allowed reduction
+        reduction_factor = np.sqrt(1.0 - max_peak_smearing)
+        resolution = 3.0 * cellsize_arcsec / 3600.0
+        assert (
+            observation.get_bandwidth_smearing_factor(
+                observation.referencefreq,
+                freqstep * observation.channelwidth,
+                radius_deg,
+                resolution,
+            )
+            >= reduction_factor
+        )
+        assert timestep * observation.timepersample <= observation.get_target_timewidth(
+            radius_deg, resolution, reduction_factor
+        )
 
     def test_get_target_averaging_widths_splits_smearing(self, observation):
         """Time and bandwidth smearing each get half of the allowed peak reduction."""

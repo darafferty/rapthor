@@ -666,25 +666,28 @@ class Observation(object):
         target_timewidth_sec, target_bandwidth_hz = self.get_target_averaging_widths(
             delta_theta_deg, cellsize_arcsec, max_peak_smearing
         )
-        target_timewidth_sec = min(target_timewidth_sec, int(self.numsamples / 2) * timestep_sec)
-
-        if not preapply_dd_solutions:
-            # Preserve enough resolution to apply every relevant solution during
-            # imaging. Normal averaging affects all baselines, so use the smallest
-            # interval over all solve types.
-            target_timewidth_sec = min(target_timewidth_sec, min_solve_timestep)
-            target_bandwidth_hz = min(target_bandwidth_hz, min_solve_freqstep)
-
         self.log.debug("Target averaging timewidth for imaging is %.1f s", target_timewidth_sec)
         self.log.debug(
             "Target averaging bandwidth for imaging is %.1f MHz",
             target_bandwidth_hz / 1e6,
         )
 
-        # Find averaging steps for above target values
-        image_freqstep = max(1, min(int(round(target_bandwidth_hz / chan_width_hz)), nchan))
-        self.parameters["image_freqstep"] = self.get_nearest_freqstep(image_freqstep)
-        self.parameters["image_timestep"] = max(1, int(round(target_timewidth_sec / timestep_sec)))
+        # Find the averaging steps for the above target values. The steps are
+        # rounded down so that the smearing stays within the limit
+        timestep = min(int(target_timewidth_sec / timestep_sec), int(self.numsamples / 2))
+        freqstep = target_bandwidth_hz / chan_width_hz
+
+        if not preapply_dd_solutions:
+            # Preserve enough resolution to apply every relevant solution during
+            # imaging. Normal averaging affects all baselines, so use the smallest
+            # interval over all solve types. The intervals are converted to time
+            # slots and channels as for the solves, which round them
+            timestep = min(timestep, int(round(min_solve_timestep / timestep_sec)))
+            freqstep = min(freqstep, self.get_nearest_freqstep(min_solve_freqstep / chan_width_hz))
+
+        # The frequency step must divide the number of channels for DP3
+        self.parameters["image_freqstep"] = get_largest_divisor(nchan, freqstep)
+        self.parameters["image_timestep"] = max(1, timestep)
         self.log.debug(
             "Using averaging steps of %s channel%s and %s time slot%s "
             "for imaging if averaging visibilities is enabled.",
