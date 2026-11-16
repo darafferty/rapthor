@@ -45,6 +45,9 @@ class Observation(object):
         # The number of time slots in each selected time range (set with the data
         # fraction when the observation is chunked)
         self.selection_timesteps = None
+        # The name and times with which the observation was planned as a chunk (see
+        # chunk), as scan_ms moves the times to those of the first and last samples
+        self.planned_times = None
         self.parameters = {}
         self.scan_ms()
 
@@ -713,7 +716,18 @@ class Observation(object):
 
         return delta_freq
 
-    def chunk_observation(
+    def chunk(self, name, starttime, endtime):
+        """
+        Return the chunk with the given name and times (see chunk_times).
+        """
+        if name == self.name:
+            chunk = self
+        else:
+            chunk = Observation(self.ms_filename, starttime=starttime, endtime=endtime, name=name)
+        chunk.planned_times = (name, starttime, endtime)
+        return chunk
+
+    def chunk_times(
         self,
         chunk_timesteps,
         prefer_high_el_periods=True,
@@ -721,7 +735,7 @@ class Observation(object):
         selection_timesteps=None,
     ):
         """
-        Break existing observation into smaller observations (chunks).
+        Plan the chunks of this observation, without reading the data.
 
         When only a fraction of the data is used, time ranges are first selected,
         and each is then split into chunks.
@@ -746,6 +760,12 @@ class Observation(object):
             Minimum number of time slots in a selected time range, when only a fraction
             of the data is used. If None, chunk_timesteps is used, so that each range
             is one chunk
+
+        Returns
+        -------
+        chunks : list of (str, float, float)
+            The name, start time and end time of each chunk. An observation that is not
+            chunked keeps its name and times
         """
         # Due to a limitation in Dysco, we make sure to have at least two time slots
         # per observation, otherwise the output MS cannot be written with compression.
@@ -784,15 +804,14 @@ class Observation(object):
         else:
             sample_boundaries = _split_into_intervals(0, num_samples, chunk_timesteps, max_chunks)
             if len(sample_boundaries) == 1:
-                return [self]
+                return [(self.name, self.starttime, self.endtime)]
 
         # Start and end times refer to the chunk's first and last samples.
         return [
-            Observation(
-                self.ms_filename,
-                starttime=target_starttime + first * self.timepersample,
-                endtime=target_endtime - (num_samples - end) * self.timepersample,
-                name=f"{os.path.basename(self.ms_filename)}_chunk{index + 1}",
+            (
+                f"{os.path.basename(self.ms_filename)}_chunk{index + 1}",
+                target_starttime + first * self.timepersample,
+                target_endtime - (num_samples - end) * self.timepersample,
             )
             for index, (first, end) in enumerate(sample_boundaries)
         ]

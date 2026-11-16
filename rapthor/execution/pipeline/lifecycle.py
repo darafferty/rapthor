@@ -64,7 +64,7 @@ def chunk_observations(field, steps, data_fraction, selection_steps=None):
         The selection is kept by rechunk_observations. If None, the steps are used
     """
     _select_data(field, selection_steps or steps, data_fraction)
-    field.update_observations(_planned_observations(field, steps, data_fraction))
+    field.update_observations(_chunked_observations(_chunk_plan(field, steps, data_fraction)))
 
 
 def rechunk_observations(field, steps, index, data_fraction):
@@ -100,11 +100,11 @@ def rechunk_observations(field, steps, index, data_fraction):
     if not step["do_calibrate"]:
         return step
 
-    observations = _planned_observations(field, [step], data_fraction)
-    if _chunk_layout(observations) == _chunk_layout(field.observations):
+    plan = _chunk_plan(field, [step], data_fraction)
+    if _is_chunked_as_planned(field.observations, plan):
         return step
 
-    field.update_observations(observations)
+    field.update_observations(_chunked_observations(plan))
     # The peeling flag is only required in imaging cycles
     peel_outliers = any(
         earlier_step.get("peel_outliers", False) for earlier_step in steps[: index + 1]
@@ -193,25 +193,32 @@ def _select_data(field, steps, data_fraction):
         obs.selection_timesteps = _chunk_timesteps(obs, intervals, data_fraction)
 
 
-def _planned_observations(field, steps, data_fraction):
+def _chunk_plan(field, steps, data_fraction):
+    """Return each observation with the name, start and end time of each of its chunks."""
     max_nodes = field.parset["cluster_specific"]["max_nodes"]
     if data_fraction >= 1.0 and max_nodes <= 1:
-        return field.full_observations
+        return [(obs, [(obs.name, obs.starttime, obs.endtime)]) for obs in field.full_observations]
 
     intervals = _solution_intervals(field, steps)
     max_chunks = None if data_fraction < 1.0 else max_nodes
     return [
-        chunk
-        for obs in field.full_observations
-        for chunk in obs.chunk_observation(
-            # Without solves of their own, steps keep the selected ranges whole
-            _chunk_timesteps(obs, intervals, data_fraction)
-            if intervals
-            else obs.selection_timesteps,
-            max_chunks=max_chunks,
-            selection_timesteps=obs.selection_timesteps,
+        (
+            obs,
+            obs.chunk_times(
+                # Without solves of their own, steps keep the selected ranges whole
+                _chunk_timesteps(obs, intervals, data_fraction)
+                if intervals
+                else obs.selection_timesteps,
+                max_chunks=max_chunks,
+                selection_timesteps=obs.selection_timesteps,
+            ),
         )
+        for obs in field.full_observations
     ]
+
+
+def _chunked_observations(plan):
+    return [obs.chunk(*times) for obs, chunk_times in plan for times in chunk_times]
 
 
 def _chunk_timesteps(obs, intervals, data_fraction):
@@ -222,10 +229,12 @@ def _chunk_timesteps(obs, intervals, data_fraction):
     return math.ceil(600.0 / obs.timepersample) if data_fraction < 1.0 else 1
 
 
-def _chunk_layout(observations):
+def _is_chunked_as_planned(observations, plan):
     # Different solution intervals can give the same chunks, for example when the
-    # number of nodes limits them, so compare the chunks themselves
-    return [(obs.name, obs.starttime, obs.endtime) for obs in observations]
+    # number of nodes limits them, so compare the chunks themselves. They are compared
+    # as planned, before making the chunks scans the data
+    planned = [times for _, chunk_times in plan for times in chunk_times]
+    return [obs.planned_times for obs in observations] == planned
 
 
 def _set_observation_data_fractions(field, data_fraction, solve_time):
