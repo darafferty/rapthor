@@ -442,9 +442,16 @@ def make_chunking_observation(field, monkeypatch):
 def samples_in_chunks(sample_times, chunks):
     """List the original sample timestamps selected by each chunk (as a scan of the
     chunk selects them, with >= and <=)."""
+    return samples_in_chunk_times(
+        sample_times, [(chunk.name, chunk.starttime, chunk.endtime) for chunk in chunks]
+    )
+
+
+def samples_in_chunk_times(sample_times, chunk_times):
+    """List the sample timestamps selected by each chunk planned by chunk_times."""
     return [
-        [time for time in sample_times if chunk.starttime <= time <= chunk.endtime]
-        for chunk in chunks
+        [time for time in sample_times if starttime <= time <= endtime]
+        for _, starttime, endtime in chunk_times
     ]
 
 
@@ -764,6 +771,56 @@ def test_selfcal_selection_inherits_the_intervals_of_earlier_steps(
     assert sum(chunks, []) == selected
 
 
+def test_rechunking_does_not_scan_the_data_for_unchanged_chunks(
+    field, make_chunking_observation, monkeypatch
+):
+    """A cycle with the same solves keeps the chunks without scanning the data again,
+    although a scan moves the planned chunk times, which start a hundredth of a sample
+    before the high-elevation period, to the times of the chunks' samples."""
+    obs, _ = make_chunking_observation(60)
+    obs.high_el_starttime = 100
+    obs.high_el_endtime = 490
+    field.full_observations = [obs]
+    steps = [_full_jones_step(60), _full_jones_step(60)]
+    chunk_observations(field, steps[:1], data_fraction=0.5, selection_steps=steps)
+    observations = field.observations
+    assert observations[0].starttime == pytest.approx(99.9)
+    for chunk in observations:
+        chunk.starttime = round(chunk.starttime / 10) * 10
+        chunk.endtime = round(chunk.endtime / 10) * 10
+
+    def scan_ms(self):
+        raise AssertionError("The data were scanned again")
+
+    monkeypatch.setattr(Observation, "scan_ms", scan_ms)
+
+    assert rechunk_observations(field, steps, 1, data_fraction=0.5) is steps[1]
+    assert field.observations is observations
+
+
+def test_rechunking_keeps_a_chunk_whose_first_sample_is_missing(
+    field, make_chunking_observation, monkeypatch
+):
+    """A scan moves the start of the second of two 6-sample chunks to the next sample
+    when the sample at 60 s is missing, and a cycle with the same solves keeps it."""
+    obs, _ = make_chunking_observation(12)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 19
+    steps = [_full_jones_step(60), _full_jones_step(60)]
+    chunk_observations(field, steps[:1], data_fraction=1.0)
+    observations = field.observations
+    assert observations[1].starttime == 60
+    observations[1].starttime = 70
+
+    def scan_ms(self):
+        raise AssertionError("The data were scanned again")
+
+    monkeypatch.setattr(Observation, "scan_ms", scan_ms)
+
+    assert rechunk_observations(field, steps, 1, data_fraction=1.0) is steps[1]
+    assert field.observations is observations
+
+
 def test_rechunking_keeps_the_chunks_of_a_cycle_without_calibration(
     field, make_chunking_observation
 ):
@@ -918,9 +975,9 @@ def test_chunking_partial_data_leaves_equal_gaps(make_chunking_observation, num_
     obs, sample_times = make_chunking_observation(num_samples)
     obs.data_fraction = 0.6
 
-    chunks = obs.chunk_observation(2)
+    chunks = obs.chunk_times(2)
 
-    assert samples_in_chunks(sample_times, chunks) == [[0, 10], [40, 50], [80, 90]]
+    assert samples_in_chunk_times(sample_times, chunks) == [[0, 10], [40, 50], [80, 90]]
 
 
 def test_chunking_partial_data_splits_each_selected_range(make_chunking_observation):
@@ -929,9 +986,9 @@ def test_chunking_partial_data_splits_each_selected_range(make_chunking_observat
     obs, sample_times = make_chunking_observation(20)
     obs.data_fraction = 0.7
 
-    chunks = obs.chunk_observation(3, selection_timesteps=7)
+    chunks = obs.chunk_times(3, selection_timesteps=7)
 
-    assert samples_in_chunks(sample_times, chunks) == [
+    assert samples_in_chunk_times(sample_times, chunks) == [
         [0, 10, 20],
         [30, 40, 50, 60],
         [130, 140, 150],
@@ -955,12 +1012,12 @@ def test_chunking_high_elevation_ranges_keep_every_sample(
     obs.high_el_endtime = sample_times[49]
     obs.data_fraction = 0.4
 
-    chunks = obs.chunk_observation(chunk_timesteps, selection_timesteps=6)
+    chunks = obs.chunk_times(chunk_timesteps, selection_timesteps=6)
 
     selected = [
         sample_times[index] for first in (10, 21, 32, 43) for index in range(first, first + 6)
     ]
-    kept = samples_in_chunks(sample_times, chunks)
+    kept = samples_in_chunk_times(sample_times, chunks)
     assert [len(chunk) for chunk in kept] == [chunk_timesteps] * (24 // chunk_timesteps)
     assert sum(kept, []) == selected
 
@@ -974,9 +1031,9 @@ def test_chunking_partial_data_does_not_create_an_extra_chunk(make_chunking_obse
     obs.high_el_endtime = obs.endtime
     obs.data_fraction = 0.9
 
-    chunks = obs.chunk_observation(2)
+    chunks = obs.chunk_times(2)
 
-    assert samples_in_chunks(sample_times, chunks) == [[0, 10], [20, 30], [40, 50]]
+    assert samples_in_chunk_times(sample_times, chunks) == [[0, 10], [20, 30], [40, 50]]
 
 
 @pytest.mark.parametrize(
@@ -995,9 +1052,9 @@ def test_chunking_partial_data_can_prefer_high_elevation(
     obs.high_el_endtime = 70
     obs.data_fraction = 0.4
 
-    chunks = obs.chunk_observation(2, prefer_high_el_periods=prefer_high_el_periods)
+    chunks = obs.chunk_times(2, prefer_high_el_periods=prefer_high_el_periods)
 
-    assert samples_in_chunks(sample_times, chunks) == expected_chunks
+    assert samples_in_chunk_times(sample_times, chunks) == expected_chunks
 
 
 @pytest.mark.parametrize(
@@ -1018,11 +1075,11 @@ def test_chunking_preserves_timestamp_margin(
     obs.high_el_endtime = obs.endtime
     obs.data_fraction = data_fraction
 
-    chunks = obs.chunk_observation(2, max_chunks=2)
+    chunks = obs.chunk_times(2, max_chunks=2)
 
-    assert samples_in_chunks(sample_times, chunks) == expected_chunks
-    assert [chunk.starttime for chunk in chunks] == pytest.approx(expected_starts)
-    assert [chunk.endtime for chunk in chunks] == pytest.approx(expected_ends)
+    assert samples_in_chunk_times(sample_times, chunks) == expected_chunks
+    assert [starttime for _, starttime, _ in chunks] == pytest.approx(expected_starts)
+    assert [endtime for _, _, endtime in chunks] == pytest.approx(expected_ends)
 
 
 def test_chunking_increases_data_fraction_to_fit_a_calibration_solve(

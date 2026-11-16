@@ -173,9 +173,9 @@ def test_outlier_sectors(field):
 def _chunk_observations(field, chunk_timesteps, **kwargs):
     field.update_observations(
         [
-            chunk
+            obs.chunk(*times)
             for obs in field.full_observations
-            for chunk in obs.chunk_observation(chunk_timesteps, **kwargs)
+            for times in obs.chunk_times(chunk_timesteps, **kwargs)
         ]
     )
 
