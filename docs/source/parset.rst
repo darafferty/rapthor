@@ -883,7 +883,7 @@ for how these options are used.
 
     filter_skymodel_ncores
         Number of cores used by PyBDSF when filtering the sky model during
-        imaging (default = 15). Set to 0 to use :term:`max_threads`. This
+        imaging (default = 0 = :term:`max_threads`). This
         value can be set separately from :term:`max_threads`, since the
         filtering may run faster with fewer cores than DP3 or WSClean use.
 
