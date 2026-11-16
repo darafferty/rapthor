@@ -43,6 +43,11 @@ class ImageInitial(Image):
         self.apply_amplitudes = False
         self.apply_fulljones = False
         self.apply_normalizations = False
+        self.correct_smearing_in_imaging = False  # smearing can only be used with faceting
+        self.disable_clean = False
+        self.do_predict = False
+        self.do_multiscale_clean = True
+        self.skip_final_major_iteration = True
         self.field.full_field_sector.auto_mask = 5.0
         self.field.full_field_sector.auto_mask_nmiter = 1
         self.field.full_field_sector.threshisl = 4.0
@@ -58,10 +63,6 @@ class ImageInitial(Image):
         self.imaging_parameters["mgain"] = 0.85
         self.imaging_parameters["reweight"] = False
         self.imaging_parameters["dd_psf_grid"] = [1, 1]
-        self.do_predict = False
-        self.do_multiscale_clean = True
-        self.field.disable_clean = False
-        self.field.skip_final_major_iteration = True
         super().set_input_parameters()
 
     def finalize(self):

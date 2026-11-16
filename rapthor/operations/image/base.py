@@ -60,6 +60,8 @@ class Image(FlowOperation):
         self.do_multiscale_clean = None
         self.pol_combine_method = None
         self.disable_clean = None
+        self.skip_final_major_iteration = None
+        self.correct_smearing_in_imaging = None
         # no solutions applied before or during imaging (ImageInitial only)
         self.apply_none = False
         self.make_image_cube = self.field.make_image_cube  # make an image cube
@@ -444,6 +446,12 @@ class Image(FlowOperation):
                 )  # set by ImageNormalize.finalize()
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
+        if self.disable_clean is None:
+            self.disable_clean = self.field.disable_clean
+        if self.skip_final_major_iteration is None:
+            self.skip_final_major_iteration = self.field.skip_final_major_iteration
+        if self.correct_smearing_in_imaging is None:
+            self.correct_smearing_in_imaging = self.field.correct_smearing_in_imaging
         nsectors = len(self.imaging_sectors)
         sector_inputs = self._collect_sector_input_values()
 
@@ -563,7 +571,7 @@ class Image(FlowOperation):
             "source_finder": self.imaging_parameters["source_finder"],
             "do_multiscale": [sector.multiscale for sector in self.imaging_sectors],
             "dd_psf_grid": [sector.dd_psf_grid for sector in self.imaging_sectors],
-            "apply_time_frequency_smearing": self.field.correct_smearing_in_imaging,
+            "apply_time_frequency_smearing": self.correct_smearing_in_imaging,
             "interval": interval,
             "max_threads": self.field.parset["cluster_specific"]["max_threads"],
             "filter_skymodel_ncores": self.field.parset["cluster_specific"].get(
