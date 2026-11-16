@@ -413,7 +413,7 @@ def _check_preflight_calibration_memory(field: object, strategy_steps: list[dict
 def _prepare_calibration_cycle(field: object, cycle_number: int, final: bool) -> None:
     """Resolve solve intervals and check memory before calibration starts."""
     field.generate_screens = field.dde_mode == "hybrid" and final
-    field.set_obs_parameters()
+    field.set_obs_parameters(cycle_number=cycle_number)
     check_calibration_memory(field, cycle_number, field.num_patches)
 
 

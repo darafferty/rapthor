@@ -433,9 +433,16 @@ class Field(object):
                 cobs = obs.copy()
                 sector.observations.append(cobs)
 
-    def set_obs_parameters(self):
+    def set_obs_parameters(self, cycle_number=None):
         """
         Sets parameters for all observations from current parset and sky model
+
+        Parameters
+        ----------
+        cycle_number : int, optional
+            Index of the calibration cycle (counting starts from 1). Full-Jones
+            solutions from other cycles are not applied, so they do not limit the
+            calibration averaging. If None, any full-Jones solutions limit it.
         """
         # Only the DD solves can be done on averaged data: the DI solves use model
         # data predicted beforehand, which DP3 cannot average together with the data.
@@ -449,17 +456,20 @@ class Field(object):
         }
         applied_solution_spacings = []
         if self.fulljones_h5parm_filename is not None:
-            solution_intervals.add("fulljones")
-            # A supplied full-Jones file (one without a cycle number) was not
-            # solved with the planned full-Jones intervals, so the averaging must
-            # fit the actual grid of its solutions as well
-            supplied_cycle_number = self.solution_cycle_number(
+            # As for the calibration pre-apply, only a full-Jones file from the
+            # cycle or one without a cycle number is applied
+            fulljones_cycle_number = self.solution_cycle_number(
                 self.fulljones_h5parm_filename,
                 "fulljones_h5parm_cycle_number",
                 include_di_calibration=True,
             )
-            if supplied_cycle_number is None and self.fulljones_solution_spacing is not None:
-                applied_solution_spacings.append(self.fulljones_solution_spacing)
+            if cycle_number is None or fulljones_cycle_number in (None, cycle_number):
+                solution_intervals.add("fulljones")
+                # A supplied full-Jones file (one without a cycle number) was not
+                # solved with the planned full-Jones intervals, so the averaging
+                # must fit the actual grid of its solutions as well
+                if fulljones_cycle_number is None and self.fulljones_solution_spacing is not None:
+                    applied_solution_spacings.append(self.fulljones_solution_spacing)
         solution_intervals = sorted(solution_intervals)
         calibration_radius = self.get_calibration_radius()
 

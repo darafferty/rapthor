@@ -73,7 +73,7 @@ class Calibrate(FlowOperation):
         """
         # First set the calibration parameters for each observation
         field = self.field
-        field.set_obs_parameters()
+        field.set_obs_parameters(cycle_number=self.index)
         # Get the start times and number of times for the time chunks (fast and slow
         # calibration)
         starttime = field.get_obs_parameters("starttime")
