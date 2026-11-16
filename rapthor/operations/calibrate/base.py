@@ -854,9 +854,18 @@ class Calibrate(FlowOperation):
                 self.field.sector_bounds_mid_ra,
                 self.field.sector_bounds_mid_dec,
             ]  # deg
+            # The sky model can also hold sources outside of the imaging sectors (outliers
+            # that are not peeled, or are restored when the data are used again from the
+            # start), so widen the image to cover them. In WSClean's (SIN) projection, a
+            # source lies less than its angular distance from the image center
+            width = 2 * np.max(
+                misc.angular_separation(
+                    (skymodel.getColValues("RA"), skymodel.getColValues("Dec")), center_coords
+                ).deg
+            )  # deg
             size = [
-                int(self.field.sector_bounds_width_ra / cellsize),
-                int(self.field.sector_bounds_width_dec / cellsize),
+                int(max(self.field.sector_bounds_width_ra, width) / cellsize),
+                int(max(self.field.sector_bounds_width_dec, width) / cellsize),
             ]  # pixels
 
         # Convert RA and Dec to strings (required by WSClean)

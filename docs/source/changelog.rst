@@ -105,6 +105,11 @@ This release includes the following changes:
       cycle, now reads the column of the input data set by
       :term:`data_colname`. Earlier versions read the ``DATA`` column in this
       case once a prediction had been done in an earlier cycle.
+    - With :term:`use_image_based_predict` or :term:`use_wsclean_predict`, the
+      model images now cover the outlier sources whenever they are included in
+      the calibration, such as in the first final cycle. Earlier versions
+      made the model images only as large as the imaging sectors after the
+      first cycle, so the outlier sources were left out of the model.
 
 See :ref:`upgrading` for notes on upgrading to this version.
 
