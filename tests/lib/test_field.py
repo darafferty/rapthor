@@ -306,30 +306,35 @@ def test_set_obs_parameters_averages_for_applied_solutions_and_furthest_calibrat
 
 
 @pytest.mark.parametrize(
-    "cycle_number, expected_spacings",
+    "fulljones_cycle_number, expected_solution_intervals, expected_spacings",
     [
         # A supplied file has no cycle number, so its own grid limits the averaging
-        pytest.param(None, [(600.0, 48828.125)], id="supplied-file"),
+        pytest.param(None, ["fast", "fulljones"], [(600.0, 48828.125)], id="supplied-file"),
         # A product of the cycle was solved with the planned intervals
-        pytest.param(1, [], id="current-cycle-product"),
+        pytest.param(2, ["fast", "fulljones"], [], id="current-cycle-product"),
+        # A product of an earlier cycle is not applied, so it does not limit the averaging
+        pytest.param(1, ["fast"], [], id="earlier-cycle-product"),
     ],
 )
-def test_set_obs_parameters_passes_the_spacing_of_supplied_fulljones_solutions(
-    field, monkeypatch, cycle_number, expected_spacings
+def test_set_obs_parameters_fits_the_fulljones_solutions_applied_in_the_cycle(
+    field, monkeypatch, fulljones_cycle_number, expected_solution_intervals, expected_spacings
 ):
+    field.calibration_strategy = {"dd": ["fast_phase"], "di": []}
     field.fulljones_h5parm_filename = "fulljones.h5"
-    field.fulljones_h5parm_cycle_number = cycle_number
+    field.fulljones_h5parm_cycle_number = fulljones_cycle_number
     field.fulljones_solution_spacing = (600.0, 48828.125)
     calls = []
     monkeypatch.setattr(
         Observation,
         "set_calibration_averaging_parameters",
-        lambda obs, *args, **kwargs: calls.append(kwargs["applied_solution_spacings"]),
+        lambda obs, parset, radius, solution_intervals, **kwargs: calls.append(
+            (solution_intervals, kwargs["applied_solution_spacings"])
+        ),
     )
 
-    field.set_obs_parameters()
+    field.set_obs_parameters(cycle_number=2)
 
-    assert calls == [expected_spacings] * len(field.observations)
+    assert calls == [(expected_solution_intervals, expected_spacings)] * len(field.observations)
 
 
 def test_set_obs_parameters_does_not_average_by_default(field):

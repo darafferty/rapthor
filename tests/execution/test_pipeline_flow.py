@@ -81,7 +81,7 @@ class RecordingField:
         self.full_field_radius = radius
         self.events.append({"operation": "define_full_field_sector", "radius": radius})
 
-    def set_obs_parameters(self):
+    def set_obs_parameters(self, cycle_number=None):
         pass
 
 
@@ -487,7 +487,7 @@ def test_run_pipeline_preflight_checks_calibration_memory_for_each_cycle(monkeyp
 def test_run_pipeline_steps_checks_resolved_memory_before_calibration(monkeypatch):
     calls = []
     field = RecordingField()
-    field.set_obs_parameters = lambda: calls.append("resolve")
+    field.set_obs_parameters = lambda cycle_number: calls.append(("resolve", cycle_number))
     monkeypatch.setattr(
         "rapthor.execution.pipeline.flow.check_calibration_memory",
         lambda checked_field, cycle, directions: calls.append(
@@ -501,7 +501,7 @@ def test_run_pipeline_steps_checks_resolved_memory_before_calibration(monkeypatc
         operation_factories=RECORDING_FACTORIES,
     )
 
-    assert calls == ["resolve", ("memory", field, 1, 1)]
+    assert calls == [("resolve", 1), ("memory", field, 1, 1)]
 
 
 def test_run_pipeline_steps_stops_after_selfcal_converges():

@@ -1040,9 +1040,11 @@ class TestCalibrate:
     def test_set_input_parameters_dd_averages_visibilities(self, calibrate_field):
         self.set_averaging_steps(calibrate_field, [2, 3], [4, 1])
 
-        calibrate = Calibrate("dd", field=calibrate_field, index=1)
+        calibrate = Calibrate("dd", field=calibrate_field, index=3)
         calibrate.set_input_parameters()
 
+        # The averaging fits only the solutions that are applied in the cycle
+        calibrate_field.set_obs_parameters.assert_called_once_with(cycle_number=3)
         assert parse_dp3(calibrate.input_parms["dp3_steps"]) == ["avg", "solve1", "solve2", "null"]
         assert calibrate.input_parms["average_timestep"] == [2, 3]
         assert calibrate.input_parms["average_freqstep"] == [4, 1]

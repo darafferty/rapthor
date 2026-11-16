@@ -462,7 +462,7 @@ class CalibrateFieldStub:
             "medium_smoothnessreffrequency": [152000000.0, 153000000.0],
         }
 
-    def set_obs_parameters(self):
+    def set_obs_parameters(self, cycle_number=None):
         return None
 
     def get_obs_parameters(self, name):
