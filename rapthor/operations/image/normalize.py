@@ -56,6 +56,10 @@ class ImageNormalize(Image):
         # normalization
         self.apply_none = self.field.h5parm_filename is None
         self.apply_normalizations = False
+        self.disable_clean = False
+        self.do_predict = False
+        self.do_multiscale_clean = False
+        self.skip_final_major_iteration = False
         self.field.normalize_sector.auto_mask = 5.0
         self.field.normalize_sector.auto_mask_nmiter = 2
         self.field.normalize_sector.threshisl = 4.0
@@ -68,10 +72,6 @@ class ImageNormalize(Image):
         self.imaging_parameters["cellsize_arcsec"] = 6.0
         self.imaging_parameters["robust"] = -0.5
         self.imaging_parameters["taper_arcsec"] = 24.0
-        self.do_predict = False
-        self.do_multiscale_clean = False
-        self.field.disable_clean = False
-        self.field.skip_final_major_iteration = False
         super().set_input_parameters()
         self.input_parms.update(
             {
