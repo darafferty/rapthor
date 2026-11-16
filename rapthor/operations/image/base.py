@@ -459,7 +459,7 @@ class Image(FlowOperation):
             self.image_pol,
             self.pol_combine_method,
             [sector.wsclean_niter for sector in self.imaging_sectors],
-            disable_clean=self.field.disable_clean,
+            disable_clean=self.disable_clean,
         )
 
         # Set the DP3 steps and applycal steps depending on whether solutions
@@ -551,7 +551,7 @@ class Image(FlowOperation):
             ],
             "wsclean_niter": wsclean_niter,
             "wsclean_nmiter": [sector.wsclean_nmiter for sector in self.imaging_sectors],
-            "skip_final_iteration": self.field.skip_final_major_iteration,
+            "skip_final_iteration": self.skip_final_major_iteration,
             "robust": [sector.robust for sector in self.imaging_sectors],
             "cellsize_deg": [sector.cellsize_deg for sector in self.imaging_sectors],
             "min_uv_lambda": [sector.min_uv_lambda for sector in self.imaging_sectors],
