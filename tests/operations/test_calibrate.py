@@ -399,7 +399,9 @@ class TestCalibrate:
         source_distance_dec = 7
         expected_source_distance_size = [25200, 25200]  # 2 * 7 * cellsize_pixels
 
-        # Setup the field for the test.
+        # Setup the field for the test, centered on the sky model source
+        field.ra = field.sector_bounds_mid_ra = sky_model["ra"]
+        field.dec = field.sector_bounds_mid_dec = sky_model["dec"]
         field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
         field.get_source_distances.return_value = ("foo", [source_distance_ra, source_distance_dec])
         if have_full_field_sector:
@@ -415,7 +417,7 @@ class TestCalibrate:
 
         # Assert. In this test, all scenarios yield equal values, except for the size.
         assert frequency_bandwidth == [sky_model["reference_frequency"], bandwidth]
-        assert center_coords == ("2:48:00.000000", "-42.00.00.000000")
+        assert center_coords == ("0:16:00.000000", "+2.00.00.000000")
         if cycle == 1 and not have_full_field_sector:
             field.get_source_distances.assert_called_once_with(
                 {sky_model["name"]: [sky_model["ra"], sky_model["dec"]]}
@@ -425,6 +427,28 @@ class TestCalibrate:
             field.get_source_distances.assert_not_called()
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
+
+    @pytest.mark.parametrize(
+        "sector_bounds_mid_dec, expected_size",
+        [
+            pytest.param(2.0, [7200, 9000], id="source_in_the_sectors"),
+            pytest.param(5.0, [10800, 10800], id="outlier_beyond_the_sectors"),
+        ],
+    )
+    def test_model_image_covers_all_sources(
+        self, single_source_sky_model, calibrate_field, sector_bounds_mid_dec, expected_size
+    ):
+        """After the first cycle, the model image covers the imaging sectors (4 by 5
+        degrees) and any sources outside them, such as an outlier that is not peeled,
+        3 degrees from their center."""
+        field = calibrate_field
+        field.parset["imaging_specific"] = {"cellsize_arcsec": 2}
+        field.sector_bounds_mid_ra = single_source_sky_model["ra"]
+        field.sector_bounds_mid_dec = sector_bounds_mid_dec
+
+        _, _, size, _ = Calibrate("dd", field, index=2)._get_model_image_parameters()
+
+        assert size == expected_size
 
     @pytest.mark.parametrize(
         "mode, solve", [("dd", "fast_only"), ("dd", "with_slowgain"), ("di", "fulljones")]
