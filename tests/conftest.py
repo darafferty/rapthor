@@ -42,7 +42,7 @@ def prepare_run_from_parset(parset_file, use_log_file=True):
     return parset
 
 
-TEST_MS_ARCHIVE_URL = "https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz"
+TEST_MS_ARCHIVE_URL = "https://users.astron.nl/dijkema/software/ci_data/rapthor/tDDECal.in_MS.tgz"
 TEST_MS_ARCHIVE_DIRNAME = "tDDECal.MS"
 TEST_MS_DIRNAME = "test.ms"
 # Fail fast when the server is unreachable, but allow a slow transfer
