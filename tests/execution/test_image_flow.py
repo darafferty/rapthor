@@ -1544,14 +1544,14 @@ def test_facet_image_operation_plans_sharing_per_sector(tmp_path, monkeypatch):
             operation.input_parms["width_dec"][0],
         )
     ]
-    # They are counted inside the image of each sector
+    # They are counted inside the image that WSClean makes for each sector
     assert counted[1] == (
         "facets",
         {
             "image_ra": 124.0,
             "image_dec": second_sector.dec,
-            "image_width_ra": second_sector.width_ra,
-            "image_width_dec": second_sector.width_dec,
+            "image_width_ra": 1024 * second_sector.cellsize_deg,
+            "image_width_dec": 1024 * second_sector.cellsize_deg,
             "cellsize_deg": second_sector.cellsize_deg,
         },
     )

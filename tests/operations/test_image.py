@@ -1690,6 +1690,28 @@ class TestImageNormalize:
         image_normalize.run()
         assert image_normalize.is_done()
 
+    def test_facets_are_counted_in_the_image_that_wsclean_makes(
+        self, field, monkeypatch, h5parm_file
+    ):
+        # From the second cycle, the normalization sector is copied from an
+        # imaging sector with its image size, and imaged with 6" pixels
+        # instead, without a new image size
+        _prepare_field_for_image(field, h5parm_filename=h5parm_file)
+        field.imaging_sectors[0].imsize = [400, 300]
+        field.define_normalize_sector()
+        image_sizes = []
+
+        def fake_count_facets_in_image(facets, **image):
+            image_sizes.append((image["image_width_ra"], image["image_width_dec"]))
+            return 1
+
+        monkeypatch.setattr(
+            "rapthor.operations.image.base.count_facets_in_image", fake_count_facets_in_image
+        )
+        _initialize_operation(ImageNormalize(field, index=1), do_predict=False, use_facets=True)
+
+        assert image_sizes == [(pytest.approx(400 * 6 / 3600), pytest.approx(300 * 6 / 3600))]
+
     def test_save_model_image(self, field):
         field.parset["imaging_specific"]["save_filtered_model_image"] = True
         _prepare_field_for_normalize_image(field)

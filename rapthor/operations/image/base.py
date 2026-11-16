@@ -283,14 +283,16 @@ class Image(FlowOperation):
             region_box = self._facet_region_box(sector)
             if region_box not in facets_by_box:
                 facets_by_box[region_box] = read_facets(self._facet_skymodel_file(), *region_box)
-            # WSClean skips the facets that do not overlap with the image
+            # WSClean skips the facets that do not overlap with the image. The
+            # image size can be kept from an earlier cycle with another pixel
+            # size, so the image can differ from the sector region
             facet_counts.append(
                 count_facets_in_image(
                     facets_by_box[region_box],
                     image_ra=sector.ra,
                     image_dec=sector.dec,
-                    image_width_ra=sector.width_ra,
-                    image_width_dec=sector.width_dec,
+                    image_width_ra=sector.imsize[0] * sector.cellsize_deg,
+                    image_width_dec=sector.imsize[1] * sector.cellsize_deg,
                     cellsize_deg=sector.cellsize_deg,
                 )
             )
