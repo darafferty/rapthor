@@ -532,6 +532,26 @@ class TestObservation:
 
         assert observation.parameters["calibration_timestep"] == [5]
 
+    def test_set_calibration_averaging_parameters_keeps_irregular_channels(
+        self, observation, calibration_parset
+    ):
+        """Irregular channels are not averaged, as the first channel may be the narrowest."""
+        self.set_averaging_test_parameters(
+            observation,
+            calibration_parset,
+            timesteps={"fast": 6, "medium": 6, "slow": 6},
+            freqsteps={"fast": 8, "medium": 8, "slow": 8},
+        )
+        observation.channels_are_regular = False
+
+        # A radius of 0.05 degrees allows 12 time slots and 82 channels
+        observation.set_calibration_averaging_parameters(
+            calibration_parset, 0.05, ["fast", "medium", "slow"]
+        )
+
+        assert observation.parameters["calibration_timestep"] == [6]
+        assert observation.parameters["calibration_freqstep"] == [1]
+
     def test_set_calibration_averaging_parameters_limits_bda_channels(
         self, observation, calibration_parset
     ):

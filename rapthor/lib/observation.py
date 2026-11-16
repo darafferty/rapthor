@@ -540,6 +540,15 @@ class Observation(object):
             freqstep = get_largest_divisor(
                 math.gcd(*solint_freqsteps), target_bandwidth_hz / self.channelwidth
             )
+            if not self.channels_are_regular:
+                # The steps are based on the width of the first channel, so later
+                # wider or more widely spaced channels would average to a larger
+                # bandwidth than the smearing limit allows
+                self.log.warning(
+                    "Irregular spacing of channel frequencies found. The data "
+                    "will not be averaged in frequency before calibration."
+                )
+                freqstep = 1
 
             # DP3's BDA does not limit the minimum number of channels to the number
             # of averaged channels, so it would add channels otherwise

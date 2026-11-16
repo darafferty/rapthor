@@ -489,7 +489,9 @@ The available options are described below under their respective sections.
           time slots or channels of the input data, the data are not averaged
           in that dimension;
         - the number of channels in the input data is a whole number of averaged
-          channels, and the averaging is no longer than the observation.
+          channels, and the averaging is no longer than the observation. If the
+          channels of the input data are not evenly spaced or do not all have
+          the same width, the data are not averaged in frequency.
 
         Solution intervals that share no common factor can therefore prevent
         averaging altogether. The averaging is done before any other step of the
