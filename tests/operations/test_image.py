@@ -1361,6 +1361,21 @@ class TestImageInitial:
         assert image_initial.skip_final_major_iteration is True
         assert image_initial.disable_clean is False
 
+    @pytest.mark.parametrize("correct_smearing_in_imaging", [True, False])
+    def test_initial_image_with_correct_smearing_in_imaging_true(
+        self, field, correct_smearing_in_imaging
+    ):
+        """
+        Regression test for smearing not being disabled when correct_smearing_in_imaging=True.
+        """
+        field.correct_smearing_in_imaging = correct_smearing_in_imaging
+        _prepare_field_for_initial_image(field)
+
+        image_initial = _initialize_operation(ImageInitial(field))
+
+        assert image_initial.input_parms["apply_time_frequency_smearing"] is False
+        assert image_initial.correct_smearing_in_imaging is False
+
     def test_run(self, image_initial):
         image_initial.run()
         assert image_initial.is_done()
