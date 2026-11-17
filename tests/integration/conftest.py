@@ -92,7 +92,7 @@ def _set_synthetic_uvw_geometry(ms_path):
 
         unique_times = np.unique(times)
         antennas = np.unique(np.concatenate([ant1, ant2]))
-        base_radius_lambda = np.linspace(0.0, 2500.0, len(antennas))
+        base_radius_lambda = np.linspace(0.0, 3750.0, len(antennas))
         antenna_index = {antenna: index for index, antenna in enumerate(antennas)}
         time_index = {time_value: index for index, time_value in enumerate(unique_times)}
 
