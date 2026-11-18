@@ -61,6 +61,7 @@ dynamic = ["version"]
 rapthor = "rapthor.cli:main"
 concat_linc_files = "rapthor.execution.concatenate.linc_cli:main"
 fetch_skymodels = "rapthor.execution.image.catalog_cli:main"
+ldv_rapthor = "rapthor.ldv_cli:main"
 
 [project.optional-dependencies]
 test = [
