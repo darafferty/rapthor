@@ -46,6 +46,7 @@ from rapthor.execution.image.flow import (
     image_sector_prepare_visibility_task,
     image_sector_wsclean_task,
 )
+from rapthor.execution.image.validation import validate_image_payload
 from rapthor.lib.field import Field as RapthorField
 from rapthor.lib.records import directory_record, file_record, validate_output_record
 from rapthor.operations.image.base import Image
@@ -1381,6 +1382,19 @@ def test_image_payload_from_inputs_builds_serializable_no_dde_payload(tmp_path):
         "minchannels": 3,
     }
     assert sector["obs_original_paths"] == ["/data/obs_0.ms", "/data/obs_1.ms"]
+
+
+def test_image_payload_from_inputs_keeps_the_bda_interval_in_seconds(tmp_path):
+    input_parms = _image_input_parms()
+    input_parms["image_maxinterval"] = [[60.58, 60.58]]
+
+    payload = image_payload_from_inputs(input_parms, tmp_path)
+
+    # DP3 rounds the interval in seconds down to whole time slots, so it must not
+    # be truncated to whole seconds before
+    assert payload["sectors"][0]["prepare_tasks"][0]["maxinterval"] == 60.58
+    validated = validate_image_payload(payload)
+    assert validated["sectors"][0]["prepare_tasks"][0]["maxinterval"] == 60.58
 
 
 def test_image_payload_from_inputs_adds_residual_visibility_output(tmp_path):
