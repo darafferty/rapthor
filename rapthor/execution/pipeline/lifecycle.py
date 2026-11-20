@@ -201,19 +201,32 @@ def _chunk_plan(field, steps, data_fraction):
 
     intervals = _solution_intervals(field, steps)
     return [
-        (
-            obs,
-            obs.chunk_times(
-                # Without solves of their own, steps keep the selected ranges whole
-                _chunk_timesteps(obs, intervals, data_fraction)
-                if intervals
-                else obs.selection_timesteps,
-                max_chunks=max_nodes,
-                selection_timesteps=obs.selection_timesteps,
-            ),
-        )
+        (obs, _observation_chunk_times(obs, intervals, data_fraction, max_nodes))
         for obs in field.full_observations
     ]
+
+
+def _observation_chunk_times(obs, intervals, data_fraction, max_nodes):
+    """Return the name, start and end time of each chunk of an observation."""
+
+    def chunk_times(chunk_timesteps):
+        return obs.chunk_times(
+            chunk_timesteps, max_chunks=max_nodes, selection_timesteps=obs.selection_timesteps
+        )
+
+    # The selection was made for the longest solution interval of all of the steps
+    # it is shared by. Chunks of that interval are the same in each of these steps, so
+    # a step uses chunks of its own (shorter) interval only if there are more of them,
+    # as otherwise they would be chunked (and peeled) again for no more nodes. Steps
+    # without solves of their own keep the selected ranges whole
+    shared_chunk_times = chunk_times(obs.selection_timesteps)
+    if not intervals:
+        return shared_chunk_times
+    chunk_timesteps = _chunk_timesteps(obs, intervals, data_fraction)
+    own_chunk_times = chunk_times(chunk_timesteps)
+    if chunk_timesteps > obs.selection_timesteps or len(own_chunk_times) > len(shared_chunk_times):
+        return own_chunk_times
+    return shared_chunk_times
 
 
 def _chunked_observations(plan):

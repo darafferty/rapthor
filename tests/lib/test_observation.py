@@ -717,6 +717,41 @@ def test_selfcal_cycles_use_the_same_data_in_chunks_of_their_own_solves(
     assert field.observations is observations
 
 
+def test_selfcal_cycles_with_as_many_chunks_share_the_chunks_of_the_longest_solve(
+    field, make_chunking_observation
+):
+    """On three nodes, 69 samples make three chunks for 30-second phase solves and for
+    150-second slow-gain solves, but with different edges (24 and 48 samples, or 30
+    and 45). The phase-only cycle uses the slow-gain chunks, so the slow-gain cycle
+    keeps them rather than chunking (and peeling) again for no more nodes."""
+    obs, sample_times = make_chunking_observation(69)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 3
+    field.dd_interval_factor = 1
+    phase_only = {
+        "do_calibrate": True,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
+        "fast_timestep_sec": 10,
+        "medium_timestep_sec": 30,
+        "peel_outliers": True,
+    }
+    slow_gains = {
+        **phase_only,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase", "slow_gains"]},
+        "slow_timestep_sec": 150,
+        "peel_outliers": False,
+    }
+    steps = [phase_only, slow_gains]
+
+    chunk_observations(field, steps[:1], data_fraction=1.0, selection_steps=steps)
+    observations = field.observations
+
+    chunks = samples_in_chunks(sample_times, observations)
+    assert [len(chunk) for chunk in chunks] == [30, 15, 24]
+    assert rechunk_observations(field, steps, 1, data_fraction=1.0) is steps[1]
+    assert field.observations is observations
+
+
 def test_chunking_partial_data_makes_at_most_one_chunk_per_node(field, make_chunking_observation):
     """Four 6-sample ranges of 20-second solves make six chunks on six nodes, rather
     than twelve, as more chunks than nodes would not run at the same time."""

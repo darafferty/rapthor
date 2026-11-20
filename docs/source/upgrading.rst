@@ -165,7 +165,8 @@ Chunking of the data
     solution interval of the solves done in that cycle. Version 2 chunked the
     data once for all selfcal cycles, using the longest fast-phase, slow-gain
     or full-Jones interval of any of them. Cycles that solve only for phases
-    can therefore be split into more chunks. With a
+    can therefore be split into more chunks, when that gives more chunks than
+    the longest interval of any selfcal cycle. With a
     :term:`selfcal_data_fraction` below 1, every selfcal cycle uses the same
     time ranges, chosen from the longest solution interval of any selfcal
     cycle, and only the chunks within these ranges change between cycles, up
