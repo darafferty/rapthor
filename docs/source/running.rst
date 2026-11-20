@@ -309,9 +309,9 @@ example to load the software or to start the commands inside a container:
 The ``--local-directory`` option sets where a worker keeps its own temporary
 data; it should be a disk local to the node.
 
-When Rapthor uses all of the data (a data fraction of 1), each observation is
-split in time into about one chunk per node, so that calibration and
-prediction can run on all the nodes at once. A chunk holds a whole number of the
+Each observation is split in time into about one chunk per node, so that
+calibration and prediction can run on all the nodes at once. When only a fraction
+of the data is used, each selected time range is at least one chunk. A chunk holds a whole number of the
 longest calibration solution intervals of the cycle, so a short observation may
 be split into fewer chunks in cycles that solve for slow gains than in cycles
 that solve only for phases. WSClean can also spread the imaging of a sector

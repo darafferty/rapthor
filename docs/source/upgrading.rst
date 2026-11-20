@@ -168,7 +168,8 @@ Chunking of the data
     can therefore be split into more chunks. With a
     :term:`selfcal_data_fraction` below 1, every selfcal cycle uses the same
     time ranges, chosen from the longest solution interval of any selfcal
-    cycle, and only the chunks within these ranges change between cycles. A
+    cycle, and only the chunks within these ranges change between cycles, up
+    to :term:`max_nodes` chunks for each observation. A
     cycle whose chunks differ from those of the cycle before it starts again
     from the input data, and peels the outliers again if an earlier cycle
     peeled them.

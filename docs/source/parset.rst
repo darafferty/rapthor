@@ -135,7 +135,9 @@ The available options are described below under their respective sections.
         on the observation. Each cycle then splits the ranges into chunks that hold whole
         numbers of its own longest solution interval, so cycles that solve only for
         phases, such as the first cycles of the default strategy, use more, shorter
-        chunks, which can be processed on more nodes at once. A cycle that does not
+        chunks, which can be processed on more nodes at once. An observation is split
+        into no more chunks than :term:`max_nodes`, unless it has more ranges than that,
+        in which case each range is one chunk. A cycle that does not
         calibrate keeps the chunks of the cycle before it, whose solutions it applies.
 
     final_data_fraction
@@ -822,10 +824,11 @@ for how these options are used.
         When :term:`batch_system` is ``slurm`` or ``slurm_static``, the number
         of nodes of the cluster to use. The default is 0, which results in a
         value of 1 for ``single_machine`` and 12 for the Slurm batch systems.
-        Set this to the number of nodes in your Slurm job. When all of the data
-        are used (a data fraction of 1), each observation is split in time
-        into up to this many balanced chunks, so that the nodes can work on them
-        at the same time. Each chunk holds a whole number of the longest
+        Set this to the number of nodes in your Slurm job. Each observation is
+        split in time into up to this many balanced chunks, so that the nodes can
+        work on them at the same time. When only a fraction of the data is used,
+        the chunks are shared between the selected time ranges, and each range is
+        at least one chunk. Each chunk holds a whole number of the longest
         calibration solution intervals of the cycle (only the chunk at the end of
         the observation may also hold part of one) and at least two samples, so
         cycles that solve only for phases can use more chunks than cycles that
