@@ -683,9 +683,11 @@ def test_selfcal_cycles_use_the_same_data_in_chunks_of_their_own_solves(
 ):
     """With 40% of 60 samples, four 6-sample ranges are selected for the longest
     (60-second) solve of any selfcal cycle. A phase-only cycle with 20-second solves
-    splits each range into three chunks; a slow-gain cycle keeps whole ranges."""
+    splits each range into three chunks on twelve nodes; a slow-gain cycle keeps whole
+    ranges."""
     obs, sample_times = make_chunking_observation(60)
     field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 12
     phase_only = {
         "do_calibrate": True,
         "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
@@ -713,6 +715,20 @@ def test_selfcal_cycles_use_the_same_data_in_chunks_of_their_own_solves(
     observations = field.observations
     assert rechunk_observations(field, steps, 1, data_fraction=0.4) is steps[1]
     assert field.observations is observations
+
+
+def test_chunking_partial_data_makes_at_most_one_chunk_per_node(field, make_chunking_observation):
+    """Four 6-sample ranges of 20-second solves make six chunks on six nodes, rather
+    than twelve, as more chunks than nodes would not run at the same time."""
+    obs, sample_times = make_chunking_observation(60)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 6
+    steps = [_full_jones_step(20), _full_jones_step(60)]
+
+    chunk_observations(field, steps[:1], data_fraction=0.4, selection_steps=steps)
+
+    chunks = samples_in_chunks(sample_times, field.observations)
+    assert [len(chunk) for chunk in chunks] == [4, 2, 4, 2, 6, 6]
 
 
 def test_selfcal_cycles_keep_the_selection_when_a_step_omits_an_interval(
@@ -978,6 +994,29 @@ def test_chunking_partial_data_leaves_equal_gaps(make_chunking_observation, num_
     chunks = obs.chunk_times(2)
 
     assert samples_in_chunk_times(sample_times, chunks) == [[0, 10], [40, 50], [80, 90]]
+
+
+@pytest.mark.parametrize(
+    "max_chunks, expected_sizes",
+    [
+        pytest.param(None, [2] * 12, id="uncapped"),
+        pytest.param(6, [4, 2, 4, 2, 6, 6], id="earlier_ranges_take_the_extra_chunks"),
+        pytest.param(2, [6] * 4, id="each_range_keeps_one_chunk"),
+    ],
+)
+def test_chunking_partial_data_shares_the_chunks_between_ranges(
+    make_chunking_observation, max_chunks, expected_sizes
+):
+    """Four 6-sample ranges of 2-sample solution intervals make at most max_chunks
+    chunks, but always all of the selected samples."""
+    obs, sample_times = make_chunking_observation(60)
+    obs.data_fraction = 0.4
+
+    chunks = obs.chunk_times(2, max_chunks=max_chunks, selection_timesteps=6)
+
+    assert [len(chunk) for chunk in samples_in_chunk_times(sample_times, chunks)] == (
+        expected_sizes
+    )
 
 
 def test_chunking_partial_data_splits_each_selected_range(make_chunking_observation):

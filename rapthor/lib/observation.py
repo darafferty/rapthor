@@ -754,8 +754,9 @@ class Observation(object):
             length is larger than the total time of the high-elevation period for a
             given observation, then the full observation is used instead
         max_chunks : int, optional
-            Maximum number of chunks when all of the data are used, or of selected time
-            ranges otherwise. The minimum chunk duration may require fewer chunks
+            Maximum number of chunks. The minimum chunk duration may require fewer
+            chunks. When only a fraction of the data is used, the chunks are shared
+            between the selected time ranges, and each range is at least one chunk
         selection_timesteps : int, optional
             Minimum number of time slots in a selected time range, when only a fraction
             of the data is used. If None, chunk_timesteps is used, so that each range
@@ -794,12 +795,13 @@ class Observation(object):
 
         if data_fraction < 1.0:
             # Split each selected range into chunks of whole solution intervals
+            ranges = self._selected_ranges(data_fraction, num_samples, selection_timesteps)
             sample_boundaries = [
                 chunk
-                for first, end in self._selected_ranges(
-                    data_fraction, num_samples, selection_timesteps, max_chunks
+                for index, (first, end) in enumerate(ranges)
+                for chunk in _split_into_intervals(
+                    first, end, chunk_timesteps, _range_max_chunks(max_chunks, len(ranges), index)
                 )
-                for chunk in _split_into_intervals(first, end, chunk_timesteps)
             ]
         else:
             sample_boundaries = _split_into_intervals(0, num_samples, chunk_timesteps, max_chunks)
@@ -816,11 +818,9 @@ class Observation(object):
             for index, (first, end) in enumerate(sample_boundaries)
         ]
 
-    def _selected_ranges(self, data_fraction, num_samples, selection_timesteps, max_ranges):
+    def _selected_ranges(self, data_fraction, num_samples, selection_timesteps):
         """Return the first and end (exclusive) samples of the selected time ranges."""
         num_ranges = max(1, int(data_fraction * num_samples / selection_timesteps))
-        if max_ranges is not None:
-            num_ranges = min(num_ranges, max_ranges)
 
         if num_ranges == 1:
             # Center the range at the midpoint (which is generally the most
@@ -840,6 +840,17 @@ class Observation(object):
             (first, first + selection_timesteps)
             for first in range(0, num_ranges * num_samples_in_step, num_samples_in_step)
         ]
+
+
+def _range_max_chunks(max_chunks, num_ranges, index):
+    """
+    Return the maximum number of chunks of a selected time range, sharing max_chunks
+    between the ranges like the solution intervals of a range between its chunks (see
+    _split_into_intervals), but with at least one chunk for each range
+    """
+    if max_chunks is None:
+        return None
+    return max(1, max_chunks // num_ranges + (index < max_chunks % num_ranges))
 
 
 def _split_into_intervals(first, end, interval_timesteps, max_chunks=None):

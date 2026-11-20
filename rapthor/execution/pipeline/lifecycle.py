@@ -200,7 +200,6 @@ def _chunk_plan(field, steps, data_fraction):
         return [(obs, [(obs.name, obs.starttime, obs.endtime)]) for obs in field.full_observations]
 
     intervals = _solution_intervals(field, steps)
-    max_chunks = None if data_fraction < 1.0 else max_nodes
     return [
         (
             obs,
@@ -209,7 +208,7 @@ def _chunk_plan(field, steps, data_fraction):
                 _chunk_timesteps(obs, intervals, data_fraction)
                 if intervals
                 else obs.selection_timesteps,
-                max_chunks=max_chunks,
+                max_chunks=max_nodes,
                 selection_timesteps=obs.selection_timesteps,
             ),
         )
