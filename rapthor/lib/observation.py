@@ -798,10 +798,10 @@ class Observation(object):
             ranges = self._selected_ranges(data_fraction, num_samples, selection_timesteps)
             sample_boundaries = [
                 chunk
-                for index, (first, end) in enumerate(ranges)
-                for chunk in _split_into_intervals(
-                    first, end, chunk_timesteps, _range_max_chunks(max_chunks, len(ranges), index)
+                for (first, end), range_max_chunks in zip(
+                    ranges, _share_chunks(max_chunks, len(ranges))
                 )
+                for chunk in _split_into_intervals(first, end, chunk_timesteps, range_max_chunks)
             ]
         else:
             sample_boundaries = _split_into_intervals(0, num_samples, chunk_timesteps, max_chunks)
@@ -842,15 +842,16 @@ class Observation(object):
         ]
 
 
-def _range_max_chunks(max_chunks, num_ranges, index):
+def _share_chunks(max_chunks, num_ranges):
     """
-    Return the maximum number of chunks of a selected time range, sharing max_chunks
-    between the ranges like the solution intervals of a range between its chunks (see
-    _split_into_intervals), but with at least one chunk for each range
+    Return the maximum number of chunks of each of a number of time ranges, sharing
+    max_chunks between them like the solution intervals of a range between its chunks
+    (see _split_into_intervals), but with at least one chunk for each range
     """
     if max_chunks is None:
-        return None
-    return max(1, max_chunks // num_ranges + (index < max_chunks % num_ranges))
+        return [None] * num_ranges
+    quotient, remainder = divmod(max(max_chunks, num_ranges), num_ranges)
+    return [quotient + (index < remainder) for index in range(num_ranges)]
 
 
 def _split_into_intervals(first, end, interval_timesteps, max_chunks=None):
@@ -870,8 +871,8 @@ def _split_into_intervals(first, end, interval_timesteps, max_chunks=None):
         num_chunks = min(num_chunks, max_chunks)
     # Round the interval boundaries up (ceiling division), so that the first chunk is
     # one of the largest and the last one of the smallest
-    boundaries = (
-        first - (-np.arange(num_chunks + 1) * num_intervals // num_chunks) * interval_timesteps
-    )
-    boundaries[-1] = end
-    return list(zip(boundaries[:-1].tolist(), boundaries[1:].tolist()))
+    boundaries = [
+        first - (-index * num_intervals // num_chunks) * interval_timesteps
+        for index in range(num_chunks)
+    ] + [end]
+    return list(zip(boundaries[:-1], boundaries[1:]))

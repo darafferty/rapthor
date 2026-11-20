@@ -412,14 +412,13 @@ class RecordingPipelineLifecycle:
             }
         )
 
-    def rechunk_observations(self, field, steps, index, data_fraction):
+    def rechunk_observations(self, field, steps, index):
         field.events.append(
             {
                 "operation": "rechunk",
                 # The cycle number, as recorded by the operations
                 "index": index + 1,
                 "step_count": len(steps),
-                "data_fraction": data_fraction,
             }
         )
         return steps[index]
@@ -916,8 +915,8 @@ def test_run_pipeline_chunks_each_selfcal_cycle_before_it_starts():
         parset=parset, strategy_steps=strategy_steps, final_pass=False
     )
 
-    def rechunk_and_peel_again(field, steps, index, data_fraction):
-        lifecycle.rechunk_observations(field, steps, index, data_fraction)
+    def rechunk_and_peel_again(field, steps, index):
+        lifecycle.rechunk_observations(field, steps, index)
         # Stand in for new chunks of the input data, which are peeled again
         return {**steps[index], "peel_outliers": True}
 
@@ -936,9 +935,9 @@ def test_run_pipeline_chunks_each_selfcal_cycle_before_it_starts():
     assert events == [
         ("chunk", None, data_fraction),
         ("calibrate", 1, None),
-        ("rechunk", 2, data_fraction),
+        ("rechunk", 2, None),
         ("calibrate", 2, None),
-        ("rechunk", 3, data_fraction),
+        ("rechunk", 3, None),
         ("calibrate", 3, None),
     ]
     # The first cycle is chunked for its own solves, within the selection for all
