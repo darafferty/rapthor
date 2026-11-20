@@ -171,6 +171,54 @@ def test_duplicate_phase_step_applies_the_phases_twice(prepare, test_ms_info, tm
     _assert_phase_applications(corrected, reference, applications=2)
 
 
+def test_prepare_bda_averages_up_to_the_short_baseline_solution_interval(
+    observation, test_ms_info, phasecenter, tmp_path
+):
+    """DP3 averages the short baselines over the time slots of the Rapthor BDA interval."""
+    time_slots = 3  # divides the 6 time slots of the test MS
+    observation.set_imaging_parameters(
+        sector_name="sector_1",
+        cellsize_arcsec=3.0,
+        max_peak_smearing=0.1,
+        width_ra=1.2,
+        width_dec=0.8,
+        min_solve_timestep=20.0,
+        min_solve_timestep_short_baselines=time_slots * observation.timepersample,
+        min_solve_freqstep=observation.channelwidth,
+        min_solve_freqstep_short_baselines=observation.channelwidth,
+        preapply_dd_solutions=False,
+    )
+    sector = {
+        "data_colname": "DATA",
+        "phasecenter": phasecenter,
+        "max_threads": 2,
+        "prepare_data_steps": "[shift,bdaavg]",
+        # A time base far longer than any baseline lets the maximum interval set
+        # the averaging of every baseline
+        "timebase": 1e9,
+    }
+    task = {
+        "msin": observation.ms_filename,
+        "msout": "prep.ms",
+        "msout_path": (tmp_path / "prep.ms").as_posix(),
+        "starttime": test_ms_info["starttime"],
+        "ntimes": 0,
+        "freqstep": 1,
+        "timestep": 1,
+        "maxinterval": observation.parameters["image_bda_maxinterval"],
+        "minchannels": 1,
+    }
+
+    record = prepare_visibility_ms(
+        sector, task, tmp_path.as_posix(), ExecutionConfig(task_runner="sync")
+    )
+
+    with pt.table(record["path"], ack=False) as table:
+        intervals = table.getcol("INTERVAL")
+    np.testing.assert_allclose(intervals, time_slots * observation.timepersample)
+    assert len(intervals) == len(test_ms_info["antenna1"]) / time_slots
+
+
 def test_prepare_restart_remakes_a_stopped_ms_and_then_reuses_it(
     test_ms, test_ms_info, phasecenter, tmp_path
 ):
