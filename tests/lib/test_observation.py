@@ -459,6 +459,7 @@ def samples_in_chunk_times(sample_times, chunk_times):
     "num_samples, max_nodes, expected_chunks",
     [
         pytest.param(6, 1, [[0, 10, 20, 30, 40, 50]], id="one_node_keeps_all_samples"),
+        pytest.param(6, 0, [[0, 10, 20, 30, 40, 50]], id="no_node_count_keeps_all_samples"),
         pytest.param(6, 2, [[0, 10, 20], [30, 40, 50]], id="two_equal_chunks"),
         pytest.param(7, 3, [[0, 10, 20], [30, 40], [50, 60]], id="uneven_split_keeps_every_sample"),
         pytest.param(
@@ -704,7 +705,7 @@ def test_selfcal_cycles_use_the_same_data_in_chunks_of_their_own_solves(
 
     chunk_observations(field, steps[:1], data_fraction=0.4, selection_steps=steps)
     phase_only_chunks = samples_in_chunks(sample_times, field.observations)
-    rechunk_observations(field, steps, 1, data_fraction=0.4)
+    rechunk_observations(field, steps, 1)
     slow_gain_chunks = samples_in_chunks(sample_times, field.observations)
 
     assert [len(chunk) for chunk in phase_only_chunks] == [2] * 12
@@ -713,7 +714,7 @@ def test_selfcal_cycles_use_the_same_data_in_chunks_of_their_own_solves(
 
     # A repeat of the cycle keeps its chunks
     observations = field.observations
-    assert rechunk_observations(field, steps, 1, data_fraction=0.4) is steps[1]
+    assert rechunk_observations(field, steps, 1) is steps[1]
     assert field.observations is observations
 
 
@@ -748,7 +749,7 @@ def test_selfcal_cycles_with_as_many_chunks_share_the_chunks_of_the_longest_solv
 
     chunks = samples_in_chunks(sample_times, observations)
     assert [len(chunk) for chunk in chunks] == [30, 15, 24]
-    assert rechunk_observations(field, steps, 1, data_fraction=1.0) is steps[1]
+    assert rechunk_observations(field, steps, 1) is steps[1]
     assert field.observations is observations
 
 
@@ -782,7 +783,7 @@ def test_selfcal_cycles_keep_the_selection_when_a_step_omits_an_interval(
 
     # As field.update sets it from the first step
     field.fulljones_timestep_sec = 20
-    rechunk_observations(field, steps, 1, data_fraction=0.2)
+    rechunk_observations(field, steps, 1)
 
     assert len(selected) == 120
     assert sum(samples_in_chunks(sample_times, field.observations), []) == selected
@@ -815,7 +816,7 @@ def test_selfcal_selection_inherits_the_intervals_of_earlier_steps(
     # As field.update sets them from the first step
     field.fast_timestep_sec = 20
     field.slow_timestep_sec = 1200
-    rechunk_observations(field, steps, 1, data_fraction=0.4)
+    rechunk_observations(field, steps, 1)
 
     chunks = samples_in_chunks(sample_times, field.observations)
     assert [len(chunk) for chunk in chunks] == [120, 120]
@@ -845,7 +846,7 @@ def test_rechunking_does_not_scan_the_data_for_unchanged_chunks(
 
     monkeypatch.setattr(Observation, "scan_ms", scan_ms)
 
-    assert rechunk_observations(field, steps, 1, data_fraction=0.5) is steps[1]
+    assert rechunk_observations(field, steps, 1) is steps[1]
     assert field.observations is observations
 
 
@@ -868,7 +869,7 @@ def test_rechunking_keeps_a_chunk_whose_first_sample_is_missing(
 
     monkeypatch.setattr(Observation, "scan_ms", scan_ms)
 
-    assert rechunk_observations(field, steps, 1, data_fraction=1.0) is steps[1]
+    assert rechunk_observations(field, steps, 1) is steps[1]
     assert field.observations is observations
 
 
@@ -887,7 +888,7 @@ def test_rechunking_keeps_the_chunks_of_a_cycle_without_calibration(
     chunk_observations(field, steps[:1], data_fraction=1.0)
     observations = field.observations
 
-    step = rechunk_observations(field, steps, 1, data_fraction=1.0)
+    step = rechunk_observations(field, steps, 1)
 
     assert step is steps[-1]
     assert field.observations is observations
@@ -914,7 +915,7 @@ def test_rechunking_follows_the_chunks_of_the_cycle(
     chunk_observations(field, steps[:1], data_fraction=1.0)
     observations = field.observations
 
-    step = rechunk_observations(field, steps, 1, data_fraction=1.0)
+    step = rechunk_observations(field, steps, 1)
 
     assert len(field.observations) == expected_chunk_count
     if expected_chunk_count == len(observations):
