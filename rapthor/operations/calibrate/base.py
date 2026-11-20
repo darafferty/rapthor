@@ -833,17 +833,7 @@ class Calibrate(FlowOperation):
                 # Sky model generated externally. Use the cellsize defined for imaging and
                 # analyze the sky model to find its extent
                 cellsize = self.parset["imaging_specific"]["cellsize_arcsec"] / 3600  # deg/pixel
-                source_dict = {
-                    name: [ra, dec]
-                    for name, ra, dec in zip(
-                        skymodel.getColValues("Name"),
-                        skymodel.getColValues("RA"),
-                        skymodel.getColValues("Dec"),
-                    )
-                }
-                _, source_distances = self.field.get_source_distances(source_dict)  # deg
-                radius = int(np.max(source_distances) / cellsize)  # pixels
-                size = [radius * 2, radius * 2]  # pixels
+                size = _covering_image_size(skymodel, center_coords, cellsize)  # pixels
         else:
             # Sky model generated in previous cycle's imaging step. Use the center and size
             # of the bounding box of all imaging sectors (note that this bounding box
@@ -856,16 +846,13 @@ class Calibrate(FlowOperation):
             ]  # deg
             # The sky model can also hold sources outside of the imaging sectors (outliers
             # that are not peeled, or are restored when the data are used again from the
-            # start), so widen the image to cover them. In WSClean's (SIN) projection, a
-            # source lies less than its angular distance from the image center
-            width = 2 * np.max(
-                misc.angular_separation(
-                    (skymodel.getColValues("RA"), skymodel.getColValues("Dec")), center_coords
-                ).deg
-            )  # deg
+            # start), so widen the image to cover them
             size = [
-                int(max(self.field.sector_bounds_width_ra, width) / cellsize),
-                int(max(self.field.sector_bounds_width_dec, width) / cellsize),
+                max(int(bounds_width / cellsize), covering_size)
+                for bounds_width, covering_size in zip(
+                    [self.field.sector_bounds_width_ra, self.field.sector_bounds_width_dec],
+                    _covering_image_size(skymodel, center_coords, cellsize),
+                )
             ]  # pixels
 
         # Convert RA and Dec to strings (required by WSClean)
@@ -1129,3 +1116,40 @@ class Calibrate(FlowOperation):
             if os.path.exists(dst_filename):
                 os.remove(dst_filename)
             shutil.copy(plot_filename, dst_filename)
+
+
+def _covering_image_size(skymodel, center_coords, cellsize):
+    """
+    Return the size in pixels, as [RA, Dec], of an image that covers all of the sources
+    of a sky model
+
+    WSClean draws each source at the pixel nearest to its direction cosines from the
+    image center (in the SIN projection), so a pixel is kept on each side of the
+    farthest source (or Gaussian extent) along each axis.
+
+    Parameters
+    ----------
+    skymodel : LSMTool skymodel object
+        The sky model
+    center_coords : [float, float]
+        The RA and Dec of the image center in degrees
+    cellsize : float
+        The size of an image cell (pixel) in degrees/pixel
+    """
+    ra = np.radians(skymodel.getColValues("RA"))
+    dec = np.radians(skymodel.getColValues("Dec"))
+    ra_center, dec_center = np.radians(center_coords)
+    cosine_l = np.cos(dec) * np.sin(ra - ra_center)
+    cosine_m = np.sin(dec) * np.cos(dec_center) - np.cos(dec) * np.sin(dec_center) * np.cos(
+        ra - ra_center
+    )
+    # WSClean also draws Gaussian sources over the pixels around them, so cover them to
+    # three standard deviations of their major axes
+    extents = 0.0
+    if "MajorAxis" in skymodel.getColNames():
+        fwhm = np.radians(skymodel.getColValues("MajorAxis", units="degree"))
+        extents = 3 * fwhm / (2 * np.sqrt(2 * np.log(2)))
+    return [
+        2 * (int(np.ceil(np.max(np.abs(offsets) + extents) / np.radians(cellsize))) + 1)
+        for offsets in (cosine_l, cosine_m)
+    ]

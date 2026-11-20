@@ -113,7 +113,9 @@ This release includes the following changes:
       model images now cover the outlier sources whenever they are included in
       the calibration, such as in the first final cycle. Earlier versions
       made the model images only as large as the imaging sectors after the
-      first cycle, so the outlier sources were left out of the model.
+      first cycle, so the outlier sources were left out of the model. The
+      model images also keep a pixel beyond the farthest source, which could
+      otherwise be left out, also in the first cycle.
 
 See :ref:`upgrading` for notes on upgrading to this version.
 
