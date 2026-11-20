@@ -62,7 +62,7 @@ def _validate_prepare_task(
         "ntimes": int(prepare_task["ntimes"]),
         "freqstep": int(prepare_task["freqstep"]),
         "timestep": int(prepare_task["timestep"]),
-        "maxinterval": None if maxinterval is None else int(maxinterval),
+        "maxinterval": None if maxinterval is None else float(maxinterval),
         "minchannels": int(prepare_task["minchannels"]),
     }
 

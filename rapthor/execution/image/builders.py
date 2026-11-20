@@ -200,7 +200,7 @@ def image_payload_from_inputs(
                     "freqstep": int(freqsteps[obs_index]),
                     "timestep": int(timesteps[obs_index]),
                     "maxinterval": (
-                        None if maxintervals[obs_index] is None else int(maxintervals[obs_index])
+                        None if maxintervals[obs_index] is None else float(maxintervals[obs_index])
                     ),
                     "minchannels": int(minchannels[obs_index]),
                 }

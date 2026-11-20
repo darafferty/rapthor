@@ -606,11 +606,14 @@ class Observation(object):
 
         # BDA limits apply to the shortest baselines, so only consider solutions
         # that are relevant on those baselines.
-        target_maxinterval = min(
-            self.numsamples,
-            int(round(min_solve_timestep_short_baselines / timestep_sec)),
+        target_maxinterval = max(
+            1,
+            min(self.numsamples, int(round(min_solve_timestep_short_baselines / timestep_sec))),
         )  # time slots
-        self.parameters["image_bda_maxinterval"] = max(1, target_maxinterval)
+        # DP3 takes the maximum interval in seconds and rounds it down to whole
+        # time slots. Half a time slot is added so that floating-point errors
+        # cannot round it down to one time slot fewer
+        self.parameters["image_bda_maxinterval"] = (target_maxinterval + 0.5) * timestep_sec
 
         target_freqstep = min(
             nchan,
@@ -622,7 +625,7 @@ class Observation(object):
         self.parameters["image_bda_minchannels"] = max(1, int(nchan / target_freqstep))
         self.log.debug(
             "If BDA is enabled, maxinterval = %.1f s and minchannels = %d will be used for imaging",
-            self.parameters["image_bda_maxinterval"] * timestep_sec,
+            target_maxinterval * timestep_sec,
             self.parameters["image_bda_minchannels"],
         )
 
