@@ -87,13 +87,16 @@ This release includes the following changes:
       medium-phase solve). Earlier versions used the longest fast-phase,
       slow-gain or full-Jones interval of all selfcal cycles, whether or not
       those solves were done. Cycles that solve only for phases can therefore
-      be split into more chunks and spread over more nodes. With a data
+      be split into more chunks and spread over more nodes, when this gives
+      more chunks than the longest interval of any selfcal cycle (otherwise
+      they use the same chunks as the cycles with that interval). With a data
       fraction below 1, every selfcal cycle uses the same time ranges of the
       data, and only the chunks within them change, up to :term:`max_nodes`
-      chunks for each observation (but at least one for each range). A cycle that does not
-      calibrate keeps the chunks of the cycle before it. When a cycle needs
-      different chunks from the cycle before it, it starts again from the input
-      data and peels the outliers again if an earlier cycle peeled them.
+      chunks for each observation (but at least one for each range). A cycle
+      that does not calibrate keeps the chunks of the cycle before it. When a
+      cycle needs different chunks from the cycle before it, it starts again
+      from the input data and peels the outliers again if an earlier cycle
+      peeled them.
     - Chunks now hold whole numbers of the longest solution interval of the
       cycle, counted in samples as DP3 counts them, so that only the end of an
       observation, or of a selected time range, holds a partial longest
