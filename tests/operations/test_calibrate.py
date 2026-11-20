@@ -395,15 +395,11 @@ class TestCalibrate:
         cellsize_pixels = 1800
         width_ra_pixels = field.sector_bounds_width_ra * cellsize_pixels
         width_dec_pixels = field.sector_bounds_width_dec * cellsize_pixels
-        source_distance_ra = 6
-        source_distance_dec = 7
-        expected_source_distance_size = [25200, 25200]  # 2 * 7 * cellsize_pixels
 
         # Setup the field for the test, centered on the sky model source
         field.ra = field.sector_bounds_mid_ra = sky_model["ra"]
         field.dec = field.sector_bounds_mid_dec = sky_model["dec"]
         field.parset["imaging_specific"] = {"cellsize_arcsec": cellsize_arcsec}
-        field.get_source_distances.return_value = ("foo", [source_distance_ra, source_distance_dec])
         if have_full_field_sector:
             field.full_field_sector = mocker.NonCallableMagicMock()
             field.full_field_sector.cellsize_deg = cellsize_degrees
@@ -419,36 +415,56 @@ class TestCalibrate:
         assert frequency_bandwidth == [sky_model["reference_frequency"], bandwidth]
         assert center_coords == ("0:16:00.000000", "+2.00.00.000000")
         if cycle == 1 and not have_full_field_sector:
-            field.get_source_distances.assert_called_once_with(
-                {sky_model["name"]: [sky_model["ra"], sky_model["dec"]]}
-            )
-            assert size == expected_source_distance_size
+            # A pixel on each side of the source, at the center
+            assert size == [2, 2]
         else:
-            field.get_source_distances.assert_not_called()
             assert size == [width_ra_pixels, width_dec_pixels]
         assert cellsize == cellsize_degrees
 
     @pytest.mark.parametrize(
-        "sector_bounds_mid_dec, expected_size",
+        "cycle, center, expected_size",
         [
-            pytest.param(2.0, [7200, 9000], id="source_in_the_sectors"),
-            pytest.param(5.0, [10800, 10800], id="outlier_beyond_the_sectors"),
+            pytest.param(2, (5.9, 4.4), [7200, 9000], id="source_in_a_sector_corner"),
+            pytest.param(2, (4.0, 5.0), [7200, 10798], id="outlier_beyond_the_sectors"),
+            pytest.param(1, (4.0, 5.0), [2, 10798], id="extent_of_an_external_model"),
         ],
     )
     def test_model_image_covers_all_sources(
-        self, single_source_sky_model, calibrate_field, sector_bounds_mid_dec, expected_size
+        self, single_source_sky_model, calibrate_field, cycle, center, expected_size
     ):
-        """After the first cycle, the model image covers the imaging sectors (4 by 5
-        degrees) and any sources outside them, such as an outlier that is not peeled,
-        3 degrees from their center."""
+        """The model image covers the sky model source at (4, 2) degrees, 3 degrees south
+        of the center, with a pixel to spare on each side of it, in WSClean's projection.
+        After the first cycle, it also covers the imaging sectors (4 by 5 degrees, which
+        include a source in their corner)."""
+        assert (single_source_sky_model["ra"], single_source_sky_model["dec"]) == (4.0, 2.0)
         field = calibrate_field
         field.parset["imaging_specific"] = {"cellsize_arcsec": 2}
-        field.sector_bounds_mid_ra = single_source_sky_model["ra"]
-        field.sector_bounds_mid_dec = sector_bounds_mid_dec
+        field.ra, field.dec = center
+        field.sector_bounds_mid_ra, field.sector_bounds_mid_dec = center
 
-        _, _, size, _ = Calibrate("dd", field, index=2)._get_model_image_parameters()
+        _, _, size, _ = Calibrate("dd", field, index=cycle)._get_model_image_parameters()
 
         assert size == expected_size
+
+    def test_model_image_covers_gaussian_sources(self, calibrate_field, tmp_path):
+        """A 120-arcsec Gaussian at the center keeps 3 standard deviations of its major
+        axis (153 arcsec, or 77 pixels) on each side, although the sources are spread
+        along the Dec axis only."""
+        sky_model = tmp_path / "gaussian_sky.txt"
+        sky_model.write_text(
+            "FORMAT = Name, Type, Ra, Dec, I, MajorAxis, MinorAxis, Orientation, "
+            "ReferenceFrequency\n"
+            "gauss, GAUSSIAN, 4.0, 2.0, 1.0, 120.0, 60.0, 0.0, 142000000.0\n"
+            "point, POINT, 4.0, 2.5, 1.0, , , , 142000000.0\n"
+        )
+        field = calibrate_field
+        field.calibration_skymodel_file = str(sky_model)
+        field.parset["imaging_specific"] = {"cellsize_arcsec": 2}
+        field.ra, field.dec = 4.0, 2.0
+
+        _, _, size, _ = Calibrate("dd", field, index=1)._get_model_image_parameters()
+
+        assert size == [156, 1802]
 
     @pytest.mark.parametrize(
         "mode, solve", [("dd", "fast_only"), ("dd", "with_slowgain"), ("di", "fulljones")]
