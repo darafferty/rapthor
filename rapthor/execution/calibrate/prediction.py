@@ -7,6 +7,8 @@ import stat
 from pathlib import Path
 from typing import Mapping
 
+import numpy as np
+
 from rapthor.execution.calibrate.collection import adjust_h5parm_sources
 from rapthor.execution.calibrate.commands import (
     DrawModelOptions,
@@ -109,6 +111,43 @@ def adjust_prediction_normalization_h5parm(payload: CalibratePayload) -> str:
         "Adjusted normalization h5parm",
     )
     return str(normalize_record["path"])
+
+
+def covering_image_size(skymodel, center_coords, cellsize):
+    """
+    Return the size in pixels, as [RA, Dec], of an image that covers all of the sources
+    of a sky model
+
+    WSClean draws each source at the pixel nearest to its direction cosines from the
+    image center (in the SIN projection), so a pixel is kept on each side of the
+    farthest source (or Gaussian extent) along each axis.
+
+    Parameters
+    ----------
+    skymodel : LSMTool skymodel object
+        The sky model
+    center_coords : [float, float]
+        The RA and Dec of the image center in degrees
+    cellsize : float
+        The size of an image cell (pixel) in degrees/pixel
+    """
+    ra = np.radians(skymodel.getColValues("RA"))
+    dec = np.radians(skymodel.getColValues("Dec"))
+    ra_center, dec_center = np.radians(center_coords)
+    cosine_l = np.cos(dec) * np.sin(ra - ra_center)
+    cosine_m = np.sin(dec) * np.cos(dec_center) - np.cos(dec) * np.sin(dec_center) * np.cos(
+        ra - ra_center
+    )
+    # WSClean also draws Gaussian sources over the pixels around them, so cover them to
+    # three standard deviations of their major axes
+    extents = 0.0
+    if "MajorAxis" in skymodel.getColNames():
+        fwhm = np.radians(skymodel.getColValues("MajorAxis", units="degree"))
+        extents = 3 * fwhm / (2 * np.sqrt(2 * np.log(2)))
+    return [
+        2 * (int(np.ceil(np.max(np.abs(offsets) + extents) / np.radians(cellsize))) + 1)
+        for offsets in (cosine_l, cosine_m)
+    ]
 
 
 def _run_make_region_file(
