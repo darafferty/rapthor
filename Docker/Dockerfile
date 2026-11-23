@@ -268,7 +268,8 @@ RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version && \
     fpack -H && \
-    rapthor --version
+    rapthor --version && \
+    python3 -c "import numpy, bdsf, casacore.tables"
 
 # Set environment variables needed at run-time
 ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam
