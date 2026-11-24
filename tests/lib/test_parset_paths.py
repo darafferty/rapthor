@@ -119,8 +119,9 @@ def test_materialize_parset_paths_reads_json_values(tmp_path):
         ('{"global": 1}', "secondary-level entries must be dictionaries"),
         ('{"global": {"strategy": "a", "strategy": "b"}}', "Duplicate key 'strategy'"),
         ('{"global": {"input_ms": "a", "Input_MS": "b"}}', "already exists"),
-        ('{"global": {"input_ms": {"a": 1}}}', "must be a scalar or a list of scalars"),
-        ('{"global": {"input_ms": [["a"]]}}', "must be a scalar or a list of scalars"),
+        ('{"global": {"input_ms": {"a": 1}}}', "must be a scalar or a list, not an object"),
+        ('{"global": {"input_ms": [["a"]]}}', "List items of option 'input_ms'"),
+        ('{"global": {"input_ms": [{"a": 1}]}}', "must be scalars"),
         ('{"global": {"input_ms": ["a,b.ms"]}}', "must not contain commas"),
     ],
 )

@@ -82,21 +82,21 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def _json_scalar_to_str(section: str, option: str, value: Any) -> str:
-    """Convert a scalar JSON value to its parset string form."""
-    if isinstance(value, (dict, list)):
+def _json_value_to_str(section: str, option: str, value: Any) -> str:
+    """Convert a JSON option value (a scalar or a list of scalars) to its parset string form."""
+    if isinstance(value, dict):
         raise ValueError(
             f"{_JSON_PARSE_ERROR}\nOption '{option}' in section '{section}' must be a "
-            "scalar or a list of scalars."
+            "scalar or a list, not an object."
         )
-    return str(value)
-
-
-def _json_value_to_str(section: str, option: str, value: Any) -> str:
-    """Convert a JSON option value to its parset string form."""
     if not isinstance(value, list):
-        return _json_scalar_to_str(section, option, value)
-    items = [_json_scalar_to_str(section, option, item) for item in value]
+        return str(value)
+    if any(isinstance(item, (dict, list)) for item in value):
+        raise ValueError(
+            f"{_JSON_PARSE_ERROR}\nList items of option '{option}' in section "
+            f"'{section}' must be scalars."
+        )
+    items = [str(item) for item in value]
     # List items are written unquoted (e.g. "[one, two]" instead of "['one', 'two']"),
     # as in INI parsets, so that path resolution and casting see plain tokens. Those
     # split on commas, so an item cannot contain one.
