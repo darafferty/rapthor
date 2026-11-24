@@ -2,6 +2,7 @@
 Test cases for the `rapthor.reset` module.
 """
 
+import configparser
 import errno
 import json
 import logging
@@ -79,6 +80,11 @@ def working_dir(tmp_path, monkeypatch):
 
 def _reset(monkeypatch, *answers):
     """Run a reset with the given answers to its prompts and return its exit code."""
+    # Skip the materialization of parset, as it writes its output to a temp directory
+    monkeypatch.setattr(
+        reset_module, "materialize_parset_paths", lambda parset_file, output_file: "input.parset"
+    )
+
     remaining = iter(answers)
     monkeypatch.setattr("builtins.input", lambda prompt: next(remaining))
     with pytest.raises(SystemExit) as exc:
@@ -135,6 +141,11 @@ def test_reset_restores_logger_levels_after_exit(tmp_path, monkeypatch):
     logger = logging.getLogger("rapthor:parset")
     monkeypatch.setattr(logger, "level", logging.INFO)
 
+    # Skip the materialization of parset, as it writes its output to a temp directory
+    monkeypatch.setattr(
+        reset_module, "materialize_parset_paths", lambda parset_file, output_file: "input.parset"
+    )
+
     # Without any pipeline directory there is nothing to reset and reset() exits.
     with pytest.raises(SystemExit):
         reset_module.reset("input.parset")
@@ -161,6 +172,11 @@ def test_reset_exits_without_reset_when_no_pipeline_state_exists(tmp_path, monke
     working_dir = _prepare_working_dir(tmp_path)
     _patch_reset_lifecycle(monkeypatch, working_dir)
 
+    # Skip the materialization of parset, as it writes its output to a temp directory
+    monkeypatch.setattr(
+        reset_module, "materialize_parset_paths", lambda parset_file, output_file: "input.parset"
+    )
+
     with pytest.raises(SystemExit) as exc:
         reset_module.reset("input.parset")
 
@@ -169,6 +185,36 @@ def test_reset_exits_without_reset_when_no_pipeline_state_exists(tmp_path, monke
     assert "Operations:" in output
     assert "None" in output
     assert "No reset can be done." in output
+
+
+def test_reset_reads_materialized_json_parset(tmp_path, monkeypatch, capsys):
+    working_dir = _prepare_working_dir(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "input.json").write_text(
+        '{"global": {"dir_working": "%s", "input_ms": ["input.ms"]}}' % working_dir.name
+    )
+    read_parsets = []
+
+    def fake_parset(parset_file):
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.read(parset_file)
+        read_parsets.append((Path(parset_file).name, dict(parser["global"])))
+        parset = {"dir_working": parser["global"]["dir_working"], "strategy": "test-strategy"}
+        return SimpleNamespace(as_parset_dict=lambda: parset)
+
+    monkeypatch.setattr(reset_module, "Parset", fake_parset)
+
+    with pytest.raises(SystemExit) as exc:
+        reset_module.reset("input.json")
+
+    assert exc.value.code == 0
+    assert read_parsets == [
+        (
+            "input.materialized.parset",
+            {"dir_working": str(working_dir), "input_ms": f"[{tmp_path / 'input.ms'}]"},
+        )
+    ]
+    assert "No reset can be done." in capsys.readouterr().out
 
 
 def test_find_operations_orders_directories_by_cycle_and_operation(tmp_path):
