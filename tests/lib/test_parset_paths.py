@@ -1,5 +1,8 @@
 import configparser
+import json
 from pathlib import Path
+
+import pytest
 
 from rapthor.lib.parset_paths import materialize_parset_paths, resolve_path_value
 
@@ -69,3 +72,63 @@ def test_materialize_parset_paths_can_override_working_dir(tmp_path):
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(output_file)
     assert parser["global"]["dir_working"] == str(override)
+
+
+def _read_materialized(output_file):
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(output_file)
+    return parser
+
+
+def test_materialize_parset_paths_reads_json_values(tmp_path):
+    parset_file = tmp_path / "input.JSON"
+    output_file = tmp_path / "input.materialized.parset"
+    parset_file.write_text(
+        json.dumps(
+            {
+                "global": {
+                    "dir_working": "work",
+                    "input_ms": ["a.ms", "b.ms"],
+                    "input_skymodel": None,
+                    "regroup_input_skymodel": True,
+                    "selfcal_data_fraction": 0.2,
+                },
+                "imaging": {"dde_method": "single", "cellsize_arcsec": 1.5},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    materialize_parset_paths(parset_file, output_file, base_dir=tmp_path)
+
+    parser = _read_materialized(output_file)
+    assert parser["global"]["dir_working"] == str(tmp_path / "work")
+    assert parser["global"]["input_ms"] == f"[{tmp_path / 'a.ms'}, {tmp_path / 'b.ms'}]"
+    assert parser["global"]["input_skymodel"] == "None"
+    assert parser["global"]["regroup_input_skymodel"] == "True"
+    assert parser["global"]["selfcal_data_fraction"] == "0.2"
+    assert parser["imaging"]["dde_method"] == "single"
+    assert parser["imaging"]["cellsize_arcsec"] == "1.5"
+
+
+@pytest.mark.parametrize(
+    "content, message",
+    [
+        ("{not json", "Expecting property name"),
+        ("[1, 2]", "top-level entry must be a dictionary"),
+        ('{"global": 1}', "secondary-level entries must be dictionaries"),
+        ('{"global": {"strategy": "a", "strategy": "b"}}', "Duplicate key 'strategy'"),
+        ('{"global": {"input_ms": "a", "Input_MS": "b"}}', "already exists"),
+        ('{"global": {"input_ms": {"a": 1}}}', "must be a scalar or a list of scalars"),
+        ('{"global": {"input_ms": [["a"]]}}', "must be a scalar or a list of scalars"),
+        ('{"global": {"input_ms": ["a,b.ms"]}}', "must not contain commas"),
+    ],
+)
+def test_materialize_parset_paths_rejects_invalid_json(tmp_path, content, message):
+    parset_file = tmp_path / "input.json"
+    parset_file.write_text(content, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="JSON parset could not be parsed correctly") as exc:
+        materialize_parset_paths(parset_file, tmp_path / "out.parset", base_dir=tmp_path)
+
+    assert message in str(exc.value)

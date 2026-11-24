@@ -2,6 +2,7 @@
 Test cases for the `rapthor.reset` module.
 """
 
+import configparser
 import errno
 import json
 import logging
@@ -12,7 +13,6 @@ from types import SimpleNamespace
 
 import pytest
 
-import rapthor.lib.parset_paths as parset_paths_module
 import rapthor.reset as reset_module
 from rapthor.execution import working_dir_lock
 from tests.execution.scratch_transitions import exit_at_scratch_transition
@@ -185,6 +185,36 @@ def test_reset_exits_without_reset_when_no_pipeline_state_exists(tmp_path, monke
     assert "Operations:" in output
     assert "None" in output
     assert "No reset can be done." in output
+
+
+def test_reset_reads_materialized_json_parset(tmp_path, monkeypatch, capsys):
+    working_dir = _prepare_working_dir(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "input.json").write_text(
+        '{"global": {"dir_working": "%s", "input_ms": ["input.ms"]}}' % working_dir.name
+    )
+    read_parsets = []
+
+    def fake_parset(parset_file):
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.read(parset_file)
+        read_parsets.append((Path(parset_file).name, dict(parser["global"])))
+        parset = {"dir_working": parser["global"]["dir_working"], "strategy": "test-strategy"}
+        return SimpleNamespace(as_parset_dict=lambda: parset)
+
+    monkeypatch.setattr(reset_module, "Parset", fake_parset)
+
+    with pytest.raises(SystemExit) as exc:
+        reset_module.reset("input.json")
+
+    assert exc.value.code == 0
+    assert read_parsets == [
+        (
+            "input.materialized.parset",
+            {"dir_working": str(working_dir), "input_ms": f"[{tmp_path / 'input.ms'}]"},
+        )
+    ]
+    assert "No reset can be done." in capsys.readouterr().out
 
 
 def test_find_operations_orders_directories_by_cycle_and_operation(tmp_path):
