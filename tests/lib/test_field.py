@@ -278,10 +278,10 @@ def test_get_obs_parameters(field):
         ),
     ],
 )
-def test_set_obs_parameters_averages_for_applied_solutions_and_furthest_calibrator(
+def test_set_obs_parameters_averages_for_applied_solutions_and_farthest_calibrator(
     field, monkeypatch, calibration_strategy, fulljones_h5parm, expected_solution_intervals
 ):
-    """Calibration averaging fits the solutions of the cycle and the furthest calibrator."""
+    """Calibration averaging fits the solutions of the cycle and the farthest calibrator."""
     field.calibration_strategy = calibration_strategy
     field.fulljones_h5parm_filename = fulljones_h5parm
     calls = []

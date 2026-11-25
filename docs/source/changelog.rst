@@ -12,7 +12,7 @@ This release includes the following changes:
       calibration solves, which speeds up calibration and reduces memory usage 
       (see :term:`average_visibilities <average_visibilities (calibration)>`).
       Averaging is limited by the time and bandwidth smearing at the calibrator
-      source furthest from the phase center (see :term:`max_peak_smearing
+      source farthest from the phase center (see :term:`max_peak_smearing
       <max_peak_smearing (calibration)>`) and by the solution intervals. It is
       disabled by default. The DP3 memory check before each calibration cycle
       takes the averaging into account.

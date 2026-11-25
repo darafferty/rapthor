@@ -461,7 +461,7 @@ class Observation(object):
         Sets the time and frequency averaging steps used before the calibration solves
 
         The steps are the largest ones for which the smearing at the calibrator
-        furthest from the phase center stays within the max_peak_smearing limit,
+        farthest from the phase center stays within the max_peak_smearing limit,
         which do not exceed the observation and which divide every solution interval
         exactly. DP3 counts the solution intervals of solves done on averaged data in
         averaged time slots and channels, and solutions applied to averaged data must
@@ -473,7 +473,7 @@ class Observation(object):
         parset : dict
             Parset with processing parameters
         calibration_radius : float
-            Distance in degrees of the furthest calibrator from the phase center
+            Distance in degrees of the farthest calibrator from the phase center
         solution_intervals : list of str
             Solution intervals ('fast', 'medium', 'slow', 'fulljones') of the
             solutions that are solved for or applied on the averaged data

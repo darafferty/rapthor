@@ -468,7 +468,7 @@ The available options are described below under their respective sections.
         largest averaging for which:
 
         - the reduction in peak flux density due to time and bandwidth smearing
-          at the calibrator furthest from the phase center is no more than
+          at the calibrator farthest from the phase center is no more than
           :term:`max_peak_smearing <max_peak_smearing (calibration)>`. As for
           imaging, the resolution is taken to be three times
           :term:`cellsize_arcsec`, and the averaging is never more than 120 s or
@@ -515,7 +515,7 @@ The available options are described below under their respective sections.
               not use the DP3 calibration steps.
 
     max_peak_smearing (calibration)
-        Maximum desired reduction in the peak flux density of the calibrator furthest
+        Maximum desired reduction in the peak flux density of the calibrator farthest
         from the phase center due to bandwidth smearing (at the mean frequency) and
         time smearing (default = 0.15 = 15% reduction in peak flux), when
         :term:`average_visibilities <average_visibilities (calibration)>` is

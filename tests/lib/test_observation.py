@@ -462,7 +462,7 @@ class TestObservation:
         expected_timestep,
         expected_freqstep,
     ):
-        """The averaging is as large as the smearing at the furthest calibrator allows."""
+        """The averaging is as large as the smearing at the farthest calibrator allows."""
         steps = {"fast": 6, "medium": 6, "slow": 6}
         freqsteps = {"fast": 8, "medium": 8, "slow": 8}
         self.set_averaging_test_parameters(
