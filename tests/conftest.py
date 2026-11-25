@@ -767,6 +767,14 @@ def generated_parset_path_normalisation(
         apparent_skymodel_path,
         normalization_skymodel_paths=normalization_skymodel_paths,
     )
+    # The normalization and photometry checks need enough sources in the image.
+    # Averaging the six time slots and eight channels of the test MS before the
+    # DD solves leaves too few for them, so the solves use the unaveraged data
+    parset = configparser.ConfigParser()
+    parset.read(output_parset_path)
+    parset["calibration"]["average_visibilities"] = "False"
+    with output_parset_path.open("w") as fp:
+        parset.write(fp)
     return output_parset_path
 
 
