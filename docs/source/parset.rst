@@ -476,10 +476,10 @@ The available options are described below under their respective sections.
           are the only ones that apply. The distance is measured to the center
           of each calibrator patch, so sources in the outermost patch can lie
           slightly further out;
-        - every solution interval is a whole number of averaged time slots and
-          averaged channels, so an averaged time slot is never longer than the
-          shortest solution interval and an averaged channel is never wider
-          than the narrowest one. This applies to the solves done in the cycle
+        - every solution interval is a whole number multiple of the averaged
+          time slots and averaged channels, so an averaged time slot is never
+          longer than the shortest solution interval and an averaged channel
+          is never wider than the narrowest one. This applies to the solves done in the cycle
           (including the shorter intervals of brighter calibrators when
           direction-dependent solution intervals are used) and to the
           direction-independent and full-Jones solutions that are applied to the
