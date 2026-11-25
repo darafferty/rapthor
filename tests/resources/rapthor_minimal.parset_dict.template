@@ -1,5 +1,5 @@
 {'apparent_skymodel': None,
- 'calibration_specific': {'average_visibilities': False,
+ 'calibration_specific': {'average_visibilities': True,
                           'bda_frequencybase': 5000.0,
                           'bda_timebase': 20000.0,
                           'correct_time_frequency_smearing': False,

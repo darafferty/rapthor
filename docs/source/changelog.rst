@@ -14,7 +14,7 @@ This release includes the following changes:
       Averaging is limited by the time and bandwidth smearing at the calibrator
       source farthest from the phase center (see :term:`max_peak_smearing
       <max_peak_smearing (calibration)>`) and by the solution intervals. It is
-      disabled by default. The DP3 memory check before each calibration cycle
+      enabled by default. The DP3 memory check before each calibration cycle
       takes the averaging into account.
     - The time and frequency averaging steps for imaging (see
       :term:`average_visibilities <average_visibilities (imaging)>`) are now

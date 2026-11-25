@@ -259,12 +259,12 @@ def test_json_defaults_include_normalization_reference_frequencies():
     assert defaults["imaging"]["normalization_reference_frequencies"] is None
 
 
-def test_json_defaults_disable_calibration_averaging():
+def test_json_defaults_enable_calibration_averaging():
     defaults = json.loads(
         (Path(__file__).parents[2] / "rapthor/settings/defaults.json").read_text(encoding="utf-8")
     )
 
-    assert defaults["calibration"]["average_visibilities"] is False
+    assert defaults["calibration"]["average_visibilities"] is True
     assert defaults["calibration"]["max_peak_smearing"] == 0.15
 
 

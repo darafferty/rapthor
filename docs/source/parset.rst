@@ -463,7 +463,7 @@ The available options are described below under their respective sections.
 
     average_visibilities (calibration)
         Average the input visibilities in time and frequency before the
-        direction-dependent calibration solves (default = ``False``). Averaging
+        direction-dependent calibration solves (default = ``True``). Averaging
         makes the solves faster and lowers their memory use. Rapthor chooses the
         largest averaging for which:
 
