@@ -9,10 +9,10 @@ Version 3.1 (unreleased)
 This release includes the following changes:
 
     - The visibilities can now be averaged before the direction-dependent
-      calibration solves, to make them faster (see
-      :term:`average_visibilities <average_visibilities (calibration)>`). The
-      averaging is limited by the smearing at the calibrator furthest from the
-      phase center (see :term:`max_peak_smearing
+      calibration solves, which speeds up calibration and reduces memory usage 
+      (see :term:`average_visibilities <average_visibilities (calibration)>`).
+      Averaging is limited by the time and bandwidth smearing at the calibrator
+      source furthest from the phase center (see :term:`max_peak_smearing
       <max_peak_smearing (calibration)>`) and by the solution intervals. It is
       disabled by default. The DP3 memory check before each calibration cycle
       takes the averaging into account.
