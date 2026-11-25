@@ -1,3 +1,4 @@
+import configparser
 import subprocess
 from pathlib import Path
 
@@ -12,10 +13,28 @@ from .utils import (
     update_parset_path,
 )
 
+# The 1 MHz slow-gain interval of the template covers all 8 channels (24 kHz
+# wide) of the test MS
+SLOW_SOLINT_CHANNELS = 8
+
 
 def _phases(path):
     with h5parm(str(path), readonly=True) as solutions:
         return solutions.getSolset("sol000").getSoltab("phase000").val
+
+
+def _set_calibration_averaging(parset_path, average_visibilities):
+    """Turn the averaging before the calibration solves on or off.
+
+    The integration template only sets the imaging average_visibilities option,
+    which update_parset_path would change instead, so the calibration one is set
+    here.
+    """
+    parset = configparser.ConfigParser()
+    parset.read(parset_path)
+    parset["calibration"]["average_visibilities"] = str(average_visibilities)
+    with Path(parset_path).open("w") as fp:
+        parset.write(fp)
 
 
 @pytest.mark.integration
@@ -170,11 +189,13 @@ def test_rapthor_run_dd_fast_medium_slow_gains(
     ],
     indirect=True,
 )
+@pytest.mark.parametrize("average_visibilities", [True, False], ids=["averaged", "unaveraged"])
 def test_rapthor_run_dd_slow_gains(
-    generated_parset_path, single_loop_strategy_path_calibrate_dd_slow
+    generated_parset_path, single_loop_strategy_path_calibrate_dd_slow, average_visibilities
 ):
     """Test a single selfcal loop with DP3.
-    DD calibration slow gains are performed
+    DD calibration slow gains are performed, with and without averaging the
+    visibilities before the solve
     """
 
     updated_parset_path = update_parset_path(
@@ -184,6 +205,7 @@ def test_rapthor_run_dd_slow_gains(
             "strategy": str(single_loop_strategy_path_calibrate_dd_slow),
         },
     )
+    _set_calibration_averaging(updated_parset_path, average_visibilities)
 
     working_dir = get_working_dir_from_parset(updated_parset_path)
     print("---Rapthor working dir: ", working_dir)
@@ -210,4 +232,20 @@ def test_rapthor_run_dd_slow_gains(
     assert "solve3" not in dp3_arguments["steps"]
     assert "slow_gain_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert "diagonal" == dp3_arguments["solve1.mode"]
-    assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples
+
+    # DP3 counts the solution intervals in the samples that reach the solve, so
+    # after averaging they shrink by the averaging steps
+    steps = dp3_arguments["steps"].strip("[]").split(",")
+    if average_visibilities:
+        assert steps[0] == "avg", "The averaging must come before every other step"
+        timestep = int(dp3_arguments["avg.timestep"])
+        freqstep = int(dp3_arguments["avg.freqstep"])
+        assert timestep > 1, "Expected the 10 s samples to be averaged in time"
+    else:
+        assert "avg" not in steps
+        assert "avg.timestep" not in dp3_arguments
+        assert "avg.freqstep" not in dp3_arguments
+        timestep = freqstep = 1
+    # 600 s strategy interval / 10 s samples
+    assert int(dp3_arguments["solve1.solint"]) * timestep == 60
+    assert int(dp3_arguments["solve1.nchan"]) * freqstep == SLOW_SOLINT_CHANNELS
