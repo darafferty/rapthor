@@ -429,8 +429,34 @@ class TestObservation:
         assert observation.parameters["ms_prep_filename"] == "test.sector_1_prep.ms"
         assert observation.parameters["image_freqstep"] == expected_image_freqstep
         assert observation.parameters["image_timestep"] == expected_image_timestep
-        assert observation.parameters["image_bda_maxinterval"] == 6
+        # The 60 s short-baseline interval is 6 time slots of 10.0139008 s
+        maxinterval = observation.parameters["image_bda_maxinterval"]
+        assert math.floor(maxinterval / observation.timepersample) == 6
         assert observation.parameters["image_bda_minchannels"] == 2
+
+    @pytest.mark.parametrize("time_slots", [6, 29])
+    def test_set_imaging_parameters_gives_the_bda_interval_in_seconds(
+        self, observation, time_slots
+    ):
+        """DP3 takes the maximum BDA interval in seconds and rounds it down to time slots."""
+        # 29 time slots of exactly 29 x 10.0139008 s would round down to 28 slots,
+        # because of the floating-point error
+        observation.numsamples = 100
+        observation.set_imaging_parameters(
+            sector_name="sector_1",
+            cellsize_arcsec=3.0,
+            max_peak_smearing=0.1,
+            width_ra=1.2,
+            width_dec=0.8,
+            min_solve_timestep=20.0,
+            min_solve_timestep_short_baselines=time_slots * observation.timepersample,
+            min_solve_freqstep=observation.channelwidth,
+            min_solve_freqstep_short_baselines=observation.channelwidth * 4,
+            preapply_dd_solutions=False,
+        )
+
+        maxinterval = observation.parameters["image_bda_maxinterval"]
+        assert math.floor(maxinterval / observation.timepersample) == time_slots
 
     @pytest.mark.parametrize(
         "freqstep, expected",

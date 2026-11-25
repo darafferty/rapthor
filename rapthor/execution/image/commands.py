@@ -34,7 +34,7 @@ class PrepareImagingDataOptions:
     num_threads: int
     steps: str
     minchannels: int = 1
-    maxinterval: Optional[int] = None
+    maxinterval: Optional[float] = None
     timebase: Optional[float] = None
     h5parm: Optional[str] = None
     fulljones_h5parm: Optional[str] = None

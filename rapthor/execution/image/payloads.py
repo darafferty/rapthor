@@ -15,7 +15,7 @@ class ImagePrepareTaskPayload(TypedDict):
     ntimes: int
     freqstep: int
     timestep: int
-    maxinterval: Optional[int]
+    maxinterval: Optional[float]
     minchannels: int
 
 

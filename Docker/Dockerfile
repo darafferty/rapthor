@@ -42,7 +42,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libboost-date-time-dev \
         libboost-filesystem-dev \
         libboost-program-options-dev \
-        libboost-numpy-dev \
         libboost-python-dev \
         libcfitsio-dev \
         libdeflate-dev \
@@ -71,7 +70,7 @@ RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
 # Install required python packages
 RUN python3 -m pip install \
     'cmake<4' \
-    'numpy<2'
+    'numpy>=2,<3'
 
 # Install the casacore measures data. We purposely do not install these from
 # the Ubuntu repository, but download the latest version from the ASTRON site.
@@ -269,7 +268,8 @@ RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version && \
     fpack -H && \
-    rapthor --version
+    rapthor --version && \
+    python3 -c "import numpy, bdsf, casacore.tables"
 
 # Set environment variables needed at run-time
 ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam

@@ -3,6 +3,18 @@
 Changelog
 =========
 
+Version 3.1 (unreleased)
+------------------------
+
+This release includes the following changes:
+
+    - The maximum time interval of the baseline-dependent averaging for imaging
+      (see :term:`bda_timebase <bda_timebase (imaging)>`) is now passed to DP3
+      in seconds. Earlier versions passed the number of time slots, which DP3
+      took as seconds, so the short baselines were averaged over fewer time
+      slots than intended.
+
+
 Version 3.0 (unreleased)
 ------------------------
 

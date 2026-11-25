@@ -5,7 +5,7 @@ from __future__ import annotations
 import configparser
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, TextIO
 
 PARSET_PATH_OPTIONS = {
     "global": {
@@ -69,6 +69,65 @@ def resolve_path_value(value: str, base_dir: Path) -> str:
     return resolve_path_token(value, base_dir)
 
 
+_JSON_PARSE_ERROR = "JSON parset could not be parsed correctly."
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a JSON object, raising on duplicate keys as configparser does for INI files."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"{_JSON_PARSE_ERROR}\nDuplicate key '{key}'.")
+        result[key] = value
+    return result
+
+
+def _json_value_to_str(section: str, option: str, value: Any) -> str:
+    """Convert a JSON option value (a scalar or a list of scalars) to its parset string form."""
+    if isinstance(value, dict):
+        raise ValueError(
+            f"{_JSON_PARSE_ERROR}\nOption '{option}' in section '{section}' must be a "
+            "scalar or a list, not an object."
+        )
+    if not isinstance(value, list):
+        return str(value)
+    if any(isinstance(item, (dict, list)) for item in value):
+        raise ValueError(
+            f"{_JSON_PARSE_ERROR}\nList items of option '{option}' in section "
+            f"'{section}' must be scalars."
+        )
+    items = [str(item) for item in value]
+    # List items are written unquoted (e.g. "[one, two]" instead of "['one', 'two']"),
+    # as in INI parsets, so that path resolution and casting see plain tokens. Those
+    # split on commas, so an item cannot contain one.
+    if any("," in item for item in items):
+        raise ValueError(
+            f"{_JSON_PARSE_ERROR}\nList items of option '{option}' in section "
+            f"'{section}' must not contain commas."
+        )
+    return "[" + ", ".join(items) + "]"
+
+
+def _read_json_parset(handle: TextIO) -> dict[str, dict[str, str]]:
+    """Read a JSON parset into a dict of sections whose option values are strings."""
+    try:
+        parset_dict = json.load(handle, object_pairs_hook=_reject_duplicate_keys)
+    except json.decoder.JSONDecodeError as err:
+        raise ValueError(f"{_JSON_PARSE_ERROR}\n{err}") from err
+    if not isinstance(parset_dict, dict):
+        raise ValueError(f"{_JSON_PARSE_ERROR}\nThe top-level entry must be a dictionary.")
+    for section, options in parset_dict.items():
+        if not isinstance(options, dict):
+            raise ValueError(
+                f"{_JSON_PARSE_ERROR}\nAll secondary-level entries must be dictionaries, "
+                "one per parset section."
+            )
+        parset_dict[section] = {
+            option: _json_value_to_str(section, option, value) for option, value in options.items()
+        }
+    return parset_dict
+
+
 def materialize_parset_paths(
     parset_file: Path,
     output_file: Path,
@@ -79,30 +138,13 @@ def materialize_parset_paths(
     """Write a parset copy with known path-like options resolved to absolute paths."""
     parser = configparser.ConfigParser(interpolation=None)
     with parset_file.open() as handle:
-        if parset_file.suffix == ".json":
+        if parset_file.suffix.lower() == ".json":
+            parset_dict = _read_json_parset(handle)
             try:
-                parset_dict = json.load(handle)
-            except json.decoder.JSONDecodeError as err:
-                raise ValueError(f"JSON parset could not be parsed correctly.\n{err}")
-            if not isinstance(parset_dict, dict):
-                raise ValueError(
-                    "JSON parset could not be parsed correctly.\nThe top-level entry must "
-                    "be a dictionary."
-                )
-            # Convert all entires to str
-            for section in parset_dict:
-                if not isinstance(parset_dict[section], dict):
-                    raise ValueError(
-                        "JSON parset could not be parsed correctly.\nAll secondary-level "
-                        "entries must be dictionaries, one per parset section."
-                    )
-                parset_dict[section] = {
-                    # Handle the lists separately to ensure the string version do not have
-                    # nested quotes (e.g. we want "[one, two]" instead of '["one", "two"]')
-                    k: str(v) if not isinstance(v, list) else "[" + ", ".join(map(str, v)) + "]"
-                    for k, v in parset_dict[section].items()
-                }
-            parser.read_dict(parset_dict)
+                parser.read_dict(parset_dict)
+            except configparser.Error as err:
+                # E.g. options or sections that differ only in case
+                raise ValueError(f"{_JSON_PARSE_ERROR}\n{err}") from err
         else:
             parser.read_file(handle)
 
