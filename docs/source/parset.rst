@@ -475,7 +475,7 @@ The available options are described below under their respective sections.
           2 MHz. If the only calibrator lies at the phase center, these limits
           are the only ones that apply. The distance is measured to the center
           of each calibrator patch, so sources in the outermost patch can lie
-          slightly further out;
+          slightly farther out;
         - every solution interval is a whole number multiple of the averaged
           time slots and averaged channels, so an averaged time slot is never
           longer than the shortest solution interval and an averaged channel
@@ -489,10 +489,11 @@ The available options are described below under their respective sections.
           the solutions in the file. If that spacing is not a whole number of
           time slots or channels of the input data, the data are not averaged
           in that dimension;
-        - the number of channels in the input data is a whole number of averaged
-          channels, and the averaging is no longer than the observation. If the
-          channels of the input data are not evenly spaced or do not all have
-          the same width, the data are not averaged in frequency.
+        - the number of channels in the input data is a whole number multiple of
+          the number of channels averaged together, and the averaging is no
+          longer than the observation. If the channels of the input data are not
+          evenly spaced or do not all have the same width, the data are not
+          averaged in frequency.
 
         Solution intervals that share no common factor can therefore prevent
         averaging altogether. The averaging is done before any other step of the
@@ -500,9 +501,9 @@ The available options are described below under their respective sections.
         and baseline-dependent averaging (see
         :term:`bda_timebase <bda_timebase (calibration)>`) work on the averaged
         data. If :term:`correct_time_frequency_smearing
-        <correct_time_frequency_smearing (calibration)>` is enabled, the
-        prediction of the model from the sky model includes the smearing caused
-        by the averaging. Image-based prediction does not correct for smearing.
+        <correct_time_frequency_smearing (calibration)>` is enabled, the model
+        visibilities predicted from the sky model include the smearing caused by
+        the averaging. Image-based prediction does not correct for smearing.
 
         .. note::
 
@@ -511,13 +512,13 @@ The available options are described below under their respective sections.
             - when :term:`use_wsclean_predict` is enabled, since DP3 cannot
               average the model data predicted by WSClean (a warning is logged);
             - for direction-independent calibration, which solves against model
-              data predicted beforehand;
+              visibilities that were predicted beforehand;
             - for the generation of screens (see :term:`dde_mode`), which does
               not use the DP3 calibration steps.
 
     max_peak_smearing (calibration)
         Maximum desired reduction in the peak flux density of the calibrator farthest
-        from the phase center due to bandwidth smearing (at the mean frequency) and
+        from the phase center due to bandwidth smearing (at the mean observing frequency) and
         time smearing (default = 0.15 = 15% reduction in peak flux), when
         :term:`average_visibilities <average_visibilities (calibration)>` is
         enabled. Higher values result in shorter run times but more smearing of
@@ -621,8 +622,9 @@ The available options are described below under their respective sections.
         determined by the maximum allowed before smearing effects become important (see
         :term:`max_peak_smearing <max_peak_smearing (imaging)>`). The averaging
         steps are the largest whole numbers of time slots and channels for which
-        the smearing stays within the limit, where the number of channels must
-        divide the number of channels in the input data.
+        the time and bandwidth smearing stay within the limit. The number of
+        channels averaged together must also divide the number of channels in
+        the input data.
 
         .. note::
 
@@ -793,10 +795,11 @@ The available options are described below under their respective sections.
         List of image  widths, in degrees (default = ``[]``).
 
     max_peak_smearing (imaging)
-        Max desired peak flux density reduction at center of the image edges due to
-        bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 = 15%
-        reduction in peak flux). Higher values result in shorter run times but more
-        smearing away from the image centers. The averaging steps are rounded
+        Max desired peak flux density reduction at the middle of the image edges
+        farthest from the image center due to bandwidth smearing (at the mean
+        observing frequency) and time smearing (default = 0.15 = 15% reduction
+        in peak flux). Higher values result in shorter run times but more
+        smearing away from the image center. The averaging steps are rounded
         down, so the reduction does not exceed this value. The value must be at
         least 0 and less than 1. Note this option is not considered if
         :term:`average_visibilities <average_visibilities (imaging)>` = ``False``.
