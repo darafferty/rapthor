@@ -88,8 +88,9 @@ This release includes the following changes:
       slow-gain or full-Jones interval of all selfcal cycles, whether or not
       those solves were done. Cycles that solve only for phases can therefore
       be split into more chunks and spread over more nodes, when this gives
-      more chunks than the longest interval of any selfcal cycle (otherwise
-      they use the same chunks as the cycles with that interval). With a data
+      more chunks than the longest interval of any selfcal cycle, and a shorter
+      longest chunk (otherwise they use the same chunks as the cycles with that
+      interval). With a data
       fraction below 1, every selfcal cycle uses the same time ranges of the
       data, and only the chunks within them change, up to :term:`max_nodes`
       chunks for each observation (but at least one for each range). A cycle

@@ -215,15 +215,27 @@ def _observation_chunk_times(obs, intervals, max_nodes):
 
     # The selection was made for the longest solution interval of all of the steps
     # it is shared by. Chunks of that interval are the same in each of these steps, so
-    # a step uses chunks of its own (shorter) interval only if there are more of them,
-    # as otherwise they would be chunked (and peeled) again for no more nodes. Steps
-    # without solves of their own keep the selected ranges whole
+    # a step uses chunks of its own (shorter) interval only if there are more of them
+    # and the longest is shorter, as otherwise they would be chunked (and peeled) again
+    # for no more nodes or no faster solves. Steps without solves of their own keep the
+    # selected ranges whole
     chunk_timesteps = _chunk_timesteps(obs, intervals, obs.selection_timesteps)
     own_chunk_times = chunk_times(chunk_timesteps)
     if chunk_timesteps >= obs.selection_timesteps:
         return own_chunk_times
     shared_chunk_times = chunk_times(obs.selection_timesteps)
-    return own_chunk_times if len(own_chunk_times) > len(shared_chunk_times) else shared_chunk_times
+    more_chunks = len(own_chunk_times) > len(shared_chunk_times)
+    shorter_chunks = _longest_chunk_timesteps(obs, own_chunk_times) < _longest_chunk_timesteps(
+        obs, shared_chunk_times
+    )
+    return own_chunk_times if more_chunks and shorter_chunks else shared_chunk_times
+
+
+def _longest_chunk_timesteps(obs, chunk_times):
+    # Count the time slots, as the start and end times are computed differently
+    return max(
+        round((endtime - starttime) / obs.timepersample) for _, starttime, endtime in chunk_times
+    )
 
 
 def _chunked_observations(plan):

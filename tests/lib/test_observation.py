@@ -753,18 +753,54 @@ def test_selfcal_cycles_with_as_many_chunks_share_the_chunks_of_the_longest_solv
     assert field.observations is observations
 
 
+def test_selfcal_cycles_share_the_chunks_when_their_own_take_as_long(
+    field, make_chunking_observation
+):
+    """On five nodes, three 6-sample ranges of 20-second phase solves make five chunks
+    (4 and 2 samples in two ranges, and 6 in the third), but the third range still
+    takes as long as with three whole-range chunks. The phase-only cycle uses the
+    whole ranges, so the slow-gain cycle keeps them rather than chunking (and peeling)
+    again for no shorter chunks."""
+    obs, sample_times = make_chunking_observation(60)
+    field.full_observations = [obs]
+    field.parset["cluster_specific"]["max_nodes"] = 5
+    field.dd_interval_factor = 1
+    phase_only = {
+        "do_calibrate": True,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase"]},
+        "fast_timestep_sec": 10,
+        "medium_timestep_sec": 20,
+        "peel_outliers": True,
+    }
+    slow_gains = {
+        **phase_only,
+        "calibration_strategy": {"dd": ["fast_phase", "medium_phase", "slow_gains"]},
+        "slow_timestep_sec": 60,
+        "peel_outliers": False,
+    }
+    steps = [phase_only, slow_gains]
+
+    chunk_observations(field, steps[:1], data_fraction=0.3, selection_steps=steps)
+    observations = field.observations
+
+    chunks = samples_in_chunks(sample_times, observations)
+    assert [len(chunk) for chunk in chunks] == [6, 6, 6]
+    assert rechunk_observations(field, steps, 1) is steps[1]
+    assert field.observations is observations
+
+
 def test_chunking_partial_data_makes_at_most_one_chunk_per_node(field, make_chunking_observation):
-    """Four 6-sample ranges of 20-second solves make six chunks on six nodes, rather
+    """Four 6-sample ranges of 20-second solves make eight chunks on eight nodes, rather
     than twelve, as more chunks than nodes would not run at the same time."""
     obs, sample_times = make_chunking_observation(60)
     field.full_observations = [obs]
-    field.parset["cluster_specific"]["max_nodes"] = 6
+    field.parset["cluster_specific"]["max_nodes"] = 8
     steps = [_full_jones_step(20), _full_jones_step(60)]
 
     chunk_observations(field, steps[:1], data_fraction=0.4, selection_steps=steps)
 
     chunks = samples_in_chunks(sample_times, field.observations)
-    assert [len(chunk) for chunk in chunks] == [4, 2, 4, 2, 6, 6]
+    assert [len(chunk) for chunk in chunks] == [4, 2] * 4
 
 
 def test_selfcal_cycles_keep_the_selection_when_a_step_omits_an_interval(

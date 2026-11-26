@@ -834,8 +834,9 @@ for how these options are used.
         cycles that solve only for phases can use more chunks than cycles that
         also solve for slow gains. A selfcal cycle uses the chunks of the longest
         solution interval of all selfcal cycles unless its own intervals give
-        more chunks, so that cycles with as many chunks share the same ones and
-        the data are not chunked (and the outliers peeled) again between them.
+        more chunks and a shorter longest chunk, so that cycles that would not
+        calibrate faster with their own chunks share the same ones, and the data
+        are not chunked (and the outliers peeled) again between them.
 
     local_dask_workers
         Number of Dask workers to start when Rapthor uses the ``single_machine``
