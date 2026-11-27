@@ -134,6 +134,53 @@ print("RESULT " + json.dumps(result, sort_keys=True))
 """
 
 
+PREFECT_EVENTS_SCRIPT = r"""
+import json
+import sys
+
+import rapthor.cli
+
+from rapthor.execution.config import ExecutionConfig
+from rapthor.execution.runtime_bootstrap import bootstrapped_runtime
+from rapthor.execution.task_runner import run_flow_with_task_runner
+
+
+def run_events_flow():
+    prefect_imported_before_bootstrap = "prefect" in sys.modules
+    with bootstrapped_runtime(
+        ExecutionConfig(
+            prefect_api_mode="ephemeral",
+            task_runner="local_dask",
+            dask_dashboard_address=None,
+            local_dask_workers=1,
+            cpus_per_task=1,
+        )
+    ) as plan:
+        from prefect import flow, task
+
+        @task
+        def add_one(value):
+            return value + 1
+
+        @flow(name="runtime-bootstrap-events")
+        def events_flow(execution_config=None):
+            return add_one.submit(1).result()
+
+        computed = run_flow_with_task_runner(
+            events_flow,
+            execution_config=plan.execution_config,
+        )
+    return {
+        "computed": computed,
+        "prefect_imported_before_bootstrap": prefect_imported_before_bootstrap,
+    }
+
+
+if __name__ == "__main__":
+    print("RESULT " + json.dumps(run_events_flow(), sort_keys=True))
+"""
+
+
 @pytest.mark.prefect
 @pytest.mark.serial
 @pytest.mark.parametrize(
@@ -179,7 +226,7 @@ def test_runtime_bootstrap_process_matrix(tmp_path, scenario):
         assert result["flow_result"]["prefect_api_url"] == result["input_prefect_api_url"]
     else:
         assert result["plan_prefect_api_url"] is None
-        assert result["flow_result"]["prefect_api_url"] == ""
+        assert result["flow_result"]["prefect_api_url"] is None
         assert result["flow_result"]["prefect_home"] != result["outer_prefect_home"]
 
     if scenario.endswith("-external-dask"):
@@ -218,6 +265,38 @@ def test_ephemeral_prefect_resolves_isolated_home_before_import(tmp_path):
     assert result["prefect_imported_before_bootstrap"] is False
     assert result["resolved_home"] == result["environment_home"]
     assert result["resolved_home"] != result["outer_home"]
+
+
+def test_ephemeral_prefect_events_worker_starts_when_imported_after_bootstrap(tmp_path):
+    pytest.importorskip("dask.distributed")
+    pytest.importorskip("prefect")
+    pytest.importorskip("prefect_dask")
+
+    script = tmp_path / "prefect_events.py"
+    script.write_text(PREFECT_EVENTS_SCRIPT)
+    prefect_home = tmp_path / "outer-prefect-home"
+    prefect_home.mkdir()
+
+    completed = subprocess.run(
+        [sys.executable, script.as_posix()],
+        cwd=Path(__file__).parents[2],
+        env=_isolated_runtime_environment(prefect_home),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=180,
+        check=False,
+    )
+
+    output = completed.stdout + completed.stderr
+    assert completed.returncode == 0, output
+    result = _extract_smoke_result(completed.stdout)
+
+    assert result["prefect_imported_before_bootstrap"] is False
+    assert result["computed"] == 2
+    # Prefect's events worker fails at startup if PREFECT_API_URL is set but empty
+    assert "Service 'EventsWorker' failed" not in output
+    assert "Error emitting event" not in output
 
 
 def _isolated_runtime_environment(prefect_home):

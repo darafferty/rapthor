@@ -13,6 +13,8 @@ This release includes the following changes:
       in seconds. Earlier versions passed the number of time slots, which DP3
       took as seconds, so the short baselines were averaged over fewer time
       slots than intended.
+    - Runs that use Prefect's temporary local API/server no longer log
+      "Service 'EventsWorker' failed" errors.
 
 
 Version 3.0 (unreleased)

@@ -22,6 +22,7 @@ log = logging.getLogger("rapthor:runtime")
 PREFECT_API_HEALTH_TIMEOUT_SECONDS = 2.0
 PREFECT_HOME_ENV = "PREFECT_HOME"
 PREFECT_LOCAL_TMPDIR_ENV = "RAPTHOR_PREFECT_LOCAL_TMPDIR"
+PREFECT_PROFILES_PATH_ENV = "PREFECT_PROFILES_PATH"
 PREFECT_SERVER_ANALYTICS_ENABLED_ENV = "PREFECT_SERVER_ANALYTICS_ENABLED"
 SLURM_TMPDIR_ENV = "SLURM_TMPDIR"
 DEFAULT_PREFECT_LOCAL_TMPDIR = Path("/tmp")
@@ -191,22 +192,28 @@ def bootstrapped_runtime(
     )
     original_api_url = environ.get(PREFECT_API_URL_ENV)
     original_prefect_home = environ.get(PREFECT_HOME_ENV)
+    original_prefect_profiles_path = environ.get(PREFECT_PROFILES_PATH_ENV)
     original_prefect_server_analytics_enabled = environ.get(PREFECT_SERVER_ANALYTICS_ENABLED_ENV)
     temporary_prefect_home = None
     local_dask_cluster = None
     try:
         environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] = "false"
         if plan.prefect_api_url is None:
-            # Override Prefect profile settings as well as shell environment.
-            # An empty PREFECT_API_URL lets Prefect use its temporary local API/server.
+            # Ignore Prefect profile settings as well as the shell environment, so
+            # that Prefect uses its temporary local API/server. PREFECT_API_URL is
+            # unset rather than set to "", because Prefect's events worker treats
+            # "" as the URL of a running server and fails at startup.
             log.info("Ignoring any Prefect profile API URL for this run.")
-            environ[PREFECT_API_URL_ENV] = ""
+            environ.pop(PREFECT_API_URL_ENV, None)
             prefect_temporary_root = resolve_prefect_local_tmpdir(environ)
             temporary_prefect_home = TemporaryDirectory(
                 prefix="rapthor-prefect-",
                 dir=prefect_temporary_root,
             )
             environ[PREFECT_HOME_ENV] = temporary_prefect_home.name
+            environ[PREFECT_PROFILES_PATH_ENV] = str(
+                Path(temporary_prefect_home.name) / "profiles.toml"
+            )
             log.info(
                 "Using isolated temporary Prefect home %s for this run.",
                 temporary_prefect_home.name,
@@ -245,6 +252,10 @@ def bootstrapped_runtime(
             environ.pop(PREFECT_HOME_ENV, None)
         else:
             environ[PREFECT_HOME_ENV] = original_prefect_home
+        if original_prefect_profiles_path is None:
+            environ.pop(PREFECT_PROFILES_PATH_ENV, None)
+        else:
+            environ[PREFECT_PROFILES_PATH_ENV] = original_prefect_profiles_path
         if original_api_url is None:
             environ.pop(PREFECT_API_URL_ENV, None)
         else:

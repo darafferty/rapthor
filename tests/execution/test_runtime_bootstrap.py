@@ -7,6 +7,7 @@ from rapthor.execution.config import PREFECT_API_URL_ENV, ExecutionConfig
 from rapthor.execution.runtime_bootstrap import (
     PREFECT_HOME_ENV,
     PREFECT_LOCAL_TMPDIR_ENV,
+    PREFECT_PROFILES_PATH_ENV,
     PREFECT_SERVER_ANALYTICS_ENABLED_ENV,
     SLURM_TMPDIR_ENV,
     RuntimeBootstrapError,
@@ -203,13 +204,16 @@ def test_bootstrapped_runtime_uses_prefect_ephemeral_server_when_no_api_is_confi
     ) as plan:
         assert plan.prefect_api_url is None
         assert plan.prefect_dashboard_url is None
-        assert environ[PREFECT_API_URL_ENV] == ""
+        # An empty API URL makes Prefect's events worker fail, so it must be unset
+        assert PREFECT_API_URL_ENV not in environ
         assert environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "false"
         temporary_prefect_home = Path(environ[PREFECT_HOME_ENV])
         assert temporary_prefect_home.exists()
+        assert environ[PREFECT_PROFILES_PATH_ENV] == str(temporary_prefect_home / "profiles.toml")
 
     assert PREFECT_API_URL_ENV not in environ
     assert PREFECT_HOME_ENV not in environ
+    assert PREFECT_PROFILES_PATH_ENV not in environ
     assert not temporary_prefect_home.exists()
     assert "Ignoring any Prefect profile API URL for this run." in caplog.text
     assert "Using isolated temporary Prefect home" in caplog.text
@@ -220,6 +224,7 @@ def test_bootstrapped_runtime_ignores_external_prefect_api_for_ephemeral_mode(ca
     environ = {
         PREFECT_API_URL_ENV: "http://original:4200/api",
         PREFECT_HOME_ENV: "/original/prefect-home",
+        PREFECT_PROFILES_PATH_ENV: "/original/profiles.toml",
         PREFECT_SERVER_ANALYTICS_ENABLED_ENV: "true",
     }
 
@@ -229,13 +234,15 @@ def test_bootstrapped_runtime_ignores_external_prefect_api_for_ephemeral_mode(ca
     ) as plan:
         assert plan.prefect_api_url is None
         assert plan.prefect_dashboard_url is None
-        assert environ[PREFECT_API_URL_ENV] == ""
+        assert PREFECT_API_URL_ENV not in environ
         assert environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "false"
         temporary_prefect_home = Path(environ[PREFECT_HOME_ENV])
         assert temporary_prefect_home.exists()
+        assert environ[PREFECT_PROFILES_PATH_ENV] == str(temporary_prefect_home / "profiles.toml")
 
     assert environ[PREFECT_API_URL_ENV] == "http://original:4200/api"
     assert environ[PREFECT_HOME_ENV] == "/original/prefect-home"
+    assert environ[PREFECT_PROFILES_PATH_ENV] == "/original/profiles.toml"
     assert environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "true"
     assert not temporary_prefect_home.exists()
     assert "Ignoring any Prefect profile API URL for this run." in caplog.text
@@ -376,7 +383,7 @@ def test_bootstrapped_runtime_launch_matrix(
         assert plan.execution_config.dask_scheduler == expected_dask_scheduler
         assert environ[PREFECT_SERVER_ANALYTICS_ENABLED_ENV] == "false"
         if expected_prefect_api is None:
-            assert environ[PREFECT_API_URL_ENV] == ""
+            assert PREFECT_API_URL_ENV not in environ
             assert Path(environ[PREFECT_HOME_ENV]).exists()
         else:
             assert environ[PREFECT_API_URL_ENV] == expected_prefect_api
