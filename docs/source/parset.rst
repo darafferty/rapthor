@@ -180,9 +180,9 @@ The available options are described below under their respective sections.
         Full path to an H5parm file with flux-scale normalization solutions (default =
         None). This file is used if no flux-scale normalization is to be done: it
         is used in every cycle until a cycle with :term:`do_normalize` replaces it.
-        The corrections are applied to the data before calibration and imaging, and
-        to the model data that are predicted for calibration and for subtracting
-        sources.
+        Before imaging, the corrections are applied to the data. During calibration
+        and when sources are subtracted, the data are left unchanged and the
+        corrections scale the predicted model to the flux scale of the data instead.
 
     facet_layout
         Full path to a text file that defines the facet layout (default = None). This file
