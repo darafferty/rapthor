@@ -16,11 +16,11 @@ from rapthor.execution.pipeline.flow import (
     run_pipeline_preflight,
     run_pipeline_steps,
 )
-from rapthor.execution.pipeline.skymodels import run_skymodel_processing
 from rapthor.execution.pipeline.plan import (
     SUPPORTED_PIPELINE_FEATURES,
     collect_pipeline_features,
 )
+from rapthor.execution.pipeline.skymodels import run_skymodel_processing
 from rapthor.execution.working_dir_lock import WorkingDirectoryInUse, working_directory_lock
 from tests.conftest import _get_test_run_root
 
