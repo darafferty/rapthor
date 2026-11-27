@@ -72,7 +72,8 @@ ntimes_to_repeat_final_cycle = 0
 # With an image-only DI strategy, it is pre-applied during imaging preparation and
 # no sky model is required. With an image-only DD strategy, matching sky-model
 # patches or a facet layout are required for imaging-time application. Full-Jones
-# and flux-scale normalization solutions can also be supplied.
+# and flux-scale normalization solutions can also be supplied. These are used in
+# every cycle until a full-Jones solve or a flux-scale normalization replaces them.
 # The time and frequency coverage of the solutions must be sufficient to cover the
 # duration and bandwidth of the input dataset.
 input_h5parm = None
