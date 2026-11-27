@@ -289,6 +289,13 @@ are kept under ``normalize_X`` in the working directory. When there is more
 than one imaging sector, the image task names start with the sector name, for
 example ``sector_2_wsclean_image``.
 
+The pipeline flow itself runs one task per cycle, ``process_skymodels_X``.
+It updates the sky models from the images of the previous cycle (or reads the
+initial sky model), groups them into calibration patches and defines the
+sectors. Because it changes the run state, it runs in the ``rapthor`` command
+and not on a worker. Its run time is recorded in
+``dir_working/logs/tasks.jsonl`` under the operation ``skymodels_X``.
+
 Tasks carry a tag that names the tool they run (``dp3``, ``wsclean``,
 ``pybdsf``, ``casacore``, ``fpack`` or ``python``), plus any tags set with
 :term:`prefect_run_tags`, so runs and tasks can be filtered in the dashboard.

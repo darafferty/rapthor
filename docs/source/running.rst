@@ -496,7 +496,11 @@ link that does not point to such a workspace are left alone.
 The entries of the reset operations in ``logs/commands.jsonl`` and
 ``logs/tasks.jsonl`` are moved to ``*.reset-<time>.jsonl`` files, named after
 the UTC time of the reset, and ``logs/rapthor.log`` is renamed in the same way.
-The remaining records describe only the work whose products are kept.
+The entries of the sky-model processing at the start of each cycle
+(``skymodels_X``) are moved with those of their cycle, unless the reset starts
+after the first operation of the cycle, because the operations that are kept
+were made from those sky models. The remaining records describe only the work
+whose products are kept.
 
 A run and a reset, or two runs, cannot share a working directory: each locks
 ``dir_working/.rapthor.lock`` until its process ends, and the one that starts

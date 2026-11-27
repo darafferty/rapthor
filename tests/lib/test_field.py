@@ -354,6 +354,50 @@ def test_update_sets_skymodel_flags_in_repeated_final_cycles(field, monkeypatch)
     assert field.imaged_sources_only is True
 
 
+def test_update_runs_the_skymodel_processing_with_the_given_runner(field, monkeypatch):
+    """The runner does the sky-model processing; update() uses its sectors afterwards."""
+    monkeypatch.setattr(
+        field, "process_skymodels", lambda **kwargs: pytest.fail("must use the runner")
+    )
+    runs = []
+
+    class Sector:
+        name = "outlier_1"
+
+    def runner(runner_field, **parameters):
+        runs.append((runner_field, parameters))
+        runner_field.outlier_sectors = [Sector()]
+
+    field.update(
+        {
+            "do_calibrate": False,
+            "regroup_model": False,
+            "peel_bright_sources": False,
+            "peel_outliers": True,
+            "reweight": False,
+            "compress_selfcal_images": False,
+        },
+        index=2,
+        skymodel_runner=runner,
+    )
+
+    assert runs == [
+        (
+            field,
+            {
+                "index": 2,
+                "regroup": False,
+                "target_flux": None,
+                "target_number": None,
+                "calibrator_max_dist_deg": None,
+                "combine_current_and_initial": False,
+            },
+        )
+    ]
+    assert field.peel_outliers is True
+    assert field.do_predict is True
+
+
 def _cycle_step(peel_outliers):
     return {
         "do_calibrate": True,

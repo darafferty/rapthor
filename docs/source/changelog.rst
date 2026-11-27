@@ -13,6 +13,9 @@ This release includes the following changes:
       in seconds. Earlier versions passed the number of time slots, which DP3
       took as seconds, so the short baselines were averaged over fewer time
       slots than intended.
+    - The processing of the sky models at the start of each cycle is now a
+      Prefect task, ``process_skymodels_X``, so it is shown in the Prefect
+      dashboard and its run time is recorded in ``dir_working/logs/tasks.jsonl``.
 
 
 Version 3.0 (unreleased)

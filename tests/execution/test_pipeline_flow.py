@@ -16,6 +16,7 @@ from rapthor.execution.pipeline.flow import (
     run_pipeline_preflight,
     run_pipeline_steps,
 )
+from rapthor.execution.pipeline.skymodels import run_skymodel_processing
 from rapthor.execution.pipeline.plan import (
     SUPPORTED_PIPELINE_FEATURES,
     collect_pipeline_features,
@@ -65,8 +66,9 @@ class RecordingField:
     selfcal_result: SelfcalState = field(default_factory=SelfcalState)
     updates: list[tuple] = field(default_factory=list)
 
-    def update(self, step, index, final_cycle_number=0):
+    def update(self, step, index, final_cycle_number=0, skymodel_runner=None):
         self.__dict__.update(step)
+        self.skymodel_runner_seen = skymodel_runner
         self.cycle_number_seen = index
         self.final_cycle_number_seen = final_cycle_number
         self.updates.append((index, final_cycle_number, step.get("peel_outliers")))
@@ -461,6 +463,18 @@ def test_run_pipeline_steps_calibration_strategy_handoffs(
     )
 
     _assert_strategy_handoffs(field, expected_order, expected_handoffs)
+
+
+def test_run_pipeline_steps_runs_the_skymodel_processing_as_a_task():
+    field = RecordingField()
+
+    run_pipeline_steps(
+        field,
+        [_single_step({"dd": ["fast_phase"]})],
+        operation_factories=RECORDING_FACTORIES,
+    )
+
+    assert field.skymodel_runner_seen is run_skymodel_processing
 
 
 def test_run_pipeline_preflight_checks_calibration_memory_for_each_cycle(monkeypatch):

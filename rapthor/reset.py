@@ -41,6 +41,11 @@ CALIBRATION_OPERATIONS = {"predict_nc", "calibrate", "predict_di", "calibrate_di
 # Logs with one JSON record per line, each naming its operation
 OPERATION_RECORD_LOGS = ("commands.jsonl", "tasks.jsonl")
 MAIN_LOG = "rapthor.log"
+# The sky-model processing of a cycle has no operation directory. Its records are
+# named skymodels_<cycle>, and it runs after these operations of the first cycle
+# and before all the others of its cycle
+SKYMODEL_RECORD = re.compile(r"skymodels_(?P<index>[0-9]+)")
+PRE_SKYMODEL_OPERATIONS = {"concatenate", "initial_image"}
 _OPERATION_DIRECTORY = re.compile(r"(?P<operation>[a-z_]+?)(?:_(?P<index>[0-9]+))?")
 
 
@@ -114,7 +119,25 @@ def _reset_start(pipelines, selected):
             return position
 
 
-def archive_reset_logs(logs_dir, operations, now=None):
+def skymodel_reset_cycle(pipelines, start):
+    """
+    Return the first cycle whose sky-model processing is reset from position start.
+
+    The sky-model processing of a cycle is reset together with the operations
+    that run after it in that cycle. When the reset starts part way through the
+    cycle, the operations that are kept were made from the sky models of that
+    processing, so its records are kept as well and the processing of the next
+    cycle is the first one reset.
+    """
+    index, _ = _parse_operation(pipelines[start])
+    for name in pipelines[:start]:
+        kept_index, kept_operation = _parse_operation(name)
+        if kept_index == index and kept_operation not in PRE_SKYMODEL_OPERATIONS:
+            return index + 1
+    return index
+
+
+def archive_reset_logs(logs_dir, operations, now=None, skymodel_cycle=None):
     """
     Move the log records of reset operations to files named after the reset.
 
@@ -123,6 +146,8 @@ def archive_reset_logs(logs_dir, operations, now=None):
     for example, commands.reset-20250102T030405Z.jsonl and the others stay, so
     that the logs only describe the work whose products are kept. rapthor.log has
     no record per operation and cannot be split, so it is renamed in the same way.
+    The records of the sky-model processing of skymodel_cycle and later cycles
+    (see skymodel_reset_cycle()) are moved as well; with None, none of them are.
     Returns the name of the reset attempt, or None if nothing was archived.
     """
     logs_dir = Path(logs_dir)
@@ -143,7 +168,7 @@ def archive_reset_logs(logs_dir, operations, now=None):
         path = logs_dir / filename
         if path.is_file():
             archive_path = _archive_path(logs_dir, filename, attempt)
-            archived_any |= _move_records(path, archive_path, operations)
+            archived_any |= _move_records(path, archive_path, operations, skymodel_cycle)
     main_log = logs_dir / MAIN_LOG
     if main_log.is_file():
         main_log.replace(_archive_path(logs_dir, MAIN_LOG, attempt))
@@ -151,9 +176,12 @@ def archive_reset_logs(logs_dir, operations, now=None):
     return attempt if archived_any else None
 
 
-def _move_records(path, archive_path, operations):
+def _move_records(path, archive_path, operations, skymodel_cycle=None):
     """
     Move the records of the given operations from a record log to an archive.
+
+    The records of the sky-model processing of skymodel_cycle and later cycles
+    are moved as well.
 
     Returns whether any record was archived. A reset that stopped after writing
     its archive but before replacing the log left its records in both, so a record
@@ -162,7 +190,11 @@ def _move_records(path, archive_path, operations):
     """
     kept, moved = [], []
     for line in path.read_text(encoding="utf-8").splitlines():
-        (moved if _record_operation(line) in operations else kept).append(line)
+        operation = _record_operation(line)
+        if operation in operations or _is_reset_skymodel_record(operation, skymodel_cycle):
+            moved.append(line)
+        else:
+            kept.append(line)
     if not moved:
         return False
     archived = Counter()
@@ -189,6 +221,13 @@ def _move_records(path, archive_path, operations):
 def _archive_path(logs_dir, filename, attempt):
     path = Path(logs_dir, filename)
     return path.with_stem(f"{path.stem}.{attempt}")
+
+
+def _is_reset_skymodel_record(operation, skymodel_cycle):
+    if skymodel_cycle is None or not isinstance(operation, str):
+        return False
+    match = SKYMODEL_RECORD.fullmatch(operation)
+    return match is not None and int(match["index"]) >= skymodel_cycle
 
 
 def _record_operation(line):
@@ -300,7 +339,11 @@ def _reset(parset):
             # way still lists the operations and can be repeated
             logs_dir = working_dir / "logs"
             if logs_dir.is_dir():
-                attempt = archive_reset_logs(logs_dir, pipelines[start:])
+                attempt = archive_reset_logs(
+                    logs_dir,
+                    pipelines[start:],
+                    skymodel_cycle=skymodel_reset_cycle(pipelines, start),
+                )
                 if attempt is not None:
                     print(f"Logs of the reset operations were moved to logs/*.{attempt}.*")
 

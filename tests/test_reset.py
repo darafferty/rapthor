@@ -323,6 +323,84 @@ def test_archive_reset_logs_moves_records_to_a_file_per_attempt(tmp_path):
     assert reset_module.archive_reset_logs(str(tmp_path), ["image_1"], RESET_TIME) is None
 
 
+@pytest.mark.parametrize(
+    "selected, expected_cycle",
+    [
+        # The whole of cycle 1 after the sky-model processing is reset
+        ("concatenate_1", 1),
+        ("initial_image", 1),
+        ("calibrate_1", 1),
+        # image_1 is reset, but calibrate_1 is kept and was made from the sky models
+        ("image_1", 2),
+        ("calibrate_2", 2),
+        ("image_2", 3),
+    ],
+)
+def test_skymodel_reset_cycle_keeps_the_processing_of_a_partly_kept_cycle(selected, expected_cycle):
+    pipelines = [
+        "concatenate_1",
+        "initial_image",
+        "calibrate_1",
+        "image_1",
+        "calibrate_2",
+        "image_2",
+    ]
+
+    start = pipelines.index(selected)
+
+    assert reset_module.skymodel_reset_cycle(pipelines, start) == expected_cycle
+
+
+def test_archive_reset_logs_moves_skymodel_records_from_the_reset_cycle(tmp_path):
+    # Cycle 3 stopped during its sky-model processing, so it has no operation
+    tasks = [
+        {"operation": name}
+        for name in (
+            "skymodels_1",
+            "calibrate_1",
+            "skymodels_2",
+            "calibrate_2",
+            "image_2",
+            "skymodels_3",
+            "skymodels_10",
+        )
+    ]
+    _write_jsonl(tmp_path / "tasks.jsonl", tasks)
+
+    attempt = reset_module.archive_reset_logs(
+        str(tmp_path), ["calibrate_2", "image_2"], RESET_TIME, skymodel_cycle=2
+    )
+
+    assert _read_jsonl(tmp_path / "tasks.jsonl") == tasks[:2]
+    assert _read_jsonl(tmp_path / f"tasks.{attempt}.jsonl") == tasks[2:]
+
+
+def test_reset_archives_the_skymodel_records_of_reset_cycles(working_dir, monkeypatch):
+    for name in ("calibrate_1", "image_1", "calibrate_2", "image_2"):
+        _write_prefect_operation_state(working_dir, name)
+    logs_dir = working_dir / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    tasks = [
+        {"operation": name}
+        for name in (
+            "skymodels_1",
+            "calibrate_1",
+            "image_1",
+            "skymodels_2",
+            "calibrate_2",
+            "image_2",
+        )
+    ]
+    _write_jsonl(logs_dir / "tasks.jsonl", tasks)
+
+    # Reset from image_1: calibrate_1 and the sky models of cycle 1 are kept
+    assert _reset(monkeypatch, "2", "y", "q") == 0
+
+    assert _read_jsonl(logs_dir / "tasks.jsonl") == tasks[:2]
+    [archive] = logs_dir.glob("tasks.reset-*.jsonl")
+    assert _read_jsonl(archive) == tasks[2:]
+
+
 def test_archive_reset_logs_archives_each_record_once_after_an_interrupted_reset(
     tmp_path, monkeypatch
 ):

@@ -19,6 +19,7 @@ from rapthor.execution.pipeline.plan import (
     collect_pipeline_features,
 )
 from rapthor.execution.prefect_logging import publish_python_logs_to_prefect
+from rapthor.execution.pipeline.skymodels import run_skymodel_processing
 from rapthor.execution.task_runner import run_flow_with_task_runner
 from rapthor.execution.working_dir_lock import working_directory_lock
 from rapthor.lib.calibration_memory import check_calibration_memory
@@ -266,7 +267,12 @@ def run_pipeline_steps(
 
     for index, step in enumerate(steps):
         cycle_number = index + field.cycle_number
-        field.update(step, cycle_number, final_cycle_number=final_cycle_number)
+        field.update(
+            step,
+            cycle_number,
+            final_cycle_number=final_cycle_number,
+            skymodel_runner=run_skymodel_processing,
+        )
 
         if field.do_calibrate:
             _prepare_calibration_cycle(field, cycle_number, final)

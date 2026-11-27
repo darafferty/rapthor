@@ -929,6 +929,31 @@ class Field(object):
         # Save the final target flux
         self.target_flux = target_flux
 
+    def process_skymodels(
+        self,
+        index,
+        regroup,
+        target_flux=None,
+        target_number=None,
+        calibrator_max_dist_deg=None,
+        combine_current_and_initial=False,
+    ):
+        """
+        Updates the sky models, calibration patches and sectors for a cycle
+
+        The sky models are then removed to reduce memory usage. The parameters
+        are those of :meth:`update_skymodels`.
+        """
+        self.update_skymodels(
+            index,
+            regroup,
+            target_flux=target_flux,
+            target_number=target_number,
+            calibrator_max_dist_deg=calibrator_max_dist_deg,
+            combine_current_and_initial=combine_current_and_initial,
+        )
+        self.remove_skymodels()
+
     def update_skymodels(
         self,
         index,
@@ -2056,7 +2081,7 @@ class Field(object):
             # Report not converged, not diverged, and not failed
             return SelfcalState(False, False, False)
 
-    def update(self, step_dict, index, final_cycle_number=0):
+    def update(self, step_dict, index, final_cycle_number=0, skymodel_runner=None):
         """
         Updates parameters, sky models, etc. for current cycle
 
@@ -2068,6 +2093,11 @@ class Field(object):
             Index of processing cycle (counting starts from 1)
         final_cycle_number : int, optional
             Index of final processing cycle (counting starts from 1; 0 indicates a non-final cycle)
+        skymodel_runner : callable, optional
+            Function that runs the sky-model processing of the cycle, called as
+            ``skymodel_runner(field, **parameters)`` with the keyword arguments of
+            :meth:`process_skymodels`. The pipeline uses it to run the processing
+            as a Prefect task. If None, :meth:`process_skymodels` is called directly
         """
         # If this is set as the initial final pass, set some peeling/calibration options to
         # the defaults
@@ -2130,15 +2160,18 @@ class Field(object):
             target_number = None
             calibrator_max_dist_deg = None
 
-        self.update_skymodels(
-            index,
-            step_dict["regroup_model"],
-            target_flux=target_flux,
-            target_number=target_number,
-            calibrator_max_dist_deg=calibrator_max_dist_deg,
-            combine_current_and_initial=(final_cycle_number == 1),
-        )
-        self.remove_skymodels()  # clean up sky models to reduce memory usage
+        skymodel_parameters = {
+            "index": index,
+            "regroup": step_dict["regroup_model"],
+            "target_flux": target_flux,
+            "target_number": target_number,
+            "calibrator_max_dist_deg": calibrator_max_dist_deg,
+            "combine_current_and_initial": final_cycle_number == 1,
+        }
+        if skymodel_runner is None:
+            self.process_skymodels(**skymodel_parameters)
+        else:
+            skymodel_runner(self, **skymodel_parameters)
 
         # Check whether any sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
