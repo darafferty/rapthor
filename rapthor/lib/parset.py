@@ -292,7 +292,7 @@ class Parset:
         max_peak_smearing = options["max_peak_smearing"]
         if not 0.0 <= max_peak_smearing < 1.0:
             raise ValueError(
-                f"The max_peak_smearing parameter in the [calibration] section is "
+                "The max_peak_smearing parameter in the [calibration] section is "
                 f"{max_peak_smearing}; it must be >= 0 and < 1"
             )
 
@@ -381,7 +381,7 @@ class Parset:
         max_peak_smearing = options["max_peak_smearing"]
         if not 0.0 <= max_peak_smearing < 1.0:
             raise ValueError(
-                f"The max_peak_smearing parameter in the [imaging] section is "
+                "The max_peak_smearing parameter in the [imaging] section is "
                 f"{max_peak_smearing}; it must be >= 0 and < 1"
             )
 
