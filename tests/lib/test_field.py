@@ -1493,7 +1493,7 @@ class TestAntennaConstraints:
     def mock_ska_field_with_stations(self):
         """
         Create a mock Field object with specified stations matching those
-        expected from SKA AA2 data set.
+        expected from a simulated SKA AA2 data set.
         """
         field = Field.__new__(Field)  # Create an uninitialized Field instance
         field.log = logging.getLogger("rapthor:field")
