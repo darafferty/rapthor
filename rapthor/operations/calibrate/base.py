@@ -180,7 +180,7 @@ class Calibrate(FlowOperation):
                 "output_solve3_h5parm": [f"slow_gain_{i}.h5parm" for i in range(field.ntimechunks)],
                 "collected_solve3_h5parm": self.slow_h5parm,
                 # Sky model configuration
-                "calibration_skymodel_file": FileRecord(calibration_skymodel_file).to_json(),
+                "calibration_skymodel_file": FileRecord(field.calibration_skymodel_file).to_json(),
                 "model_image_root": "calibration_model",
                 "model_image_ra_dec": model_image_ra_dec,
                 "model_image_imsize": model_image_imsize,
