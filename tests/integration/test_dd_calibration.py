@@ -40,12 +40,12 @@ def _test_calibrate(parset_path):
     assert "Operation mosaic_1 completed" in output
     assert "Rapthor has finished :)" in output
 
-    return first_command_arguments(
+    dp3_arguments = first_command_arguments(
         working_dir,
         operation="calibrate_1",
         executable="DP3",
     )
-
+    return working_dir, dp3_arguments
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
@@ -78,7 +78,7 @@ def test_rapthor_run_dd_fast_phase_medium_phase(
         },
     )
 
-    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
+    working_dir, dp3_arguments = _test_calibrate(updated_parset_path, caplog)
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -104,7 +104,7 @@ def test_rapthor_run_dd_fast_phase_medium_phase(
         executable="wsclean",
         contains="-restore-list",
     )
-    assert restore_commands == [], (
+    assert [] == restore_commands, (
         "WSClean restore commands should not run when bright-source peeling is disabled"
     )
 
@@ -190,7 +190,7 @@ def test_rapthor_run_dd_slow_gains(
     assert "solve3" not in dp3_arguments["steps"]
     assert "slow_gain_0.h5parm" == dp3_arguments["solve1.h5parm"]
     assert "diagonal" == dp3_arguments["solve1.mode"]
-    assert int(dp3_arguments["solve1.solint"]) == 60  # 600 s strategy interval / 10 s samples
+    assert 60 == int(dp3_arguments["solve1.solint"])  # 600 s strategy interval / 10 s samples
 
 
 @pytest.mark.integration
@@ -221,7 +221,7 @@ def test_rapthor_run_dd_wsclean_predict_fast_phase_medium_phase(
         },
     )
 
-    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
+    _, dp3_arguments = _test_calibrate(updated_parset_path, caplog)
 
     assert "steps" in dp3_arguments
     assert "solve1" in dp3_arguments["steps"]
@@ -259,7 +259,7 @@ def test_rapthor_run_dd_with_antenna_constraints(
             "strategy": str(single_loop_strategy_path),
         },
     )
-    dp3_arguments = _test_calibrate(updated_parset_path, caplog)
+    _, dp3_arguments = _test_calibrate(updated_parset_path, caplog)
     assert (
         "[[CS001HBA0,CS002HBA0,CS002HBA1,CS004HBA1]]" == dp3_arguments["solve1_antennaconstraint"]
     )
