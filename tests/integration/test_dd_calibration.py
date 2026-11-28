@@ -47,6 +47,7 @@ def _test_calibrate(parset_path):
     )
     return working_dir, dp3_arguments
 
+
 @pytest.mark.integration
 @pytest.mark.parametrize(
     "generated_parset_path",
