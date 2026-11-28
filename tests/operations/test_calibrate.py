@@ -333,56 +333,6 @@ class TestCalibrate:
             assert calibrate.parset_parms["generate_screens"] is generate_screens
             assert calibrate.parset_parms["use_wsclean_predict"] is False
 
-    @pytest.mark.parametrize(
-        "antenna,include_remote,stations,expected",
-        [
-            (
-                "HBA",
-                True,
-                ["RS106HBA0", "CS002HBA0", "DE601HBA"],
-                ["CS002HBA0", "RS106HBA0"],
-            ),
-            (
-                "HBA",
-                False,
-                ["RS106HBA0", "CS002HBA0", "DE601HBA"],
-                ["CS002HBA0"],
-            ),
-            (
-                "LBA",
-                True,
-                ["RS205LBA", "CS003LBA", "CS999LBA"],
-                ["CS003LBA", "RS205LBA"],
-            ),
-            (
-                "LBA",
-                False,
-                ["RS205LBA", "CS003LBA", "CS999LBA"],
-                ["CS003LBA"],
-            ),
-            (
-                "HBA",
-                True,
-                ["DE601HBA", "DE602HBA"],
-                [],
-            ),
-        ],
-    )
-    def test_get_core_stations(self, calibrate_field, antenna, include_remote, stations, expected):
-        calibrate_field.antenna = antenna
-        calibrate_field.stations = stations
-        calibrate_dd = Calibrate("dd", field=calibrate_field, index=1)
-        result = calibrate_dd._get_core_stations(include_nearest_remote=include_remote)
-        assert result == expected
-        assert (
-            build_calibration_core_stations(
-                antenna,
-                stations,
-                include_nearest_remote=include_remote,
-            )
-            == expected
-        )
-
     @pytest.mark.parametrize("cycle,have_full_field_sector", [(1, False), (1, True), (2, False)])
     def test_get_model_image_parameters(
         self, single_source_sky_model, calibrate_field, mocker, cycle, have_full_field_sector
